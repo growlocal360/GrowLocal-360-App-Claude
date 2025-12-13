@@ -32,7 +32,7 @@ export default function SignupPage() {
         data: {
           full_name: fullName,
         },
-        emailRedirectTo: `${window.location.origin}/callback`,
+        emailRedirectTo: `${window.location.origin}/oauth2callback`,
       },
     });
 
@@ -49,7 +49,7 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/callback`,
+        redirectTo: `${window.location.origin}/oauth2callback`,
         scopes: 'https://www.googleapis.com/auth/business.manage',
       },
     });

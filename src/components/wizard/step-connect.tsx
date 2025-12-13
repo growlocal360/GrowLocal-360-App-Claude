@@ -163,10 +163,16 @@ export function StepConnect() {
     setLocations(wizardLocations);
 
     // Set categories from first location if available
+    // Note: GBP returns minimal category data, so we create partial objects
+    // The categories step will allow users to refine their selection
     if (selected[0]?.primaryCategory) {
       setPrimaryCategory({
         gcid: selected[0].primaryCategory.name,
+        name: selected[0].primaryCategory.name,
         displayName: selected[0].primaryCategory.displayName,
+        keywords: [],
+        relatedCategories: [],
+        commonServices: [],
       });
     }
 
@@ -174,7 +180,11 @@ export function StepConnect() {
       setSecondaryCategories(
         selected[0].additionalCategories.map((cat) => ({
           gcid: cat.name,
+          name: cat.name,
           displayName: cat.displayName,
+          keywords: [],
+          relatedCategories: [],
+          commonServices: [],
         }))
       );
     }

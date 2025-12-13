@@ -9,11 +9,14 @@ interface WizardStore extends WizardState {
   setConnectionType: (type: 'google' | 'manual') => void;
   setGoogleConnected: (connected: boolean, accessToken?: string) => void;
   setBusinessInfo: (name: string, industry: string) => void;
+  setBusinessName: (name: string) => void;
+  setCoreIndustry: (industry: string) => void;
   setLocations: (locations: WizardLocation[]) => void;
   addLocation: (location: WizardLocation) => void;
   removeLocation: (index: number) => void;
   updateLocation: (index: number, location: Partial<WizardLocation>) => void;
   setPrimaryCategory: (category: GBPCategoryData | null) => void;
+  setSecondaryCategories: (categories: GBPCategoryData[]) => void;
   toggleSecondaryCategory: (category: GBPCategoryData) => void;
   setWebsiteType: (type: WebsiteType) => void;
   setDomain: (domain: string) => void;
@@ -37,6 +40,10 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   setBusinessInfo: (name, industry) =>
     set({ businessName: name, coreIndustry: industry }),
 
+  setBusinessName: (name) => set({ businessName: name }),
+
+  setCoreIndustry: (industry) => set({ coreIndustry: industry }),
+
   setLocations: (locations) => set({ locations }),
 
   addLocation: (location) =>
@@ -57,6 +64,8 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     })),
 
   setPrimaryCategory: (category) => set({ primaryCategory: category }),
+
+  setSecondaryCategories: (categories) => set({ secondaryCategories: categories }),
 
   toggleSecondaryCategory: (category) =>
     set((state) => {

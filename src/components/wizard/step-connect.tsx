@@ -13,7 +13,9 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
+  Search,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 
 interface GBPLocation {
@@ -57,6 +59,7 @@ export function StepConnect() {
   const [error, setError] = useState<string | null>(null);
   const [gbpLocations, setGbpLocations] = useState<GBPLocation[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Check if user is already connected via Google
   useEffect(() => {
@@ -85,10 +88,8 @@ export function StepConnect() {
       setGbpLocations(data.locations || []);
       setIsConnected(true);
 
-      // Auto-select all locations
-      if (data.locations?.length > 0) {
-        setSelectedLocations(new Set(data.locations.map((l: GBPLocation) => l.gbpLocationId || l.name)));
-      }
+      // Don't auto-select - let user choose which locations to import
+      setSelectedLocations(new Set());
     } catch (err) {
       console.error('Error fetching GBP locations:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch locations');
@@ -205,6 +206,20 @@ export function StepConnect() {
     });
   };
 
+  // Filter locations based on search query
+  const filteredLocations = useMemo(() => {
+    if (!searchQuery.trim()) return gbpLocations;
+    const query = searchQuery.toLowerCase();
+    return gbpLocations.filter(
+      (loc) =>
+        loc.name.toLowerCase().includes(query) ||
+        loc.city?.toLowerCase().includes(query) ||
+        loc.state?.toLowerCase().includes(query) ||
+        loc.address?.toLowerCase().includes(query) ||
+        loc.primaryCategory?.displayName?.toLowerCase().includes(query)
+    );
+  }, [gbpLocations, searchQuery]);
+
   // If connected and has locations, show location picker
   if (isConnected && gbpLocations.length > 0) {
     return (
@@ -218,12 +233,25 @@ export function StepConnect() {
           </h2>
           <p className="mt-1 text-gray-500">
             Choose which Google Business Profile locations to import.
+            <span className="ml-1 font-medium">({gbpLocations.length} locations found)</span>
           </p>
         </div>
 
         <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
           <CheckCircle2 className="h-5 w-5" />
           <span>Connected to Google Business Profile</span>
+        </div>
+
+        {/* Search box */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by name, city, or category..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
 
         {error && (
@@ -233,8 +261,15 @@ export function StepConnect() {
           </div>
         )}
 
-        <div className="space-y-3">
-          {gbpLocations.map((location) => {
+        {/* Location count indicator */}
+        {searchQuery && (
+          <p className="text-sm text-gray-500">
+            Showing {filteredLocations.length} of {gbpLocations.length} locations
+          </p>
+        )}
+
+        <div className="max-h-[400px] space-y-3 overflow-y-auto">
+          {filteredLocations.map((location) => {
             const locationId = location.gbpLocationId || location.name;
             const isSelected = selectedLocations.has(locationId);
 

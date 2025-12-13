@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     // If accountId is provided, get locations for that account
     // Otherwise, get all locations across all accounts
     if (accountId) {
-      const locations = await gbpClient.getLocations(accountId);
+      const locations = await gbpClient.getAllLocationsForAccount(accountId);
       const formattedLocations = locations.map(gbpLocationToAppLocation);
       return NextResponse.json({ locations: formattedLocations });
     }

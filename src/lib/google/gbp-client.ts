@@ -101,15 +101,32 @@ export class GBPClient {
     return response.accounts || [];
   }
 
-  // Get locations for a specific account
-  async getLocations(accountId: string): Promise<GBPLocation[]> {
+  // Get locations for a specific account (with pagination)
+  async getLocations(accountId: string, pageToken?: string): Promise<GBPLocationsResponse> {
     // Extract just the account ID if full path is provided
     const id = accountId.replace('accounts/', '');
 
-    const response = await this.fetch<GBPLocationsResponse>(
-      `${this.businessInfoUrl}/accounts/${id}/locations?readMask=name,title,storefrontAddress,phoneNumbers,categories,websiteUri,metadata,latlng`
-    );
-    return response.locations || [];
+    let url = `${this.businessInfoUrl}/accounts/${id}/locations?readMask=name,title,storefrontAddress,phoneNumbers,categories,websiteUri,metadata,latlng&pageSize=100`;
+    if (pageToken) {
+      url += `&pageToken=${pageToken}`;
+    }
+
+    const response = await this.fetch<GBPLocationsResponse>(url);
+    return response;
+  }
+
+  // Get ALL locations for a specific account (handles pagination automatically)
+  async getAllLocationsForAccount(accountId: string): Promise<GBPLocation[]> {
+    const allLocations: GBPLocation[] = [];
+    let pageToken: string | undefined;
+
+    do {
+      const response = await this.getLocations(accountId, pageToken);
+      allLocations.push(...(response.locations || []));
+      pageToken = response.nextPageToken;
+    } while (pageToken);
+
+    return allLocations;
   }
 
   // Get a single location's details
@@ -119,14 +136,14 @@ export class GBPClient {
     );
   }
 
-  // Get all locations across all accounts
+  // Get all locations across all accounts (fetches all pages)
   async getAllLocations(): Promise<{ account: GBPAccount; locations: GBPLocation[] }[]> {
     const accounts = await this.getAccounts();
     const results: { account: GBPAccount; locations: GBPLocation[] }[] = [];
 
     for (const account of accounts) {
       try {
-        const locations = await this.getLocations(account.name);
+        const locations = await this.getAllLocationsForAccount(account.name);
         results.push({ account, locations });
       } catch (error) {
         // Some accounts may not have location access

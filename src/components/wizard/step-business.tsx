@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWizardStore } from '@/lib/store/wizard-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Plus, Trash2, MapPin } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Trash2, MapPin, Tag } from 'lucide-react';
 import type { WizardLocation } from '@/types/wizard';
 
 export function StepBusiness() {
@@ -14,7 +14,11 @@ export function StepBusiness() {
     businessName,
     coreIndustry,
     locations,
+    primaryCategory,
+    secondaryCategories,
+    connectionType,
     setBusinessInfo,
+    setCoreIndustry,
     addLocation,
     removeLocation,
     updateLocation,
@@ -22,6 +26,13 @@ export function StepBusiness() {
     nextStep,
     canProceed,
   } = useWizardStore();
+
+  // Auto-fill core industry from primary category if connected via GBP
+  useEffect(() => {
+    if (connectionType === 'google' && primaryCategory && !coreIndustry) {
+      setCoreIndustry(primaryCategory.displayName);
+    }
+  }, [connectionType, primaryCategory, coreIndustry, setCoreIndustry]);
 
   const [showLocationForm, setShowLocationForm] = useState(locations.length === 0);
   const [newLocation, setNewLocation] = useState<Partial<WizardLocation>>({
@@ -100,6 +111,45 @@ export function StepBusiness() {
             This helps us suggest the best GBP categories for your business
           </p>
         </div>
+
+        {/* GBP Categories from connected profile */}
+        {connectionType === 'google' && primaryCategory && (
+          <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
+              <Tag className="h-4 w-4" />
+              GBP Categories (imported)
+            </div>
+
+            {/* Primary Category */}
+            <div>
+              <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Primary Category</p>
+              <span className="mt-1 inline-block rounded-full bg-blue-600 px-3 py-1 text-sm font-medium text-white">
+                {primaryCategory.displayName}
+              </span>
+            </div>
+
+            {/* Secondary Categories */}
+            {secondaryCategories.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Secondary Categories</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {secondaryCategories.map((cat) => (
+                    <span
+                      key={cat.gcid}
+                      className="inline-block rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700"
+                    >
+                      {cat.displayName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-blue-600">
+              These categories were imported from your Google Business Profile. You can adjust them in the next step.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Locations */}

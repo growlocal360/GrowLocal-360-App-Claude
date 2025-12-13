@@ -92,7 +92,13 @@ export function StepConnect() {
       setSelectedLocations(new Set());
     } catch (err) {
       console.error('Error fetching GBP locations:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch locations');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch locations';
+      // Check if token expired
+      if (errorMessage.includes('401') || errorMessage.includes('token') || errorMessage.includes('unauthorized')) {
+        setError('Your Google session has expired. Please reconnect.');
+      } else {
+        setError(errorMessage);
+      }
       setIsConnected(false);
     } finally {
       setIsLoading(false);

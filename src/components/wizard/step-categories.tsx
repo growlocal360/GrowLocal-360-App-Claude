@@ -25,6 +25,9 @@ export function StepCategories() {
   const [suggestedSecondary, setSuggestedSecondary] = useState<GBPCategoryData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
 
+  // Helper to normalize category names for comparison
+  const normalizeDisplayName = (name: string) => name.toLowerCase().trim();
+
   useEffect(() => {
     // Simulate AI analysis delay for UX
     setIsAnalyzing(true);
@@ -33,22 +36,32 @@ export function StepCategories() {
 
       // If connected via Google, prioritize the imported categories
       if (connectionType === 'google' && primaryCategory) {
-        // Add imported primary to suggestions if not already there
-        const hasPrimaryInSuggestions = primary.some(c => c.gcid === primaryCategory.gcid);
+        // Check if primary exists in suggestions by comparing normalized display names
+        const hasPrimaryInSuggestions = primary.some(
+          c => normalizeDisplayName(c.displayName) === normalizeDisplayName(primaryCategory.displayName)
+        );
+
         if (!hasPrimaryInSuggestions) {
-          setSuggestedPrimary([primaryCategory, ...primary]);
+          // Add imported primary at the top, filter out any duplicates by display name
+          const filteredPrimary = primary.filter(
+            c => normalizeDisplayName(c.displayName) !== normalizeDisplayName(primaryCategory.displayName)
+          );
+          setSuggestedPrimary([primaryCategory, ...filteredPrimary]);
         } else {
-          // Move the matching category to the top
-          const sorted = [
-            primary.find(c => c.gcid === primaryCategory.gcid)!,
-            ...primary.filter(c => c.gcid !== primaryCategory.gcid)
-          ];
-          setSuggestedPrimary(sorted);
+          // Use the imported category (with GBP data) at the top, remove duplicates
+          const filteredPrimary = primary.filter(
+            c => normalizeDisplayName(c.displayName) !== normalizeDisplayName(primaryCategory.displayName)
+          );
+          setSuggestedPrimary([primaryCategory, ...filteredPrimary]);
         }
 
-        // Merge imported secondary categories with suggested ones
-        const importedSecondaryGcids = new Set(secondaryCategories.map(c => c.gcid));
-        const additionalSuggestions = secondary.filter(c => !importedSecondaryGcids.has(c.gcid));
+        // Merge imported secondary categories with suggested ones, dedupe by display name
+        const importedDisplayNames = new Set(
+          secondaryCategories.map(c => normalizeDisplayName(c.displayName))
+        );
+        const additionalSuggestions = secondary.filter(
+          c => !importedDisplayNames.has(normalizeDisplayName(c.displayName))
+        );
         setSuggestedSecondary([...secondaryCategories, ...additionalSuggestions]);
       } else {
         setSuggestedPrimary(primary);

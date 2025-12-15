@@ -13,6 +13,7 @@ export function StepCategories() {
     coreIndustry,
     primaryCategory,
     secondaryCategories,
+    connectionType,
     setPrimaryCategory,
     toggleSecondaryCategory,
     prevStep,
@@ -29,19 +30,41 @@ export function StepCategories() {
     setIsAnalyzing(true);
     const timer = setTimeout(() => {
       const { primary, secondary } = getCategoriesForIndustry(coreIndustry);
-      setSuggestedPrimary(primary);
-      setSuggestedSecondary(secondary);
 
-      // Auto-select the best primary category if none selected
-      if (!primaryCategory && primary.length > 0) {
-        setPrimaryCategory(primary[0]);
+      // If connected via Google, prioritize the imported categories
+      if (connectionType === 'google' && primaryCategory) {
+        // Add imported primary to suggestions if not already there
+        const hasPrimaryInSuggestions = primary.some(c => c.gcid === primaryCategory.gcid);
+        if (!hasPrimaryInSuggestions) {
+          setSuggestedPrimary([primaryCategory, ...primary]);
+        } else {
+          // Move the matching category to the top
+          const sorted = [
+            primary.find(c => c.gcid === primaryCategory.gcid)!,
+            ...primary.filter(c => c.gcid !== primaryCategory.gcid)
+          ];
+          setSuggestedPrimary(sorted);
+        }
+
+        // Merge imported secondary categories with suggested ones
+        const importedSecondaryGcids = new Set(secondaryCategories.map(c => c.gcid));
+        const additionalSuggestions = secondary.filter(c => !importedSecondaryGcids.has(c.gcid));
+        setSuggestedSecondary([...secondaryCategories, ...additionalSuggestions]);
+      } else {
+        setSuggestedPrimary(primary);
+        setSuggestedSecondary(secondary);
+
+        // Auto-select the best primary category if none selected
+        if (!primaryCategory && primary.length > 0) {
+          setPrimaryCategory(primary[0]);
+        }
       }
 
       setIsAnalyzing(false);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [coreIndustry, primaryCategory, setPrimaryCategory]);
+  }, [coreIndustry, primaryCategory, secondaryCategories, connectionType, setPrimaryCategory]);
 
   const handlePrimarySelect = (category: GBPCategoryData) => {
     setPrimaryCategory(category);
@@ -170,9 +193,11 @@ export function StepCategories() {
         </p>
 
         <div className="grid gap-2 md:grid-cols-2">
-          {suggestedSecondary.map((category) => {
+          {suggestedSecondary.map((category, index) => {
             const isSelected = secondaryCategories.some((c) => c.gcid === category.gcid);
             const isPrimary = primaryCategory?.gcid === category.gcid;
+            // Check if this was imported from GBP (it will be in the first N positions)
+            const isFromGBP = connectionType === 'google' && index < secondaryCategories.length;
 
             return (
               <Card
@@ -186,19 +211,26 @@ export function StepCategories() {
                 }`}
                 onClick={() => !isPrimary && handleSecondaryToggle(category)}
               >
-                <CardContent className="flex items-center gap-3 p-3">
-                  <div
-                    className={`flex h-5 w-5 items-center justify-center rounded ${
-                      isSelected
-                        ? 'bg-emerald-500 text-white'
-                        : 'border-2 border-gray-300'
-                    }`}
-                  >
-                    {isSelected && <Check className="h-3 w-3" />}
+                <CardContent className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded ${
+                        isSelected
+                          ? 'bg-emerald-500 text-white'
+                          : 'border-2 border-gray-300'
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3" />}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
+                      {category.displayName}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
-                    {category.displayName}
-                  </span>
+                  {isFromGBP && (
+                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
+                      GBP
+                    </Badge>
+                  )}
                 </CardContent>
               </Card>
             );

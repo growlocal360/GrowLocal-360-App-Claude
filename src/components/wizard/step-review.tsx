@@ -237,8 +237,8 @@ export function StepReview() {
               gcid: cat.gcid,
               name: cat.name,
               display_name: cat.displayName || cat.name,
-              parent_gcid: cat.parentGcid || null,
-              service_types: cat.serviceTypes || [],
+              parent_gcid: null,
+              service_types: cat.commonServices || [],
             },
             { onConflict: 'gcid' }
           )

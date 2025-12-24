@@ -15,7 +15,7 @@ export function WizardShell({ children }: WizardShellProps) {
   // Default to manual flow steps for display until connection type is chosen
   const steps = connectionType
     ? getStepsForFlow(connectionType)
-    : ['connect', 'business', 'categories', 'website-type', 'review'];
+    : ['connect', 'business', 'categories', 'service-areas', 'neighborhoods', 'website-type', 'review'];
 
   const currentIndex = steps.indexOf(currentStep);
 
@@ -24,7 +24,9 @@ export function WizardShell({ children }: WizardShellProps) {
     locations: 'Locations',
     business: 'Business',
     categories: 'Categories',
-    'website-type': 'Website Type',
+    'service-areas': 'Areas',
+    neighborhoods: 'Local',
+    'website-type': 'Type',
     review: 'Review',
   };
 

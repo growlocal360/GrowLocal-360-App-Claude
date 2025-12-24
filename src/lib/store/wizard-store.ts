@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood } from '@/types/wizard';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
@@ -18,6 +18,15 @@ interface WizardStore extends WizardState {
   setPrimaryCategory: (category: GBPCategoryData | null) => void;
   setSecondaryCategories: (categories: GBPCategoryData[]) => void;
   toggleSecondaryCategory: (category: GBPCategoryData) => void;
+  setServiceAreas: (areas: ServiceArea[]) => void;
+  addServiceArea: (area: ServiceArea) => void;
+  removeServiceArea: (id: string) => void;
+  toggleServiceArea: (area: ServiceArea) => void;
+  setServiceAreaRadius: (radius: number) => void;
+  setNeighborhoods: (neighborhoods: WizardNeighborhood[]) => void;
+  addNeighborhood: (neighborhood: WizardNeighborhood) => void;
+  removeNeighborhood: (id: string) => void;
+  toggleNeighborhood: (neighborhood: WizardNeighborhood) => void;
   setWebsiteType: (type: WebsiteType) => void;
   setDomain: (domain: string) => void;
   setCurrentStep: (step: WizardStep) => void;
@@ -88,6 +97,58 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       };
     }),
 
+  setServiceAreas: (areas) => set({ serviceAreas: areas }),
+
+  addServiceArea: (area) =>
+    set((state) => ({
+      serviceAreas: [...state.serviceAreas, area],
+    })),
+
+  removeServiceArea: (id) =>
+    set((state) => ({
+      serviceAreas: state.serviceAreas.filter((a) => a.id !== id),
+    })),
+
+  toggleServiceArea: (area) =>
+    set((state) => {
+      const exists = state.serviceAreas.some((a) => a.id === area.id);
+      if (exists) {
+        return {
+          serviceAreas: state.serviceAreas.filter((a) => a.id !== area.id),
+        };
+      }
+      return {
+        serviceAreas: [...state.serviceAreas, area],
+      };
+    }),
+
+  setServiceAreaRadius: (radius) => set({ serviceAreaRadius: radius }),
+
+  setNeighborhoods: (neighborhoods) => set({ neighborhoods }),
+
+  addNeighborhood: (neighborhood) =>
+    set((state) => ({
+      neighborhoods: [...state.neighborhoods, neighborhood],
+    })),
+
+  removeNeighborhood: (id) =>
+    set((state) => ({
+      neighborhoods: state.neighborhoods.filter((n) => n.id !== id),
+    })),
+
+  toggleNeighborhood: (neighborhood) =>
+    set((state) => {
+      const exists = state.neighborhoods.some((n) => n.id === neighborhood.id);
+      if (exists) {
+        return {
+          neighborhoods: state.neighborhoods.filter((n) => n.id !== neighborhood.id),
+        };
+      }
+      return {
+        neighborhoods: [...state.neighborhoods, neighborhood],
+      };
+    }),
+
   setWebsiteType: (type) => set({ websiteType: type }),
 
   setDomain: (domain) => set({ domain }),
@@ -143,6 +204,14 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
 
       case 'categories':
         return state.primaryCategory !== null;
+
+      case 'service-areas':
+        // Service areas are optional, can always proceed
+        return true;
+
+      case 'neighborhoods':
+        // Neighborhoods are optional, can always proceed
+        return true;
 
       case 'website-type':
         return state.websiteType !== null;

@@ -77,7 +77,7 @@ export function StepWebsiteType() {
     <div className="space-y-6">
       <div>
         <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
-          Step 3 of 5
+          Step 5 of 6
         </span>
         <h2 className="mt-2 text-2xl font-bold text-gray-900">Website Type</h2>
         <p className="mt-1 text-gray-500">

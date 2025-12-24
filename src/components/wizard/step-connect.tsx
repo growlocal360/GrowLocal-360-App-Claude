@@ -18,6 +18,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 
+interface GBPServiceArea {
+  name: string;
+  placeId: string;
+}
+
 interface GBPLocation {
   name: string;
   address: string;
@@ -40,6 +45,8 @@ interface GBPLocation {
   }[];
   accountName?: string;
   accountId?: string;
+  // Service areas from GBP profile
+  serviceAreas?: GBPServiceArea[];
 }
 
 export function StepConnect() {
@@ -51,6 +58,7 @@ export function StepConnect() {
     setLocations,
     setPrimaryCategory,
     setSecondaryCategories,
+    setServiceAreas,
   } = useWizardStore();
 
   const supabase = useMemo(() => createClient(), []);
@@ -196,6 +204,49 @@ export function StepConnect() {
       );
     }
 
+    // Collect service areas from all selected GBP locations
+    // Dedupe by placeId and exclude the primary location's city
+    const allServiceAreas = new Map<string, { name: string; placeId: string }>();
+    const primaryCity = selected[0]?.city?.toLowerCase();
+
+    for (const loc of selected) {
+      if (loc.serviceAreas) {
+        for (const area of loc.serviceAreas) {
+          // Skip if it's the same as the primary city
+          const areaName = area.name.split(',')[0].trim().toLowerCase();
+          if (areaName === primaryCity) continue;
+
+          // Use placeId as key for deduplication
+          if (area.placeId && !allServiceAreas.has(area.placeId)) {
+            allServiceAreas.set(area.placeId, {
+              name: area.name,
+              placeId: area.placeId,
+            });
+          }
+        }
+      }
+    }
+
+    // Convert to wizard ServiceArea format
+    if (allServiceAreas.size > 0) {
+      const serviceAreasArray = Array.from(allServiceAreas.values()).map((area) => {
+        // Parse "City, STATE, USA" format
+        const parts = area.name.split(',').map((p) => p.trim());
+        const cityName = parts[0] || area.name;
+        const stateName = parts[1] || '';
+
+        return {
+          id: area.placeId,
+          name: cityName,
+          state: stateName,
+          placeId: area.placeId,
+          isCustom: false, // From GBP
+        };
+      });
+
+      setServiceAreas(serviceAreasArray);
+    }
+
     setConnectionType('google');
     nextStep();
   };
@@ -232,7 +283,7 @@ export function StepConnect() {
       <div className="space-y-6">
         <div>
           <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
-            Step 1 of 5
+            Step 1 of 6
           </span>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">
             Select Your Locations
@@ -355,7 +406,7 @@ export function StepConnect() {
       <div className="space-y-6">
         <div>
           <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
-            Step 1 of 5
+            Step 1 of 6
           </span>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">
             No Locations Found

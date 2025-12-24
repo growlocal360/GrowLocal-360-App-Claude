@@ -12,6 +12,22 @@ export interface GBPAccount {
   accountNumber?: string;
 }
 
+// Service area place info from GBP
+export interface GBPServiceAreaPlace {
+  placeName?: string;
+  placeId?: string;
+}
+
+// Service area configuration from GBP
+// Actual structure from Google: serviceArea.places.placeInfos[].placeName / .placeId
+export interface GBPServiceArea {
+  businessType?: 'CUSTOMER_LOCATION_ONLY' | 'CUSTOMER_AND_BUSINESS_LOCATION';
+  places?: {
+    placeInfos?: GBPServiceAreaPlace[];
+  };
+  regionCode?: string;
+}
+
 export interface GBPLocation {
   name: string; // Format: locations/{locationId}
   title: string;
@@ -54,6 +70,8 @@ export interface GBPLocation {
     latitude: number;
     longitude: number;
   };
+  // Service area data - cities/regions the business serves
+  serviceArea?: GBPServiceArea;
 }
 
 export interface GBPAccountsResponse {
@@ -106,7 +124,8 @@ export class GBPClient {
     // Extract just the account ID if full path is provided
     const id = accountId.replace('accounts/', '');
 
-    let url = `${this.businessInfoUrl}/accounts/${id}/locations?readMask=name,title,storefrontAddress,phoneNumbers,categories,websiteUri,metadata,latlng&pageSize=100`;
+    // Include serviceArea in readMask to get the service areas defined in GBP
+    let url = `${this.businessInfoUrl}/accounts/${id}/locations?readMask=name,title,storefrontAddress,phoneNumbers,categories,websiteUri,metadata,latlng,serviceArea&pageSize=100`;
     if (pageToken) {
       url += `&pageToken=${pageToken}`;
     }
@@ -159,6 +178,19 @@ export class GBPClient {
 export function gbpLocationToAppLocation(gbpLocation: GBPLocation) {
   const address = gbpLocation.storefrontAddress;
 
+  // Extract service areas from GBP data
+  // Structure from Google: serviceArea.places.placeInfos[].placeName / .placeId
+  let serviceAreas: Array<{ name: string; placeId: string }> = [];
+
+  const sa = gbpLocation.serviceArea;
+  if (sa?.places?.placeInfos) {
+    // The actual structure: places.placeInfos[] where each has placeName and placeId directly
+    serviceAreas = (sa.places.placeInfos as Array<{ placeName?: string; placeId?: string }>).map((place) => ({
+      name: place.placeName || '',
+      placeId: place.placeId || '',
+    })).filter((area) => area.name);
+  }
+
   return {
     name: gbpLocation.title,
     address: address?.addressLines?.join(', ') || '',
@@ -173,5 +205,7 @@ export function gbpLocationToAppLocation(gbpLocation: GBPLocation) {
     longitude: gbpLocation.latlng?.longitude,
     primaryCategory: gbpLocation.categories?.primaryCategory,
     additionalCategories: gbpLocation.categories?.additionalCategories || [],
+    // Service areas from GBP
+    serviceAreas,
   };
 }

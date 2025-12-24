@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizardStore } from '@/lib/store/wizard-store';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Loader2,
   Sparkles,
+  Map,
+  Home,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -23,7 +25,6 @@ export function StepReview() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = useMemo(() => createClient(), []);
 
   const {
     businessName,
@@ -31,6 +32,8 @@ export function StepReview() {
     locations,
     primaryCategory,
     secondaryCategories,
+    serviceAreas,
+    neighborhoods,
     websiteType,
     prevStep,
     reset,
@@ -41,6 +44,8 @@ export function StepReview() {
     setError(null);
 
     try {
+      // Create supabase client inside handler to avoid hydration issues
+      const supabase = createClient();
 
       // Get current user
       const {
@@ -52,14 +57,53 @@ export function StepReview() {
       }
 
       // Get user's profile and organization
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('organization_id')
         .eq('user_id', user.id)
         .single();
 
+      // If profile doesn't exist, create organization and profile
+      // (handles users who signed up before trigger was set up)
       if (!profile) {
-        throw new Error('Profile not found');
+        // Generate org ID client-side to avoid needing SELECT after INSERT
+        const orgId = crypto.randomUUID();
+        const orgSlug = (user.user_metadata?.full_name || user.email?.split('@')[0] || 'user')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') + '-' + Math.random().toString(36).substring(2, 8);
+
+        // Create organization (without .select() to avoid RLS SELECT check)
+        const { error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            id: orgId,
+            name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'My Organization',
+            slug: orgSlug,
+          });
+
+        if (orgError) {
+          console.error('Error creating organization:', orgError);
+          throw new Error(`Failed to create organization: ${orgError.message || orgError.code || JSON.stringify(orgError)}`);
+        }
+
+        // Create profile (without .select() to avoid RLS SELECT check)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            organization_id: orgId,
+            role: 'admin',
+            full_name: user.user_metadata?.full_name,
+            avatar_url: user.user_metadata?.avatar_url,
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          throw new Error('Failed to create profile. Please contact support.');
+        }
+
+        profile = { organization_id: orgId };
       }
 
       // Generate slug from business name
@@ -76,6 +120,7 @@ export function StepReview() {
           name: businessName,
           slug: slug,
           website_type: websiteType,
+          template_id: 'local-service-pro',
           is_active: true,
           settings: {
             core_industry: coreIndustry,
@@ -108,8 +153,117 @@ export function StepReview() {
         });
       }
 
-      // Note: In production, you'd also insert categories into gbp_categories table
-      // and link them via site_categories. For now, we store the IDs.
+      // Create service areas
+      for (let i = 0; i < serviceAreas.length; i++) {
+        const area = serviceAreas[i];
+        const areaSlug = area.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+
+        await supabase.from('service_areas').insert({
+          site_id: site.id,
+          name: area.name,
+          slug: areaSlug,
+          state: area.state || null,
+          place_id: area.placeId || null,
+          distance_miles: area.distanceMiles || null,
+          is_custom: area.isCustom || false,
+          sort_order: i,
+        });
+      }
+
+      // Create neighborhoods (linked to their parent locations)
+      // First, we need to get the created location IDs
+      const { data: createdLocations } = await supabase
+        .from('locations')
+        .select('id, city')
+        .eq('site_id', site.id);
+
+      const locationIdMap: Record<string, string> = {};
+      createdLocations?.forEach((loc) => {
+        // Map by city name (lowercase) to handle matching
+        locationIdMap[loc.city.toLowerCase()] = loc.id;
+      });
+
+      for (let i = 0; i < neighborhoods.length; i++) {
+        const neighborhood = neighborhoods[i];
+        const neighborhoodSlug = neighborhood.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+
+        // Find the parent location ID
+        // The neighborhood.locationId from wizard is like "loc-0" or the actual location id
+        // We need to map it to the actual created location
+        const wizardLocation = locations.find((loc, idx) =>
+          (loc.id || `loc-${idx}`) === neighborhood.locationId
+        );
+
+        const dbLocationId = wizardLocation
+          ? locationIdMap[wizardLocation.city.toLowerCase()]
+          : null;
+
+        if (dbLocationId) {
+          await supabase.from('neighborhoods').insert({
+            site_id: site.id,
+            location_id: dbLocationId,
+            name: neighborhood.name,
+            slug: neighborhoodSlug,
+            place_id: neighborhood.placeId || null,
+            latitude: neighborhood.latitude || null,
+            longitude: neighborhood.longitude || null,
+            sort_order: i,
+            is_active: true,
+          });
+        }
+      }
+
+      // Save categories to site_categories table
+      // First, ensure GBP categories exist and get their IDs, then link to site
+      const allCategories = [
+        ...(primaryCategory ? [{ ...primaryCategory, isPrimary: true }] : []),
+        ...secondaryCategories.map((cat) => ({ ...cat, isPrimary: false })),
+      ];
+
+      for (let i = 0; i < allCategories.length; i++) {
+        const cat = allCategories[i];
+
+        // First, upsert the GBP category (in case it doesn't exist yet)
+        const { data: gbpCat, error: gbpError } = await supabase
+          .from('gbp_categories')
+          .upsert(
+            {
+              gcid: cat.gcid,
+              name: cat.name,
+              display_name: cat.displayName || cat.name,
+              parent_gcid: cat.parentGcid || null,
+              service_types: cat.serviceTypes || [],
+            },
+            { onConflict: 'gcid' }
+          )
+          .select('id')
+          .single();
+
+        if (gbpError) {
+          console.error('Error upserting GBP category:', gbpError);
+          continue; // Skip this category but continue with others
+        }
+
+        // Then create the site_category link
+        const { error: siteCatError } = await supabase
+          .from('site_categories')
+          .insert({
+            site_id: site.id,
+            gbp_category_id: gbpCat.id,
+            is_primary: cat.isPrimary,
+            sort_order: i,
+          });
+
+        if (siteCatError) {
+          console.error('Error creating site category:', siteCatError);
+        }
+      }
 
       // Reset wizard and redirect
       reset();
@@ -131,7 +285,7 @@ export function StepReview() {
     <div className="space-y-6">
       <div>
         <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
-          Step 5 of 5
+          Step 7 of 7
         </span>
         <h2 className="mt-2 text-2xl font-bold text-gray-900">Review & Create</h2>
         <p className="mt-1 text-gray-500">
@@ -249,6 +403,62 @@ export function StepReview() {
           )}
         </CardContent>
       </Card>
+
+      {/* Service Areas */}
+      {serviceAreas.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Map className="h-4 w-4 text-gray-500" />
+              Service Areas ({serviceAreas.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {serviceAreas.map((area) => (
+                <Badge key={area.id} variant="outline">
+                  {area.name}{area.state && `, ${area.state}`}
+                </Badge>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Each service area will get its own page at /service-areas/[city]
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Neighborhoods */}
+      {neighborhoods.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Home className="h-4 w-4 text-gray-500" />
+              Neighborhoods ({neighborhoods.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {neighborhoods.map((neighborhood) => {
+                const parentLocation = locations.find((loc, idx) =>
+                  (loc.id || `loc-${idx}`) === neighborhood.locationId
+                );
+                return (
+                  <Badge key={neighborhood.id} variant="outline">
+                    {neighborhood.name}
+                    {parentLocation && locations.length > 1 && (
+                      <span className="ml-1 text-gray-400">({parentLocation.city})</span>
+                    )}
+                  </Badge>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Each neighborhood feeds geographic relevance to its parent location page
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* What Happens Next */}
       <Card className="border-emerald-200 bg-emerald-50">

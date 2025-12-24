@@ -4,6 +4,7 @@
 export type WebsiteType = 'single_location' | 'multi_location' | 'microsite';
 export type UserRole = 'admin' | 'user';
 export type JobStatus = 'draft' | 'queued' | 'approved' | 'deployed' | 'rejected';
+export type TemplateId = 'local-service-pro';
 
 export interface Organization {
   id: string;
@@ -30,6 +31,7 @@ export interface Site {
   name: string;
   slug: string;
   website_type: WebsiteType;
+  template_id: TemplateId;
   domain: string | null;
   primary_gbp_category_id: string | null;
   is_active: boolean;
@@ -43,6 +45,23 @@ export interface SiteSettings {
   logo_url?: string;
   phone?: string;
   email?: string;
+  core_industry?: string;
+}
+
+export interface ServiceAreaDB {
+  id: string;
+  site_id: string;
+  name: string;
+  slug: string;
+  state: string | null;
+  place_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  distance_miles: number | null;
+  is_custom: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Location {
@@ -84,6 +103,25 @@ export interface SiteCategory {
   is_primary: boolean;
   sort_order: number;
   created_at: string;
+}
+
+export interface Neighborhood {
+  id: string;
+  site_id: string;
+  location_id: string;
+  name: string;
+  slug: string;
+  place_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  population: number | null;
+  description: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Service {
@@ -152,11 +190,13 @@ export interface SiteWithRelations extends Site {
   locations?: Location[];
   categories?: (SiteCategory & { gbp_category: GBPCategory })[];
   services?: Service[];
+  service_areas?: ServiceAreaDB[];
 }
 
 export interface LocationWithRelations extends Location {
   site?: Site;
   job_snaps?: JobSnap[];
+  neighborhoods?: Neighborhood[];
 }
 
 export interface JobSnapWithRelations extends JobSnap {

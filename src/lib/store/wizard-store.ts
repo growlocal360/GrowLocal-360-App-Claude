@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService } from '@/types/wizard';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
@@ -27,6 +27,11 @@ interface WizardStore extends WizardState {
   addNeighborhood: (neighborhood: WizardNeighborhood) => void;
   removeNeighborhood: (id: string) => void;
   toggleNeighborhood: (neighborhood: WizardNeighborhood) => void;
+  setServices: (services: WizardService[]) => void;
+  toggleService: (id: string) => void;
+  updateServiceDescription: (id: string, description: string) => void;
+  addCustomService: (service: WizardService) => void;
+  removeService: (id: string) => void;
   setWebsiteType: (type: WebsiteType) => void;
   setDomain: (domain: string) => void;
   setCurrentStep: (step: WizardStep) => void;
@@ -149,6 +154,32 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       };
     }),
 
+  setServices: (services) => set({ services }),
+
+  toggleService: (id) =>
+    set((state) => ({
+      services: state.services.map((s) =>
+        s.id === id ? { ...s, isSelected: !s.isSelected } : s
+      ),
+    })),
+
+  updateServiceDescription: (id, description) =>
+    set((state) => ({
+      services: state.services.map((s) =>
+        s.id === id ? { ...s, description } : s
+      ),
+    })),
+
+  addCustomService: (service) =>
+    set((state) => ({
+      services: [...state.services, service],
+    })),
+
+  removeService: (id) =>
+    set((state) => ({
+      services: state.services.filter((s) => s.id !== id),
+    })),
+
   setWebsiteType: (type) => set({ websiteType: type }),
 
   setDomain: (domain) => set({ domain }),
@@ -204,6 +235,10 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
 
       case 'categories':
         return state.primaryCategory !== null;
+
+      case 'services':
+        // Services are optional, can always proceed (but encourage at least 1)
+        return true;
 
       case 'service-areas':
         // Service areas are optional, can always proceed

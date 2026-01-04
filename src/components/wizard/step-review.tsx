@@ -18,6 +18,7 @@ import {
   Sparkles,
   Map,
   Home,
+  Wrench,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -32,6 +33,7 @@ export function StepReview() {
     locations,
     primaryCategory,
     secondaryCategories,
+    services,
     serviceAreas,
     neighborhoods,
     websiteType,
@@ -265,6 +267,48 @@ export function StepReview() {
         }
       }
 
+      // Build a map of categoryGcid -> site_category_id for services
+      const { data: siteCategoriesData } = await supabase
+        .from('site_categories')
+        .select('id, gbp_category_id, gbp_categories(gcid)')
+        .eq('site_id', site.id);
+
+      const siteCategoryMap: Record<string, string> = {};
+      if (siteCategoriesData) {
+        for (const sc of siteCategoriesData) {
+          // gbp_categories can be an array or single object depending on Supabase version
+          const gbpCat = sc.gbp_categories;
+          const gcid = Array.isArray(gbpCat)
+            ? (gbpCat[0] as { gcid: string } | undefined)?.gcid
+            : (gbpCat as { gcid: string } | null)?.gcid;
+          if (gcid) {
+            siteCategoryMap[gcid] = sc.id;
+          }
+        }
+      }
+
+      // Save selected services to services table
+      const selectedServices = services.filter((s) => s.isSelected);
+      for (const service of selectedServices) {
+        const siteCategoryId = siteCategoryMap[service.categoryGcid] || null;
+
+        const { error: serviceError } = await supabase
+          .from('services')
+          .insert({
+            site_id: site.id,
+            site_category_id: siteCategoryId,
+            name: service.name,
+            slug: service.slug,
+            description: service.description,
+            is_active: true,
+            sort_order: service.sortOrder,
+          });
+
+        if (serviceError) {
+          console.error('Error creating service:', serviceError);
+        }
+      }
+
       // Reset wizard and redirect
       reset();
       router.push(`/dashboard/sites/${site.id}`);
@@ -285,7 +329,7 @@ export function StepReview() {
     <div className="space-y-6">
       <div>
         <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
-          Step 7 of 7
+          Step 8 of 8
         </span>
         <h2 className="mt-2 text-2xl font-bold text-gray-900">Review & Create</h2>
         <p className="mt-1 text-gray-500">
@@ -403,6 +447,32 @@ export function StepReview() {
           )}
         </CardContent>
       </Card>
+
+      {/* Services */}
+      {services.filter((s) => s.isSelected).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Wrench className="h-4 w-4 text-gray-500" />
+              Services ({services.filter((s) => s.isSelected).length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {services
+                .filter((s) => s.isSelected)
+                .map((service) => (
+                  <Badge key={service.id} variant="outline">
+                    {service.name}
+                  </Badge>
+                ))}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Each service will get its own page at /services/[service-name]
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Service Areas */}
       {serviceAreas.length > 0 && (

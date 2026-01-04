@@ -8,10 +8,11 @@ export type WizardStep =
   | 'locations'      // Step 2a: Select GBP Locations (if connected)
   | 'business'       // Step 2b: Business Basics (if manual)
   | 'categories'     // Step 3: GBP Categories
-  | 'service-areas'  // Step 4: Service Areas (cities you travel to)
-  | 'neighborhoods'  // Step 5: Neighborhoods (hyper-local within GBP city)
-  | 'website-type'   // Step 6: Website Type Selection
-  | 'review';        // Step 7: Review & Generate
+  | 'services'       // Step 4: Services offered
+  | 'service-areas'  // Step 5: Service Areas (cities you travel to)
+  | 'neighborhoods'  // Step 6: Neighborhoods (hyper-local within GBP city)
+  | 'website-type'   // Step 7: Website Type Selection
+  | 'review';        // Step 8: Review & Generate
 
 export interface WizardLocation {
   id?: string;
@@ -54,6 +55,19 @@ export interface WizardNeighborhood {
   isCustom?: boolean;
 }
 
+// Services offered by the business
+export interface WizardService {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  categoryGcid: string; // Which category this service belongs to
+  categoryName: string; // Display name of the category
+  isSelected: boolean;
+  isCustom: boolean;
+  sortOrder: number;
+}
+
 export interface WizardState {
   // Step 1
   connectionType: 'google' | 'manual' | null;
@@ -69,14 +83,17 @@ export interface WizardState {
   primaryCategory: GBPCategoryData | null;
   secondaryCategories: GBPCategoryData[];
 
-  // Step 4: Service Areas (cities you travel to)
+  // Step 4: Services
+  services: WizardService[];
+
+  // Step 5: Service Areas (cities you travel to)
   serviceAreas: ServiceArea[];
   serviceAreaRadius: number; // in miles
 
-  // Step 5: Neighborhoods (hyper-local within GBP city)
+  // Step 6: Neighborhoods (hyper-local within GBP city)
   neighborhoods: WizardNeighborhood[];
 
-  // Step 6
+  // Step 7
   websiteType: WebsiteType | null;
   domain?: string;
 
@@ -94,6 +111,7 @@ export const initialWizardState: WizardState = {
   locations: [],
   primaryCategory: null,
   secondaryCategories: [],
+  services: [],
   serviceAreas: [],
   serviceAreaRadius: 25,
   neighborhoods: [],
@@ -108,16 +126,17 @@ export const WIZARD_STEPS: { id: WizardStep; title: string; description: string 
   { id: 'connect', title: 'Connect', description: 'Import or start fresh' },
   { id: 'locations', title: 'Locations', description: 'Your business locations' },
   { id: 'categories', title: 'Categories', description: 'GBP categories' },
-  { id: 'service-areas', title: 'Service Areas', description: 'Cities you travel to' },
-  { id: 'neighborhoods', title: 'Neighborhoods', description: 'Local areas in your city' },
-  { id: 'website-type', title: 'Website Type', description: 'Choose structure' },
+  { id: 'services', title: 'Services', description: 'Services you offer' },
+  { id: 'service-areas', title: 'Areas', description: 'Cities you travel to' },
+  { id: 'neighborhoods', title: 'Local', description: 'Neighborhoods in your city' },
+  { id: 'website-type', title: 'Type', description: 'Choose structure' },
   { id: 'review', title: 'Review', description: 'Confirm & create' },
 ];
 
 // For manual flow, we use 'business' instead of 'locations'
 export const getStepsForFlow = (connectionType: 'google' | 'manual'): WizardStep[] => {
   if (connectionType === 'google') {
-    return ['connect', 'locations', 'categories', 'service-areas', 'neighborhoods', 'website-type', 'review'];
+    return ['connect', 'locations', 'categories', 'services', 'service-areas', 'neighborhoods', 'website-type', 'review'];
   }
-  return ['connect', 'business', 'categories', 'service-areas', 'neighborhoods', 'website-type', 'review'];
+  return ['connect', 'business', 'categories', 'services', 'service-areas', 'neighborhoods', 'website-type', 'review'];
 };

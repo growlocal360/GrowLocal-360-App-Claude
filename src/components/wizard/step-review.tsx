@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft,
   Building2,
@@ -19,13 +20,35 @@ import {
   Map,
   Home,
   Wrench,
+  CreditCard,
+  Circle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import {
+  useContentGeneration,
+  type GeneratedContent,
+  type CategoryInput,
+} from '@/lib/hooks/use-content-generation';
+import { PlanSelectionModal } from '@/components/payments/plan-selection-modal';
+import type { PlanName } from '@/lib/stripe';
+
+type CreationStep =
+  | 'idle'
+  | 'creating_site'
+  | 'saving_locations'
+  | 'saving_categories'
+  | 'saving_services'
+  | 'generating_content'
+  | 'saving_content'
+  | 'complete';
 
 export function StepReview() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
+  const [creationStep, setCreationStep] = useState<CreationStep>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const { progress, generateContent } = useContentGeneration();
 
   const {
     businessName,
@@ -41,8 +64,109 @@ export function StepReview() {
     reset,
   } = useWizardStore();
 
-  const handleCreateSite = async () => {
+  // Open plan selection modal when user clicks "Create Site"
+  const handleCreateSite = () => {
+    setError(null);
+    setShowPlanModal(true);
+  };
+
+  // Handle plan selection - create checkout session and redirect to Stripe
+  const handlePlanSelected = async (planName: PlanName) => {
+    try {
+      // Prepare site data for checkout
+      const siteData = {
+        businessName,
+        coreIndustry,
+        websiteType,
+        locations: locations.map((loc) => ({
+          id: loc.id,
+          name: loc.name,
+          address: loc.address,
+          city: loc.city,
+          state: loc.state,
+          zipCode: loc.zipCode,
+          phone: loc.phone,
+          isPrimary: loc.isPrimary,
+          gbpPlaceId: loc.gbpPlaceId,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+        })),
+        primaryCategory: primaryCategory ? {
+          gcid: primaryCategory.gcid,
+          name: primaryCategory.name,
+          displayName: primaryCategory.displayName,
+          commonServices: primaryCategory.commonServices,
+        } : null,
+        secondaryCategories: secondaryCategories.map((cat) => ({
+          gcid: cat.gcid,
+          name: cat.name,
+          displayName: cat.displayName,
+          commonServices: cat.commonServices,
+        })),
+        services: services.filter((s) => s.isSelected).map((s) => ({
+          id: s.id,
+          name: s.name,
+          slug: s.slug,
+          description: s.description,
+          categoryGcid: s.categoryGcid,
+          categoryName: s.categoryName,
+          isSelected: true,
+          sortOrder: s.sortOrder,
+        })),
+        serviceAreas: serviceAreas.map((area) => ({
+          id: area.id,
+          name: area.name,
+          state: area.state,
+          placeId: area.placeId,
+          distanceMiles: area.distanceMiles,
+          isCustom: area.isCustom,
+        })),
+        neighborhoods: neighborhoods.map((n) => ({
+          id: n.id,
+          name: n.name,
+          locationId: n.locationId,
+          placeId: n.placeId,
+          latitude: n.latitude,
+          longitude: n.longitude,
+        })),
+      };
+
+      // Create Stripe checkout session
+      const response = await fetch('/api/payments/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planName,
+          siteData,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      const { url } = await response.json();
+
+      // Store wizard state in localStorage before redirect (for recovery if needed)
+      localStorage.setItem('wizard_pending_checkout', JSON.stringify({
+        planName,
+        timestamp: Date.now(),
+      }));
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+    } catch (err) {
+      console.error('Error creating checkout session:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create checkout session');
+      setShowPlanModal(false);
+    }
+  };
+
+  // Legacy direct creation (keep for development/testing - can be removed later)
+  const handleDirectCreateSite = async () => {
     setIsCreating(true);
+    setCreationStep('creating_site');
     setError(null);
 
     try {
@@ -134,6 +258,7 @@ export function StepReview() {
       if (siteError) throw siteError;
 
       // Create locations
+      setCreationStep('saving_locations');
       for (const location of locations) {
         const locationSlug = location.city
           .toLowerCase()
@@ -222,6 +347,7 @@ export function StepReview() {
       }
 
       // Save categories to site_categories table
+      setCreationStep('saving_categories');
       // First, ensure GBP categories exist and get their IDs, then link to site
       const allCategories = [
         ...(primaryCategory ? [{ ...primaryCategory, isPrimary: true }] : []),
@@ -287,7 +413,8 @@ export function StepReview() {
         }
       }
 
-      // Save selected services to services table
+      // Save selected services to services table (basic info first)
+      setCreationStep('saving_services');
       const selectedServices = services.filter((s) => s.isSelected);
       for (const service of selectedServices) {
         const siteCategoryId = siteCategoryMap[service.categoryGcid] || null;
@@ -309,6 +436,118 @@ export function StepReview() {
         }
       }
 
+      // Generate SEO content for all pages
+      setCreationStep('generating_content');
+      const primaryLocation = locations.find((l) => l.isPrimary) || locations[0];
+
+      // Build category input for content generation
+      const categoryInputs: CategoryInput[] = allCategories.map((cat) => ({
+        gcid: cat.gcid,
+        name: cat.name,
+        displayName: cat.displayName || cat.name,
+        isPrimary: cat.isPrimary,
+      }));
+
+      let generatedContent: GeneratedContent | null = null;
+      try {
+        generatedContent = await generateContent({
+          businessName,
+          location: {
+            city: primaryLocation.city,
+            state: primaryLocation.state,
+          },
+          categories: categoryInputs,
+          services: selectedServices.map((s) => ({
+            name: s.name,
+            description: s.description || '',
+            categoryGcid: s.categoryGcid,
+            categoryName: s.categoryName,
+          })),
+          serviceAreas: serviceAreas.map((a) => ({
+            name: a.name,
+            state: a.state,
+          })),
+          websiteType: websiteType || 'single_location',
+        });
+      } catch (contentError) {
+        console.error('Error generating content (continuing without SEO content):', contentError);
+        // Continue without SEO content - site is still functional
+      }
+
+      // Save generated SEO content to database
+      if (generatedContent) {
+        setCreationStep('saving_content');
+
+        // Update services with generated SEO content
+        for (const serviceContent of generatedContent.services) {
+          await supabase
+            .from('services')
+            .update({
+              meta_title: serviceContent.meta_title,
+              meta_description: serviceContent.meta_description,
+              h1: serviceContent.h1,
+              body_copy: serviceContent.body_copy,
+              faqs: serviceContent.faqs,
+            })
+            .eq('site_id', site.id)
+            .eq('name', serviceContent.name);
+        }
+
+        // Create category pages in site_pages
+        for (const categoryContent of generatedContent.categories) {
+          const categorySlug = categoryContent.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          await supabase.from('site_pages').insert({
+            site_id: site.id,
+            page_type: 'category',
+            slug: categorySlug,
+            meta_title: categoryContent.meta_title,
+            meta_description: categoryContent.meta_description,
+            h1: categoryContent.h1,
+            h2: categoryContent.h2,
+            body_copy: categoryContent.body_copy,
+          });
+        }
+
+        // Create core pages (home, about, contact)
+        for (const corePage of generatedContent.corePages) {
+          await supabase.from('site_pages').insert({
+            site_id: site.id,
+            page_type: corePage.page_type,
+            slug: corePage.page_type,
+            meta_title: corePage.meta_title,
+            meta_description: corePage.meta_description,
+            h1: corePage.h1,
+            h2: corePage.h2,
+            body_copy: corePage.body_copy,
+          });
+        }
+
+        // Update service areas with generated content
+        for (const areaContent of generatedContent.serviceAreas) {
+          const areaSlug = areaContent.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          await supabase
+            .from('service_areas')
+            .update({
+              meta_title: areaContent.meta_title,
+              meta_description: areaContent.meta_description,
+              h1: areaContent.h1,
+              body_copy: areaContent.body_copy,
+            })
+            .eq('site_id', site.id)
+            .eq('slug', areaSlug);
+        }
+      }
+
+      setCreationStep('complete');
+
       // Reset wizard and redirect
       reset();
       router.push(`/dashboard/sites/${site.id}`);
@@ -316,6 +555,7 @@ export function StepReview() {
       console.error('Error creating site:', err);
       setError(err instanceof Error ? err.message : 'Failed to create site');
       setIsCreating(false);
+      setCreationStep('idle');
     }
   };
 
@@ -530,33 +770,84 @@ export function StepReview() {
         </Card>
       )}
 
-      {/* What Happens Next */}
-      <Card className="border-emerald-200 bg-emerald-50">
-        <CardContent className="p-4">
-          <h4 className="mb-3 flex items-center gap-2 font-semibold text-emerald-900">
-            <CheckCircle2 className="h-5 w-5" />
-            What happens next
-          </h4>
-          <ul className="space-y-2 text-sm text-emerald-800">
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              We&apos;ll generate your GBP-first website structure based on your categories
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Location pages will be created with proper URL structure
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Service pages will be organized under their respective category silos
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              You can start adding Job Snaps to showcase your work
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* What Happens Next / Progress UI */}
+      {isCreating ? (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <h4 className="mb-4 flex items-center gap-2 font-semibold text-blue-900">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Creating Your Site
+            </h4>
+            <div className="space-y-3">
+              <CreationStepItem
+                label="Creating site"
+                status={getStepStatus('creating_site', creationStep)}
+              />
+              <CreationStepItem
+                label="Saving locations & service areas"
+                status={getStepStatus('saving_locations', creationStep)}
+              />
+              <CreationStepItem
+                label="Linking categories"
+                status={getStepStatus('saving_categories', creationStep)}
+              />
+              <CreationStepItem
+                label="Saving services"
+                status={getStepStatus('saving_services', creationStep)}
+              />
+              <CreationStepItem
+                label="Generating SEO content"
+                status={getStepStatus('generating_content', creationStep)}
+                detail={
+                  creationStep === 'generating_content' && progress.totalPages > 0
+                    ? `${progress.completedPages}/${progress.totalPages} pages`
+                    : undefined
+                }
+              />
+              {creationStep === 'generating_content' && progress.totalPages > 0 && (
+                <div className="ml-6">
+                  <Progress
+                    value={(progress.completedPages / progress.totalPages) * 100}
+                    className="h-2"
+                  />
+                  <p className="mt-1 text-xs text-blue-700">{progress.currentBatch}</p>
+                </div>
+              )}
+              <CreationStepItem
+                label="Saving content to database"
+                status={getStepStatus('saving_content', creationStep)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardContent className="p-4">
+            <h4 className="mb-3 flex items-center gap-2 font-semibold text-emerald-900">
+              <CheckCircle2 className="h-5 w-5" />
+              What happens next
+            </h4>
+            <ul className="space-y-2 text-sm text-emerald-800">
+              <li className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                We&apos;ll generate your GBP-first website structure based on your categories
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                AI will create SEO-optimized content for all service and category pages
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Service pages will include meta titles, descriptions, and FAQs
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                You can start adding Job Snaps to showcase your work
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Separator />
 
@@ -578,12 +869,80 @@ export function StepReview() {
             </>
           ) : (
             <>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Create Site
+              <CreditCard className="mr-2 h-4 w-4" />
+              Choose Plan & Create Site
             </>
           )}
         </Button>
       </div>
+
+      {/* Plan Selection Modal */}
+      <PlanSelectionModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onSelectPlan={handlePlanSelected}
+      />
+    </div>
+  );
+}
+
+// Helper function to determine step status
+function getStepStatus(
+  step: CreationStep,
+  currentStep: CreationStep
+): 'pending' | 'active' | 'complete' {
+  const stepOrder: CreationStep[] = [
+    'idle',
+    'creating_site',
+    'saving_locations',
+    'saving_categories',
+    'saving_services',
+    'generating_content',
+    'saving_content',
+    'complete',
+  ];
+
+  const stepIndex = stepOrder.indexOf(step);
+  const currentIndex = stepOrder.indexOf(currentStep);
+
+  if (currentIndex > stepIndex) return 'complete';
+  if (currentIndex === stepIndex) return 'active';
+  return 'pending';
+}
+
+// Step item component for progress UI
+function CreationStepItem({
+  label,
+  status,
+  detail,
+}: {
+  label: string;
+  status: 'pending' | 'active' | 'complete';
+  detail?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {status === 'complete' && (
+        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+      )}
+      {status === 'active' && (
+        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+      )}
+      {status === 'pending' && (
+        <Circle className="h-4 w-4 text-gray-400" />
+      )}
+      <span
+        className={
+          status === 'complete'
+            ? 'text-emerald-700'
+            : status === 'active'
+              ? 'font-medium text-blue-900'
+              : 'text-gray-500'
+        }
+      >
+        {label}
+        {detail && <span className="ml-2 text-sm font-normal">({detail})</span>}
+      </span>
     </div>
   );
 }

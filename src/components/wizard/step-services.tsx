@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   Check,
   Info,
   Plus,
@@ -33,14 +32,12 @@ export function StepServices() {
     toggleService,
     addCustomService,
     removeService,
-    updateServiceDescription,
     prevStep,
     nextStep,
     canProceed,
   } = useWizardStore();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isEnhancing, setIsEnhancing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customServiceName, setCustomServiceName] = useState('');
@@ -55,120 +52,104 @@ export function StepServices() {
     return cats;
   }, [primaryCategory, secondaryCategories]);
 
-  // Initialize services from category commonServices on mount
+  // Generate services from AI on mount
   useEffect(() => {
     if (services.length > 0) return; // Already initialized
     if (allCategories.length === 0) return;
 
-    setIsLoading(true);
+    const generateServices = async () => {
+      setIsLoading(true);
 
-    const initialServices: WizardService[] = [];
-    let sortOrder = 0;
-
-    for (const category of allCategories) {
-      // Get the full category data with commonServices
-      const fullCategory = getCategoryByGcid(category.gcid) || category;
-      const commonServices = fullCategory.commonServices || [];
-
-      for (const serviceName of commonServices) {
-        const slug = serviceName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '');
-
-        initialServices.push({
-          id: `${category.gcid}-${slug}`,
-          name: serviceName,
-          slug,
-          description: null,
-          categoryGcid: category.gcid,
-          categoryName: category.displayName,
-          isSelected: true, // Pre-select all common services
-          isCustom: false,
-          sortOrder: sortOrder++,
+      try {
+        const response = await fetch('/api/services/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            categories: allCategories.map((c) => ({
+              gcid: c.gcid,
+              name: c.displayName,
+            })),
+          }),
         });
-      }
-    }
 
-    setServices(initialServices);
-    setIsLoading(false);
+        if (response.ok) {
+          const data = await response.json();
 
-    // Trigger LLM enhancement in background
-    if (initialServices.length > 0) {
-      enhanceWithLLM(initialServices);
-    }
-  }, [allCategories, services.length, setServices]);
+          if (data.services && data.services.length > 0) {
+            let sortOrder = 0;
+            const generatedServices: WizardService[] = data.services.map(
+              (service: { name: string; description: string; categoryGcid: string; categoryName: string }) => {
+                const slug = service.name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-|-$/g, '');
 
-  // Enhance services with LLM descriptions
-  const enhanceWithLLM = async (currentServices: WizardService[]) => {
-    setIsEnhancing(true);
-
-    try {
-      const response = await fetch('/api/services/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          categories: allCategories.map((c) => ({
-            gcid: c.gcid,
-            name: c.displayName,
-          })),
-          existingServices: currentServices.map((s) => ({
-            name: s.name,
-            categoryGcid: s.categoryGcid,
-          })),
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Update existing services with descriptions
-        if (data.descriptions) {
-          const updatedServices = currentServices.map((service) => {
-            const desc = data.descriptions[service.name];
-            return desc ? { ...service, description: desc } : service;
-          });
-
-          // Add any new suggested services
-          if (data.suggestions && data.suggestions.length > 0) {
-            let maxSortOrder = Math.max(...currentServices.map((s) => s.sortOrder), 0);
-
-            for (const suggestion of data.suggestions) {
-              const slug = suggestion.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '');
-
-              // Check if service already exists
-              const exists = updatedServices.some(
-                (s) => s.slug === slug && s.categoryGcid === suggestion.categoryGcid
-              );
-
-              if (!exists) {
-                updatedServices.push({
-                  id: `llm-${suggestion.categoryGcid}-${slug}`,
-                  name: suggestion.name,
+                return {
+                  id: `ai-${service.categoryGcid}-${slug}`,
+                  name: service.name,
                   slug,
-                  description: suggestion.description || null,
-                  categoryGcid: suggestion.categoryGcid,
-                  categoryName: suggestion.categoryName,
-                  isSelected: false, // LLM suggestions start unselected
+                  description: service.description || null,
+                  categoryGcid: service.categoryGcid,
+                  categoryName: service.categoryName,
+                  isSelected: true, // Pre-select all AI-generated services
                   isCustom: false,
-                  sortOrder: ++maxSortOrder,
-                });
+                  sortOrder: sortOrder++,
+                };
               }
-            }
-          }
+            );
 
-          setServices(updatedServices);
+            setServices(generatedServices);
+          } else {
+            // Fallback to hardcoded services if API returns empty
+            loadFallbackServices();
+          }
+        } else {
+          // Fallback on API error
+          loadFallbackServices();
+        }
+      } catch (error) {
+        console.error('Error generating services:', error);
+        // Fallback on network error
+        loadFallbackServices();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Fallback to hardcoded commonServices
+    const loadFallbackServices = () => {
+      const fallbackServices: WizardService[] = [];
+      let sortOrder = 0;
+
+      for (const category of allCategories) {
+        const fullCategory = getCategoryByGcid(category.gcid) || category;
+        const commonServices = fullCategory.commonServices || [];
+
+        for (const serviceName of commonServices) {
+          const slug = serviceName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          fallbackServices.push({
+            id: `${category.gcid}-${slug}`,
+            name: serviceName,
+            slug,
+            description: null,
+            categoryGcid: category.gcid,
+            categoryName: category.displayName,
+            isSelected: true,
+            isCustom: false,
+            sortOrder: sortOrder++,
+          });
         }
       }
-    } catch (error) {
-      console.error('Error enhancing services:', error);
-    } finally {
-      setIsEnhancing(false);
-    }
-  };
+
+      setServices(fallbackServices);
+    };
+
+    generateServices();
+  }, [allCategories, services.length, setServices]);
 
   // Filter services by search
   const filteredServices = useMemo(() => {
@@ -244,10 +225,11 @@ export function StepServices() {
             Step 4 of 8
           </span>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">Services</h2>
-          <p className="mt-1 text-gray-500">Loading services for your categories...</p>
+          <p className="mt-1 text-gray-500">Generating SEO-optimized services for your categories...</p>
         </div>
-        <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+          <p className="text-sm text-gray-500">This may take a few seconds</p>
         </div>
       </div>
     );
@@ -355,12 +337,6 @@ export function StepServices() {
         <p className="text-sm text-gray-600">
           <span className="font-medium text-gray-900">{selectedCount}</span> services selected
         </p>
-        {isEnhancing && (
-          <div className="flex items-center gap-2 text-sm text-emerald-600">
-            <Sparkles className="h-4 w-4 animate-pulse" />
-            Generating descriptions...
-          </div>
-        )}
       </div>
 
       {/* Services by Category */}

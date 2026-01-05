@@ -60,6 +60,11 @@ export interface ServiceAreaDB {
   distance_miles: number | null;
   is_custom: boolean;
   sort_order: number;
+  // SEO fields (added for Phase 2)
+  meta_title: string | null;
+  meta_description: string | null;
+  h1: string | null;
+  body_copy: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -131,8 +136,40 @@ export interface Service {
   name: string;
   slug: string;
   description: string | null;
+  // SEO fields
+  meta_title: string | null;
+  meta_description: string | null;
+  h1: string | null;
+  body_copy: string | null;
+  faqs: ServiceFAQ[] | null;
   is_active: boolean;
   sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceFAQ {
+  question: string;
+  answer: string;
+}
+
+export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area';
+
+export interface SitePage {
+  id: string;
+  site_id: string;
+  location_id: string | null;
+  category_id: string | null;
+  page_type: SitePageType;
+  slug: string;
+  // SEO Content
+  meta_title: string | null;
+  meta_description: string | null;
+  h1: string | null;
+  h2: string | null;
+  body_copy: string | null;
+  faqs: ServiceFAQ[] | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -191,6 +228,7 @@ export interface SiteWithRelations extends Site {
   categories?: (SiteCategory & { gbp_category: GBPCategory })[];
   services?: Service[];
   service_areas?: ServiceAreaDB[];
+  site_pages?: SitePage[];
 }
 
 export interface LocationWithRelations extends Location {
@@ -204,4 +242,50 @@ export interface JobSnapWithRelations extends JobSnap {
   location?: Location;
   service?: Service;
   created_by_profile?: Profile;
+}
+
+// Subscription types for Stripe integration
+export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
+export type PaymentStatus = 'succeeded' | 'failed' | 'pending' | 'refunded';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  display_name: string;
+  price_cents: number;
+  stripe_price_id: string;
+  features: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  site_id: string | null;
+  plan_id: string;
+  stripe_subscription_id: string;
+  stripe_customer_id: string;
+  status: SubscriptionStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: string;
+  subscription_id: string;
+  stripe_payment_intent_id: string | null;
+  stripe_invoice_id: string | null;
+  amount_cents: number;
+  currency: string;
+  status: PaymentStatus;
+  created_at: string;
+}
+
+export interface SubscriptionWithPlan extends Subscription {
+  plan?: SubscriptionPlan;
 }

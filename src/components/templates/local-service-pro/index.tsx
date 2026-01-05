@@ -12,10 +12,12 @@ import { SiteFooter } from './site-footer';
 
 interface LocalServiceProTemplateProps {
   data: PublicSiteData;
+  siteSlug?: string;
 }
 
-export function LocalServiceProTemplate({ data }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, primaryLocation } = data;
+  const slug = siteSlug || site.slug;
 
   return (
     <div className="min-h-screen bg-white">
@@ -31,7 +33,7 @@ export function LocalServiceProTemplate({ data }: LocalServiceProTemplateProps) 
           />
         )}
         {serviceAreas.length > 0 && (
-          <ServiceAreasSection site={site} serviceAreas={serviceAreas} />
+          <ServiceAreasSection site={site} serviceAreas={serviceAreas} siteSlug={slug} />
         )}
         {locations.length > 1 && (
           <LocationsSection site={site} locations={locations} />

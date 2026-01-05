@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Site, ServiceAreaDB } from '@/types/database';
@@ -7,9 +8,10 @@ import type { Site, ServiceAreaDB } from '@/types/database';
 interface ServiceAreasSectionProps {
   site: Site;
   serviceAreas: ServiceAreaDB[];
+  siteSlug: string;
 }
 
-export function ServiceAreasSection({ site, serviceAreas }: ServiceAreasSectionProps) {
+export function ServiceAreasSection({ site, serviceAreas, siteSlug }: ServiceAreasSectionProps) {
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
 
@@ -29,22 +31,23 @@ export function ServiceAreasSection({ site, serviceAreas }: ServiceAreasSectionP
         {/* Service areas grid */}
         <div className="flex flex-wrap justify-center gap-3">
           {serviceAreas.map((area) => (
-            <Badge
-              key={area.id}
-              variant="outline"
-              className="flex items-center gap-2 px-4 py-2 text-base"
-            >
-              <MapPin className="h-4 w-4" style={{ color: brandColor }} />
-              <span>
-                {area.name}
-                {area.state && `, ${area.state}`}
-              </span>
-              {area.distance_miles && (
-                <span className="text-xs text-gray-400">
-                  ({area.distance_miles} mi)
+            <Link key={area.id} href={`/sites/${siteSlug}/areas/${area.slug}`}>
+              <Badge
+                variant="outline"
+                className="flex cursor-pointer items-center gap-2 px-4 py-2 text-base transition-colors hover:bg-gray-100"
+              >
+                <MapPin className="h-4 w-4" style={{ color: brandColor }} />
+                <span>
+                  {area.name}
+                  {area.state && `, ${area.state}`}
                 </span>
-              )}
-            </Badge>
+                {area.distance_miles && (
+                  <span className="text-xs text-gray-400">
+                    ({area.distance_miles} mi)
+                  </span>
+                )}
+              </Badge>
+            </Link>
           ))}
         </div>
 

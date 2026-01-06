@@ -117,26 +117,19 @@ export function StepConnect() {
     setIsLoading(true);
     setError(null);
 
-    // Check if already connected
-    const { data: { session } } = await supabase.auth.getSession();
+    // Always re-authenticate with Google to ensure we have the business.manage scope
+    // The regular login/signup doesn't request this scope, so we need to get it here
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/oauth2callback?next=/dashboard/sites/new`,
+        scopes: 'https://www.googleapis.com/auth/business.manage',
+      },
+    });
 
-    if (session?.provider_token) {
-      // Already connected, fetch locations
-      await fetchGBPLocations();
-    } else {
-      // Need to re-authenticate with Google to get GBP access
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/oauth2callback?next=/dashboard/sites/new`,
-          scopes: 'https://www.googleapis.com/auth/business.manage',
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        setIsLoading(false);
-      }
+    if (error) {
+      setError(error.message);
+      setIsLoading(false);
     }
   };
 

@@ -254,7 +254,8 @@ export function StepServices() {
           <div>
             <p className="font-medium text-emerald-900">Why Services Matter</p>
             <p className="text-sm text-emerald-700">
-              Each service creates a dedicated page at <code className="rounded bg-emerald-100 px-1">/services/[service-name]</code>.
+              Primary category services get pages at the root level (e.g., <code className="rounded bg-emerald-100 px-1">/ac-repair</code>).
+              Secondary category services are grouped under their category (e.g., <code className="rounded bg-emerald-100 px-1">/heating/furnace-repair</code>).
               This helps you rank for specific searches like &quot;AC repair near me&quot; or &quot;drain cleaning service&quot;.
             </p>
           </div>

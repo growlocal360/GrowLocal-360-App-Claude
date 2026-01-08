@@ -33,6 +33,9 @@ export interface Site {
   website_type: WebsiteType;
   template_id: TemplateId;
   domain: string | null;
+  custom_domain: string | null;
+  custom_domain_verified: boolean;
+  vercel_domain_config: Record<string, unknown> | null;
   primary_gbp_category_id: string | null;
   is_active: boolean;
   settings: SiteSettings;

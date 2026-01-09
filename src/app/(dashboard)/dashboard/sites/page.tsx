@@ -16,6 +16,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -299,6 +300,18 @@ export default function SitesPage() {
                         >
                           <RotateCcw className="mr-2 h-4 w-4" />
                           Retry Build
+                        </Button>
+                      )}
+
+                      {site.status === 'active' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRetryBuild(site.id)}
+                          disabled={actionLoading === site.id}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Regenerate
                         </Button>
                       )}
 

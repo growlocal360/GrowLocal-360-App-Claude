@@ -38,10 +38,10 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Only allow retry for failed builds
-  if (site.status !== 'failed') {
+  // Allow retry for failed builds OR regeneration for active sites
+  if (site.status !== 'failed' && site.status !== 'active') {
     return NextResponse.json(
-      { error: 'Can only retry failed builds' },
+      { error: 'Can only regenerate content for active or failed sites' },
       { status: 400 }
     );
   }

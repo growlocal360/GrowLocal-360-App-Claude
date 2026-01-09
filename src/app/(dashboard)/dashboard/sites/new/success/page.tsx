@@ -3,21 +3,49 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Sparkles, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { createClient } from '@/lib/supabase/client';
+import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 
-type PageStatus = 'loading' | 'success' | 'creating' | 'error';
+type PageStatus = 'loading' | 'building' | 'success' | 'error';
+
+interface SiteData {
+  id: string;
+  name: string;
+  status: SiteStatus;
+  build_progress: SiteBuildProgress | null;
+  status_message: string | null;
+}
+
+function getProgressPercentage(buildProgress: SiteBuildProgress | null): number {
+  if (!buildProgress) return 5;
+  const { total_tasks, completed_tasks } = buildProgress;
+  if (total_tasks === 0) return 10;
+  return Math.round((completed_tasks / total_tasks) * 100);
+}
+
+function getProgressMessage(buildProgress: SiteBuildProgress | null): string {
+  if (!buildProgress) return 'Initializing...';
+  const { current_task, completed_tasks, total_tasks } = buildProgress;
+
+  if (current_task) {
+    return `${current_task} (${completed_tasks}/${total_tasks})`;
+  }
+
+  return `Building your website (${completed_tasks}/${total_tasks})...`;
+}
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<PageStatus>('loading');
   const [error, setError] = useState<string | null>(null);
-  const [siteId, setSiteId] = useState<string | null>(null);
+  const [siteData, setSiteData] = useState<SiteData | null>(null);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('Verifying payment...');
 
   const sessionId = searchParams.get('session_id');
 
@@ -31,7 +59,7 @@ function PaymentSuccessContent() {
     // Clear the pending checkout from localStorage
     localStorage.removeItem('wizard_pending_checkout');
 
-    // Poll for site creation status
+    // Poll for site creation and build status
     const checkSiteStatus = async () => {
       const supabase = createClient();
 
@@ -61,19 +89,46 @@ function PaymentSuccessContent() {
         const subscription = subscriptions[0];
 
         if (subscription.site_id) {
-          // Site is created
-          setSiteId(subscription.site_id);
-          setStatus('success');
-          setProgress(100);
+          // Site exists - check its build status
+          const { data: site } = await supabase
+            .from('sites')
+            .select('id, name, status, build_progress, status_message')
+            .eq('id', subscription.site_id)
+            .single();
+
+          if (site) {
+            setSiteData(site as SiteData);
+
+            if (site.status === 'active') {
+              setStatus('success');
+              setProgress(100);
+              setProgressMessage('Your website is ready!');
+            } else if (site.status === 'failed') {
+              setStatus('error');
+              setError(site.status_message || 'There was an error building your site. You can retry from the dashboard.');
+            } else if (site.status === 'building') {
+              setStatus('building');
+              const buildProgress = site.build_progress as SiteBuildProgress | null;
+              setProgress(getProgressPercentage(buildProgress));
+              setProgressMessage(getProgressMessage(buildProgress));
+            } else {
+              // Pending or other status
+              setStatus('building');
+              setProgress(5);
+              setProgressMessage('Starting build process...');
+            }
+          }
         } else {
           // Subscription exists but site not yet created (webhook still processing)
-          setStatus('creating');
-          setProgress((prev) => Math.min(prev + 10, 90));
+          setStatus('building');
+          setProgress(2);
+          setProgressMessage('Creating your site...');
         }
       } else {
         // No subscription yet - webhook may not have processed
-        setStatus('creating');
-        setProgress((prev) => Math.min(prev + 5, 50));
+        setStatus('loading');
+        setProgress(0);
+        setProgressMessage('Verifying payment...');
       }
     };
 
@@ -87,13 +142,13 @@ function PaymentSuccessContent() {
       }
     }, 2000);
 
-    // Timeout after 2 minutes
+    // Timeout after 5 minutes (content generation can take up to 5 min)
     const timeout = setTimeout(() => {
-      if (status === 'creating' || status === 'loading') {
-        setStatus('error');
-        setError('Site creation is taking longer than expected. Please check your dashboard in a few minutes.');
+      if (status === 'building' || status === 'loading') {
+        // Don't error - just suggest checking dashboard
+        setProgressMessage('This is taking a while. Feel free to check your dashboard.');
       }
-    }, 120000);
+    }, 300000);
 
     return () => {
       clearInterval(interval);
@@ -103,13 +158,13 @@ function PaymentSuccessContent() {
 
   // Redirect to site dashboard after success
   useEffect(() => {
-    if (status === 'success' && siteId) {
+    if (status === 'success' && siteData) {
       const timer = setTimeout(() => {
-        router.push(`/dashboard/sites/${siteId}`);
+        router.push(`/dashboard/sites/${siteData.id}`);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [status, siteId, router]);
+  }, [status, siteData, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
@@ -127,7 +182,7 @@ function PaymentSuccessContent() {
             </>
           )}
 
-          {status === 'creating' && (
+          {status === 'building' && (
             <>
               <div className="relative mx-auto h-16 w-16">
                 <div className="absolute inset-0 animate-ping rounded-full bg-emerald-100" />
@@ -136,30 +191,45 @@ function PaymentSuccessContent() {
                 </div>
               </div>
               <h1 className="mt-6 text-xl font-semibold text-gray-900">
-                Creating Your Website
+                Building Your Website
               </h1>
               <p className="mt-2 text-gray-600">
-                We&apos;re setting up your site and generating SEO content...
+                {progressMessage}
               </p>
               <div className="mt-6">
                 <Progress value={progress} className="h-2" />
                 <p className="mt-2 text-sm text-gray-500">
-                  This usually takes 30-60 seconds
+                  This typically takes 2-3 minutes
                 </p>
+              </div>
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <p className="text-sm text-gray-500 mb-4">
+                  Your site will continue building in the background. Feel free to explore your dashboard while you wait.
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Link href="/dashboard/sites">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Go to Dashboard
+                  </Link>
+                </Button>
               </div>
             </>
           )}
 
-          {status === 'success' && (
+          {status === 'success' && siteData && (
             <>
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                 <CheckCircle2 className="h-10 w-10 text-emerald-600" />
               </div>
               <h1 className="mt-6 text-xl font-semibold text-gray-900">
-                Payment Successful!
+                Your Website is Ready!
               </h1>
               <p className="mt-2 text-gray-600">
-                Your website has been created. Redirecting to your dashboard...
+                <span className="font-medium">{siteData.name}</span> has been created successfully. Redirecting to your dashboard...
               </p>
               <div className="mt-6">
                 <Progress value={100} className="h-2" />
@@ -168,8 +238,8 @@ function PaymentSuccessContent() {
                 asChild
                 className="mt-6 bg-emerald-500 hover:bg-emerald-600"
               >
-                <Link href={`/dashboard/sites/${siteId}`}>
-                  Go to Dashboard
+                <Link href={`/dashboard/sites/${siteData.id}`}>
+                  Go to Site Dashboard
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -192,19 +262,21 @@ function PaymentSuccessContent() {
                   asChild
                   className="w-full bg-emerald-500 hover:bg-emerald-600"
                 >
-                  <Link href="/dashboard">
-                    Go to Dashboard
+                  <Link href={siteData ? `/dashboard/sites/${siteData.id}` : '/dashboard/sites'}>
+                    {siteData ? 'Go to Site Dashboard' : 'Go to Dashboard'}
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Link href="/dashboard/sites/new">
-                    Try Again
-                  </Link>
-                </Button>
+                {!siteData && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Link href="/dashboard/sites/new">
+                      Try Again
+                    </Link>
+                  </Button>
+                )}
               </div>
             </>
           )}

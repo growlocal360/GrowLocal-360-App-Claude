@@ -25,43 +25,65 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
 
   try {
-    const supabase = await createClient();
+    // Check for internal API key (used by webhook) or user session
+    const internalKey = request.headers.get('x-internal-key');
+    const isInternalCall = internalKey === process.env.INTERNAL_API_KEY;
 
-    // Verify site exists and user has access
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Use static client for internal calls (no user session), otherwise use server client
+    const { createStaticClient } = await import('@/lib/supabase/static');
+    const supabase = isInternalCall ? createStaticClient() : await createClient();
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let site;
+
+    if (!isInternalCall) {
+      // User call - verify ownership
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      // Get user's profile to get their organization_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.organization_id) {
+        return NextResponse.json({ error: 'User has no organization' }, { status: 403 });
+      }
+
+      // Get site and verify it belongs to user's organization
+      const { data: siteData, error: siteError } = await supabase
+        .from('sites')
+        .select('id, name, website_type, settings, status, organization_id')
+        .eq('id', siteId)
+        .eq('organization_id', profile.organization_id)
+        .single();
+
+      if (siteError || !siteData) {
+        return NextResponse.json({ error: 'Site not found' }, { status: 404 });
+      }
+      site = siteData;
+    } else {
+      // Internal call from webhook - skip user auth
+      const { data: siteData, error: siteError } = await supabase
+        .from('sites')
+        .select('id, name, website_type, settings, status, organization_id')
+        .eq('id', siteId)
+        .single();
+
+      if (siteError || !siteData) {
+        return NextResponse.json({ error: 'Site not found' }, { status: 404 });
+      }
+      site = siteData;
     }
 
-    // Get site with organization check
-    const { data: site, error: siteError } = await supabase
-      .from('sites')
-      .select(
-        `
-        id,
-        name,
-        website_type,
-        settings,
-        status,
-        organization:organizations!inner(
-          id,
-          organization_members!inner(user_id)
-        )
-      `
-      )
-      .eq('id', siteId)
-      .eq('organization.organization_members.user_id', user.id)
-      .single();
-
-    if (siteError || !site) {
-      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
-    }
-
-    // Check if already building
-    if (site.status === 'building') {
+    // Check if already building (skip for internal calls - they're triggering a fresh build)
+    if (!isInternalCall && site.status === 'building') {
       return NextResponse.json(
         { error: 'Content generation already in progress' },
         { status: 409 }

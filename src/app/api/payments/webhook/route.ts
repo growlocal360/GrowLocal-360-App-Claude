@@ -125,10 +125,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Site was created with status 'building', now start the AI content generation
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const internalKey = process.env.INTERNAL_API_KEY;
     // Use the new background function that supports up to 5 minutes
     fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-key': internalKey || '',
+      },
     }).catch((err) => {
       // Fire and forget - content generation happens async in background
       console.error('Failed to trigger content generation:', err);

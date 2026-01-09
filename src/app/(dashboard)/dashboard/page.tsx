@@ -46,8 +46,7 @@ export default async function DashboardPage() {
     .from('sites')
     .select('*, locations(*), status, build_progress, status_message')
     .eq('organization_id', profile?.organization_id)
-    .order('created_at', { ascending: false })
-    .limit(5);
+    .order('created_at', { ascending: false });
 
   const userData = {
     name: profile?.full_name || user?.user_metadata?.full_name || 'User',
@@ -118,10 +117,15 @@ export default async function DashboardPage() {
 
         {/* Sites Section */}
         <div>
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Globe className="h-5 w-5" />
-            Your Sites
-          </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Globe className="h-5 w-5" />
+              Your Sites
+            </h3>
+            <Link href="/dashboard/sites" className="text-sm text-emerald-600 hover:text-emerald-700">
+              View all sites
+            </Link>
+          </div>
 
           {sites && sites.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

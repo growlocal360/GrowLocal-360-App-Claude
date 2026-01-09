@@ -5,6 +5,15 @@ export type WebsiteType = 'single_location' | 'multi_location' | 'microsite';
 export type UserRole = 'admin' | 'user';
 export type JobStatus = 'draft' | 'queued' | 'approved' | 'deployed' | 'rejected';
 export type TemplateId = 'local-service-pro';
+export type SiteStatus = 'building' | 'active' | 'paused' | 'failed' | 'suspended';
+
+// Build progress tracking for site content generation
+export interface SiteBuildProgress {
+  total_tasks: number;
+  completed_tasks: number;
+  current_task: string;
+  started_at: string;
+}
 
 export interface Organization {
   id: string;
@@ -38,6 +47,11 @@ export interface Site {
   vercel_domain_config: Record<string, unknown> | null;
   primary_gbp_category_id: string | null;
   is_active: boolean;
+  // Site status and build progress
+  status: SiteStatus;
+  build_progress: SiteBuildProgress | null;
+  status_message: string | null;
+  status_updated_at: string;
   settings: SiteSettings;
   created_at: string;
   updated_at: string;

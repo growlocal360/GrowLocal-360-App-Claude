@@ -4,6 +4,8 @@ import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, Briefcase, Users, Plus } from 'lucide-react';
+import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
+import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -39,10 +41,10 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', profile?.organization_id);
 
-  // Get sites
+  // Get sites with status and build progress
   const { data: sites } = await supabase
     .from('sites')
-    .select('*, locations(*)')
+    .select('*, locations(*), status, build_progress, status_message')
     .eq('organization_id', profile?.organization_id)
     .order('created_at', { ascending: false })
     .limit(5);
@@ -128,16 +130,31 @@ export default async function DashboardPage() {
                   <CardContent className="p-6">
                     <div className="mb-2 flex items-center justify-between">
                       <h4 className="font-semibold text-gray-900">{site.name}</h4>
-                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 capitalize">
-                        {site.website_type.replace('_', ' ')}
-                      </span>
+                      <SiteStatusBadge
+                        status={site.status as SiteStatus}
+                        progress={site.build_progress as SiteBuildProgress | null}
+                      />
                     </div>
                     <p className="text-sm text-gray-500">
                       {site.locations?.length || 0} location{site.locations?.length !== 1 ? 's' : ''}
                     </p>
-                    <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
+
+                    {/* Show progress bar if building */}
+                    {site.status === 'building' && site.build_progress && (
+                      <BuildProgressBar progress={site.build_progress as SiteBuildProgress} />
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 w-full"
+                      asChild
+                      disabled={site.status === 'building'}
+                    >
                       <Link href={`/dashboard/sites/${site.id}`}>
-                        Manage Site
+                        {site.status === 'building' ? 'Building...' :
+                         site.status === 'failed' ? 'View Error' :
+                         'Manage Site'}
                       </Link>
                     </Button>
                   </CardContent>

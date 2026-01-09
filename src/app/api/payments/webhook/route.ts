@@ -121,19 +121,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
   }
 
-  // Trigger SEO content generation asynchronously
-  // This happens in the background after the webhook returns
+  // Trigger background content generation
+  // Site was created with status 'building', now start the AI content generation
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    await fetch(`${baseUrl}/api/content/generate-site`, {
+    // Use the new background function that supports up to 5 minutes
+    fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ siteId }),
-    }).catch(() => {
-      // Fire and forget - content generation happens async
+    }).catch((err) => {
+      // Fire and forget - content generation happens async in background
+      console.error('Failed to trigger content generation:', err);
     });
   } catch {
     // Content generation error shouldn't fail the webhook
+    // Site is still created, user can retry from dashboard
     console.error('Failed to trigger content generation');
   }
 

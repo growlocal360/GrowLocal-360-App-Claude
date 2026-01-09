@@ -39,8 +39,14 @@ function isCustomDomain(host: string): boolean {
          !hostname.match(/^\d+\.\d+\.\d+\.\d+$/);
 }
 
-// Lookup site slug by custom domain
-async function getSiteSlugByDomain(domain: string, request: NextRequest): Promise<string | null> {
+// Site lookup result with status info
+interface SiteLookupResult {
+  slug: string;
+  status: string;
+}
+
+// Lookup site by custom domain
+async function getSiteByDomain(domain: string, request: NextRequest): Promise<SiteLookupResult | null> {
   try {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,15 +65,47 @@ async function getSiteSlugByDomain(domain: string, request: NextRequest): Promis
 
     const { data: site } = await supabase
       .from('sites')
-      .select('slug')
+      .select('slug, status')
       .eq('custom_domain', domain)
       .eq('custom_domain_verified', true)
-      .eq('is_active', true)
       .single();
 
-    return site?.slug || null;
+    if (!site) return null;
+    return { slug: site.slug, status: site.status };
   } catch {
     console.error('Error looking up site by domain:', domain);
+    return null;
+  }
+}
+
+// Lookup site by subdomain (slug)
+async function getSiteBySlug(slug: string, request: NextRequest): Promise<SiteLookupResult | null> {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // No-op for read-only operation
+          },
+        },
+      }
+    );
+
+    const { data: site } = await supabase
+      .from('sites')
+      .select('slug, status')
+      .eq('slug', slug)
+      .single();
+
+    if (!site) return null;
+    return { slug: site.slug, status: site.status };
+  } catch {
+    console.error('Error looking up site by slug:', slug);
     return null;
   }
 }
@@ -95,28 +133,63 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Helper to handle site status routing
+  const handleSiteRouting = (site: SiteLookupResult, url: URL): NextResponse => {
+    // Check site status and route accordingly
+    switch (site.status) {
+      case 'paused':
+        // Show maintenance page for paused sites
+        url.pathname = `/sites/${site.slug}/maintenance`;
+        return NextResponse.rewrite(url);
+
+      case 'building':
+        // Show coming soon page for sites being built
+        url.pathname = `/sites/${site.slug}/coming-soon`;
+        return NextResponse.rewrite(url);
+
+      case 'suspended':
+        // Show suspended page
+        url.pathname = `/sites/${site.slug}/suspended`;
+        return NextResponse.rewrite(url);
+
+      case 'failed':
+        // Show error page for failed builds
+        url.pathname = `/sites/${site.slug}/build-error`;
+        return NextResponse.rewrite(url);
+
+      case 'active':
+      default:
+        // Normal routing for active sites
+        url.pathname = `/sites/${site.slug}${pathname}`;
+        return NextResponse.rewrite(url);
+    }
+  };
+
   // Check for subdomain (bobshvac.growlocal360.com)
   const subdomain = getSubdomainFromHost(host);
   if (subdomain) {
-    // Rewrite to /sites/[slug] route
+    const site = await getSiteBySlug(subdomain, request);
     const url = request.nextUrl.clone();
-    url.pathname = `/sites/${subdomain}${pathname}`;
-    return NextResponse.rewrite(url);
+
+    if (site) {
+      return handleSiteRouting(site, url);
+    } else {
+      // Subdomain not found
+      url.pathname = '/domain-not-found';
+      return NextResponse.rewrite(url);
+    }
   }
 
   // Check for custom domain (bobshvac.com)
   if (isCustomDomain(host)) {
     const hostname = host.split(':')[0];
-    const slug = await getSiteSlugByDomain(hostname, request);
+    const site = await getSiteByDomain(hostname, request);
+    const url = request.nextUrl.clone();
 
-    if (slug) {
-      // Rewrite to /sites/[slug] route
-      const url = request.nextUrl.clone();
-      url.pathname = `/sites/${slug}${pathname}`;
-      return NextResponse.rewrite(url);
+    if (site) {
+      return handleSiteRouting(site, url);
     } else {
       // Domain not found or not verified - show error page
-      const url = request.nextUrl.clone();
       url.pathname = '/domain-not-found';
       return NextResponse.rewrite(url);
     }

@@ -99,7 +99,17 @@ export async function createSiteFromWizardData(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  // Create the site
+  // Calculate total tasks for progress tracking
+  const selectedServicesCount = services.filter((s) => s.isSelected).length;
+  const allCategoriesCount =
+    (primaryCategory ? 1 : 0) + secondaryCategories.length;
+  const totalTasks =
+    selectedServicesCount + // Service pages
+    serviceAreas.length + // Service area pages
+    allCategoriesCount + // Category pages
+    3; // Core pages (home, about, contact)
+
+  // Create the site with building status
   const { data: site, error: siteError } = await supabase
     .from('sites')
     .insert({
@@ -109,6 +119,14 @@ export async function createSiteFromWizardData(
       website_type: websiteType,
       template_id: 'local-service-pro',
       is_active: true,
+      status: 'building',
+      build_progress: {
+        total_tasks: totalTasks,
+        completed_tasks: 0,
+        current_task: 'Creating site structure...',
+        started_at: new Date().toISOString(),
+      },
+      status_updated_at: new Date().toISOString(),
       settings: {
         core_industry: coreIndustry,
       },

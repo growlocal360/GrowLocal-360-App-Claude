@@ -33,6 +33,7 @@ function isCustomDomain(host: string): boolean {
 
   // It's a custom domain if it's not our main app domain or a subdomain of it
   return !hostname.endsWith(MAIN_APP_DOMAIN) &&
+         !hostname.endsWith('.vercel.app') &&
          hostname !== 'localhost' &&
          !hostname.match(/^127\.\d+\.\d+\.\d+$/) &&
          !hostname.match(/^\d+\.\d+\.\d+\.\d+$/);

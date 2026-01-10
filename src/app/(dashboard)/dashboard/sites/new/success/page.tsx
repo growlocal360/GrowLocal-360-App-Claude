@@ -46,6 +46,7 @@ function PaymentSuccessContent() {
   const [siteData, setSiteData] = useState<SiteData | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('Verifying payment...');
+  const [showDashboardHint, setShowDashboardHint] = useState(false);
 
   const sessionId = searchParams.get('session_id');
 
@@ -142,6 +143,11 @@ function PaymentSuccessContent() {
       }
     }, 2000);
 
+    // Show dashboard hint after 15 seconds (7-8 polls)
+    const hintTimeout = setTimeout(() => {
+      setShowDashboardHint(true);
+    }, 15000);
+
     // Timeout after 5 minutes (content generation can take up to 5 min)
     const timeout = setTimeout(() => {
       if (status === 'building' || status === 'loading') {
@@ -152,6 +158,7 @@ function PaymentSuccessContent() {
 
     return () => {
       clearInterval(interval);
+      clearTimeout(hintTimeout);
       clearTimeout(timeout);
     };
   }, [sessionId, status]);
@@ -179,6 +186,23 @@ function PaymentSuccessContent() {
               <p className="mt-2 text-gray-600">
                 Please wait while we confirm your subscription.
               </p>
+              {showDashboardHint && (
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Taking longer than expected? Your payment was successful. The site will appear in your dashboard shortly.
+                  </p>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Link href="/dashboard/sites">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Go to Dashboard
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </>
           )}
 

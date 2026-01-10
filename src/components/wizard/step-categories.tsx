@@ -5,8 +5,9 @@ import { useWizardStore } from '@/lib/store/wizard-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Sparkles, Check, Info } from 'lucide-react';
-import { getCategoriesForIndustry, type GBPCategoryData } from '@/data/gbp-categories';
+import { ArrowLeft, ArrowRight, Sparkles, Check, Info, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { getCategoriesForIndustry, searchCategories, GBP_CATEGORIES, type GBPCategoryData } from '@/data/gbp-categories';
 
 export function StepCategories() {
   const {
@@ -24,6 +25,13 @@ export function StepCategories() {
   const [suggestedPrimary, setSuggestedPrimary] = useState<GBPCategoryData[]>([]);
   const [suggestedSecondary, setSuggestedSecondary] = useState<GBPCategoryData[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Get search results - show all categories if search is empty
+  const searchResults = searchQuery.trim()
+    ? searchCategories(searchQuery)
+    : GBP_CATEGORIES.slice(0, 20); // Show first 20 when no query
 
   // Helper to normalize category names for comparison
   const normalizeDisplayName = (name: string) => name.toLowerCase().trim();
@@ -70,6 +78,11 @@ export function StepCategories() {
         // Auto-select the best primary category if none selected
         if (!primaryCategory && primary.length > 0) {
           setPrimaryCategory(primary[0]);
+        }
+
+        // If no suggestions found, auto-show the search
+        if (primary.length === 0) {
+          setShowSearch(true);
         }
       }
 
@@ -126,69 +139,178 @@ export function StepCategories() {
         </p>
       </div>
 
-      {/* AI Recommendation Banner */}
-      <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4">
-        <Sparkles className="mt-0.5 h-5 w-5 text-emerald-600" />
-        <div>
-          <p className="font-medium text-emerald-900">AI-Powered Recommendation</p>
-          <p className="text-sm text-emerald-700">
-            Categories are matched based on Google&apos;s official GBP taxonomy and your industry keywords.
-          </p>
-        </div>
-      </div>
+      {/* Show different content based on whether we have suggestions */}
+      {suggestedPrimary.length > 0 && !showSearch ? (
+        <>
+          {/* AI Recommendation Banner */}
+          <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4">
+            <Sparkles className="mt-0.5 h-5 w-5 text-emerald-600" />
+            <div>
+              <p className="font-medium text-emerald-900">AI-Powered Recommendation</p>
+              <p className="text-sm text-emerald-700">
+                Categories are matched based on Google&apos;s official GBP taxonomy and your industry keywords.
+              </p>
+            </div>
+          </div>
 
-      {/* Primary Category Selection */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900">Primary Category</h3>
-          <Badge variant="outline" className="text-xs">Required</Badge>
-        </div>
-        <p className="text-sm text-gray-500">
-          This is your main business category. Your homepage will target this category.
-        </p>
+          {/* Primary Category Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">Primary Category</h3>
+              <Badge variant="outline" className="text-xs">Required</Badge>
+            </div>
+            <p className="text-sm text-gray-500">
+              This is your main business category. Your homepage will target this category.
+            </p>
 
-        <div className="grid gap-3">
-          {suggestedPrimary.map((category, index) => (
-            <Card
-              key={category.gcid}
-              className={`cursor-pointer transition-all ${
-                primaryCategory?.gcid === category.gcid
-                  ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
-                  : 'hover:border-gray-300'
-              }`}
-              onClick={() => handlePrimarySelect(category)}
-            >
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                      primaryCategory?.gcid === category.gcid
-                        ? 'bg-emerald-500 text-white'
-                        : 'border-2 border-gray-300'
-                    }`}
-                  >
-                    {primaryCategory?.gcid === category.gcid && (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{category.displayName}</p>
+            <div className="grid gap-3">
+              {suggestedPrimary.map((category, index) => (
+                <Card
+                  key={category.gcid}
+                  className={`cursor-pointer transition-all ${
+                    primaryCategory?.gcid === category.gcid
+                      ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                      : 'hover:border-gray-300'
+                  }`}
+                  onClick={() => handlePrimarySelect(category)}
+                >
+                  <CardContent className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                          primaryCategory?.gcid === category.gcid
+                            ? 'bg-emerald-500 text-white'
+                            : 'border-2 border-gray-300'
+                        }`}
+                      >
+                        {primaryCategory?.gcid === category.gcid && (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{category.displayName}</p>
+                        {index === 0 && (
+                          <span className="text-xs text-emerald-600">Best Match</span>
+                        )}
+                      </div>
+                    </div>
                     {index === 0 && (
-                      <span className="text-xs text-emerald-600">Best Match</span>
+                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                        <Sparkles className="mr-1 h-3 w-3" />
+                        Recommended
+                      </Badge>
                     )}
-                  </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Link to search for more categories */}
+            <button
+              type="button"
+              onClick={() => setShowSearch(true)}
+              className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline"
+            >
+              Can&apos;t find your category? Search all categories →
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* No suggestions or search mode - show search interface */}
+          <div className="space-y-4">
+            {suggestedPrimary.length === 0 && (
+              <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
+                <Info className="mt-0.5 h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-medium text-amber-900">No exact matches found</p>
+                  <p className="text-sm text-amber-700">
+                    We couldn&apos;t find categories matching &quot;{coreIndustry}&quot;. Search below to find your business category.
+                  </p>
                 </div>
-                {index === 0 && (
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                    <Sparkles className="mr-1 h-3 w-3" />
-                    Recommended
-                  </Badge>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900">Search Categories</h3>
+                  <Badge variant="outline" className="text-xs">Required</Badge>
+                </div>
+                {suggestedPrimary.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSearch(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    ← Back to suggestions
+                  </button>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search for your business category (e.g., plumber, electrician, landscaper)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              {/* Currently selected primary */}
+              {primaryCategory && (
+                <div className="rounded-lg bg-emerald-50 p-3">
+                  <p className="text-sm text-emerald-700">
+                    <span className="font-medium">Selected:</span> {primaryCategory.displayName}
+                  </p>
+                </div>
+              )}
+
+              {/* Search Results */}
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {searchResults.map((category) => (
+                  <Card
+                    key={category.gcid}
+                    className={`cursor-pointer transition-all ${
+                      primaryCategory?.gcid === category.gcid
+                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                        : 'hover:border-gray-300'
+                    }`}
+                    onClick={() => handlePrimarySelect(category)}
+                  >
+                    <CardContent className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-5 w-5 items-center justify-center rounded-full ${
+                            primaryCategory?.gcid === category.gcid
+                              ? 'bg-emerald-500 text-white'
+                              : 'border-2 border-gray-300'
+                          }`}
+                        >
+                          {primaryCategory?.gcid === category.gcid && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          {category.displayName}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {searchQuery && searchResults.length === 0 && (
+                  <p className="py-4 text-center text-sm text-gray-500">
+                    No categories found for &quot;{searchQuery}&quot;. Try a different search term.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Secondary Categories Selection */}
       <div className="space-y-3">

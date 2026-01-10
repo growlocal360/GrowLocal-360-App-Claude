@@ -104,6 +104,12 @@ export function StepConnect() {
       // Check if token expired
       if (errorMessage.includes('401') || errorMessage.includes('token') || errorMessage.includes('unauthorized')) {
         setError('Your Google session has expired. Please reconnect.');
+      } else if (errorMessage.includes('permission') || errorMessage.includes('403') || errorMessage.includes('not found')) {
+        // User doesn't have a Google Business Profile
+        setError('No Google Business Profile found for this account. You can add your business details manually instead.');
+        setIsConnected(true); // Show the "no locations" screen with manual option
+        setGbpLocations([]); // Empty locations triggers the "No Locations Found" UI
+        return;
       } else {
         setError(errorMessage);
       }
@@ -402,10 +408,10 @@ export function StepConnect() {
             Step 1 of 6
           </span>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">
-            No Locations Found
+            No Business Profile Found
           </h2>
           <p className="mt-1 text-gray-500">
-            We couldn&apos;t find any Google Business Profile locations connected to your account.
+            {error || "We couldn't find any Google Business Profile locations connected to your account."}
           </p>
         </div>
 

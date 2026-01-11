@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
@@ -10,7 +10,7 @@ import type { WizardSiteData } from '@/lib/sites/create-site';
 export const runtime = 'nodejs';
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   const metadata = session.metadata || {};
   const userId = metadata.user_id;
@@ -65,18 +65,20 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Ensure user has an organization
+  // Ensure user has an organization (pass admin client to bypass RLS)
   const organizationId = await ensureUserOrganization(
     userId,
     undefined,
-    siteData.businessName
+    siteData.businessName,
+    supabase
   );
 
-  // Create the site
+  // Create the site (pass admin client to bypass RLS)
   const { siteId } = await createSiteFromWizardData(
     userId,
     organizationId,
-    siteData
+    siteData,
+    supabase
   );
 
   // Create subscription record
@@ -147,7 +149,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Get billing period from first subscription item (Stripe API v2024+)
   const firstItem = subscription.items?.data?.[0];
@@ -173,7 +175,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   await supabase
     .from('subscriptions')
@@ -185,7 +187,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Get subscription ID from parent details (Stripe API v2024+)
   const subscriptionId = invoice.parent?.subscription_details?.subscription;
@@ -210,7 +212,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Get subscription ID from parent details (Stripe API v2024+)
   const subscriptionId = invoice.parent?.subscription_details?.subscription;

@@ -1,4 +1,5 @@
 import { createStaticClient } from '@/lib/supabase/static';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebsiteType } from '@/types/database';
 
 // Types for wizard data structure
@@ -73,13 +74,20 @@ export interface CreateSiteResult {
 /**
  * Creates a site and all related records from wizard data.
  * Used by both direct creation (wizard) and webhook (after payment).
+ *
+ * @param userId - The ID of the user creating the site
+ * @param organizationId - The ID of the organization
+ * @param data - The wizard site data
+ * @param supabaseClient - Optional Supabase client (uses static client if not provided).
+ *                         Pass an admin client when calling from webhooks.
  */
 export async function createSiteFromWizardData(
   userId: string,
   organizationId: string,
-  data: WizardSiteData
+  data: WizardSiteData,
+  supabaseClient?: SupabaseClient
 ): Promise<CreateSiteResult> {
-  const supabase = createStaticClient();
+  const supabase = supabaseClient || createStaticClient();
 
   const {
     businessName,
@@ -314,13 +322,20 @@ export async function createSiteFromWizardData(
 /**
  * Ensures user has an organization, creating one if needed.
  * Returns the organization ID.
+ *
+ * @param userId - The ID of the user
+ * @param email - The user's email (optional)
+ * @param fullName - The user's full name (optional)
+ * @param supabaseClient - Optional Supabase client (uses static client if not provided).
+ *                         Pass an admin client when calling from webhooks.
  */
 export async function ensureUserOrganization(
   userId: string,
   email: string | undefined,
-  fullName: string | undefined
+  fullName: string | undefined,
+  supabaseClient?: SupabaseClient
 ): Promise<string> {
-  const supabase = createStaticClient();
+  const supabase = supabaseClient || createStaticClient();
 
   // Check if user already has a profile with organization
   const { data: profile } = await supabase

@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (pendingError) {
-        // Fallback: store minimal data in metadata
-        metadataPayload = {
-          user_id: user.id,
-          plan_name: planName,
-          site_name: siteData.businessInfo?.name || 'New Site',
-        };
+        // Don't proceed without site data - this will cause webhook to fail
+        console.error('Failed to store pending site data:', pendingError);
+        return NextResponse.json(
+          { error: 'Failed to initialize checkout. Please try again.' },
+          { status: 500 }
+        );
       } else {
         metadataPayload = {
           user_id: user.id,

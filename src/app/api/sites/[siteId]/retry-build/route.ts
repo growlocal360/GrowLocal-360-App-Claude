@@ -102,9 +102,13 @@ export async function POST(
   // Trigger background content generation
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const internalKey = process.env.INTERNAL_API_KEY;
     fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-key': internalKey || '',
+      },
     }).catch((err) => {
       console.error('Failed to trigger content generation:', err);
     });

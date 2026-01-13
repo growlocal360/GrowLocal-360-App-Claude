@@ -291,7 +291,7 @@ export default function SitesPage() {
                         </Button>
                       )}
 
-                      {site.status === 'failed' && (
+                      {(site.status === 'failed' || site.status === 'building') && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -299,7 +299,7 @@ export default function SitesPage() {
                           disabled={actionLoading === site.id}
                         >
                           <RotateCcw className="mr-2 h-4 w-4" />
-                          Retry Build
+                          {site.status === 'building' ? 'Force Retry' : 'Retry Build'}
                         </Button>
                       )}
 

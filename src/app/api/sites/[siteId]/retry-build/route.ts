@@ -38,12 +38,27 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Allow retry for failed builds OR regeneration for active sites
-  if (site.status !== 'failed' && site.status !== 'active') {
+  // Allow retry for failed builds, active sites, or stuck building sites
+  const allowedStatuses = ['failed', 'active', 'building'];
+  if (!allowedStatuses.includes(site.status)) {
     return NextResponse.json(
-      { error: 'Can only regenerate content for active or failed sites' },
+      { error: 'Cannot regenerate content for this site status' },
       { status: 400 }
     );
+  }
+
+  // For 'building' status, check if it's been stuck for more than 5 minutes
+  if (site.status === 'building') {
+    const statusUpdatedAt = site.status_updated_at ? new Date(site.status_updated_at) : null;
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+    if (statusUpdatedAt && statusUpdatedAt > fiveMinutesAgo) {
+      return NextResponse.json(
+        { error: 'Build is still in progress. Please wait a few minutes.' },
+        { status: 409 }
+      );
+    }
+    // If stuck for more than 5 minutes, allow retry
   }
 
   // Count total tasks for progress tracking

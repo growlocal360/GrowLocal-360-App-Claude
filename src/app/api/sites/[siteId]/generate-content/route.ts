@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Vercel background function - up to 5 minutes
@@ -29,9 +30,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const internalKey = request.headers.get('x-internal-key');
     const isInternalCall = internalKey === process.env.INTERNAL_API_KEY;
 
-    // Use static client for internal calls (no user session), otherwise use server client
-    const { createStaticClient } = await import('@/lib/supabase/static');
-    const supabase = isInternalCall ? createStaticClient() : await createClient();
+    // Use admin client for internal calls (no user session), otherwise use server client
+    const supabase = isInternalCall ? createAdminClient() : await createClient();
 
     let site;
 
@@ -189,8 +189,8 @@ async function generateAllContent(
   siteCategories: { id: string; is_primary: boolean; gbp_categories: { display_name: string } | { display_name: string }[] }[],
   progress: SiteBuildProgress
 ) {
-  const { createStaticClient } = await import('@/lib/supabase/static');
-  const supabase = createStaticClient();
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const supabase = createAdminClient();
 
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicApiKey) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { waitUntil } from '@vercel/functions';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Vercel background function - up to 5 minutes
@@ -141,20 +142,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', siteId);
 
-    // Start content generation (runs in background)
-    generateAllContent(
-      siteId,
-      site.name,
-      site.website_type,
-      primaryLocation,
-      primaryCategory,
-      services || [],
-      serviceAreas || [],
-      siteCategories || [],
-      initialProgress
-    ).catch((error) => {
-      console.error('Background content generation failed:', error);
-    });
+    // Start content generation in background using waitUntil
+    // This keeps the function alive after returning the response
+    waitUntil(
+      generateAllContent(
+        siteId,
+        site.name,
+        site.website_type,
+        primaryLocation,
+        primaryCategory,
+        services || [],
+        serviceAreas || [],
+        siteCategories || [],
+        initialProgress
+      ).catch((error) => {
+        console.error('Background content generation failed:', error);
+      })
+    );
 
     // Return immediately with 202 Accepted
     return NextResponse.json(

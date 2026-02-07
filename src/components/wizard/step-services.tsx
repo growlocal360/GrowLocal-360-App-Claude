@@ -43,6 +43,7 @@ export function StepServices() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customServiceName, setCustomServiceName] = useState('');
+  const [customServiceDescription, setCustomServiceDescription] = useState('');
   const [customServiceCategory, setCustomServiceCategory] = useState('');
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
 
@@ -133,7 +134,7 @@ export function StepServices() {
     );
   }, [services, searchQuery]);
 
-  // Group services by category
+  // Group services by category, primary first
   const servicesByCategory = useMemo(() => {
     const grouped: Record<string, WizardService[]> = {};
     for (const service of filteredServices) {
@@ -142,8 +143,22 @@ export function StepServices() {
       }
       grouped[service.categoryGcid].push(service);
     }
-    return grouped;
-  }, [filteredServices]);
+
+    // Sort: primary category first, then secondaries in allCategories order
+    const sorted: Record<string, WizardService[]> = {};
+    for (const cat of allCategories) {
+      if (grouped[cat.gcid]) {
+        sorted[cat.gcid] = grouped[cat.gcid];
+      }
+    }
+    // Append any categories not in allCategories (shouldn't happen, but safe)
+    for (const [gcid, services] of Object.entries(grouped)) {
+      if (!sorted[gcid]) {
+        sorted[gcid] = services;
+      }
+    }
+    return sorted;
+  }, [filteredServices, allCategories]);
 
   // Selected count
   const selectedCount = services.filter((s) => s.isSelected).length;
@@ -163,7 +178,7 @@ export function StepServices() {
       id: `custom-${Date.now()}-${slug}`,
       name: customServiceName.trim(),
       slug,
-      description: null,
+      description: customServiceDescription.trim() || null,
       categoryGcid: customServiceCategory,
       categoryName: category?.displayName || 'Custom',
       isSelected: true,
@@ -172,6 +187,7 @@ export function StepServices() {
     });
 
     setCustomServiceName('');
+    setCustomServiceDescription('');
     setShowAddCustom(false);
   };
 
@@ -262,9 +278,20 @@ export function StepServices() {
                 <Label htmlFor="custom-service-name">Service Name</Label>
                 <Input
                   id="custom-service-name"
-                  placeholder="e.g., Emergency Leak Repair"
+                  placeholder="e.g., Vehicle Wraps & Fleet Graphics"
                   value={customServiceName}
                   onChange={(e) => setCustomServiceName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="custom-service-description">Description <span className="text-gray-400 font-normal">(optional)</span></Label>
+                <textarea
+                  id="custom-service-description"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  rows={2}
+                  placeholder="Brief description of this service for SEO..."
+                  value={customServiceDescription}
+                  onChange={(e) => setCustomServiceDescription(e.target.value)}
                 />
               </div>
               <div>

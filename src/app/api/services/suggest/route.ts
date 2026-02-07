@@ -94,32 +94,44 @@ async function generateServicesForBatch(
     .map((c) => `- ${c.name} (ID: ${c.gcid})`)
     .join('\n');
 
-  const prompt = `You are an SEO expert helping a local service business create service pages for their website. They operate in these Google Business Profile categories:
+  const prompt = `You are an SEO expert generating service pages for a local business website that must rank in Google Maps and the Local 3-Pack. They operate in these Google Business Profile categories:
 
 ${categoryList}
 
-For EACH category, generate exactly ${servicesPerCategory} granular, problem-based sub-services that:
-1. Represent specific problems/symptoms customers actually search for (e.g., "AC Not Cooling" instead of generic "AC Repair")
-2. Would make excellent individual service pages for local SEO
-3. Include a mix of:
-   - Emergency services (e.g., "Emergency AC Repair")
-   - Common symptoms/problems (e.g., "AC Not Turning On", "Refrigerant Leak")
-   - Specific repairs (e.g., "Compressor Repair", "Capacitor Replacement")
-   - Preventive services (e.g., "AC Tune-Up", "Annual Maintenance")
+For EACH category, generate exactly ${servicesPerCategory} deliverable-based service pages.
+
+CRITICAL RULES:
+1. Service names MUST represent real services/deliverables the business offers — things they DO or DELIVER.
+2. Each service name must use clear, industry-standard language that could realistically appear as a Google Business Profile service.
+3. DO NOT name service pages after problems, symptoms, pain points, or emergency language.
+
+VALID service name examples:
+- "Logo Design & Branding" (a deliverable)
+- "Custom Business Signage" (a deliverable)
+- "Vehicle Wraps & Fleet Graphics" (a deliverable)
+- "AC Installation & Replacement" (a service)
+- "Drain Cleaning & Hydro Jetting" (a service)
+
+INVALID service name examples (DO NOT USE):
+- "Logo Not Converting Customers" (a problem)
+- "LED Sign Not Working" (a symptom)
+- "Emergency Sign Repair" (emergency language)
+- "AC Not Cooling" (a symptom)
+- "No Online Leads Generated" (a pain point)
 
 For each service, provide a 1-2 sentence SEO-friendly description that:
-- Explains what the problem is and how you solve it
-- Uses action-oriented language
-- Mentions urgency or expertise where appropriate
+- Explains what the service delivers and who it's for
+- May reference common problems this service solves (problems belong in descriptions, NOT in service names)
+- Uses action-oriented, professional language
 
 Format your response as JSON:
 {
   "services": [
     {
-      "name": "AC Not Cooling",
-      "description": "Is your AC running but not cooling your home? Our certified technicians diagnose and fix cooling issues fast, from refrigerant leaks to compressor problems.",
-      "categoryGcid": "gcid:air_conditioning_repair_service",
-      "categoryName": "Air Conditioning Repair Service"
+      "name": "Logo Design & Branding",
+      "description": "Professional logo design and brand identity packages that help your business stand out. From concept to final files, we create memorable logos that build customer trust and recognition.",
+      "categoryGcid": "gcid:graphic_designer",
+      "categoryName": "Graphic designer"
     },
     ...
   ]
@@ -127,9 +139,9 @@ Format your response as JSON:
 
 Important:
 - Generate exactly ${servicesPerCategory} services PER category
-- Make service names concise but descriptive (3-5 words max)
-- Avoid generic names like "AC Repair" - be specific about the problem or service
-- Each service should be distinct enough to warrant its own page
+- Service names should be 3-6 words using industry-standard terminology
+- Each service must be a distinct deliverable worthy of its own page
+- Problems and symptoms go in descriptions ONLY, never in service names
 - Return ONLY the JSON, no other text`;
 
   const message = await anthropic.messages.create({

@@ -1,18 +1,22 @@
 import Link from 'next/link';
-import { MapPin, ArrowRight, Globe, Briefcase, Zap, Shield } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowRight, Globe, Briefcase, Zap, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500">
-              <MapPin className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-emerald-600">GrowLocal360</span>
+          <div className="flex items-center">
+            <Image
+              src="/grow-local-360-logo-black.svg"
+              alt="GrowLocal360"
+              width={160}
+              height={28}
+              priority
+            />
           </div>
           <div className="flex items-center gap-4">
             <Link
@@ -21,7 +25,7 @@ export default function Home() {
             >
               Sign In
             </Link>
-            <Button asChild className="bg-emerald-500 hover:bg-emerald-600">
+            <Button asChild className="bg-black hover:bg-gray-800">
               <Link href="/signup">Get Started Free</Link>
             </Button>
           </div>
@@ -31,12 +35,12 @@ export default function Home() {
       {/* Hero Section */}
       <main className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="text-center">
-          <span className="inline-block rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700">
+          <span className="inline-block rounded-full bg-[#00d9c0]/10 px-4 py-1.5 text-sm font-medium text-[#00d9c0]">
             GBP-First Website Architecture
           </span>
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
             Build websites that
-            <span className="block text-emerald-500">rank locally</span>
+            <span className="block text-[#00d9c0]">rank locally</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
             Create SEO-optimized website structures based on your Google Business Profile
@@ -46,7 +50,7 @@ export default function Home() {
             <Button
               asChild
               size="lg"
-              className="bg-emerald-500 hover:bg-emerald-600"
+              className="bg-black hover:bg-gray-800"
             >
               <Link href="/signup">
                 Start Free Trial
@@ -129,11 +133,13 @@ export default function Home() {
       <footer className="border-t bg-white py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500">
-                <MapPin className="h-4 w-4 text-white" />
-              </div>
-              <span className="font-semibold text-gray-900">GrowLocal360</span>
+            <div className="flex items-center">
+              <Image
+                src="/grow-local-360-logo-black.svg"
+                alt="GrowLocal360"
+                width={140}
+                height={25}
+              />
             </div>
             <p className="text-sm text-gray-500">
               &copy; {new Date().getFullYear()} GrowLocal360. All rights reserved.
@@ -156,8 +162,8 @@ function FeatureCard({
 }) {
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
-        <Icon className="h-6 w-6 text-emerald-600" />
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#00d9c0]/10">
+        <Icon className="h-6 w-6 text-[#00d9c0]" />
       </div>
       <h3 className="mt-4 font-semibold text-gray-900">{title}</h3>
       <p className="mt-2 text-sm text-gray-600">{description}</p>
@@ -180,12 +186,12 @@ function WebsiteTypeCard({
     <div
       className={`rounded-xl border-2 p-6 transition-all ${
         highlighted
-          ? 'border-emerald-500 bg-emerald-50 shadow-lg'
+          ? 'border-[#00d9c0] bg-[#00d9c0]/5 shadow-lg'
           : 'border-gray-200 bg-white hover:border-gray-300'
       }`}
     >
       {highlighted && (
-        <span className="mb-3 inline-block rounded-full bg-emerald-500 px-3 py-1 text-xs font-medium text-white">
+        <span className="mb-3 inline-block rounded-full bg-black px-3 py-1 text-xs font-medium text-white">
           Most Popular
         </span>
       )}
@@ -194,7 +200,7 @@ function WebsiteTypeCard({
       <ul className="mt-4 space-y-2">
         {features.map((feature, index) => (
           <li key={index} className="flex items-center gap-2 text-sm text-gray-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
             {feature}
           </li>
         ))}

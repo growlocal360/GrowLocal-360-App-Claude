@@ -34,7 +34,7 @@ export default function BrandingSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const [brandColor, setBrandColor] = useState('#10b981'); // Default emerald-500
+  const [brandColor, setBrandColor] = useState('#00d9c0');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -198,7 +198,7 @@ export default function BrandingSettingsPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700">
+        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
           <Check className="h-5 w-5 flex-shrink-0" />
           <p>Branding settings saved successfully!</p>
         </div>
@@ -208,7 +208,7 @@ export default function BrandingSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-emerald-600" />
+            <Upload className="h-5 w-5 text-[#00d9c0]" />
             <h2 className="font-semibold">Logo</h2>
           </div>
         </CardHeader>
@@ -240,7 +240,7 @@ export default function BrandingSettingsPage() {
           ) : (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors"
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-[#00d9c0]/40 hover:bg-[#00d9c0]/5 transition-colors"
             >
               <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
               <p className="text-sm text-gray-600">
@@ -277,7 +277,7 @@ export default function BrandingSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-emerald-600" />
+            <Palette className="h-5 w-5 text-[#00d9c0]" />
             <h2 className="font-semibold">Brand Color</h2>
           </div>
         </CardHeader>
@@ -345,7 +345,7 @@ export default function BrandingSettingsPage() {
         <Button
           onClick={handleSave}
           disabled={saving || !hasChanges}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           {saving ? (
             <>

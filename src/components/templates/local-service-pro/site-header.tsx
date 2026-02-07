@@ -15,7 +15,7 @@ export function SiteHeader({ site, primaryLocation }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const phone = site.settings?.phone || primaryLocation?.phone;
-  const brandColor = site.settings?.brand_color || '#10b981'; // emerald-500 default
+  const brandColor = site.settings?.brand_color || '#00d9c0';
 
   const navLinks = [
     { href: '#services', label: 'Services' },
@@ -41,7 +41,7 @@ export function SiteHeader({ site, primaryLocation }: SiteHeaderProps) {
             {phone && (
               <a
                 href={`tel:${phone.replace(/\D/g, '')}`}
-                className="flex items-center gap-1 font-medium hover:text-emerald-400"
+                className="flex items-center gap-1 font-medium hover:text-[#00d9c0]"
               >
                 <Phone className="h-3 w-3" />
                 {phone}

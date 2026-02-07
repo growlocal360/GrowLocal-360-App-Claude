@@ -11,7 +11,7 @@ export default function SiteNotFound() {
         </p>
         <Link
           href="/"
-          className="mt-6 inline-block rounded-md bg-emerald-500 px-6 py-3 text-white hover:bg-emerald-600"
+          className="mt-6 inline-block rounded-md bg-[#00d9c0] px-6 py-3 text-white hover:bg-[#00d9c0]"
         >
           Go Home
         </Link>

@@ -293,7 +293,7 @@ export function StepConnect() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+        <div className="flex items-center gap-2 rounded-lg bg-[#00d9c0]/5 p-3 text-sm text-[#00d9c0]">
           <CheckCircle2 className="h-5 w-5" />
           <span>Connected to Google Business Profile</span>
         </div>
@@ -334,7 +334,7 @@ export function StepConnect() {
                 key={locationId}
                 className={`cursor-pointer transition-all ${
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-[#00d9c0] bg-[#00d9c0]/5'
                     : 'hover:border-gray-300'
                 }`}
                 onClick={() => toggleLocation(locationId)}
@@ -388,7 +388,7 @@ export function StepConnect() {
           <Button
             onClick={handleContinueWithSelected}
             disabled={selectedLocations.size === 0}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-black hover:bg-gray-800"
           >
             Continue with {selectedLocations.size} location
             {selectedLocations.size !== 1 ? 's' : ''}
@@ -466,8 +466,8 @@ export function StepConnect() {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Google Connect Option */}
         <Card
-          className={`cursor-pointer transition-all hover:border-emerald-300 hover:shadow-md ${
-            connectionType === 'google' ? 'border-emerald-500 ring-2 ring-emerald-200' : ''
+          className={`cursor-pointer transition-all hover:border-[#00d9c0]/30 hover:shadow-md ${
+            connectionType === 'google' ? 'border-[#00d9c0] ring-2 ring-[#00d9c0]/20' : ''
           }`}
           onClick={handleGoogleConnect}
         >
@@ -519,8 +519,8 @@ export function StepConnect() {
 
         {/* Manual Entry Option */}
         <Card
-          className={`cursor-pointer transition-all hover:border-emerald-300 hover:shadow-md ${
-            connectionType === 'manual' ? 'border-emerald-500 ring-2 ring-emerald-200' : ''
+          className={`cursor-pointer transition-all hover:border-[#00d9c0]/30 hover:shadow-md ${
+            connectionType === 'manual' ? 'border-[#00d9c0] ring-2 ring-[#00d9c0]/20' : ''
           }`}
           onClick={handleManualEntry}
         >

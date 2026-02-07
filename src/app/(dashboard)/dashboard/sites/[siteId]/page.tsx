@@ -250,7 +250,7 @@ export default function SiteDashboardPage() {
         {/* Settings Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Branding */}
-          <Card className="hover:border-emerald-200 transition-colors">
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div
@@ -280,7 +280,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Domain */}
-          <Card className="hover:border-emerald-200 transition-colors">
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -309,7 +309,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Locations */}
-          <Card className="hover:border-emerald-200 transition-colors">
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">

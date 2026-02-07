@@ -228,8 +228,8 @@ export function StepServiceAreas() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-emerald-100">
-            <MapPin className="h-8 w-8 text-emerald-500" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
+            <MapPin className="h-8 w-8 text-[#00d9c0]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Finding nearby cities...</p>
           <p className="text-gray-500">Analyzing your service locations</p>
@@ -265,11 +265,11 @@ export function StepServiceAreas() {
       )}
 
       {/* AI Recommendation Banner */}
-      <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4">
-        <Sparkles className="mt-0.5 h-5 w-5 text-emerald-600" />
+      <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
+        <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
         <div>
-          <p className="font-medium text-emerald-900">Additional Suggestions</p>
-          <p className="text-sm text-emerald-700">
+          <p className="font-medium text-gray-900">Additional Suggestions</p>
+          <p className="text-sm text-[#00d9c0]">
             We found more cities near your GBP locations. Your physical locations are automatically excluded.
           </p>
         </div>
@@ -287,7 +287,7 @@ export function StepServiceAreas() {
               onClick={() => setServiceAreaRadius(option.value)}
               className={
                 serviceAreaRadius === option.value
-                  ? 'bg-emerald-500 hover:bg-emerald-600'
+                  ? 'bg-black hover:bg-gray-800'
                   : ''
               }
             >
@@ -314,7 +314,7 @@ export function StepServiceAreas() {
                   className={`flex items-center gap-1 ${
                     isFromGBP
                       ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                      : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                      : 'bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/20'
                   }`}
                 >
                   {area.name}
@@ -328,7 +328,7 @@ export function StepServiceAreas() {
                   <button
                     onClick={() => removeServiceArea(area.id)}
                     className={`ml-1 rounded-full p-0.5 ${
-                      isFromGBP ? 'hover:bg-blue-300' : 'hover:bg-emerald-300'
+                      isFromGBP ? 'hover:bg-blue-300' : 'hover:bg-[#00d9c0]/30'
                     }`}
                   >
                     <X className="h-3 w-3" />
@@ -374,7 +374,7 @@ export function StepServiceAreas() {
                   key={city.id}
                   className={`cursor-pointer transition-all ${
                     selected
-                      ? 'border-emerald-500 bg-emerald-50'
+                      ? 'border-[#00d9c0] bg-[#00d9c0]/5'
                       : 'hover:border-gray-300'
                   }`}
                   onClick={() => handleToggleCity(city)}
@@ -384,7 +384,7 @@ export function StepServiceAreas() {
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded ${
                           selected
-                            ? 'bg-emerald-500 text-white'
+                            ? 'bg-[#00d9c0] text-white'
                             : 'border-2 border-gray-300'
                         }`}
                       >
@@ -507,7 +507,7 @@ export function StepServiceAreas() {
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           {serviceAreas.length === 0 ? 'Skip' : 'Next'}
           <ArrowRight className="ml-2 h-4 w-4" />

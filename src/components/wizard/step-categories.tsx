@@ -117,8 +117,8 @@ export function StepCategories() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-emerald-100">
-            <Sparkles className="h-8 w-8 text-emerald-500" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
+            <Sparkles className="h-8 w-8 text-[#00d9c0]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Analyzing your business...</p>
           <p className="text-gray-500">Finding the best GBP categories for &quot;{coreIndustry}&quot;</p>
@@ -143,11 +143,11 @@ export function StepCategories() {
       {suggestedPrimary.length > 0 && !showSearch ? (
         <>
           {/* AI Recommendation Banner */}
-          <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4">
-            <Sparkles className="mt-0.5 h-5 w-5 text-emerald-600" />
+          <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
+            <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
             <div>
-              <p className="font-medium text-emerald-900">AI-Powered Recommendation</p>
-              <p className="text-sm text-emerald-700">
+              <p className="font-medium text-gray-900">AI-Powered Recommendation</p>
+              <p className="text-sm text-[#00d9c0]">
                 Categories are matched based on Google&apos;s official GBP taxonomy and your industry keywords.
               </p>
             </div>
@@ -169,7 +169,7 @@ export function StepCategories() {
                   key={category.gcid}
                   className={`cursor-pointer transition-all ${
                     primaryCategory?.gcid === category.gcid
-                      ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                      ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-2 ring-[#00d9c0]/20'
                       : 'hover:border-gray-300'
                   }`}
                   onClick={() => handlePrimarySelect(category)}
@@ -179,7 +179,7 @@ export function StepCategories() {
                       <div
                         className={`flex h-6 w-6 items-center justify-center rounded-full ${
                           primaryCategory?.gcid === category.gcid
-                            ? 'bg-emerald-500 text-white'
+                            ? 'bg-[#00d9c0] text-white'
                             : 'border-2 border-gray-300'
                         }`}
                       >
@@ -190,12 +190,12 @@ export function StepCategories() {
                       <div>
                         <p className="font-medium text-gray-900">{category.displayName}</p>
                         {index === 0 && (
-                          <span className="text-xs text-emerald-600">Best Match</span>
+                          <span className="text-xs text-[#00d9c0]">Best Match</span>
                         )}
                       </div>
                     </div>
                     {index === 0 && (
-                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <Badge className="bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/10">
                         <Sparkles className="mr-1 h-3 w-3" />
                         Recommended
                       </Badge>
@@ -209,7 +209,7 @@ export function StepCategories() {
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline"
+              className="text-sm text-[#00d9c0] hover:text-[#00d9c0] hover:underline"
             >
               Can&apos;t find your category? Search all categories →
             </button>
@@ -262,8 +262,8 @@ export function StepCategories() {
 
               {/* Currently selected primary */}
               {primaryCategory && (
-                <div className="rounded-lg bg-emerald-50 p-3">
-                  <p className="text-sm text-emerald-700">
+                <div className="rounded-lg bg-[#00d9c0]/5 p-3">
+                  <p className="text-sm text-[#00d9c0]">
                     <span className="font-medium">Selected:</span> {primaryCategory.displayName}
                   </p>
                 </div>
@@ -276,7 +276,7 @@ export function StepCategories() {
                     key={category.gcid}
                     className={`cursor-pointer transition-all ${
                       primaryCategory?.gcid === category.gcid
-                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                        ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-2 ring-[#00d9c0]/20'
                         : 'hover:border-gray-300'
                     }`}
                     onClick={() => handlePrimarySelect(category)}
@@ -286,7 +286,7 @@ export function StepCategories() {
                         <div
                           className={`flex h-5 w-5 items-center justify-center rounded-full ${
                             primaryCategory?.gcid === category.gcid
-                              ? 'bg-emerald-500 text-white'
+                              ? 'bg-[#00d9c0] text-white'
                               : 'border-2 border-gray-300'
                           }`}
                         >
@@ -341,7 +341,7 @@ export function StepCategories() {
                   isPrimary
                     ? 'cursor-not-allowed opacity-50'
                     : isSelected
-                    ? 'border-emerald-500 bg-emerald-50'
+                    ? 'border-[#00d9c0] bg-[#00d9c0]/5'
                     : 'hover:border-gray-300'
                 }`}
                 onClick={() => !isPrimary && handleSecondaryToggle(category)}
@@ -351,7 +351,7 @@ export function StepCategories() {
                     <div
                       className={`flex h-5 w-5 items-center justify-center rounded ${
                         isSelected
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-[#00d9c0] text-white'
                           : 'border-2 border-gray-300'
                       }`}
                     >
@@ -395,7 +395,7 @@ export function StepCategories() {
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           Next
           <ArrowRight className="ml-2 h-4 w-4" />

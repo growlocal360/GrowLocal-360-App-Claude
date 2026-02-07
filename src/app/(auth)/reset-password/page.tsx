@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,13 +47,13 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 to-cyan-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500">
-            <MapPin className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4">
+            <Image src="/grow-local-360-logo-black.svg" alt="GrowLocal360" width={200} height={35} priority />
           </div>
-          <CardTitle className="text-2xl font-bold text-emerald-600">
+          <CardTitle className="text-2xl font-bold text-gray-900">
             Set new password
           </CardTitle>
           <CardDescription>
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
             </div>
             <Button
               type="submit"
-              className="w-full bg-emerald-500 hover:bg-emerald-600"
+              className="w-full bg-black hover:bg-gray-800"
               disabled={loading}
             >
               {loading ? 'Updating...' : 'Update Password'}

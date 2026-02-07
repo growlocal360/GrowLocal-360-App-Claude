@@ -170,12 +170,12 @@ export function StepBusiness() {
 
         {/* Existing Locations */}
         {locations.map((location, index) => (
-          <Card key={index} className={location.isPrimary ? 'border-emerald-300' : ''}>
+          <Card key={index} className={location.isPrimary ? 'border-[#00d9c0]/30' : ''}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <div className={`rounded-full p-2 ${location.isPrimary ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-                    <MapPin className={`h-4 w-4 ${location.isPrimary ? 'text-emerald-600' : 'text-gray-500'}`} />
+                  <div className={`rounded-full p-2 ${location.isPrimary ? 'bg-[#00d9c0]/10' : 'bg-gray-100'}`}>
+                    <MapPin className={`h-4 w-4 ${location.isPrimary ? 'text-[#00d9c0]' : 'text-gray-500'}`} />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{location.name}</p>
@@ -184,7 +184,7 @@ export function StepBusiness() {
                       {location.city}, {location.state} {location.zipCode}
                     </p>
                     {location.isPrimary && (
-                      <span className="mt-1 inline-block rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      <span className="mt-1 inline-block rounded bg-[#00d9c0]/10 px-2 py-0.5 text-xs font-medium text-[#00d9c0]">
                         Primary Location
                       </span>
                     )}
@@ -332,7 +332,7 @@ export function StepBusiness() {
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           Next
           <ArrowRight className="ml-2 h-4 w-4" />

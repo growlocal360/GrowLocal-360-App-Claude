@@ -179,7 +179,7 @@ function PaymentSuccessContent() {
         <CardContent className="p-8 text-center">
           {status === 'loading' && (
             <>
-              <Loader2 className="mx-auto h-12 w-12 animate-spin text-emerald-500" />
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00d9c0]" />
               <h1 className="mt-4 text-xl font-semibold text-gray-900">
                 Verifying Payment...
               </h1>
@@ -209,8 +209,8 @@ function PaymentSuccessContent() {
           {status === 'building' && (
             <>
               <div className="relative mx-auto h-16 w-16">
-                <div className="absolute inset-0 animate-ping rounded-full bg-emerald-100" />
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500">
+                <div className="absolute inset-0 animate-ping rounded-full bg-[#00d9c0]/10" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#00d9c0]">
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
               </div>
@@ -246,8 +246,8 @@ function PaymentSuccessContent() {
 
           {status === 'success' && siteData && (
             <>
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-                <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#00d9c0]/10">
+                <CheckCircle2 className="h-10 w-10 text-[#00d9c0]" />
               </div>
               <h1 className="mt-6 text-xl font-semibold text-gray-900">
                 Your Website is Ready!
@@ -260,7 +260,7 @@ function PaymentSuccessContent() {
               </div>
               <Button
                 asChild
-                className="mt-6 bg-emerald-500 hover:bg-emerald-600"
+                className="mt-6 bg-black hover:bg-gray-800"
               >
                 <Link href={`/dashboard/sites/${siteData.id}`}>
                   Go to Site Dashboard
@@ -284,7 +284,7 @@ function PaymentSuccessContent() {
               <div className="mt-6 space-y-3">
                 <Button
                   asChild
-                  className="w-full bg-emerald-500 hover:bg-emerald-600"
+                  className="w-full bg-black hover:bg-gray-800"
                 >
                   <Link href={siteData ? `/dashboard/sites/${siteData.id}` : '/dashboard/sites'}>
                     {siteData ? 'Go to Site Dashboard' : 'Go to Dashboard'}
@@ -315,7 +315,7 @@ function LoadingFallback() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardContent className="p-8 text-center">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-emerald-500" />
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00d9c0]" />
           <h1 className="mt-4 text-xl font-semibold text-gray-900">
             Loading...
           </h1>

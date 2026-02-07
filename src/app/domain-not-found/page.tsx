@@ -13,7 +13,7 @@ export default function DomainNotFoundPage() {
         </p>
         <Link
           href="https://growlocal360.com"
-          className="inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 bg-[#00d9c0] text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
         >
           Go to GrowLocal 360
         </Link>

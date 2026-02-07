@@ -47,9 +47,9 @@ export function WizardShell({ children }: WizardShellProps) {
                     className={cn(
                       'flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors',
                       isCompleted
-                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        ? 'border-[#00d9c0] bg-[#00d9c0] text-white'
                         : isCurrent
-                        ? 'border-emerald-500 bg-white text-emerald-500'
+                        ? 'border-[#00d9c0] bg-white text-[#00d9c0]'
                         : 'border-gray-300 bg-white text-gray-400'
                     )}
                   >
@@ -62,7 +62,7 @@ export function WizardShell({ children }: WizardShellProps) {
                   <span
                     className={cn(
                       'mt-2 text-xs font-medium',
-                      isCurrent ? 'text-emerald-600' : 'text-gray-500'
+                      isCurrent ? 'text-[#00d9c0]' : 'text-gray-500'
                     )}
                   >
                     {stepLabels[step]}
@@ -74,7 +74,7 @@ export function WizardShell({ children }: WizardShellProps) {
                   <div
                     className={cn(
                       'mx-2 h-0.5 w-12 sm:w-20 md:w-24',
-                      index < currentIndex ? 'bg-emerald-500' : 'bg-gray-200'
+                      index < currentIndex ? 'bg-[#00d9c0]' : 'bg-gray-200'
                     )}
                   />
                 )}

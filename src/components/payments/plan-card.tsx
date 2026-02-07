@@ -38,13 +38,13 @@ export function PlanCard({
       className={cn(
         'relative flex flex-col transition-all',
         highlighted
-          ? 'border-2 border-emerald-500 shadow-lg'
+          ? 'border-2 border-[#00d9c0] shadow-lg'
           : 'border hover:border-gray-300 hover:shadow-md'
       )}
     >
       {highlighted && (
         <Badge
-          className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white"
+          className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00d9c0] text-white"
         >
           Most Popular
         </Badge>
@@ -62,7 +62,7 @@ export function PlanCard({
         <ul className="flex-1 space-y-3">
           {features.map((feature, index) => (
             <li key={index} className="flex items-start gap-3">
-              <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+              <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#00d9c0]" />
               <span className="text-sm text-gray-600">{feature}</span>
             </li>
           ))}
@@ -74,7 +74,7 @@ export function PlanCard({
           className={cn(
             'mt-6 w-full',
             highlighted
-              ? 'bg-emerald-500 hover:bg-emerald-600'
+              ? 'bg-black hover:bg-gray-800'
               : 'bg-gray-900 hover:bg-gray-800'
           )}
         >

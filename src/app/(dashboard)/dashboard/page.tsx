@@ -65,7 +65,7 @@ export default async function DashboardPage() {
             <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
             <p className="text-gray-500">Overview of your local service businesses.</p>
           </div>
-          <Button asChild className="bg-emerald-500 hover:bg-emerald-600">
+          <Button asChild className="bg-black hover:bg-gray-800">
             <Link href="/dashboard/sites/new">
               <Plus className="mr-2 h-4 w-4" />
               New Site
@@ -82,8 +82,8 @@ export default async function DashboardPage() {
                 <p className="text-3xl font-bold text-gray-900">{sitesCount || 0}</p>
                 <p className="text-xs text-gray-400">+2 this month</p>
               </div>
-              <div className="rounded-lg bg-emerald-50 p-3">
-                <Globe className="h-6 w-6 text-emerald-500" />
+              <div className="rounded-lg bg-[#00d9c0]/5 p-3">
+                <Globe className="h-6 w-6 text-[#00d9c0]" />
               </div>
             </CardContent>
           </Card>
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
               <Globe className="h-5 w-5" />
               Your Sites
             </h3>
-            <Link href="/dashboard/sites" className="text-sm text-emerald-600 hover:text-emerald-700">
+            <Link href="/dashboard/sites" className="text-sm text-[#00d9c0] hover:text-[#00d9c0]">
               View all sites
             </Link>
           </div>
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
           {sites && sites.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {sites.map((site) => (
-                <Card key={site.id} className="hover:border-emerald-200 transition-colors">
+                <Card key={site.id} className="hover:border-[#00d9c0]/20 transition-colors">
                   <CardContent className="p-6">
                     <div className="mb-2 flex items-center justify-between">
                       <h4 className="font-semibold text-gray-900">{site.name}</h4>
@@ -166,7 +166,7 @@ export default async function DashboardPage() {
               ))}
 
               {/* Add Site Card */}
-              <Card className="border-dashed border-2 hover:border-emerald-300 transition-colors cursor-pointer">
+              <Card className="border-dashed border-2 hover:border-[#00d9c0]/30 transition-colors cursor-pointer">
                 <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[160px]">
                   <Link href="/dashboard/sites/new" className="flex flex-col items-center">
                     <div className="rounded-full bg-gray-100 p-3 mb-3">
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
                 <p className="text-gray-500 mb-4 max-w-sm">
                   Get started by connecting your Google Business Profile or manually setting up your first website.
                 </p>
-                <Button asChild className="bg-emerald-500 hover:bg-emerald-600">
+                <Button asChild className="bg-black hover:bg-gray-800">
                   <Link href="/dashboard/sites/new">
                     <Plus className="mr-2 h-4 w-4" />
                     New Site

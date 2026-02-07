@@ -66,11 +66,11 @@ export function PlanSelectionModal({
         {/* Trust indicators */}
         <div className="mt-6 flex flex-col gap-4 rounded-lg bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <ShieldCheck className="h-5 w-5 text-emerald-500" />
+            <ShieldCheck className="h-5 w-5 text-[#00d9c0]" />
             <span>Cancel anytime</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <CreditCard className="h-5 w-5 text-emerald-500" />
+            <CreditCard className="h-5 w-5 text-[#00d9c0]" />
             <span>Secure payment via Stripe</span>
           </div>
         </div>

@@ -108,7 +108,7 @@ export function StepWebsiteType() {
               key={option.type}
               className={`cursor-pointer transition-all ${
                 isSelected
-                  ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                  ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-2 ring-[#00d9c0]/20'
                   : 'hover:border-gray-300 hover:shadow-sm'
               }`}
               onClick={() => setWebsiteType(option.type)}
@@ -119,7 +119,7 @@ export function StepWebsiteType() {
                   <div
                     className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                       isSelected
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-[#00d9c0] text-white'
                         : 'border-2 border-gray-300'
                     }`}
                   >
@@ -129,10 +129,10 @@ export function StepWebsiteType() {
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <Icon className={`h-5 w-5 ${isSelected ? 'text-emerald-600' : 'text-gray-500'}`} />
+                      <Icon className={`h-5 w-5 ${isSelected ? 'text-[#00d9c0]' : 'text-gray-500'}`} />
                       <h3 className="font-semibold text-gray-900">{option.title}</h3>
                       {isSuggested && (
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                        <Badge className="bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/10">
                           Suggested
                         </Badge>
                       )}
@@ -174,7 +174,7 @@ export function StepWebsiteType() {
           <div className="space-y-1 font-mono text-sm text-gray-600">
             {websiteType === 'single_location' && (
               <>
-                <p><span className="text-emerald-600">/</span> ← Primary Category + City (GBP Landing)</p>
+                <p><span className="text-[#00d9c0]">/</span> ← Primary Category + City (GBP Landing)</p>
                 <p><span className="text-gray-400">/hvac-contractor/</span> ← Secondary Category Hub</p>
                 <p><span className="text-gray-400">/hvac-contractor/ac-installation/</span> ← Service Page</p>
                 <p><span className="text-gray-400">/service-areas/</span> ← Nearby Cities</p>
@@ -182,16 +182,16 @@ export function StepWebsiteType() {
             )}
             {websiteType === 'multi_location' && (
               <>
-                <p><span className="text-emerald-600">/</span> ← Brand Homepage (no city keywords)</p>
-                <p><span className="text-emerald-600">/locations/dallas/</span> ← Primary Category + Dallas (GBP Landing)</p>
+                <p><span className="text-[#00d9c0]">/</span> ← Brand Homepage (no city keywords)</p>
+                <p><span className="text-[#00d9c0]">/locations/dallas/</span> ← Primary Category + Dallas (GBP Landing)</p>
                 <p><span className="text-gray-400">/locations/dallas/hvac-contractor/</span> ← Secondary Hub</p>
                 <p><span className="text-gray-400">/locations/dallas/hvac-contractor/ac-repair/</span> ← Service</p>
-                <p><span className="text-emerald-600">/locations/fort-worth/</span> ← Primary Category + Fort Worth (GBP Landing)</p>
+                <p><span className="text-[#00d9c0]">/locations/fort-worth/</span> ← Primary Category + Fort Worth (GBP Landing)</p>
               </>
             )}
             {websiteType === 'microsite' && (
               <>
-                <p><span className="text-emerald-600">/</span> ← Single Topic + City Focus</p>
+                <p><span className="text-[#00d9c0]">/</span> ← Single Topic + City Focus</p>
                 <p><span className="text-gray-400">/services/</span> ← Related Services Only</p>
                 <p><span className="text-gray-400">/about/</span> ← Minimal Supporting Pages</p>
                 <p><span className="text-gray-400">/contact/</span> ← Contact + Location Info</p>
@@ -210,7 +210,7 @@ export function StepWebsiteType() {
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           Next
           <ArrowRight className="ml-2 h-4 w-4" />

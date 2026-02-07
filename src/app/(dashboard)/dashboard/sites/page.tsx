@@ -161,7 +161,7 @@ export default function SitesPage() {
             <h2 className="text-2xl font-bold text-gray-900">Your Sites</h2>
             <p className="text-gray-500">Manage all your local service websites.</p>
           </div>
-          <Button asChild className="bg-emerald-500 hover:bg-emerald-600">
+          <Button asChild className="bg-black hover:bg-gray-800">
             <Link href="/dashboard/sites/new">
               <Plus className="mr-2 h-4 w-4" />
               New Site
@@ -187,7 +187,7 @@ export default function SitesPage() {
                 variant={statusFilter === filter.value ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter(filter.value)}
-                className={statusFilter === filter.value ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                className={statusFilter === filter.value ? 'bg-black hover:bg-gray-800' : ''}
               >
                 {filter.label}
               </Button>
@@ -213,7 +213,7 @@ export default function SitesPage() {
                   : 'Get started by creating your first website.'}
               </p>
               {!searchQuery && statusFilter === 'all' && (
-                <Button asChild className="bg-emerald-500 hover:bg-emerald-600">
+                <Button asChild className="bg-black hover:bg-gray-800">
                   <Link href="/dashboard/sites/new">
                     <Plus className="mr-2 h-4 w-4" />
                     New Site
@@ -225,7 +225,7 @@ export default function SitesPage() {
         ) : (
           <div className="space-y-4">
             {filteredSites.map((site) => (
-              <Card key={site.id} className="hover:border-emerald-200 transition-colors">
+              <Card key={site.id} className="hover:border-[#00d9c0]/20 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     {/* Site Info */}

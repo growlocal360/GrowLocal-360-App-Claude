@@ -246,8 +246,8 @@ export function StepNeighborhoods() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-emerald-100">
-            <Building2 className="h-8 w-8 text-emerald-500" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
+            <Building2 className="h-8 w-8 text-[#00d9c0]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Finding neighborhoods...</p>
           <p className="text-gray-500">Discovering areas within your service cities</p>
@@ -269,11 +269,11 @@ export function StepNeighborhoods() {
       </div>
 
       {/* SEO Explanation */}
-      <div className="flex items-start gap-3 rounded-lg bg-emerald-50 p-4">
-        <Sparkles className="mt-0.5 h-5 w-5 text-emerald-600" />
+      <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
+        <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
         <div>
-          <p className="font-medium text-emerald-900">Why Neighborhoods Matter</p>
-          <p className="text-sm text-emerald-700">
+          <p className="font-medium text-gray-900">Why Neighborhoods Matter</p>
+          <p className="text-sm text-[#00d9c0]">
             Neighborhood pages build geographic relevance for your GBP landing pages. When someone searches
             &quot;plumber in Siesta Key&quot;, having a dedicated page helps you rank AND builds authority for
             your Sarasota location page.
@@ -296,7 +296,7 @@ export function StepNeighborhoods() {
                   <Badge
                     key={n.id}
                     variant="secondary"
-                    className="flex items-center gap-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                    className="flex items-center gap-1 bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/20"
                   >
                     {n.name}
                     {n.isCustom && (
@@ -304,7 +304,7 @@ export function StepNeighborhoods() {
                     )}
                     <button
                       onClick={() => removeNeighborhood(n.id)}
-                      className="ml-1 rounded-full p-0.5 hover:bg-emerald-300"
+                      className="ml-1 rounded-full p-0.5 hover:bg-[#00d9c0]/30"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -325,7 +325,7 @@ export function StepNeighborhoods() {
               variant={selectedLocationFilter === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSelectedLocationFilter('all')}
-              className={selectedLocationFilter === 'all' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+              className={selectedLocationFilter === 'all' ? 'bg-black hover:bg-gray-800' : ''}
             >
               All Locations
             </Button>
@@ -337,7 +337,7 @@ export function StepNeighborhoods() {
                   variant={selectedLocationFilter === locId ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedLocationFilter(locId)}
-                  className={selectedLocationFilter === locId ? 'bg-emerald-500 hover:bg-emerald-600' : ''}
+                  className={selectedLocationFilter === locId ? 'bg-black hover:bg-gray-800' : ''}
                 >
                   {loc.city}
                 </Button>
@@ -387,7 +387,7 @@ export function StepNeighborhoods() {
                   key={neighborhood.id}
                   className={`cursor-pointer transition-all ${
                     selected
-                      ? 'border-emerald-500 bg-emerald-50'
+                      ? 'border-[#00d9c0] bg-[#00d9c0]/5'
                       : 'hover:border-gray-300'
                   }`}
                   onClick={() => handleToggleNeighborhood(neighborhood)}
@@ -397,7 +397,7 @@ export function StepNeighborhoods() {
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded ${
                           selected
-                            ? 'bg-emerald-500 text-white'
+                            ? 'bg-[#00d9c0] text-white'
                             : 'border-2 border-gray-300'
                         }`}
                       >
@@ -532,7 +532,7 @@ export function StepNeighborhoods() {
         <Button
           onClick={nextStep}
           disabled={!canProceed()}
-          className="bg-emerald-500 hover:bg-emerald-600"
+          className="bg-black hover:bg-gray-800"
         >
           {neighborhoods.length === 0 ? 'Skip' : 'Next'}
           <ArrowRight className="ml-2 h-4 w-4" />

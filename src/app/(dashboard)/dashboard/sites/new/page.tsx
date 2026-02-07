@@ -25,7 +25,7 @@ export default async function NewSitePage() {
     <div className="flex flex-col">
       <Header title="New Site" user={userData} />
 
-      <div className="flex-1 bg-gradient-to-br from-gray-50 to-emerald-50/30 p-6">
+      <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100/30 p-6">
         <SiteWizard />
       </div>
     </div>

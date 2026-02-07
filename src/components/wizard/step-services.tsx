@@ -208,14 +208,14 @@ export function StepServices() {
     return (
       <div className="space-y-6">
         <div>
-          <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
+          <span className="inline-block rounded bg-black px-2 py-1 text-xs font-medium text-white">
             Step 4 of 8
           </span>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">Services</h2>
           <p className="mt-1 text-gray-500">Generating SEO-optimized services for your categories...</p>
         </div>
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00d9c0]" />
           <p className="text-sm text-gray-500">This may take a few seconds</p>
         </div>
       </div>
@@ -225,7 +225,7 @@ export function StepServices() {
   return (
     <div className="space-y-6">
       <div>
-        <span className="inline-block rounded bg-gray-900 px-2 py-1 text-xs font-medium text-white">
+        <span className="inline-block rounded bg-black px-2 py-1 text-xs font-medium text-white">
           Step 4 of 8
         </span>
         <h2 className="mt-2 text-2xl font-bold text-gray-900">Services</h2>
@@ -235,14 +235,14 @@ export function StepServices() {
       </div>
 
       {/* Info Card */}
-      <Card className="border-emerald-200 bg-emerald-50">
+      <Card className="border-[#00d9c0]/20 bg-[#00d9c0]/5">
         <CardContent className="flex gap-3 p-4">
-          <Wrench className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600" />
+          <Wrench className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00d9c0]" />
           <div>
-            <p className="font-medium text-emerald-900">Why Services Matter</p>
-            <p className="text-sm text-emerald-700">
-              Primary category services get pages at the root level (e.g., <code className="rounded bg-emerald-100 px-1">/ac-repair</code>).
-              Secondary category services are grouped under their category (e.g., <code className="rounded bg-emerald-100 px-1">/heating/furnace-repair</code>).
+            <p className="font-medium text-gray-900">Why Services Matter</p>
+            <p className="text-sm text-gray-600">
+              Primary category services get pages at the root level (e.g., <code className="rounded bg-gray-100 px-1">/ac-repair</code>).
+              Secondary category services are grouped under their category (e.g., <code className="rounded bg-gray-100 px-1">/heating/furnace-repair</code>).
               This helps you rank for specific searches like &quot;AC repair near me&quot; or &quot;drain cleaning service&quot;.
             </p>
           </div>
@@ -287,7 +287,7 @@ export function StepServices() {
                 <Label htmlFor="custom-service-description">Description <span className="text-gray-400 font-normal">(optional)</span></Label>
                 <textarea
                   id="custom-service-description"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-[#00d9c0] focus:outline-none focus:ring-1 focus:ring-[#00d9c0]"
                   rows={2}
                   placeholder="Brief description of this service for SEO..."
                   value={customServiceDescription}
@@ -349,7 +349,7 @@ export function StepServices() {
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="font-semibold text-gray-900">{categoryName}</h3>
                 {isPrimary && (
-                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                  <Badge variant="secondary" className="bg-[#00d9c0]/10 text-[#00d9c0]">
                     Primary
                   </Badge>
                 )}
@@ -360,7 +360,7 @@ export function StepServices() {
                     key={service.id}
                     className={`cursor-pointer transition-all ${
                       service.isSelected
-                        ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                        ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-1 ring-[#00d9c0]'
                         : 'hover:border-gray-300'
                     }`}
                     onClick={() => toggleService(service.id)}
@@ -424,7 +424,7 @@ export function StepServices() {
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                               service.isSelected
-                                ? 'border-emerald-500 bg-emerald-500 text-white'
+                                ? 'border-[#00d9c0] bg-[#00d9c0] text-white'
                                 : 'border-gray-300'
                             }`}
                           >
@@ -475,12 +475,12 @@ export function StepServices() {
       )}
 
       {/* Info about service pages */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-gray-200 bg-gray-50">
         <CardContent className="flex gap-3 p-4">
-          <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
+          <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-gray-500" />
           <div>
-            <p className="font-medium text-blue-900">How service pages work</p>
-            <p className="text-sm text-blue-700">
+            <p className="font-medium text-gray-900">How service pages work</p>
+            <p className="text-sm text-gray-600">
               Each selected service gets a dedicated page with SEO-optimized content.
               You can add job photos (Job Snaps) to each service page to showcase your work.
             </p>

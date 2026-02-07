@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getCategoryByGcid } from '@/data/gbp-categories';
+
+export const maxDuration = 60;
 
 interface CategoryInput {
   gcid: string;
@@ -12,6 +13,18 @@ interface GeneratedService {
   description: string;
   categoryGcid: string;
   categoryName: string;
+}
+
+const BATCH_SIZE = 3;
+
+// Tier the number of sub-services based on total category count
+function getServicesPerCategory(totalCategories: number): number {
+  if (totalCategories <= 1) return 20;
+  if (totalCategories === 2) return 10;
+  if (totalCategories === 3) return 8;
+  if (totalCategories <= 5) return 6;
+  if (totalCategories <= 8) return 5;
+  return 4;
 }
 
 export async function POST(request: Request) {
@@ -30,38 +43,62 @@ export async function POST(request: Request) {
 
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     if (!anthropicApiKey) {
-      // Fall back to hardcoded commonServices if no API key
-      const fallbackServices: GeneratedService[] = [];
-      for (const category of categories) {
-        const fullCategory = getCategoryByGcid(category.gcid);
-        if (fullCategory?.commonServices) {
-          for (const serviceName of fullCategory.commonServices) {
-            fallbackServices.push({
-              name: serviceName,
-              description: '',
-              categoryGcid: category.gcid,
-              categoryName: category.name,
-            });
-          }
-        }
-      }
-      return NextResponse.json({ services: fallbackServices });
+      return NextResponse.json(
+        { error: 'API key not configured' },
+        { status: 500 }
+      );
     }
 
     const anthropic = new Anthropic({
       apiKey: anthropicApiKey,
     });
 
-    // Build the prompt for granular, problem-based sub-services
-    const categoryList = categories
-      .map((c) => `- ${c.name} (ID: ${c.gcid})`)
-      .join('\n');
+    const servicesPerCategory = getServicesPerCategory(categories.length);
 
-    const prompt = `You are an SEO expert helping a local service business create service pages for their website. They operate in these Google Business Profile categories:
+    // Batch categories into groups of 3 for parallel calls
+    const batches: CategoryInput[][] = [];
+    for (let i = 0; i < categories.length; i += BATCH_SIZE) {
+      batches.push(categories.slice(i, i + BATCH_SIZE));
+    }
+
+    // Run all batches in parallel
+    const batchResults = await Promise.all(
+      batches.map(async (batch) => {
+        try {
+          return await generateServicesForBatch(anthropic, batch, servicesPerCategory);
+        } catch (error) {
+          console.error('Batch failed for categories:', batch.map(c => c.name).join(', '), error);
+          return [];
+        }
+      })
+    );
+
+    const allServices = batchResults.flat();
+
+    return NextResponse.json({ services: allServices });
+  } catch (error) {
+    console.error('Error in services suggest API:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to generate suggestions' },
+      { status: 500 }
+    );
+  }
+}
+
+async function generateServicesForBatch(
+  anthropic: Anthropic,
+  categories: CategoryInput[],
+  servicesPerCategory: number
+): Promise<GeneratedService[]> {
+  const categoryList = categories
+    .map((c) => `- ${c.name} (ID: ${c.gcid})`)
+    .join('\n');
+
+  const prompt = `You are an SEO expert helping a local service business create service pages for their website. They operate in these Google Business Profile categories:
 
 ${categoryList}
 
-For EACH category, generate 6-8 granular, problem-based sub-services that:
+For EACH category, generate exactly ${servicesPerCategory} granular, problem-based sub-services that:
 1. Represent specific problems/symptoms customers actually search for (e.g., "AC Not Cooling" instead of generic "AC Repair")
 2. Would make excellent individual service pages for local SEO
 3. Include a mix of:
@@ -89,71 +126,36 @@ Format your response as JSON:
 }
 
 Important:
-- Generate 6-8 services PER category
+- Generate exactly ${servicesPerCategory} services PER category
 - Make service names concise but descriptive (3-5 words max)
 - Avoid generic names like "AC Repair" - be specific about the problem or service
 - Each service should be distinct enough to warrant its own page
 - Return ONLY the JSON, no other text`;
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  });
 
-    // Extract text content
-    const textContent = message.content.find((block) => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      // Fall back to hardcoded services
-      return NextResponse.json({ services: getFallbackServices(categories) });
-    }
-
-    // Parse JSON response
-    try {
-      const responseText = textContent.text.trim();
-      // Handle potential markdown code blocks
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const result = JSON.parse(jsonMatch[0]);
-        return NextResponse.json({
-          services: result.services || [],
-        });
-      }
-    } catch (parseError) {
-      console.error('Failed to parse LLM response:', parseError);
-    }
-
-    // Fall back to hardcoded services on parse failure
-    return NextResponse.json({ services: getFallbackServices(categories) });
-  } catch (error) {
-    console.error('Error in services suggest API:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate suggestions' },
-      { status: 500 }
-    );
+  // Extract text content
+  const textContent = message.content.find((block) => block.type === 'text');
+  if (!textContent || textContent.type !== 'text') {
+    return [];
   }
-}
 
-// Fallback to hardcoded commonServices from gbp-categories.ts
-function getFallbackServices(categories: CategoryInput[]): GeneratedService[] {
-  const services: GeneratedService[] = [];
-  for (const category of categories) {
-    const fullCategory = getCategoryByGcid(category.gcid);
-    if (fullCategory?.commonServices) {
-      for (const serviceName of fullCategory.commonServices) {
-        services.push({
-          name: serviceName,
-          description: '',
-          categoryGcid: category.gcid,
-          categoryName: category.name,
-        });
-      }
-    }
+  // Parse JSON response
+  const responseText = textContent.text.trim();
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    const result = JSON.parse(jsonMatch[0]);
+    return result.services || [];
   }
-  return services;
+
+  return [];
 }

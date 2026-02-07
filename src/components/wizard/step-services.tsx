@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
   Info,
   Plus,
+  RefreshCw,
   Search,
   X,
   Wrench,
@@ -21,7 +23,6 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { WizardService } from '@/types/wizard';
-import { getCategoryByGcid } from '@/data/gbp-categories';
 
 export function StepServices() {
   const {
@@ -38,6 +39,7 @@ export function StepServices() {
   } = useWizardStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customServiceName, setCustomServiceName] = useState('');
@@ -52,104 +54,73 @@ export function StepServices() {
     return cats;
   }, [primaryCategory, secondaryCategories]);
 
-  // Generate services from AI on mount
-  useEffect(() => {
-    if (services.length > 0) return; // Already initialized
+  // Fetch services from AI
+  const generateServices = async () => {
     if (allCategories.length === 0) return;
 
-    const generateServices = async () => {
-      setIsLoading(true);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const response = await fetch('/api/services/suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            categories: allCategories.map((c) => ({
-              gcid: c.gcid,
-              name: c.displayName,
-            })),
-          }),
-        });
+    try {
+      const response = await fetch('/api/services/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categories: allCategories.map((c) => ({
+            gcid: c.gcid,
+            name: c.displayName,
+          })),
+        }),
+      });
 
-        if (response.ok) {
-          const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
 
-          if (data.services && data.services.length > 0) {
-            let sortOrder = 0;
-            const generatedServices: WizardService[] = data.services.map(
-              (service: { name: string; description: string; categoryGcid: string; categoryName: string }) => {
-                const slug = service.name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-|-$/g, '');
+        if (data.services && data.services.length > 0) {
+          let sortOrder = 0;
+          const generatedServices: WizardService[] = data.services.map(
+            (service: { name: string; description: string; categoryGcid: string; categoryName: string }) => {
+              const slug = service.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
 
-                return {
-                  id: `ai-${service.categoryGcid}-${slug}`,
-                  name: service.name,
-                  slug,
-                  description: service.description || null,
-                  categoryGcid: service.categoryGcid,
-                  categoryName: service.categoryName,
-                  isSelected: true, // Pre-select all AI-generated services
-                  isCustom: false,
-                  sortOrder: sortOrder++,
-                };
-              }
-            );
+              return {
+                id: `ai-${service.categoryGcid}-${slug}`,
+                name: service.name,
+                slug,
+                description: service.description || null,
+                categoryGcid: service.categoryGcid,
+                categoryName: service.categoryName,
+                isSelected: true,
+                isCustom: false,
+                sortOrder: sortOrder++,
+              };
+            }
+          );
 
-            setServices(generatedServices);
-          } else {
-            // Fallback to hardcoded services if API returns empty
-            loadFallbackServices();
-          }
+          setServices(generatedServices);
         } else {
-          // Fallback on API error
-          loadFallbackServices();
+          setError('No services were generated. Try again or add services manually.');
         }
-      } catch (error) {
-        console.error('Error generating services:', error);
-        // Fallback on network error
-        loadFallbackServices();
-      } finally {
-        setIsLoading(false);
+      } else {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || 'Failed to generate services. Please try again.');
       }
-    };
+    } catch (err) {
+      console.error('Error generating services:', err);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Fallback to hardcoded commonServices
-    const loadFallbackServices = () => {
-      const fallbackServices: WizardService[] = [];
-      let sortOrder = 0;
-
-      for (const category of allCategories) {
-        const fullCategory = getCategoryByGcid(category.gcid) || category;
-        const commonServices = fullCategory.commonServices || [];
-
-        for (const serviceName of commonServices) {
-          const slug = serviceName
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '');
-
-          fallbackServices.push({
-            id: `${category.gcid}-${slug}`,
-            name: serviceName,
-            slug,
-            description: null,
-            categoryGcid: category.gcid,
-            categoryName: category.displayName,
-            isSelected: true,
-            isCustom: false,
-            sortOrder: sortOrder++,
-          });
-        }
-      }
-
-      setServices(fallbackServices);
-    };
-
+  // Generate services on mount
+  useEffect(() => {
+    if (services.length > 0) return; // Already initialized
     generateServices();
-  }, [allCategories, services.length, setServices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCategories, services.length]);
 
   // Filter services by search
   const filteredServices = useMemo(() => {
@@ -443,8 +414,30 @@ export function StepServices() {
         })}
       </div>
 
-      {/* Empty State */}
-      {filteredServices.length === 0 && (
+      {/* Error State */}
+      {error && services.length === 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
+            <AlertTriangle className="h-8 w-8 text-amber-500" />
+            <p className="font-medium text-amber-900">{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={generateServices}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Retry
+            </Button>
+            <p className="text-xs text-amber-700">
+              You can also add services manually using the &quot;Add Custom&quot; button above.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State (search returned no results) */}
+      {filteredServices.length === 0 && !error && services.length > 0 && (
         <div className="py-8 text-center">
           <Wrench className="mx-auto h-12 w-12 text-gray-300" />
           <p className="mt-2 text-gray-500">No services found</p>

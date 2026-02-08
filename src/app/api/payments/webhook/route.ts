@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { waitUntil } from '@vercel/functions';
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
@@ -125,10 +126,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   // Trigger background content generation
   // Site was created with status 'building', now start the AI content generation
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const internalKey = process.env.INTERNAL_API_KEY;
-    // Use the new background function that supports up to 5 minutes
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const internalKey = process.env.INTERNAL_API_KEY;
+  waitUntil(
     fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
       headers: {
@@ -136,14 +136,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         'x-internal-key': internalKey || '',
       },
     }).catch((err) => {
-      // Fire and forget - content generation happens async in background
       console.error('Failed to trigger content generation:', err);
-    });
-  } catch {
-    // Content generation error shouldn't fail the webhook
-    // Site is still created, user can retry from dashboard
-    console.error('Failed to trigger content generation');
-  }
+    })
+  );
 
   console.log(`Site ${siteId} created for user ${userId} with plan ${planName}`);
 }

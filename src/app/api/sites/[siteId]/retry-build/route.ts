@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { waitUntil } from '@vercel/functions';
 
 export async function POST(
   request: NextRequest,
@@ -100,9 +101,9 @@ export async function POST(
   }
 
   // Trigger background content generation
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const internalKey = process.env.INTERNAL_API_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const internalKey = process.env.INTERNAL_API_KEY;
+  waitUntil(
     fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
       headers: {
@@ -111,10 +112,8 @@ export async function POST(
       },
     }).catch((err) => {
       console.error('Failed to trigger content generation:', err);
-    });
-  } catch {
-    console.error('Failed to trigger content generation');
-  }
+    })
+  );
 
   return NextResponse.json({
     success: true,

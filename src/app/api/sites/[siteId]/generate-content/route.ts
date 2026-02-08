@@ -326,33 +326,38 @@ async function generateAllContent(
           `Generating ${batch[0].name} and ${batch.length - 1} more services...`
         );
 
-        const serviceContents = await generateServicePages(
-          anthropic,
-          businessName,
-          primaryLocation.city,
-          primaryLocation.state,
-          catNameForServices,
-          batch.map((s) => ({ name: s.name, description: s.description || '' }))
-        );
+        try {
+          const serviceContents = await generateServicePages(
+            anthropic,
+            businessName,
+            primaryLocation.city,
+            primaryLocation.state,
+            catNameForServices,
+            batch.map((s) => ({ name: s.name, description: s.description || '' }))
+          );
 
-        for (let j = 0; j < batch.length; j++) {
-          const service = batch[j];
-          const content = serviceContents[j];
+          for (let j = 0; j < batch.length; j++) {
+            const service = batch[j];
+            const content = serviceContents[j];
 
-          if (content) {
-            await supabase
-              .from('services')
-              .update({
-                meta_title: content.meta_title,
-                meta_description: content.meta_description,
-                h1: content.h1,
-                body_copy: content.body_copy,
-                faqs: content.faqs,
-              })
-              .eq('id', service.id);
+            if (content) {
+              await supabase
+                .from('services')
+                .update({
+                  meta_title: content.meta_title,
+                  meta_description: content.meta_description,
+                  h1: content.h1,
+                  body_copy: content.body_copy,
+                  faqs: content.faqs,
+                })
+                .eq('id', service.id);
+            }
+
+            completedTasks++;
           }
-
-          completedTasks++;
+        } catch (batchError) {
+          console.error(`Failed to generate service batch starting at ${batch[0].name}:`, batchError);
+          completedTasks += batch.length;
         }
       }
     }
@@ -370,32 +375,37 @@ async function generateAllContent(
         `Generating ${batch[0].name} service area page...`
       );
 
-      const areaContents = await generateServiceAreaPages(
-        anthropic,
-        businessName,
-        primaryLocation.city,
-        primaryLocation.state,
-        categoryName,
-        batch.map((a) => ({ name: a.name, state: a.state || primaryLocation.state }))
-      );
+      try {
+        const areaContents = await generateServiceAreaPages(
+          anthropic,
+          businessName,
+          primaryLocation.city,
+          primaryLocation.state,
+          categoryName,
+          batch.map((a) => ({ name: a.name, state: a.state || primaryLocation.state }))
+        );
 
-      for (let j = 0; j < batch.length; j++) {
-        const area = batch[j];
-        const content = areaContents[j];
+        for (let j = 0; j < batch.length; j++) {
+          const area = batch[j];
+          const content = areaContents[j];
 
-        if (content) {
-          await supabase
-            .from('service_areas')
-            .update({
-              meta_title: content.meta_title,
-              meta_description: content.meta_description,
-              h1: content.h1,
-              body_copy: content.body_copy,
-            })
-            .eq('id', area.id);
+          if (content) {
+            await supabase
+              .from('service_areas')
+              .update({
+                meta_title: content.meta_title,
+                meta_description: content.meta_description,
+                h1: content.h1,
+                body_copy: content.body_copy,
+              })
+              .eq('id', area.id);
+          }
+
+          completedTasks++;
         }
-
-        completedTasks++;
+      } catch (batchError) {
+        console.error(`Failed to generate service area batch starting at ${batch[0].name}:`, batchError);
+        completedTasks += batch.length;
       }
     }
 
@@ -512,11 +522,16 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const message = await withRetry(() =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { timeout: 120_000 }
+    )
+  );
 
   const result = parseJsonResponse<{
     pages: {
@@ -564,11 +579,16 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const message = await withRetry(() =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { timeout: 120_000 }
+    )
+  );
 
   const result = parseJsonResponse<{
     meta_title: string;
@@ -625,11 +645,16 @@ Format your response as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const message = await withRetry(() =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { timeout: 120_000 }
+    )
+  );
 
   const result = parseJsonResponse<{
     services: {
@@ -688,11 +713,16 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8192,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  const message = await withRetry(() =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { timeout: 120_000 }
+    )
+  );
 
   const result = parseJsonResponse<{
     service_areas: {
@@ -705,6 +735,19 @@ Return ONLY valid JSON.`;
   }>(message);
 
   return result?.service_areas || [];
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === retries) throw error;
+      console.warn(`API call failed, retrying (attempt ${attempt + 1}):`, error);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  throw new Error('Unreachable');
 }
 
 function parseJsonResponse<T>(message: Anthropic.Message): T | null {

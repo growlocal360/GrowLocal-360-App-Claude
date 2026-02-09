@@ -1,4 +1,4 @@
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type {
   SiteWithRelations,
   Location,
@@ -28,7 +28,7 @@ export interface CategoryPageData {
 
 // Get all services for a site
 export async function getServicesForSite(siteId: string): Promise<Service[]> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   const { data: services } = await supabase
     .from('services')
@@ -45,7 +45,7 @@ export async function getCategoriesWithServices(siteId: string): Promise<{
   categories: (SiteCategory & { gbp_category: GBPCategory })[];
   services: Service[];
 }> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site categories with GBP category data
   const { data: categories } = await supabase
@@ -77,7 +77,7 @@ export async function getServiceBySlugSingleLocation(
   siteSlug: string,
   serviceSlug: string
 ): Promise<ServicePageData | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -150,7 +150,7 @@ export async function getCategoryBySlugSingleLocation(
   siteSlug: string,
   categorySlug: string
 ): Promise<CategoryPageData | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -231,7 +231,7 @@ export async function getServiceBySlugMultiLocation(
   locationSlug: string,
   serviceSlug: string
 ): Promise<ServicePageData | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -307,7 +307,7 @@ export async function getAllServiceSlugs(): Promise<{
   websiteType: string;
   locationSlug?: string;
 }[]> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch all active sites
   const { data: sites } = await supabase

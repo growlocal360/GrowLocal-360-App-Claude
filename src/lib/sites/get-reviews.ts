@@ -1,8 +1,8 @@
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { GoogleReview } from '@/types/database';
 
 export async function getGoogleReviewsForSite(siteId: string): Promise<GoogleReview[]> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   const { data: reviews } = await supabase
     .from('google_reviews')

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
@@ -15,7 +15,7 @@ async function getNestedServiceData(
   categorySlug: string,
   serviceSlug: string
 ) {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase

@@ -1,4 +1,4 @@
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood, SitePage, GoogleReview } from '@/types/database';
 
 export interface PublicSiteData {
@@ -12,7 +12,7 @@ export interface PublicSiteData {
 }
 
 export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site, error: siteError } = await supabase
@@ -90,7 +90,7 @@ export async function getNeighborhoodBySlug(
   neighborhood: Neighborhood;
   allNeighborhoods: Neighborhood[];
 } | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -142,7 +142,7 @@ export async function getNeighborhoodBySlug(
 }
 
 export async function getAllSiteSlugs(): Promise<string[]> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   const { data: sites } = await supabase
     .from('sites')
@@ -162,7 +162,7 @@ export async function getNeighborhoodBySlugSingleLocation(
   neighborhood: Neighborhood;
   allNeighborhoods: Neighborhood[];
 } | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -222,7 +222,7 @@ export async function getLocationBySlug(
   neighborhoods: Neighborhood[];
   serviceAreas: ServiceAreaDB[];
 } | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase

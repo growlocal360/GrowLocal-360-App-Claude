@@ -65,7 +65,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                 {categories.map((cat) => {
                   const services = servicesByCategory[cat.id] || [];
                   return (
-                    <Link key={cat.id} href={`#category-${cat.id}`}>
+                    <Link key={cat.id} href={getCategoryUrl(cat)}>
                       <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
                         <CardContent className="p-5">
                           <div
@@ -109,9 +109,11 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                             <Wrench className="h-6 w-6" style={{ color: brandColor }} />
                           </div>
                           <div>
-                            <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
-                              {categoryName}
-                            </h2>
+                            <Link href={getCategoryUrl(cat)} className="hover:underline">
+                              <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+                                {categoryName}
+                              </h2>
+                            </Link>
                             {city && (
                               <p className="mt-1 text-sm text-gray-500">
                                 Professional {categoryName.toLowerCase()} services in {city}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -44,6 +45,9 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // Use admin client for storage operations (bypasses RLS policies)
+  const adminSupabase = createAdminClient();
+
   // Parse the multipart form data
   const formData = await request.formData();
   const file = formData.get('logo') as File | null;
@@ -78,18 +82,18 @@ export async function POST(
   const buffer = Buffer.from(arrayBuffer);
 
   // Check if there's an existing logo to delete
-  const { data: existingFiles } = await supabase.storage
+  const { data: existingFiles } = await adminSupabase.storage
     .from('site-logos')
     .list(`sites/${siteId}`);
 
   if (existingFiles && existingFiles.length > 0) {
     // Delete existing logo files
     const filesToDelete = existingFiles.map((f) => `sites/${siteId}/${f.name}`);
-    await supabase.storage.from('site-logos').remove(filesToDelete);
+    await adminSupabase.storage.from('site-logos').remove(filesToDelete);
   }
 
   // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await adminSupabase.storage
     .from('site-logos')
     .upload(filePath, buffer, {
       contentType: file.type,
@@ -105,7 +109,7 @@ export async function POST(
   }
 
   // Get the public URL
-  const { data: urlData } = supabase.storage
+  const { data: urlData } = adminSupabase.storage
     .from('site-logos')
     .getPublicUrl(filePath);
 

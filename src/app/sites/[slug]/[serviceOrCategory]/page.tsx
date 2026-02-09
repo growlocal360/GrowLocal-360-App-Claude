@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
-import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
+import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
+import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
 interface ServiceOrCategoryPageProps {
   params: Promise<{ slug: string; serviceOrCategory: string }>;
@@ -43,7 +44,16 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   const serviceData = await getServiceBySlugSingleLocation(slug, serviceOrCategory);
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
-    const googleReviews = await getGoogleReviewsForSite(serviceData.site.id);
+    const [googleReviews, { categories }] = await Promise.all([
+      getGoogleReviewsForSite(serviceData.site.id),
+      getCategoriesWithServices(serviceData.site.id),
+    ]);
+
+    const navCategories: NavCategory[] = categories.map(c => ({
+      name: c.gbp_category.display_name,
+      slug: c.gbp_category.name,
+      isPrimary: c.is_primary,
+    }));
 
     return (
       <ServicePage
@@ -51,6 +61,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
         googleReviews={googleReviews}
+        categories={navCategories}
       />
     );
   }

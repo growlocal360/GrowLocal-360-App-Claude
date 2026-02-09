@@ -5,7 +5,7 @@ import { Phone, MapPin, ChevronRight, Wrench, CheckCircle, ArrowRight } from 'lu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
-import { SiteHeader } from './site-header';
+import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
 interface ServiceAreaPageProps {
@@ -30,6 +30,12 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
 
   // Get primary category for service links
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
+
+  const navCategories: NavCategory[] = categories.map(c => ({
+    name: c.gbp_category.display_name,
+    slug: c.gbp_category.name,
+    isPrimary: c.is_primary,
+  }));
 
   // Get service URL
   const getServiceUrl = (serviceSlug: string) => {
@@ -74,7 +80,7 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} />
 
       <main>
         {/* Breadcrumb */}
@@ -307,7 +313,7 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
         </section>
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />
     </div>
   );
 }

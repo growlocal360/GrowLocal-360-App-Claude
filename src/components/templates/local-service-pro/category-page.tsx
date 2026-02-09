@@ -5,7 +5,7 @@ import { Phone, ChevronRight, Wrench, ArrowRight, Star, Shield, Award, Clock } f
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview } from '@/types/database';
-import { SiteHeader } from './site-header';
+import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { MultiStepForm } from './multi-step-form';
 import { TrustBar } from './trust-bar';
@@ -49,6 +49,12 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
     `${site.name} provides professional ${categoryName.toLowerCase()} services in ${location.city}, ${location.state}.`;
   const otherCategories = allCategories.filter(c => c.id !== category.id);
 
+  const navCategories: NavCategory[] = allCategories.map(c => ({
+    name: c.gbp_category.display_name,
+    slug: c.gbp_category.name,
+    isPrimary: c.is_primary,
+  }));
+
   const getServiceUrl = (svc: Service) => {
     return `/sites/${siteSlug}/${categorySlug}/${svc.slug}`;
   };
@@ -77,7 +83,7 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} />
 
       <main>
         {/* Breadcrumb */}
@@ -302,7 +308,7 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
         </section>
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
+import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
 interface NestedServicePageProps {
@@ -111,7 +113,16 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
     notFound();
   }
 
-  const googleReviews = await getGoogleReviewsForSite(data.site.id);
+  const [googleReviews, { categories }] = await Promise.all([
+    getGoogleReviewsForSite(data.site.id),
+    getCategoriesWithServices(data.site.id),
+  ]);
+
+  const navCategories: NavCategory[] = categories.map(c => ({
+    name: c.gbp_category.display_name,
+    slug: c.gbp_category.name,
+    isPrimary: c.is_primary,
+  }));
 
   return (
     <ServicePage
@@ -119,6 +130,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       siteSlug={slug}
       isPrimaryCategory={false}
       googleReviews={googleReviews}
+      categories={navCategories}
     />
   );
 }

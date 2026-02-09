@@ -6,7 +6,7 @@ import { Phone, ChevronRight, Wrench, CheckCircle, Shield, Clock, Award, ThumbsU
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview } from '@/types/database';
-import { SiteHeader } from './site-header';
+import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { MultiStepForm } from './multi-step-form';
 import { TestimonialsSection } from './testimonials-section';
@@ -23,9 +23,10 @@ interface ServicePageProps {
   siteSlug: string;
   isPrimaryCategory: boolean;
   googleReviews?: GoogleReview[];
+  categories?: NavCategory[];
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || location.phone;
@@ -96,7 +97,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} categories={categories} siteSlug={siteSlug} />
 
       <main>
         {/* Breadcrumb */}
@@ -335,7 +336,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews }
         )}
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />
     </div>
   );
 }

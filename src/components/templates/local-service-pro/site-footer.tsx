@@ -73,14 +73,29 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: Si
                 </Link>
               </li>
               <li>
-                <a href="#services" className="hover:text-white">
-                  Our Services
-                </a>
+                <Link href={`/sites/${slug}/about`} className="hover:text-white">
+                  About
+                </Link>
               </li>
               <li>
-                <a href="#contact" className="hover:text-white">
+                <Link href={`/sites/${slug}#services`} className="hover:text-white">
+                  Services
+                </Link>
+              </li>
+              <li>
+                <Link href={`/sites/${slug}#service-areas`} className="hover:text-white">
+                  Service Areas
+                </Link>
+              </li>
+              <li>
+                <Link href={`/sites/${slug}/jobs`} className="hover:text-white">
+                  Jobs
+                </Link>
+              </li>
+              <li>
+                <Link href={`/sites/${slug}/contact`} className="hover:text-white">
                   Contact
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

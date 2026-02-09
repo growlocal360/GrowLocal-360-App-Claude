@@ -2,7 +2,7 @@
 
 import { PublicSiteData } from '@/lib/sites/get-site';
 import type { Service } from '@/types/database';
-import { SiteHeader } from './site-header';
+import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
 import { ServicesPreview } from './services-preview';
@@ -18,9 +18,10 @@ interface LocalServiceProTemplateProps {
   siteSlug?: string;
   services?: Service[];
   primaryCategorySlug?: string;
+  categories?: NavCategory[];
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -32,7 +33,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={slug} />
       <main>
         <HeroSection
           site={site}

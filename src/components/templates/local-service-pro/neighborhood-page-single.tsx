@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SiteWithRelations, Location, Neighborhood } from '@/types/database';
-import { SiteHeader } from './site-header';
+import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
 interface NeighborhoodPageSingleLocationProps {
@@ -17,9 +17,10 @@ interface NeighborhoodPageSingleLocationProps {
     allNeighborhoods: Neighborhood[];
   };
   siteSlug: string;
+  categories?: NavCategory[];
 }
 
-export function NeighborhoodPageSingleLocation({ data, siteSlug }: NeighborhoodPageSingleLocationProps) {
+export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: NeighborhoodPageSingleLocationProps) {
   const { site, location, neighborhood, allNeighborhoods } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
@@ -69,7 +70,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug }: NeighborhoodP
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} categories={categories} siteSlug={siteSlug} />
 
       <main>
         {/* Breadcrumb - Single location structure */}

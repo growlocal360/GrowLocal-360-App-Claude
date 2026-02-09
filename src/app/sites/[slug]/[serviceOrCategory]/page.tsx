@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
+import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 
@@ -24,11 +25,11 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
   // Try to get as a category (secondary categories)
   const categoryData = await getCategoryBySlugSingleLocation(slug, serviceOrCategory);
   if (categoryData) {
-    const { category, location, site } = categoryData;
+    const { category, location, site, pageContent } = categoryData;
     const categoryName = category.gbp_category.display_name;
     return {
-      title: `${categoryName} in ${location.city}, ${location.state} | ${site.name}`,
-      description: `Professional ${categoryName.toLowerCase()} services in ${location.city}. ${site.name} provides expert service with upfront pricing.`,
+      title: pageContent?.meta_title || `${categoryName} in ${location.city}, ${location.state} | ${site.name}`,
+      description: pageContent?.meta_description || `Professional ${categoryName.toLowerCase()} services in ${location.city}. ${site.name} provides expert service with upfront pricing.`,
     };
   }
 
@@ -41,14 +42,15 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   // Try to get as a service first (primary category services are at root level)
   const serviceData = await getServiceBySlugSingleLocation(slug, serviceOrCategory);
   if (serviceData) {
-    // Check if this service belongs to the primary category
     const isPrimaryCategory = serviceData.category.is_primary;
+    const googleReviews = await getGoogleReviewsForSite(serviceData.site.id);
 
     return (
       <ServicePage
         data={serviceData}
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
+        googleReviews={googleReviews}
       />
     );
   }
@@ -56,10 +58,13 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   // Try to get as a category (secondary categories have their own page)
   const categoryData = await getCategoryBySlugSingleLocation(slug, serviceOrCategory);
   if (categoryData) {
+    const googleReviews = await getGoogleReviewsForSite(categoryData.site.id);
+
     return (
       <CategoryPage
         data={categoryData}
         siteSlug={slug}
+        googleReviews={googleReviews}
       />
     );
   }

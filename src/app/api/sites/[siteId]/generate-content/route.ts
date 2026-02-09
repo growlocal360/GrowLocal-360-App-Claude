@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { waitUntil } from '@vercel/functions';
 import Anthropic from '@anthropic-ai/sdk';
+import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 
 // Vercel background function - up to 5 minutes
 export const maxDuration = 300;
@@ -142,6 +143,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', siteId);
 
+    // Capture Google access token for review fetching (only available during user session)
+    let googleAccessToken: string | null = null;
+    if (!isInternalCall) {
+      const { data: { session } } = await supabase.auth.getSession();
+      googleAccessToken = session?.provider_token || null;
+    }
+
     // Start content generation in background using waitUntil
     // This keeps the function alive after returning the response
     waitUntil(
@@ -149,12 +157,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         siteId,
         site.name,
         site.website_type,
+        site.settings,
         primaryLocation,
         primaryCategory,
         services || [],
         serviceAreas || [],
         siteCategories || [],
-        initialProgress
+        initialProgress,
+        googleAccessToken
       ).catch((error) => {
         console.error('Background content generation failed:', error);
       })
@@ -186,12 +196,14 @@ async function generateAllContent(
   siteId: string,
   businessName: string,
   websiteType: string,
-  primaryLocation: { city: string; state: string },
+  siteSettings: Record<string, unknown> | null,
+  primaryLocation: { id: string; city: string; state: string; gbp_account_id?: string | null; gbp_location_id?: string | null },
   primaryCategory: { gbp_categories: { display_name: string } | { display_name: string }[] },
   services: { id: string; name: string; description: string | null; site_category_id: string }[],
   serviceAreas: { id: string; name: string; state: string | null }[],
   siteCategories: { id: string; is_primary: boolean; gbp_categories: { display_name: string } | { display_name: string }[] }[],
-  progress: SiteBuildProgress
+  progress: SiteBuildProgress,
+  googleAccessToken: string | null
 ) {
   const { createAdminClient } = await import('@/lib/supabase/admin');
   const supabase = createAdminClient();
@@ -211,6 +223,56 @@ async function generateAllContent(
   let completedTasks = 0;
 
   try {
+    // 0. Fetch Google Reviews (non-fatal — continues if this fails)
+    if (googleAccessToken && primaryLocation.gbp_account_id && primaryLocation.gbp_location_id) {
+      try {
+        await updateProgress(supabase, siteId, progress, completedTasks, 'Fetching Google Reviews...');
+        const gbpClient = new GBPClient(googleAccessToken);
+        const reviewsResponse = await gbpClient.getReviews(
+          primaryLocation.gbp_account_id,
+          primaryLocation.gbp_location_id
+        );
+
+        if (reviewsResponse.reviews?.length) {
+          const reviewRows = reviewsResponse.reviews.map((r) => ({
+            site_id: siteId,
+            location_id: primaryLocation.id,
+            google_review_id: r.reviewId,
+            author_name: r.reviewer.isAnonymous ? 'Anonymous' : (r.reviewer.displayName || 'Customer'),
+            author_photo_url: r.reviewer.profilePhotoUrl || null,
+            rating: starRatingToNumber(r.starRating),
+            comment: r.comment || null,
+            review_date: r.createTime,
+            review_reply: r.reviewReply?.comment || null,
+            reply_date: r.reviewReply?.updateTime || null,
+          }));
+
+          await supabase.from('google_reviews').upsert(reviewRows, {
+            onConflict: 'site_id,google_review_id',
+          });
+
+          console.log(`Fetched ${reviewsResponse.reviews.length} Google Reviews for site ${siteId}`);
+        }
+
+        // Store average rating + total count in site settings
+        if (reviewsResponse.averageRating) {
+          await supabase
+            .from('sites')
+            .update({
+              settings: {
+                ...(siteSettings || {}),
+                google_average_rating: reviewsResponse.averageRating,
+                google_total_reviews: reviewsResponse.totalReviewCount || 0,
+              },
+            })
+            .eq('id', siteId);
+        }
+      } catch (reviewError) {
+        console.error('Failed to fetch Google Reviews (non-fatal):', reviewError);
+        // Continue with content generation — reviews are optional
+      }
+    }
+
     // 1. Generate core pages (home, about, contact)
     await updateProgress(supabase, siteId, progress, completedTasks, 'Generating home page...');
 
@@ -233,7 +295,9 @@ async function generateAllContent(
           meta_description: page.meta_description,
           h1: page.h1,
           h2: page.h2,
+          hero_description: page.hero_description || null,
           body_copy: page.body_copy,
+          body_copy_2: page.body_copy_2 || null,
           is_active: true,
         },
         { onConflict: 'site_id,slug' }
@@ -286,7 +350,9 @@ async function generateAllContent(
           meta_description: categoryContent.meta_description,
           h1: categoryContent.h1,
           h2: categoryContent.h2,
+          hero_description: categoryContent.hero_description || null,
           body_copy: categoryContent.body_copy,
+          body_copy_2: categoryContent.body_copy_2 || null,
           is_active: true,
         },
         { onConflict: 'site_id,slug' }
@@ -348,6 +414,9 @@ async function generateAllContent(
                   meta_description: content.meta_description,
                   h1: content.h1,
                   body_copy: content.body_copy,
+                  intro_copy: content.intro_copy || null,
+                  problems: content.problems || null,
+                  detailed_sections: content.detailed_sections || null,
                   faqs: content.faqs,
                 })
                 .eq('id', service.id);
@@ -482,7 +551,7 @@ async function generateCorePages(
 ) {
   const homePageFocus =
     websiteType === 'single_location'
-      ? `The home page should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business.`
+      ? `The home page IS the primary category page. It should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business. The H1 should be like "Your Trusted ${primaryCategory} in ${city}, ${state}".`
       : `The home page should be brand-focused for ${businessName} since this is a multi-location business.`;
 
   const prompt = `You are an SEO expert generating core page content for a local service business website.
@@ -500,11 +569,18 @@ For EACH page, provide:
 1. meta_title: SEO-optimized title (max 60 chars)
 2. meta_description: Compelling description with CTA (max 155 chars)
 3. h1: Main heading
-4. h2: Supporting subheading
-5. body_copy: Appropriate content for each page type:
-   - Home: 2-3 paragraphs introducing the business and primary services (300-500 words)
-   - About: Company story, values, and why choose us (300-500 words)
+4. h2: Supporting subheading (for home page: something like "Serving ${city} With Quality ${primaryCategory}" or "Your Local ${primaryCategory} Expert")
+5. hero_description: 1-2 sentence hero subheading for the page (compelling value proposition, used below the H1)
+6. body_copy: Main content block:
+   - Home: 2-3 paragraphs about the business, services, and why customers trust them (300-500 words). Write naturally about the business and its commitment to the community.
+   - About: Company story, values, team expertise, and why choose us (300-500 words)
    - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
+7. body_copy_2: Secondary content block (used in alternating layout sections):
+   - Home: 1-2 paragraphs about community commitment, certifications, or experience (150-250 words)
+   - About: Additional section about team or certifications (150-250 words)
+   - Contact: empty string
+
+Use double newlines (\\n\\n) to separate paragraphs within body_copy and body_copy_2.
 
 Format as JSON:
 {
@@ -515,7 +591,9 @@ Format as JSON:
       "meta_description": "...",
       "h1": "...",
       "h2": "...",
-      "body_copy": "..."
+      "hero_description": "...",
+      "body_copy": "...",
+      "body_copy_2": "..."
     }
   ]
 }
@@ -540,7 +618,9 @@ Return ONLY valid JSON.`;
       meta_description: string;
       h1: string;
       h2: string;
+      hero_description: string;
       body_copy: string;
+      body_copy_2: string;
     }[];
   }>(message);
 
@@ -559,14 +639,18 @@ async function generateCategoryPage(
 
 Business: ${businessName}
 Location: ${city}, ${state}
-Category: ${categoryName}${isPrimary ? ' (Primary)' : ''}
+Category: ${categoryName}${isPrimary ? ' (Primary — this is also the home page for single-location sites)' : ''}
 
 Generate content for this category page:
 1. meta_title: "[Category Name] in [City], [State] | [Business Name]" (max 60 chars)
 2. meta_description: Overview of services in this category with CTA (max 155 chars)
-3. h1: Main heading for the category page
-4. h2: Supporting subheading
-5. body_copy: 2-3 paragraphs introducing this category of services (200-400 words)
+3. h1: Main heading (e.g., "Your Trusted ${categoryName} in ${city}, ${state}")
+4. h2: Supporting subheading for localized content section (e.g., "Serving ${city} With Expert ${categoryName}")
+5. hero_description: 1-2 sentence value proposition shown below the H1 in the hero section
+6. body_copy: 2-3 paragraphs introducing this category of services (200-400 words). Write naturally about the business capabilities, experience, and commitment to the local community.
+7. body_copy_2: 1-2 paragraphs for a secondary content block (150-250 words) — focus on certifications, community involvement, or additional value propositions.
+
+Use double newlines (\\n\\n) to separate paragraphs.
 
 Format as JSON:
 {
@@ -574,7 +658,9 @@ Format as JSON:
   "meta_description": "...",
   "h1": "...",
   "h2": "...",
-  "body_copy": "..."
+  "hero_description": "...",
+  "body_copy": "...",
+  "body_copy_2": "..."
 }
 
 Return ONLY valid JSON.`;
@@ -595,10 +681,12 @@ Return ONLY valid JSON.`;
     meta_description: string;
     h1: string;
     h2: string;
+    hero_description: string;
     body_copy: string;
+    body_copy_2: string;
   }>(message);
 
-  return result || { meta_title: '', meta_description: '', h1: '', h2: '', body_copy: '' };
+  return result || { meta_title: '', meta_description: '', h1: '', h2: '', hero_description: '', body_copy: '', body_copy_2: '' };
 }
 
 async function generateServicePages(
@@ -611,7 +699,7 @@ async function generateServicePages(
 ) {
   const serviceList = services.map((s) => `- ${s.name}: ${s.description || 'No description'}`).join('\n');
 
-  const prompt = `You are an SEO expert generating content for a local service business website.
+  const prompt = `You are an SEO expert generating rich, structured content for a local service business website.
 
 Business: ${businessName}
 Location: ${city}, ${state}
@@ -620,12 +708,17 @@ Category: ${categoryName}
 Generate SEO-optimized content for these services:
 ${serviceList}
 
-For EACH service, provide:
+For EACH service, provide ALL of these fields:
 1. meta_title: Format as "[Service Name] in [City], [State] | [Business Name]" (max 60 chars total)
 2. meta_description: Compelling description with call-to-action (max 155 chars)
-3. h1: Main heading that includes the service and location naturally
-4. body_copy: 2-3 paragraphs of helpful, SEO-friendly content (300-500 words total)
-5. faqs: 3-5 common questions and detailed answers about this specific service
+3. h1: Main heading like "Professional [Service Name] Services"
+4. intro_copy: 2-3 sentence service introduction highlighting key benefits (shown as a callout card)
+5. body_copy: 2-3 paragraphs of helpful, SEO-friendly content (300-500 words total)
+6. problems: Exactly 3 common problems/issues this service solves. Each with a short heading and a description of how the business solves it (2-3 sentences each)
+7. detailed_sections: Exactly 3 informational subsections. Each with an h2 heading, a body paragraph (100-150 words), and 3-4 bullet points
+8. faqs: 3-5 common questions and detailed answers about this specific service
+
+Use double newlines (\\n\\n) to separate paragraphs within body_copy.
 
 Format your response as JSON:
 {
@@ -635,7 +728,16 @@ Format your response as JSON:
       "meta_title": "...",
       "meta_description": "...",
       "h1": "...",
+      "intro_copy": "...",
       "body_copy": "...",
+      "problems": [
+        { "heading": "Problem 1", "description": "How we solve it..." },
+        { "heading": "Problem 2", "description": "..." },
+        { "heading": "Problem 3", "description": "..." }
+      ],
+      "detailed_sections": [
+        { "h2": "Section heading", "body": "Paragraph...", "bullets": ["point 1", "point 2", "point 3"] }
+      ],
       "faqs": [
         { "question": "...", "answer": "..." }
       ]
@@ -662,7 +764,10 @@ Return ONLY valid JSON.`;
       meta_title: string;
       meta_description: string;
       h1: string;
+      intro_copy: string;
       body_copy: string;
+      problems: { heading: string; description: string }[];
+      detailed_sections: { h2: string; body: string; bullets: string[] }[];
       faqs: { question: string; answer: string }[];
     }[];
   }>(message);

@@ -1,11 +1,13 @@
 import { createStaticClient } from '@/lib/supabase/static';
-import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood } from '@/types/database';
+import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood, SitePage, GoogleReview } from '@/types/database';
 
 export interface PublicSiteData {
   site: SiteWithRelations;
   locations: Location[];
   serviceAreas: ServiceAreaDB[];
   neighborhoods: Neighborhood[];
+  sitePages: SitePage[];
+  googleReviews: GoogleReview[];
   primaryLocation: Location | null;
 }
 
@@ -47,6 +49,23 @@ export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null
     .eq('is_active', true)
     .order('sort_order');
 
+  // Fetch site pages (generated content for home, about, contact, category pages)
+  const { data: sitePages } = await supabase
+    .from('site_pages')
+    .select('*')
+    .eq('site_id', site.id)
+    .eq('is_active', true);
+
+  // Fetch Google Reviews (top-rated, visible only)
+  const { data: googleReviews } = await supabase
+    .from('google_reviews')
+    .select('*')
+    .eq('site_id', site.id)
+    .eq('is_visible', true)
+    .order('rating', { ascending: false })
+    .order('review_date', { ascending: false })
+    .limit(10);
+
   const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0] || null;
 
   return {
@@ -54,6 +73,8 @@ export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null
     locations: locations || [],
     serviceAreas: serviceAreas || [],
     neighborhoods: neighborhoods || [],
+    sitePages: (sitePages || []) as SitePage[],
+    googleReviews: (googleReviews || []) as GoogleReview[],
     primaryLocation,
   };
 }

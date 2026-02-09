@@ -275,6 +275,8 @@ export function StepReview() {
           phone: location.phone,
           is_primary: location.isPrimary,
           gbp_place_id: location.gbpPlaceId,
+          gbp_location_id: location.gbpLocationId,
+          gbp_account_id: location.gbpAccountId,
           latitude: location.latitude,
           longitude: location.longitude,
         });

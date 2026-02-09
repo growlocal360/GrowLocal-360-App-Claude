@@ -13,6 +13,8 @@ export interface WizardLocation {
   phone?: string;
   isPrimary: boolean;
   gbpPlaceId?: string;
+  gbpLocationId?: string;
+  gbpAccountId?: string;
   latitude?: number;
   longitude?: number;
 }
@@ -161,6 +163,8 @@ export async function createSiteFromWizardData(
       phone: location.phone,
       is_primary: location.isPrimary,
       gbp_place_id: location.gbpPlaceId,
+      gbp_location_id: location.gbpLocationId,
+      gbp_account_id: location.gbpAccountId,
       latitude: location.latitude,
       longitude: location.longitude,
     });

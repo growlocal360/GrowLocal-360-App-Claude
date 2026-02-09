@@ -1,46 +1,93 @@
 'use client';
 
 import { PublicSiteData } from '@/lib/sites/get-site';
+import type { Service } from '@/types/database';
 import { SiteHeader } from './site-header';
 import { HeroSection } from './hero-section';
+import { TrustBar } from './trust-bar';
 import { ServicesPreview } from './services-preview';
+import { LocalizedContentSection } from './localized-content-section';
+import { LeadCaptureSection } from './lead-capture-section';
+import { TestimonialsSection } from './testimonials-section';
 import { ServiceAreasSection } from './service-areas-section';
-import { NeighborhoodsSection } from './neighborhoods-section';
-import { LocationsSection } from './locations-section';
-import { CTASection } from './cta-section';
+import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
 
 interface LocalServiceProTemplateProps {
   data: PublicSiteData;
   siteSlug?: string;
+  services?: Service[];
+  primaryCategorySlug?: string;
 }
 
-export function LocalServiceProTemplate({ data, siteSlug }: LocalServiceProTemplateProps) {
-  const { site, locations, serviceAreas, neighborhoods, primaryLocation } = data;
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug }: LocalServiceProTemplateProps) {
+  const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, primaryLocation } = data;
   const slug = siteSlug || site.slug;
+  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const averageRating = site.settings?.google_average_rating as number | undefined;
+  const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
+
+  // Find home page content from sitePages
+  const homePageContent = sitePages?.find(p => p.page_type === 'home') || null;
 
   return (
     <div className="min-h-screen bg-white">
       <SiteHeader site={site} primaryLocation={primaryLocation} />
       <main>
-        <HeroSection site={site} primaryLocation={primaryLocation} />
-        <ServicesPreview site={site} />
-        {neighborhoods.length > 0 && (
-          <NeighborhoodsSection
+        <HeroSection
+          site={site}
+          primaryLocation={primaryLocation}
+          pageContent={homePageContent}
+          services={services}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
+        <TrustBar
+          brandColor={brandColor}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
+        {services && services.length > 0 && (
+          <ServicesPreview
             site={site}
-            neighborhoods={neighborhoods}
-            locations={locations}
+            services={services}
+            primaryLocation={primaryLocation}
+            siteSlug={slug}
+            categorySlug={primaryCategorySlug}
           />
         )}
-        {serviceAreas.length > 0 && (
-          <ServiceAreasSection site={site} serviceAreas={serviceAreas} siteSlug={slug} />
+        <LocalizedContentSection
+          pageContent={homePageContent}
+          businessName={site.name}
+          city={primaryLocation?.city || ''}
+        />
+        <LeadCaptureSection
+          siteId={site.id}
+          brandColor={brandColor}
+          services={services}
+        />
+        <TestimonialsSection
+          city={primaryLocation?.city || 'Our'}
+          reviews={googleReviews}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
+        {(serviceAreas.length > 0 || neighborhoods.length > 0) && (
+          <ServiceAreasSection
+            site={site}
+            serviceAreas={serviceAreas}
+            neighborhoods={neighborhoods}
+            siteSlug={slug}
+          />
         )}
-        {locations.length > 1 && (
-          <LocationsSection site={site} locations={locations} />
-        )}
-        <CTASection site={site} primaryLocation={primaryLocation} />
+        <EmbeddedMapSection primaryLocation={primaryLocation} />
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} />
+      <SiteFooter
+        site={site}
+        primaryLocation={primaryLocation}
+        serviceAreas={serviceAreas}
+        siteSlug={slug}
+      />
     </div>
   );
 }

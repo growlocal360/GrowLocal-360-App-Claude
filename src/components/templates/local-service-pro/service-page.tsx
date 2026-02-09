@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Phone, MapPin, ChevronRight, Wrench, CheckCircle } from 'lucide-react';
+import { Phone, ChevronRight, Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, Plus, Minus, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
+import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview } from '@/types/database';
 import { SiteHeader } from './site-header';
 import { SiteFooter } from './site-footer';
+import { MultiStepForm } from './multi-step-form';
+import { TestimonialsSection } from './testimonials-section';
+import { LeadCaptureSection } from './lead-capture-section';
 
 interface ServicePageProps {
   data: {
@@ -18,16 +22,18 @@ interface ServicePageProps {
   };
   siteSlug: string;
   isPrimaryCategory: boolean;
+  googleReviews?: GoogleReview[];
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || location.phone;
+  const averageRating = site.settings?.google_average_rating as number | undefined;
+  const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categoryName = category.gbp_category.display_name;
   const categorySlug = category.gbp_category.name;
 
-  // Build the service URL based on whether it's primary category or not
   const getServiceUrl = (svc: Service) => {
     if (isPrimaryCategory) {
       return `/sites/${siteSlug}/${svc.slug}`;
@@ -35,28 +41,32 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory }: ServicePagePr
     return `/sites/${siteSlug}/${categorySlug}/${svc.slug}`;
   };
 
+  // Use SEO fields from service if available
+  const h1 = service.h1 || `Professional ${service.name} Services`;
+  const introCopy = service.intro_copy || service.description ||
+    `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`;
+  const bodyCopy = service.body_copy ||
+    `${site.name} provides expert ${service.name.toLowerCase()} services in ${location.city}. Our experienced team delivers quality workmanship with upfront pricing.`;
+
   // Build breadcrumb
   const breadcrumbs = [
     { label: 'Home', href: `/sites/${siteSlug}` },
   ];
-
   if (!isPrimaryCategory) {
     breadcrumbs.push({
       label: categoryName,
       href: `/sites/${siteSlug}/${categorySlug}`,
     });
   }
-
   breadcrumbs.push({
     label: service.name,
     href: getServiceUrl(service),
   });
 
-  // Generate Service schema
+  // Schema.org
   const schemaData = {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    '@id': `https://${site.domain || `${siteSlug}.growlocal360.com`}${getServiceUrl(service)}#service`,
     name: service.name,
     description: service.description || `Professional ${service.name} services in ${location.city}, ${location.state}`,
     provider: {
@@ -79,19 +89,8 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory }: ServicePagePr
     serviceType: categoryName,
   };
 
-  // Use SEO fields from service if available, otherwise generate defaults
-  const pageTitle = service.meta_title || `${service.name} in ${location.city}, ${location.state} | ${site.name}`;
-  const pageDescription = service.meta_description || service.description ||
-    `Professional ${service.name.toLowerCase()} services in ${location.city}. ${site.name} provides fast, reliable service. Call today for a free estimate!`;
-  const h1 = service.h1 || `${service.name} in ${location.city}`;
-  const bodyCopy = service.body_copy ||
-    `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ` +
-    `${site.name} is your trusted local provider for all ${categoryName.toLowerCase()} needs. ` +
-    `Our experienced technicians are ready to help with fast, reliable service and upfront pricing.`;
-
   return (
     <div className="min-h-screen bg-white">
-      {/* Schema.org JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
@@ -124,26 +123,20 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory }: ServicePagePr
         <section className="bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white">
           <div className="mx-auto max-w-7xl px-4">
             <div className="grid gap-8 lg:grid-cols-2">
-              <div>
-                {/* Category badge */}
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur">
+              <div className="flex flex-col justify-center">
+                <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur">
                   <Wrench className="h-4 w-4" />
                   <span>{categoryName}</span>
                 </div>
 
-                {/* H1 */}
                 <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
                   {h1}
                 </h1>
 
-                {/* Description */}
-                {service.description && (
-                  <p className="mt-6 text-lg text-gray-300">
-                    {service.description}
-                  </p>
-                )}
+                <p className="mt-4 text-lg text-gray-300">
+                  {introCopy}
+                </p>
 
-                {/* CTA Buttons */}
                 <div className="mt-8 flex flex-wrap gap-4">
                   {phone && (
                     <Button
@@ -158,183 +151,228 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory }: ServicePagePr
                       </a>
                     </Button>
                   )}
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="outline"
-                    className="border-white text-lg text-white hover:bg-white/10"
-                  >
-                    <a href="#contact">Get a Free Quote</a>
-                  </Button>
-                </div>
-
-                {/* Location */}
-                <div className="mt-6 flex items-center gap-2 text-gray-400">
-                  <MapPin className="h-4 w-4" />
-                  <span>Serving {location.city}, {location.state} and surrounding areas</span>
                 </div>
               </div>
 
-              {/* Quick Features */}
+              {/* Multi-step form */}
               <div className="flex items-center justify-center lg:justify-end">
                 <Card className="w-full max-w-md bg-white text-gray-900">
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-bold">Why Choose Us for {service.name}</h2>
-                    <ul className="mt-4 space-y-3">
-                      {[
-                        'Licensed & Insured Technicians',
-                        'Upfront, Honest Pricing',
-                        'Same-Day Service Available',
-                        'Satisfaction Guaranteed',
-                        'Free Estimates',
-                      ].map((feature, index) => (
-                        <li key={index} className="flex items-center gap-3">
-                          <CheckCircle
-                            className="h-5 w-5 shrink-0"
-                            style={{ color: brandColor }}
-                          />
-                          <span>{feature}</span>
+                    <MultiStepForm
+                      siteId={site.id}
+                      brandColor={brandColor}
+                      services={siblingServices.length > 0 ? [service, ...siblingServices] : [service]}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Service Introduction Card */}
+        {service.intro_copy && (
+          <section className="py-12">
+            <div className="mx-auto max-w-7xl px-4">
+              <Card className="border-l-4" style={{ borderLeftColor: brandColor }}>
+                <CardContent className="p-6">
+                  <p className="text-gray-700">{service.intro_copy}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
+
+        {/* Problems / Solutions Section */}
+        {service.problems && service.problems.length > 0 && (
+          <section className="py-16">
+            <div className="mx-auto max-w-7xl px-4">
+              <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">
+                Common Issues We Solve
+              </h2>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {service.problems.map((problem, index) => (
+                  <Card key={index} className="border-0 shadow-md">
+                    <CardContent className="p-6">
+                      <div
+                        className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg"
+                        style={{ backgroundColor: `${brandColor}20` }}
+                      >
+                        <AlertTriangle className="h-6 w-6" style={{ color: brandColor }} />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">{problem.heading}</h3>
+                      <p className="mt-2 text-sm text-gray-600">{problem.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Detailed Service Information */}
+        {service.detailed_sections && service.detailed_sections.length > 0 && (
+          <section className="bg-gray-50 py-16">
+            <div className="mx-auto max-w-4xl px-4">
+              {service.detailed_sections.map((section, index) => (
+                <div key={index} className={index > 0 ? 'mt-12' : ''}>
+                  <h2 className="text-xl font-bold text-gray-900 md:text-2xl">{section.h2}</h2>
+                  <p className="mt-4 text-gray-600">{section.body}</p>
+                  {section.bullets && section.bullets.length > 0 && (
+                    <ul className="mt-4 space-y-2">
+                      {section.bullets.map((bullet, bIndex) => (
+                        <li key={bIndex} className="flex items-start gap-2 text-gray-600">
+                          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" style={{ color: brandColor }} />
+                          <span>{bullet}</span>
                         </li>
                       ))}
                     </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Main Content */}
-        <section className="py-16">
-          <div className="mx-auto max-w-7xl px-4">
-            <div className="grid gap-12 lg:grid-cols-3">
-              {/* Main Content */}
-              <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Professional {service.name} Services
-                </h2>
-
-                <div className="mt-6 space-y-4 text-gray-600">
-                  <p>{bodyCopy}</p>
-
-                  <p>
-                    At {site.name}, we understand that {service.name.toLowerCase()} issues can be stressful.
-                    That&apos;s why we offer prompt, professional service to get your problem solved quickly.
-                    Our team has years of experience handling all types of {categoryName.toLowerCase()} work.
-                  </p>
-
-                  <p>
-                    We serve {location.city} and the surrounding {location.state} area with
-                    reliable, affordable {service.name.toLowerCase()} services. Contact us today to schedule
-                    your appointment or to learn more about how we can help.
-                  </p>
+                  )}
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
 
-                {/* FAQs */}
-                {service.faqs && service.faqs.length > 0 && (
-                  <div className="mt-12">
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      Frequently Asked Questions
-                    </h2>
-                    <div className="mt-6 space-y-6">
-                      {service.faqs.map((faq, index) => (
-                        <div key={index} className="border-b pb-6 last:border-0">
-                          <h3 className="font-semibold text-gray-900">{faq.question}</h3>
-                          <p className="mt-2 text-gray-600">{faq.answer}</p>
-                        </div>
-                      ))}
-                    </div>
+        {/* Fallback body copy if no detailed_sections */}
+        {(!service.detailed_sections || service.detailed_sections.length === 0) && (
+          <section className="py-16">
+            <div className="mx-auto max-w-4xl px-4">
+              <h2 className="text-2xl font-bold text-gray-900">
+                About Our {service.name} Services
+              </h2>
+              <div className="mt-6 space-y-4 text-gray-600">
+                {bodyCopy.split('\n\n').map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Why Choose Us */}
+        <section className="bg-gray-50 py-16">
+          <div className="mx-auto max-w-7xl px-4">
+            <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">
+              Why Choose {site.name}
+            </h2>
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { icon: Shield, title: 'Licensed & Insured', desc: 'Fully licensed and insured for your protection.' },
+                { icon: Clock, title: 'Fast Service', desc: 'Quick response times and same-day availability.' },
+                { icon: ThumbsUp, title: 'Upfront Pricing', desc: 'No hidden fees. Know the cost before we start.' },
+                { icon: Award, title: 'Satisfaction Guaranteed', desc: 'We stand behind our work 100%.' },
+              ].map((feature) => (
+                <div key={feature.title} className="text-center">
+                  <div
+                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+                    style={{ backgroundColor: `${brandColor}20` }}
+                  >
+                    <feature.icon className="h-7 w-7" style={{ color: brandColor }} />
                   </div>
-                )}
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* Quick Contact */}
-                <Card className="border-2" style={{ borderColor: brandColor }}>
-                  <CardContent className="p-6">
-                    <h3 className="font-bold text-gray-900">
-                      Need {service.name}?
-                    </h3>
-                    <p className="mt-2 text-sm text-gray-600">
-                      Call us now for fast, friendly service in {location.city}.
-                    </p>
-                    {phone && (
-                      <Button
-                        asChild
-                        className="mt-4 w-full"
-                        style={{ backgroundColor: brandColor }}
-                      >
-                        <a href={`tel:${phone.replace(/\D/g, '')}`}>
-                          <Phone className="mr-2 h-4 w-4" />
-                          {phone}
-                        </a>
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Related Services */}
-                {siblingServices.length > 0 && (
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="flex items-center gap-2 font-bold text-gray-900">
-                        <Wrench className="h-4 w-4" />
-                        Related Services
-                      </h3>
-                      <div className="mt-4 space-y-2">
-                        {siblingServices.slice(0, 5).map((svc) => (
-                          <Link
-                            key={svc.id}
-                            href={getServiceUrl(svc)}
-                            className="flex items-center gap-2 text-sm hover:underline"
-                            style={{ color: brandColor }}
-                          >
-                            <ChevronRight className="h-3 w-3" />
-                            {svc.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                  <h3 className="font-semibold text-gray-900">{feature.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{feature.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section
-          id="contact"
-          className="py-16"
-          style={{ backgroundColor: brandColor }}
-        >
-          <div className="mx-auto max-w-7xl px-4 text-center text-white">
-            <h2 className="text-3xl font-bold md:text-4xl">
-              Ready for {service.name}?
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg opacity-90">
-              Contact {site.name} today for professional service in {location.city}.
-              We offer free estimates and same-day availability.
-            </p>
-            {phone && (
-              <Button
-                asChild
-                size="lg"
-                variant="secondary"
-                className="mt-8 text-lg"
-              >
-                <a href={`tel:${phone.replace(/\D/g, '')}`}>
-                  <Phone className="mr-2 h-5 w-5" />
-                  Call {phone}
-                </a>
-              </Button>
-            )}
-          </div>
-        </section>
+        {/* Lead Capture Form */}
+        <LeadCaptureSection
+          siteId={site.id}
+          brandColor={brandColor}
+          services={siblingServices.length > 0 ? [service, ...siblingServices] : [service]}
+        />
+
+        {/* Testimonials */}
+        <TestimonialsSection
+          city={location.city}
+          count={2}
+          reviews={googleReviews}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
+
+        {/* FAQ Accordion Section */}
+        {service.faqs && service.faqs.length > 0 && (
+          <FAQSection faqs={service.faqs} brandColor={brandColor} />
+        )}
+
+        {/* Related Services */}
+        {siblingServices.length > 0 && (
+          <section className="bg-gray-50 py-16">
+            <div className="mx-auto max-w-7xl px-4">
+              <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">
+                Related Services
+              </h2>
+              <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {siblingServices.slice(0, 4).map((svc) => (
+                  <Link key={svc.id} href={getServiceUrl(svc)}>
+                    <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
+                      <CardContent className="p-6">
+                        <div
+                          className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: `${brandColor}20` }}
+                        >
+                          <Wrench className="h-6 w-6" style={{ color: brandColor }} />
+                        </div>
+                        <h3 className="font-semibold text-gray-900">{svc.name}</h3>
+                        <div
+                          className="mt-2 flex items-center gap-1 text-sm font-medium"
+                          style={{ color: brandColor }}
+                        >
+                          Learn More
+                          <ArrowRight className="h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       <SiteFooter site={site} primaryLocation={location} />
     </div>
+  );
+}
+
+// FAQ Accordion component
+function FAQSection({ faqs, brandColor }: { faqs: { question: string; answer: string }[]; brandColor: string }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <section className="py-16">
+      <div className="mx-auto max-w-3xl px-4">
+        <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">
+          Frequently Asked Questions
+        </h2>
+        <div className="mt-10 space-y-3">
+          {faqs.map((faq, index) => (
+            <div key={index} className="rounded-lg border">
+              <button
+                className="flex w-full items-center justify-between px-6 py-4 text-left"
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              >
+                <span className="font-medium text-gray-900">{faq.question}</span>
+                {openIndex === index ? (
+                  <Minus className="h-5 w-5 shrink-0 text-gray-500" />
+                ) : (
+                  <Plus className="h-5 w-5 shrink-0 text-gray-500" />
+                )}
+              </button>
+              {openIndex === index && (
+                <div className="border-t px-6 py-4">
+                  <p className="text-gray-600">{faq.answer}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

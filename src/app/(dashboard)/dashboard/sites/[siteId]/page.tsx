@@ -15,6 +15,7 @@ import {
   MapPin,
   RefreshCw,
   Loader2,
+  Inbox,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -327,6 +328,31 @@ export default function SiteDashboardPage() {
               </p>
               <Button variant="outline" size="sm" disabled>
                 Manage Locations
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Leads */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Inbox className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Leads</h3>
+                  <p className="text-sm text-gray-500">Form submissions</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                View and manage leads from your website forms
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/leads`}>
+                  View Leads
+                </Link>
               </Button>
             </CardContent>
           </Card>

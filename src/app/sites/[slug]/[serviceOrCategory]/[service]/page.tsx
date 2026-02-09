@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
+import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
@@ -110,11 +111,14 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
     notFound();
   }
 
+  const googleReviews = await getGoogleReviewsForSite(data.site.id);
+
   return (
     <ServicePage
       data={data}
       siteSlug={slug}
-      isPrimaryCategory={false} // This is always a secondary category service
+      isPrimaryCategory={false}
+      googleReviews={googleReviews}
     />
   );
 }

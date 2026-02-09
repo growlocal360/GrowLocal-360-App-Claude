@@ -63,6 +63,8 @@ export interface SiteSettings {
   phone?: string;
   email?: string;
   core_industry?: string;
+  google_average_rating?: number;
+  google_total_reviews?: number;
 }
 
 export interface ServiceAreaDB {
@@ -146,6 +148,17 @@ export interface Neighborhood {
   updated_at: string;
 }
 
+export interface ServiceProblem {
+  heading: string;
+  description: string;
+}
+
+export interface ServiceDetailedSection {
+  h2: string;
+  body: string;
+  bullets: string[];
+}
+
 export interface Service {
   id: string;
   site_id: string;
@@ -159,6 +172,10 @@ export interface Service {
   h1: string | null;
   body_copy: string | null;
   faqs: ServiceFAQ[] | null;
+  // Structured content fields
+  intro_copy: string | null;
+  problems: ServiceProblem[] | null;
+  detailed_sections: ServiceDetailedSection[] | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -185,8 +202,43 @@ export interface SitePage {
   h1: string | null;
   h2: string | null;
   body_copy: string | null;
+  hero_description: string | null;
+  body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LeadStatus = 'new' | 'contacted' | 'converted' | 'archived';
+
+export interface Lead {
+  id: string;
+  site_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  service_type: string | null;
+  message: string | null;
+  source_page: string | null;
+  status: LeadStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoogleReview {
+  id: string;
+  site_id: string;
+  location_id: string | null;
+  google_review_id: string;
+  author_name: string | null;
+  author_photo_url: string | null;
+  rating: number;
+  comment: string | null;
+  review_date: string | null;
+  review_reply: string | null;
+  reply_date: string | null;
+  is_visible: boolean;
   created_at: string;
   updated_at: string;
 }

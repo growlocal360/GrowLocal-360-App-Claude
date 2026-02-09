@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
+import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
@@ -111,11 +112,14 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
     notFound();
   }
 
+  const googleReviews = await getGoogleReviewsForSite(data.site.id);
+
   return (
     <ServicePage
       data={data}
       siteSlug={slug}
       isPrimaryCategory={false}
+      googleReviews={googleReviews}
     />
   );
 }

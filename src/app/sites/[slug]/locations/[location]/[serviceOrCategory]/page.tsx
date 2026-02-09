@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
+import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
@@ -181,12 +182,14 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   const serviceData = await getMultiLocationServiceData(slug, location, serviceOrCategory);
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
+    const googleReviews = await getGoogleReviewsForSite(serviceData.site.id);
 
     return (
       <ServicePage
         data={serviceData}
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
+        googleReviews={googleReviews}
       />
     );
   }
@@ -194,10 +197,13 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   // Try as category (secondary categories)
   const categoryData = await getMultiLocationCategoryData(slug, location, serviceOrCategory);
   if (categoryData) {
+    const googleReviews = await getGoogleReviewsForSite(categoryData.site.id);
+
     return (
       <CategoryPage
         data={categoryData}
         siteSlug={slug}
+        googleReviews={googleReviews}
       />
     );
   }

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 
 interface SitePageProps {
@@ -19,7 +20,18 @@ export async function generateMetadata({ params }: SitePageProps) {
     return { title: 'Site Not Found' };
   }
 
-  const { site, primaryLocation } = data;
+  const { site, primaryLocation, sitePages } = data;
+
+  // Use generated home page metadata if available
+  const homePage = sitePages?.find(p => p.page_type === 'home');
+
+  if (homePage?.meta_title) {
+    return {
+      title: homePage.meta_title,
+      description: homePage.meta_description || `${site.name} - Professional services. Contact us today for a free quote.`,
+    };
+  }
+
   const locationText = primaryLocation
     ? `${primaryLocation.city}, ${primaryLocation.state}`
     : '';
@@ -38,12 +50,23 @@ export default async function SitePage({ params }: SitePageProps) {
     notFound();
   }
 
+  // Fetch services for the template
+  const { categories, services } = await getCategoriesWithServices(data.site.id);
+  const primaryCategory = categories.find(c => c.is_primary) || categories[0];
+  const primaryCategorySlug = primaryCategory?.gbp_category?.name;
+
   // Route to appropriate template based on template_id
   const { site } = data;
 
   switch (site.template_id) {
     case 'local-service-pro':
     default:
-      return <LocalServiceProTemplate data={data} />;
+      return (
+        <LocalServiceProTemplate
+          data={data}
+          services={services}
+          primaryCategorySlug={primaryCategorySlug}
+        />
+      );
   }
 }

@@ -1,84 +1,78 @@
 'use client';
 
-import { Wrench, Shield, Clock, Award } from 'lucide-react';
+import Link from 'next/link';
+import { Wrench, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site } from '@/types/database';
+import type { Site, Service, Location } from '@/types/database';
 
 interface ServicesPreviewProps {
   site: Site;
+  services: Service[];
+  primaryLocation: Location | null;
+  siteSlug: string;
+  categorySlug?: string;
 }
 
-export function ServicesPreview({ site }: ServicesPreviewProps) {
-  const brandColor = site.settings?.brand_color || '#10b981';
-  const industry = site.settings?.core_industry || 'Professional Services';
+export function ServicesPreview({ site, services, primaryLocation, siteSlug, categorySlug }: ServicesPreviewProps) {
+  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const city = primaryLocation?.city || '';
 
-  // Placeholder services - in production these would come from the database
-  const services = [
-    {
-      icon: Wrench,
-      title: 'Expert Service',
-      description: `Professional ${industry.toLowerCase()} with attention to detail and quality workmanship.`,
-    },
-    {
-      icon: Shield,
-      title: 'Licensed & Insured',
-      description: 'Fully licensed and insured for your protection and peace of mind.',
-    },
-    {
-      icon: Clock,
-      title: 'Fast Response',
-      description: 'Quick response times and flexible scheduling to meet your needs.',
-    },
-    {
-      icon: Award,
-      title: 'Satisfaction Guaranteed',
-      description: 'We stand behind our work with a 100% satisfaction guarantee.',
-    },
-  ];
+  const getServiceUrl = (service: Service) => {
+    if (categorySlug) {
+      return `/sites/${siteSlug}/${categorySlug}/${service.slug}`;
+    }
+    return `/sites/${siteSlug}/${service.slug}`;
+  };
+
+  if (services.length === 0) return null;
 
   return (
-    <section id="services" className="bg-gray-50 py-20">
+    <section id="services" className="py-16">
       <div className="mx-auto max-w-7xl px-4">
         {/* Section header */}
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
-            Our Services
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Our Services{city ? ` in ${city}` : ''}
           </h2>
-          <p className="mt-4 text-lg text-gray-600">
-            Quality {industry.toLowerCase()} services you can trust
+          <p className="mx-auto mt-4 max-w-2xl text-gray-600">
+            We offer a comprehensive range of services to meet all your needs.
           </p>
         </div>
 
-        {/* Services grid */}
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {services.map((service, index) => {
-            const Icon = service.icon;
-            return (
-              <Card key={index} className="border-0 shadow-lg">
-                <CardContent className="p-6 text-center">
-                  <div
-                    className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
-                    style={{ backgroundColor: `${brandColor}20` }}
-                  >
-                    <Icon
-                      className="h-7 w-7"
-                      style={{ color: brandColor }}
-                    />
+        {/* Services grid — 3 columns */}
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {services.slice(0, 9).map((service) => (
+            <Link key={service.id} href={getServiceUrl(service)}>
+              <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: `${brandColor}20` }}
+                    >
+                      <Wrench className="h-6 w-6" style={{ color: brandColor }} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{service.name}</h3>
+                      {service.description && (
+                        <p className="mt-2 line-clamp-2 text-sm text-gray-600">
+                          {service.description}
+                        </p>
+                      )}
+                      <div
+                        className="mt-3 flex items-center gap-1 text-sm font-medium"
+                        style={{ color: brandColor }}
+                      >
+                        Learn More
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-gray-900">
-                    {service.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">{service.description}</p>
                 </CardContent>
               </Card>
-            );
-          })}
+            </Link>
+          ))}
         </div>
-
-        {/* Note about services */}
-        <p className="mt-8 text-center text-sm text-gray-500">
-          Full service catalog coming soon. Contact us for a complete list of services.
-        </p>
       </div>
     </section>
   );

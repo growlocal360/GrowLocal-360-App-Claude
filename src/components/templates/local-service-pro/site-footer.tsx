@@ -1,49 +1,45 @@
 'use client';
 
+import Link from 'next/link';
 import { MapPin, Phone, Mail } from 'lucide-react';
-import type { Site, Location } from '@/types/database';
+import type { Site, Location, ServiceAreaDB } from '@/types/database';
 
 interface SiteFooterProps {
   site: Site;
   primaryLocation: Location | null;
+  serviceAreas?: ServiceAreaDB[];
+  siteSlug?: string;
 }
 
-export function SiteFooter({ site, primaryLocation }: SiteFooterProps) {
+export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: SiteFooterProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00d9c0';
   const currentYear = new Date().getFullYear();
+  const slug = siteSlug || site.slug;
 
   return (
-    <footer className="bg-gray-900 py-12 text-gray-400">
-      <div className="mx-auto max-w-7xl px-4">
+    <footer className="bg-gray-900 text-gray-400">
+      <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-8 md:grid-cols-3">
-          {/* Business Info */}
+          {/* Contact Info */}
           <div>
-            <h3
-              className="mb-4 text-lg font-semibold"
-              style={{ color: brandColor }}
-            >
-              {site.name}
+            <h3 className="mb-4 text-lg font-semibold text-white">
+              Contact Info
             </h3>
-            {primaryLocation && (
-              <div className="flex items-start gap-2 text-sm">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <div>
-                  <p>{primaryLocation.address_line1}</p>
-                  <p>
-                    {primaryLocation.city}, {primaryLocation.state}{' '}
-                    {primaryLocation.zip_code}
-                  </p>
+            <div className="space-y-3 text-sm">
+              {primaryLocation && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p>{primaryLocation.address_line1}</p>
+                    <p>
+                      {primaryLocation.city}, {primaryLocation.state}{' '}
+                      {primaryLocation.zip_code}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">Contact</h3>
-            <div className="space-y-2 text-sm">
+              )}
               {phone && (
                 <a
                   href={`tel:${phone.replace(/\D/g, '')}`}
@@ -72,18 +68,13 @@ export function SiteFooter({ site, primaryLocation }: SiteFooterProps) {
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
+                <Link href={`/sites/${slug}`} className="hover:text-white">
+                  Home
+                </Link>
+              </li>
+              <li>
                 <a href="#services" className="hover:text-white">
-                  Services
-                </a>
-              </li>
-              <li>
-                <a href="#areas" className="hover:text-white">
-                  Service Areas
-                </a>
-              </li>
-              <li>
-                <a href="#locations" className="hover:text-white">
-                  Locations
+                  Our Services
                 </a>
               </li>
               <li>
@@ -93,14 +84,35 @@ export function SiteFooter({ site, primaryLocation }: SiteFooterProps) {
               </li>
             </ul>
           </div>
-        </div>
 
-        {/* Bottom bar */}
-        <div className="mt-8 border-t border-gray-800 pt-8 text-center text-sm">
-          <p>
-            &copy; {currentYear} {site.name}. All rights reserved.
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
+          {/* Service Areas */}
+          {serviceAreas && serviceAreas.length > 0 && (
+            <div>
+              <h3 className="mb-4 text-lg font-semibold text-white">
+                Service Areas
+              </h3>
+              <ul className="space-y-2 text-sm">
+                {serviceAreas.slice(0, 8).map((area) => (
+                  <li key={area.id}>
+                    <Link
+                      href={`/sites/${slug}/areas/${area.slug}`}
+                      className="hover:text-white"
+                    >
+                      {area.name}{area.state ? `, ${area.state}` : ''}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Copyright bar */}
+      <div className="border-t border-gray-800">
+        <div className="mx-auto max-w-7xl px-4 py-4 text-center text-sm">
+          <p>&copy; {currentYear} {site.name}. All rights reserved.</p>
+          <p className="mt-1 text-xs text-gray-500">
             Powered by{' '}
             <a
               href="/"

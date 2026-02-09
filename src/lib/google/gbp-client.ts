@@ -74,6 +74,31 @@ export interface GBPLocation {
   serviceArea?: GBPServiceArea;
 }
 
+export interface GBPReview {
+  name: string; // Format: accounts/{accountId}/locations/{locationId}/reviews/{reviewId}
+  reviewId: string;
+  reviewer: {
+    displayName?: string;
+    profilePhotoUrl?: string;
+    isAnonymous?: boolean;
+  };
+  starRating: 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'FIVE';
+  comment?: string;
+  createTime: string;
+  updateTime: string;
+  reviewReply?: {
+    comment: string;
+    updateTime: string;
+  };
+}
+
+export interface GBPReviewsResponse {
+  reviews?: GBPReview[];
+  averageRating?: number;
+  totalReviewCount?: number;
+  nextPageToken?: string;
+}
+
 export interface GBPAccountsResponse {
   accounts: GBPAccount[];
   nextPageToken?: string;
@@ -88,6 +113,7 @@ export class GBPClient {
   private accessToken: string;
   private baseUrl = 'https://mybusinessaccountmanagement.googleapis.com/v1';
   private businessInfoUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1';
+  private reviewsUrl = 'https://mybusiness.googleapis.com/v4';
 
   constructor(accessToken: string) {
     this.accessToken = accessToken;
@@ -155,6 +181,17 @@ export class GBPClient {
     );
   }
 
+  // Get reviews for a specific location
+  async getReviews(
+    accountName: string,
+    locationName: string,
+    pageSize = 50
+  ): Promise<GBPReviewsResponse> {
+    // accountName: "accounts/123", locationName: "locations/456"
+    const url = `${this.reviewsUrl}/${accountName}/${locationName}/reviews?pageSize=${pageSize}&orderBy=updateTime desc`;
+    return this.fetch<GBPReviewsResponse>(url);
+  }
+
   // Get all locations across all accounts (fetches all pages)
   async getAllLocations(): Promise<{ account: GBPAccount; locations: GBPLocation[] }[]> {
     const accounts = await this.getAccounts();
@@ -172,6 +209,12 @@ export class GBPClient {
 
     return results;
   }
+}
+
+// Convert GBP star rating enum to numeric value
+export function starRatingToNumber(rating: string): number {
+  const map: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+  return map[rating] || 5;
 }
 
 // Helper to convert GBP location to our app's format

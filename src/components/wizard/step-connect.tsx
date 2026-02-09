@@ -170,6 +170,8 @@ export function StepConnect() {
       phone: loc.phone || '',
       isPrimary: index === 0,
       gbpPlaceId: loc.gbpPlaceId,
+      gbpLocationId: loc.gbpLocationId,
+      gbpAccountId: loc.accountId,
       latitude: loc.latitude,
       longitude: loc.longitude,
     }));

@@ -255,7 +255,7 @@ export default function BrandingSettingsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/png,image/jpeg,image/jpg,image/webp"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
             onChange={handleFileSelect}
             className="hidden"
           />

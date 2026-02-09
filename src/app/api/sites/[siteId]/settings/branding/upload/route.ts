@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(
@@ -59,7 +59,7 @@ export async function POST(
   // Validate file type
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
     return NextResponse.json(
-      { error: 'Invalid file type. Allowed: PNG, JPG, WEBP' },
+      { error: 'Invalid file type. Allowed: PNG, JPG, WEBP, SVG' },
       { status: 400 }
     );
   }

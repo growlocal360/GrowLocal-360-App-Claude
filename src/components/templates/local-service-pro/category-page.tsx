@@ -56,7 +56,7 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
   }));
 
   const getServiceUrl = (svc: Service) => {
-    return `/sites/${siteSlug}/${categorySlug}/${svc.slug}`;
+    return `/${categorySlug}/${svc.slug}`;
   };
 
   // Schema.org
@@ -90,7 +90,7 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
         <div className="border-b bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-3">
             <nav className="flex items-center gap-2 text-sm text-gray-600">
-              <Link href={`/sites/${siteSlug}`} className="hover:text-gray-900">
+              <Link href="/" className="hover:text-gray-900">
                 Home
               </Link>
               <ChevronRight className="h-4 w-4" />
@@ -265,7 +265,7 @@ export function CategoryPage({ data, siteSlug, googleReviews }: CategoryPageProp
                 {otherCategories.map((cat) => (
                   <Link
                     key={cat.id}
-                    href={`/sites/${siteSlug}/${cat.gbp_category.name}`}
+                    href={`/${cat.gbp_category.name}`}
                     className="flex items-center gap-2 text-sm font-medium hover:underline"
                     style={{ color: brandColor }}
                   >

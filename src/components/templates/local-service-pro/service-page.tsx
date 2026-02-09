@@ -37,9 +37,9 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
 
   const getServiceUrl = (svc: Service) => {
     if (isPrimaryCategory) {
-      return `/sites/${siteSlug}/${svc.slug}`;
+      return `/${svc.slug}`;
     }
-    return `/sites/${siteSlug}/${categorySlug}/${svc.slug}`;
+    return `/${categorySlug}/${svc.slug}`;
   };
 
   // Use SEO fields from service if available
@@ -51,12 +51,12 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
 
   // Build breadcrumb
   const breadcrumbs = [
-    { label: 'Home', href: `/sites/${siteSlug}` },
+    { label: 'Home', href: '/' },
   ];
   if (!isPrimaryCategory) {
     breadcrumbs.push({
       label: categoryName,
-      href: `/sites/${siteSlug}/${categorySlug}`,
+      href: `/${categorySlug}`,
     });
   }
   breadcrumbs.push({

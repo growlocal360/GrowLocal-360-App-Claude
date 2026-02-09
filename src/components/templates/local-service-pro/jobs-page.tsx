@@ -57,7 +57,7 @@ export function JobsPage({ site, primaryLocation, serviceAreas, categories, site
                 style={{ backgroundColor: brandColor }}
                 className="hover:opacity-90"
               >
-                <a href={`/sites/${siteSlug}/contact`}>Contact Us About Opportunities</a>
+                <a href="/contact">Contact Us About Opportunities</a>
               </Button>
             </div>
           </div>

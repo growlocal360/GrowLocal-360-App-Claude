@@ -19,19 +19,19 @@ export function ServiceAreasSection({ site, serviceAreas, neighborhoods, siteSlu
     ...(neighborhoods || []).map((n) => ({
       id: n.id,
       name: n.name,
-      href: `/sites/${siteSlug}/neighborhoods/${n.slug}`,
+      href: `/neighborhoods/${n.slug}`,
     })),
     ...serviceAreas.map((a) => ({
       id: a.id,
       name: a.state ? `${a.name}, ${a.state}` : a.name,
-      href: `/sites/${siteSlug}/areas/${a.slug}`,
+      href: `/areas/${a.slug}`,
     })),
   ];
 
   if (allAreas.length === 0) return null;
 
   return (
-    <section id="areas" className="bg-gray-50 py-16">
+    <section id="service-areas" className="bg-gray-50 py-16">
       <div className="mx-auto max-w-7xl px-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">

@@ -40,9 +40,9 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
   // Get service URL
   const getServiceUrl = (serviceSlug: string) => {
     if (primaryCategory) {
-      return `/sites/${siteSlug}/${primaryCategory.gbp_category.name}/${serviceSlug}`;
+      return `/${primaryCategory.gbp_category.name}/${serviceSlug}`;
     }
-    return `/sites/${siteSlug}/${serviceSlug}`;
+    return `/${serviceSlug}`;
   };
 
   // Generate LocalBusiness + ServiceArea schema
@@ -87,7 +87,7 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
         <div className="border-b bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-3">
             <nav className="flex items-center gap-2 text-sm text-gray-600">
-              <Link href={`/sites/${siteSlug}`} className="hover:text-gray-900">
+              <Link href="/" className="hover:text-gray-900">
                 Home
               </Link>
               <ChevronRight className="h-4 w-4" />
@@ -265,7 +265,7 @@ export function ServiceAreaPage({ data, siteSlug }: ServiceAreaPageProps) {
                         {otherAreas.slice(0, 10).map((area) => (
                           <Link
                             key={area.id}
-                            href={`/sites/${siteSlug}/areas/${area.slug}`}
+                            href={`/areas/${area.slug}`}
                             className="flex items-center gap-2 text-sm hover:underline"
                             style={{ color: brandColor }}
                           >

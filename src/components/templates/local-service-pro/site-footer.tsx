@@ -68,32 +68,32 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: Si
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href={`/sites/${slug}`} className="hover:text-white">
+                <Link href="/" className="hover:text-white">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href={`/sites/${slug}/about`} className="hover:text-white">
+                <Link href="/about" className="hover:text-white">
                   About
                 </Link>
               </li>
               <li>
-                <Link href={`/sites/${slug}#services`} className="hover:text-white">
+                <Link href="/services" className="hover:text-white">
                   Services
                 </Link>
               </li>
               <li>
-                <Link href={`/sites/${slug}#service-areas`} className="hover:text-white">
+                <Link href="/#service-areas" className="hover:text-white">
                   Service Areas
                 </Link>
               </li>
               <li>
-                <Link href={`/sites/${slug}/jobs`} className="hover:text-white">
+                <Link href="/jobs" className="hover:text-white">
                   Jobs
                 </Link>
               </li>
               <li>
-                <Link href={`/sites/${slug}/contact`} className="hover:text-white">
+                <Link href="/contact" className="hover:text-white">
                   Contact
                 </Link>
               </li>
@@ -110,7 +110,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: Si
                 {serviceAreas.slice(0, 8).map((area) => (
                   <li key={area.id}>
                     <Link
-                      href={`/sites/${slug}/areas/${area.slug}`}
+                      href={`/areas/${area.slug}`}
                       className="hover:text-white"
                     >
                       {area.name}{area.state ? `, ${area.state}` : ''}

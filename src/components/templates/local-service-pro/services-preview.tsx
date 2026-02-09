@@ -19,9 +19,9 @@ export function ServicesPreview({ site, services, primaryLocation, siteSlug, cat
 
   const getServiceUrl = (service: Service) => {
     if (categorySlug) {
-      return `/sites/${siteSlug}/${categorySlug}/${service.slug}`;
+      return `/${categorySlug}/${service.slug}`;
     }
-    return `/sites/${siteSlug}/${service.slug}`;
+    return `/${service.slug}`;
   };
 
   if (services.length === 0) return null;

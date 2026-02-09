@@ -78,7 +78,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
           <div className="mx-auto max-w-7xl px-4 py-3">
             <nav className="flex items-center gap-2 text-sm text-gray-600">
               <Link
-                href={`/sites/${siteSlug}`}
+                href="/"
                 className="hover:text-gray-900"
               >
                 Home
@@ -229,7 +229,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                       </div>
                     </div>
                     <Link
-                      href={`/sites/${siteSlug}`}
+                      href="/"
                       className="mt-4 inline-flex items-center text-sm font-medium"
                       style={{ color: brandColor }}
                     >
@@ -251,7 +251,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                         {otherNeighborhoods.map((n) => (
                           <Link
                             key={n.id}
-                            href={`/sites/${siteSlug}/neighborhoods/${n.slug}`}
+                            href={`/neighborhoods/${n.slug}`}
                           >
                             <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">
                               {n.name}

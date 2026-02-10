@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
-import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
@@ -54,11 +54,11 @@ export default async function SitePage({ params }: SitePageProps) {
   // Fetch services for the template
   const { categories, services } = await getCategoriesWithServices(data.site.id);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
-  const primaryCategorySlug = primaryCategory?.gbp_category?.name;
+  const primaryCategorySlug = primaryCategory ? categorySlugFromName(primaryCategory.gbp_category.display_name) : undefined;
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

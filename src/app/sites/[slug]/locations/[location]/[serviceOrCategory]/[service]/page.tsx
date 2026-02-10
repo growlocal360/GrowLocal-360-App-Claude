@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
@@ -121,7 +121,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

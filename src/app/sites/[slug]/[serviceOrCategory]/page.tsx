@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
+import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams, categorySlugFromName } from '@/lib/sites/get-services';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
@@ -60,7 +60,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     const navCategories: NavCategory[] = categories.map(c => ({
       name: c.gbp_category.display_name,
-      slug: c.gbp_category.name,
+      slug: categorySlugFromName(c.gbp_category.display_name),
       isPrimary: c.is_primary,
     }));
 

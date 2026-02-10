@@ -1,6 +1,7 @@
 'use client';
 
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, Neighborhood, SitePage } from '@/types/database';
+import { categorySlugFromName } from '@/lib/sites/get-services';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -40,11 +41,11 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
-  const categorySlug = category.gbp_category.name;
+  const categorySlug = categorySlugFromName(category.gbp_category.display_name);
 
   const navCategories: NavCategory[] = allCategories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getNeighborhoodBySlugSingleLocation } from '@/lib/sites/get-site';
-import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
 import { NeighborhoodPageSingleLocation } from '@/components/templates/local-service-pro/neighborhood-page-single';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
@@ -52,7 +52,7 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
   const { categories } = await getCategoriesWithServices(data.site.id);
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

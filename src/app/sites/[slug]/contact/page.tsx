@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
-import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
@@ -42,7 +42,7 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

@@ -6,6 +6,7 @@ import { Phone, ChevronRight, Wrench, CheckCircle, Shield, Clock, Award, ThumbsU
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview } from '@/types/database';
+import { categorySlugFromName } from '@/lib/sites/get-services';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { MultiStepForm } from './multi-step-form';
@@ -33,7 +34,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categoryName = category.gbp_category.display_name;
-  const categorySlug = category.gbp_category.name;
+  const categorySlug = categorySlugFromName(category.gbp_category.display_name);
 
   const getServiceUrl = (svc: Service) => {
     if (isPrimaryCategory) {

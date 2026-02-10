@@ -2,6 +2,7 @@
 
 import type { GoogleReview, Neighborhood, SitePage } from '@/types/database';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
+import { categorySlugFromName } from '@/lib/sites/get-services';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -29,12 +30,12 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }
 
   // Get primary category slug for service links
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
-  const primaryCategorySlug = primaryCategory?.gbp_category.name;
+  const primaryCategorySlug = primaryCategory ? categorySlugFromName(primaryCategory.gbp_category.display_name) : undefined;
   const primaryCategoryName = primaryCategory?.gbp_category.display_name || industry;
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: c.gbp_category.name,
+    slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

@@ -8,6 +8,12 @@ import type {
   SitePage
 } from '@/types/database';
 
+// Convert GBP category display_name to a clean URL slug
+// e.g., "Refrigerator Repair Service" → "refrigerator-repair-service"
+export function categorySlugFromName(displayName: string): string {
+  return displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 export interface ServicePageData {
   site: SiteWithRelations;
   location: Location;
@@ -397,7 +403,7 @@ export async function getAllServiceOrCategoryParams(): Promise<{
         }
       } else {
         // Secondary categories live at /{categorySlug}
-        params.push({ siteSlug: site.slug, serviceOrCategory: cat.gbp_category.name });
+        params.push({ siteSlug: site.slug, serviceOrCategory: categorySlugFromName(cat.gbp_category.display_name) });
       }
     }
   }
@@ -435,7 +441,7 @@ export async function getAllNestedServiceParams(): Promise<{
       for (const svc of services || []) {
         params.push({
           siteSlug: site.slug,
-          serviceOrCategory: cat.gbp_category.name,
+          serviceOrCategory: categorySlugFromName(cat.gbp_category.display_name),
           service: svc.slug,
         });
       }

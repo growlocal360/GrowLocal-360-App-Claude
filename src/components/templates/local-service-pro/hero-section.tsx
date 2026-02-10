@@ -1,6 +1,7 @@
 'use client';
 
-import { Star, Shield, Award, Clock } from 'lucide-react';
+import { Star, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Location, SitePage, Service } from '@/types/database';
 import { MultiStepForm } from './multi-step-form';
@@ -17,6 +18,7 @@ interface HeroSectionProps {
 export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount }: HeroSectionProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const industry = site.settings?.core_industry || 'Professional Services';
+  const phone = site.settings?.phone || primaryLocation?.phone;
 
   const h1 = pageContent?.h1 || site.name;
   const heroDescription = pageContent?.hero_description ||
@@ -59,23 +61,35 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
               {heroDescription}
             </p>
 
-            {/* Trust badges */}
-            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {[
-                { icon: Shield, label: 'Licensed & Insured' },
-                { icon: Award, label: 'Locally Owned' },
-                { icon: Clock, label: 'Same-Day Service' },
-              ].map((badge) => (
-                <div key={badge.label} className="flex items-center gap-2 text-sm text-gray-300">
-                  <badge.icon className="h-5 w-5 shrink-0" style={{ color: brandColor }} />
-                  <span>{badge.label}</span>
-                </div>
-              ))}
-            </div>
+            {/* Phone CTA + Book Online */}
+            {phone && (
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <a href={`tel:${phone.replace(/\D/g, '')}`} className="flex items-center gap-3">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-full"
+                    style={{ backgroundColor: brandColor }}
+                  >
+                    <Phone className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-sm" style={{ color: brandColor }}>Call for Immediate Service</div>
+                    <div className="text-lg font-bold">{phone}</div>
+                  </div>
+                </a>
+                <Button
+                  asChild
+                  size="lg"
+                  className="text-lg hover:opacity-90"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  <a href="#hero-form">Book Online</a>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Right side: Multi-step form */}
-          <div className="flex items-center justify-center lg:justify-end">
+          <div id="hero-form" className="flex items-center justify-center lg:justify-end">
             <Card className="w-full max-w-md bg-white text-gray-900">
               <CardContent className="p-6">
                 <MultiStepForm

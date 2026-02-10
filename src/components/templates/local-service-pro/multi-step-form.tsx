@@ -59,9 +59,14 @@ export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: Mult
     <div>
       {/* Progress indicator */}
       <div className="mb-4 flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-700">
-          {step === 1 ? 'Get Your Free Estimate' : 'Your Contact Info'}
-        </span>
+        <div>
+          <span className="font-bold text-gray-900 text-base">
+            {step === 1 ? 'Book Online' : 'Your Contact Info'}
+          </span>
+          {step === 1 && (
+            <div className="font-medium" style={{ color: brandColor }}>In less than 30 seconds</div>
+          )}
+        </div>
         <span className="text-gray-500">Step {step} of 2</span>
       </div>
 
@@ -98,7 +103,7 @@ export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: Mult
           )}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Tell Us About Your Project
+              How Can We Help - Details?
             </label>
             <textarea
               rows={3}
@@ -115,7 +120,7 @@ export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: Mult
             style={{ backgroundColor: brandColor }}
             onClick={() => setStep(2)}
           >
-            Next Step
+            Continue
           </Button>
         </div>
       ) : (

@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Phone, ChevronRight, Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, Plus, Minus, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, Plus, Minus, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview } from '@/types/database';
+import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, SitePage } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
 import { SiteHeader, NavCategory } from './site-header';
+import { HeroSection } from './hero-section';
+import { TrustBar } from './trust-bar';
 import { SiteFooter } from './site-footer';
-import { MultiStepForm } from './multi-step-form';
 import { TestimonialsSection } from './testimonials-section';
 import { LeadCaptureSection } from './lead-capture-section';
 
@@ -43,27 +43,17 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
     return `/${categorySlug}/${svc.slug}`;
   };
 
-  // Use SEO fields from service if available
-  const h1 = service.h1 || `Professional ${service.name} Services`;
-  const introCopy = service.intro_copy || service.description ||
-    `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`;
+  // Construct SitePage-like object for shared HeroSection
+  const heroContent = {
+    h1: service.h1 || `Professional ${service.name} Services in ${location.city}, ${location.state}`,
+    hero_description: service.intro_copy || service.description ||
+      `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`,
+  } as SitePage;
+
+  const allServices = siblingServices.length > 0 ? [service, ...siblingServices] : [service];
+
   const bodyCopy = service.body_copy ||
     `${site.name} provides expert ${service.name.toLowerCase()} services in ${location.city}. Our experienced team delivers quality workmanship with upfront pricing.`;
-
-  // Build breadcrumb
-  const breadcrumbs = [
-    { label: 'Home', href: '/' },
-  ];
-  if (!isPrimaryCategory) {
-    breadcrumbs.push({
-      label: categoryName,
-      href: `/${categorySlug}`,
-    });
-  }
-  breadcrumbs.push({
-    label: service.name,
-    href: getServiceUrl(service),
-  });
 
   // Schema.org
   const schemaData = {
@@ -101,76 +91,19 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
       <SiteHeader site={site} primaryLocation={location} categories={categories} siteSlug={siteSlug} />
 
       <main>
-        {/* Breadcrumb */}
-        <div className="border-b bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 py-3">
-            <nav className="flex items-center gap-2 text-sm text-gray-600">
-              {breadcrumbs.map((crumb, index) => (
-                <span key={crumb.href} className="flex items-center gap-2">
-                  {index > 0 && <ChevronRight className="h-4 w-4" />}
-                  {index === breadcrumbs.length - 1 ? (
-                    <span className="font-medium text-gray-900">{crumb.label}</span>
-                  ) : (
-                    <Link href={crumb.href} className="hover:text-gray-900">
-                      {crumb.label}
-                    </Link>
-                  )}
-                </span>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Hero Section */}
-        <section className="bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white">
-          <div className="mx-auto max-w-7xl px-4">
-            <div className="grid gap-8 lg:grid-cols-2">
-              <div className="flex flex-col justify-center">
-                <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur">
-                  <Wrench className="h-4 w-4" />
-                  <span>{categoryName}</span>
-                </div>
-
-                <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
-                  {h1}
-                </h1>
-
-                <p className="mt-4 text-lg text-gray-300">
-                  {introCopy}
-                </p>
-
-                <div className="mt-8 flex flex-wrap gap-4">
-                  {phone && (
-                    <Button
-                      asChild
-                      size="lg"
-                      style={{ backgroundColor: brandColor }}
-                      className="text-lg hover:opacity-90"
-                    >
-                      <a href={`tel:${phone.replace(/\D/g, '')}`}>
-                        <Phone className="mr-2 h-5 w-5" />
-                        Call Now: {phone}
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Multi-step form */}
-              <div className="flex items-center justify-center lg:justify-end">
-                <Card className="w-full max-w-md bg-white text-gray-900">
-                  <CardContent className="p-6">
-                    <MultiStepForm
-                      siteId={site.id}
-                      brandColor={brandColor}
-                      services={siblingServices.length > 0 ? [service, ...siblingServices] : [service]}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        </section>
+        <HeroSection
+          site={site}
+          primaryLocation={location}
+          pageContent={heroContent}
+          services={allServices}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
+        <TrustBar
+          brandColor={brandColor}
+          averageRating={averageRating}
+          totalReviewCount={totalReviewCount}
+        />
 
         {/* Service Introduction Card */}
         {service.intro_copy && (
@@ -284,7 +217,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         <LeadCaptureSection
           siteId={site.id}
           brandColor={brandColor}
-          services={siblingServices.length > 0 ? [service, ...siblingServices] : [service]}
+          services={allServices}
         />
 
         {/* Testimonials */}

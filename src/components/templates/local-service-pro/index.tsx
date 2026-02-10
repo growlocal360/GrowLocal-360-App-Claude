@@ -19,9 +19,10 @@ interface LocalServiceProTemplateProps {
   services?: Service[];
   primaryCategorySlug?: string;
   categories?: NavCategory[];
+  locationSlug?: string;
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories, locationSlug }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -33,7 +34,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={slug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={slug} locationSlug={locationSlug} />
       <main>
         <HeroSection
           site={site}
@@ -55,6 +56,8 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
             primaryLocation={primaryLocation}
             siteSlug={slug}
             categorySlug={primaryCategorySlug}
+            isPrimaryCategory={true}
+            locationSlug={locationSlug}
           />
         )}
         <LocalizedContentSection
@@ -79,6 +82,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
             serviceAreas={serviceAreas}
             neighborhoods={neighborhoods}
             siteSlug={slug}
+            locationSlug={locationSlug}
           />
         )}
         <EmbeddedMapSection primaryLocation={primaryLocation} />
@@ -88,6 +92,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
         primaryLocation={primaryLocation}
         serviceAreas={serviceAreas}
         siteSlug={slug}
+        locationSlug={locationSlug}
       />
     </div>
   );

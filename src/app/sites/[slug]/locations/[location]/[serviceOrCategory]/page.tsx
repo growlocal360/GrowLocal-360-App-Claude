@@ -202,6 +202,7 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
         isPrimaryCategory={isPrimaryCategory}
         googleReviews={googleReviews}
         categories={navCategories}
+        locationSlug={location}
       />
     );
   }
@@ -216,6 +217,7 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
         data={categoryData}
         siteSlug={slug}
         googleReviews={googleReviews}
+        locationSlug={location}
       />
     );
   }

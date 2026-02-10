@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SiteWithRelations, Location, Neighborhood } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader } from './site-header';
 import { SiteFooter } from './site-footer';
 
@@ -17,9 +18,10 @@ interface NeighborhoodPageProps {
     allNeighborhoods: Neighborhood[];
   };
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
+export function NeighborhoodPage({ data, siteSlug, locationSlug }: NeighborhoodPageProps) {
   const { site, location, neighborhood, allNeighborhoods } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
@@ -68,7 +70,7 @@ export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} locationSlug={locationSlug} />
 
       <main>
         {/* Breadcrumb */}
@@ -76,14 +78,14 @@ export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
           <div className="mx-auto max-w-7xl px-4 py-3">
             <nav className="flex items-center gap-2 text-sm text-gray-600">
               <Link
-                href={`/sites/${siteSlug}`}
+                href={paths.locationHome(locationSlug)}
                 className="hover:text-gray-900"
               >
                 Home
               </Link>
               <ChevronRight className="h-4 w-4" />
               <Link
-                href={`/sites/${siteSlug}/locations/${location.slug}`}
+                href={paths.locationHome(locationSlug)}
                 className="hover:text-gray-900"
               >
                 {location.city}
@@ -234,7 +236,7 @@ export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
                       </div>
                     </div>
                     <Link
-                      href={`/sites/${siteSlug}/locations/${location.slug}`}
+                      href={paths.locationHome(locationSlug)}
                       className="mt-4 inline-flex items-center text-sm font-medium"
                       style={{ color: brandColor }}
                     >
@@ -256,7 +258,7 @@ export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
                         {otherNeighborhoods.map((n) => (
                           <Link
                             key={n.id}
-                            href={`/sites/${siteSlug}/locations/${location.slug}/neighborhoods/${n.slug}`}
+                            href={paths.neighborhoodPage(n.slug, locationSlug)}
                           >
                             <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">
                               {n.name}
@@ -302,7 +304,7 @@ export function NeighborhoodPage({ data, siteSlug }: NeighborhoodPageProps) {
         </section>
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} locationSlug={locationSlug} />
     </div>
   );
 }

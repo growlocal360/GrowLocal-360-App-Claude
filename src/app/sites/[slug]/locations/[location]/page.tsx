@@ -46,5 +46,5 @@ export default async function LocationRoute({ params }: LocationPageProps) {
     notFound();
   }
 
-  return <LocationPage data={data} siteSlug={slug} />;
+  return <LocationPage data={data} siteSlug={slug} locationSlug={location} />;
 }

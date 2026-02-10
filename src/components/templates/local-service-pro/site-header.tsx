@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, X, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Site, Location } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 
 export interface NavCategory {
   name: string;
@@ -17,27 +18,29 @@ interface SiteHeaderProps {
   primaryLocation: Location | null;
   categories?: NavCategory[];
   siteSlug?: string;
+  locationSlug?: string;
 }
 
-export function SiteHeader({ site, primaryLocation }: SiteHeaderProps) {
+export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const phone = site.settings?.phone || primaryLocation?.phone;
   const brandColor = site.settings?.brand_color || '#00d9c0';
 
+  const home = paths.locationHome(locationSlug);
   const navLinks = [
-    { label: 'Services', href: '/services' },
-    { label: 'Service Areas', href: '/#service-areas' },
-    { label: 'About', href: '/about' },
-    { label: 'Jobs', href: '/jobs' },
-    { label: 'Contact', href: '/contact' },
+    { label: 'Services', href: paths.servicesIndex(locationSlug) },
+    { label: 'Service Areas', href: paths.areasIndex(locationSlug) },
+    { label: 'About', href: paths.aboutPage(locationSlug) },
+    { label: 'Jobs', href: paths.jobsPage(locationSlug) },
+    { label: 'Contact', href: paths.contactPage(locationSlug) },
   ];
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Logo / Business Name */}
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+        <Link href={home} className="flex shrink-0 items-center gap-2">
           {site.settings?.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

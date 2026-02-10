@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { Site, ServiceAreaDB, Neighborhood } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 
 interface ServiceAreasSectionProps {
   site: Site;
   serviceAreas: ServiceAreaDB[];
   neighborhoods?: Neighborhood[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function ServiceAreasSection({ site, serviceAreas, neighborhoods, siteSlug }: ServiceAreasSectionProps) {
+export function ServiceAreasSection({ site, serviceAreas, neighborhoods, locationSlug }: ServiceAreasSectionProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
 
   // Combine neighborhoods and service areas for display
@@ -19,12 +21,12 @@ export function ServiceAreasSection({ site, serviceAreas, neighborhoods, siteSlu
     ...(neighborhoods || []).map((n) => ({
       id: n.id,
       name: n.name,
-      href: `/neighborhoods/${n.slug}`,
+      href: paths.neighborhoodPage(n.slug, locationSlug),
     })),
     ...serviceAreas.map((a) => ({
       id: a.id,
       name: a.state ? `${a.name}, ${a.state}` : a.name,
-      href: `/areas/${a.slug}`,
+      href: paths.areaPage(a.slug, locationSlug),
     })),
   ];
 

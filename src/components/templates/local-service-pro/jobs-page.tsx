@@ -3,6 +3,7 @@
 import { Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, ServiceAreaDB } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
@@ -12,15 +13,16 @@ interface JobsPageProps {
   serviceAreas?: ServiceAreaDB[];
   categories?: NavCategory[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function JobsPage({ site, primaryLocation, serviceAreas, categories, siteSlug }: JobsPageProps) {
+export function JobsPage({ site, primaryLocation, serviceAreas, categories, siteSlug, locationSlug }: JobsPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const industry = site.settings?.core_industry || 'our industry';
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
         <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
@@ -57,13 +59,13 @@ export function JobsPage({ site, primaryLocation, serviceAreas, categories, site
                 style={{ backgroundColor: brandColor }}
                 className="hover:opacity-90"
               >
-                <a href="/contact">Contact Us About Opportunities</a>
+                <a href={paths.contactPage(locationSlug)}>Contact Us About Opportunities</a>
               </Button>
             </div>
           </div>
         </section>
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

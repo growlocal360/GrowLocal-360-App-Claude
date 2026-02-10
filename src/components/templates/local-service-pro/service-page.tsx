@@ -6,6 +6,7 @@ import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, Plu
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, SitePage } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -25,9 +26,10 @@ interface ServicePageProps {
   isPrimaryCategory: boolean;
   googleReviews?: GoogleReview[];
   categories?: NavCategory[];
+  locationSlug?: string;
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, locationSlug }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || location.phone;
@@ -37,10 +39,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
   const categorySlug = categorySlugFromName(category.gbp_category.display_name);
 
   const getServiceUrl = (svc: Service) => {
-    if (isPrimaryCategory) {
-      return `/${svc.slug}`;
-    }
-    return `/${categorySlug}/${svc.slug}`;
+    return paths.servicePage(svc.slug, categorySlug, isPrimaryCategory, locationSlug);
   };
 
   // Construct SitePage-like object for shared HeroSection
@@ -88,7 +87,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} categories={categories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={location} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
 
       <main>
         <HeroSection
@@ -270,7 +269,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         )}
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

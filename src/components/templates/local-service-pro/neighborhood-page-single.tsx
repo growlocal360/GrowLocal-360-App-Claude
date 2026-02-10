@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SiteWithRelations, Location, Neighborhood } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
@@ -251,7 +252,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                         {otherNeighborhoods.map((n) => (
                           <Link
                             key={n.id}
-                            href={`/neighborhoods/${n.slug}`}
+                            href={paths.neighborhoodPage(n.slug)}
                           >
                             <Badge variant="outline" className="cursor-pointer hover:bg-gray-100">
                               {n.name}
@@ -297,7 +298,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
         </section>
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, ServiceAreaDB, Neighborhood } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -16,16 +17,17 @@ interface ServiceAreasListingPageProps {
   neighborhoods: Neighborhood[];
   categories: NavCategory[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug }: ServiceAreasListingPageProps) {
+export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug }: ServiceAreasListingPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
         <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
@@ -49,7 +51,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
               </h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {serviceAreas.map((area) => (
-                  <Link key={area.id} href={`/areas/${area.slug}`}>
+                  <Link key={area.id} href={paths.areaPage(area.slug, locationSlug)}>
                     <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
                       <CardContent className="p-5">
                         <div
@@ -86,7 +88,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
               </h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {neighborhoods.map((neighborhood) => (
-                  <Link key={neighborhood.id} href={`/neighborhoods/${neighborhood.slug}`}>
+                  <Link key={neighborhood.id} href={paths.neighborhoodPage(neighborhood.slug, locationSlug)}>
                     <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
                       <CardContent className="p-5">
                         <div
@@ -139,7 +141,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
 
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

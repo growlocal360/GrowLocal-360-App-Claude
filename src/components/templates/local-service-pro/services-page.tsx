@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, Service, SiteCategory, GBPCategory, ServiceAreaDB } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -17,9 +18,10 @@ interface ServicesPageProps {
   servicesByCategory: Record<string, Service[]>;
   serviceAreas?: ServiceAreaDB[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug }: ServicesPageProps) {
+export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug, locationSlug }: ServicesPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -31,19 +33,18 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
   }));
 
   const getCategoryUrl = (cat: SiteCategory & { gbp_category: GBPCategory }) => {
-    return cat.is_primary ? '/' : `/${categorySlugFromName(cat.gbp_category.display_name)}`;
+    const catSlug = categorySlugFromName(cat.gbp_category.display_name);
+    return paths.categoryPage(catSlug, cat.is_primary, locationSlug);
   };
 
   const getServiceUrl = (cat: SiteCategory & { gbp_category: GBPCategory }, serviceSlug: string) => {
-    if (cat.is_primary) {
-      return `/${serviceSlug}`;
-    }
-    return `/${categorySlugFromName(cat.gbp_category.display_name)}/${serviceSlug}`;
+    const catSlug = categorySlugFromName(cat.gbp_category.display_name);
+    return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
   };
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={navCategories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
         <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
@@ -222,7 +223,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
 
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

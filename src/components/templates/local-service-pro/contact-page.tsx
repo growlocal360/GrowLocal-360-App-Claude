@@ -16,9 +16,10 @@ interface ContactPageProps {
   serviceAreas?: ServiceAreaDB[];
   categories?: NavCategory[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, categories, siteSlug }: ContactPageProps) {
+export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, categories, siteSlug, locationSlug }: ContactPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
@@ -29,7 +30,7 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
         <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
@@ -90,7 +91,7 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} services={services} />
         <EmbeddedMapSection primaryLocation={primaryLocation} />
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

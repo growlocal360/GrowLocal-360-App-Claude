@@ -48,5 +48,5 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
-  return <NeighborhoodPage data={data} siteSlug={slug} />;
+  return <NeighborhoodPage data={data} siteSlug={slug} locationSlug={location} />;
 }

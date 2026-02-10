@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
+import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
 interface SitePageProps {
@@ -51,7 +52,19 @@ export default async function SitePage({ params }: SitePageProps) {
     notFound();
   }
 
-  // Fetch services for the template
+  const { site } = data;
+
+  // Multi-location sites show a brand homepage with location links
+  if (site.website_type === 'multi_location') {
+    return (
+      <BrandHomepage
+        site={site}
+        locations={data.locations}
+      />
+    );
+  }
+
+  // Single-location / microsite: render the full template
   const { categories, services } = await getCategoriesWithServices(data.site.id);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? categorySlugFromName(primaryCategory.gbp_category.display_name) : undefined;
@@ -61,9 +74,6 @@ export default async function SitePage({ params }: SitePageProps) {
     slug: categorySlugFromName(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
-
-  // Route to appropriate template based on template_id
-  const { site } = data;
 
   switch (site.template_id) {
     case 'local-service-pro':

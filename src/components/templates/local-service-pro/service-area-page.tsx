@@ -3,6 +3,7 @@
 import type { GoogleReview, Neighborhood, SitePage } from '@/types/database';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
 import { categorySlugFromName } from '@/lib/sites/get-services';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -19,9 +20,10 @@ interface ServiceAreaPageProps {
   siteSlug: string;
   googleReviews?: GoogleReview[];
   neighborhoods?: Neighborhood[];
+  locationSlug?: string;
 }
 
-export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }: ServiceAreaPageProps) {
+export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods, locationSlug }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -82,7 +84,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
 
       <main>
         <HeroSection
@@ -105,6 +107,8 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }
             primaryLocation={location}
             siteSlug={siteSlug}
             categorySlug={primaryCategorySlug}
+            isPrimaryCategory={true}
+            locationSlug={locationSlug}
           />
         )}
         <LocalizedContentSection
@@ -129,6 +133,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }
             serviceAreas={allServiceAreas}
             neighborhoods={neighborhoods}
             siteSlug={siteSlug}
+            locationSlug={locationSlug}
           />
         )}
         <EmbeddedMapSection primaryLocation={location} />
@@ -139,6 +144,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods }
         primaryLocation={location}
         serviceAreas={allServiceAreas}
         siteSlug={siteSlug}
+        locationSlug={locationSlug}
       />
     </div>
   );

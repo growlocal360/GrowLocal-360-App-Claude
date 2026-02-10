@@ -43,35 +43,57 @@ function isCustomDomain(host: string): boolean {
 interface SiteLookupResult {
   slug: string;
   status: string;
+  websiteType: string;
+  locationSlugs: string[];
+}
+
+// Create a Supabase client for middleware use
+function createMiddlewareClient(request: NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll() {
+          // No-op for read-only operation
+        },
+      },
+    }
+  );
+}
+
+// Fetch location slugs for a multi-location site
+async function fetchLocationSlugs(supabase: ReturnType<typeof createMiddlewareClient>, siteId: string): Promise<string[]> {
+  const { data: locations } = await supabase
+    .from('locations')
+    .select('slug')
+    .eq('site_id', siteId);
+  return (locations || []).map(l => l.slug);
 }
 
 // Lookup site by custom domain
 async function getSiteByDomain(domain: string, request: NextRequest): Promise<SiteLookupResult | null> {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {
-            // No-op for read-only operation
-          },
-        },
-      }
-    );
+    const supabase = createMiddlewareClient(request);
 
     const { data: site } = await supabase
       .from('sites')
-      .select('slug, status')
+      .select('id, slug, status, website_type')
       .eq('custom_domain', domain)
       .eq('custom_domain_verified', true)
       .single();
 
     if (!site) return null;
-    return { slug: site.slug, status: site.status };
+
+    let locationSlugs: string[] = [];
+    if (site.website_type === 'multi_location') {
+      locationSlugs = await fetchLocationSlugs(supabase, site.id);
+    }
+
+    return { slug: site.slug, status: site.status, websiteType: site.website_type || 'single_location', locationSlugs };
   } catch {
     console.error('Error looking up site by domain:', domain);
     return null;
@@ -81,29 +103,22 @@ async function getSiteByDomain(domain: string, request: NextRequest): Promise<Si
 // Lookup site by subdomain (slug)
 async function getSiteBySlug(slug: string, request: NextRequest): Promise<SiteLookupResult | null> {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {
-            // No-op for read-only operation
-          },
-        },
-      }
-    );
+    const supabase = createMiddlewareClient(request);
 
     const { data: site } = await supabase
       .from('sites')
-      .select('slug, status')
+      .select('id, slug, status, website_type')
       .eq('slug', slug)
       .single();
 
     if (!site) return null;
-    return { slug: site.slug, status: site.status };
+
+    let locationSlugs: string[] = [];
+    if (site.website_type === 'multi_location') {
+      locationSlugs = await fetchLocationSlugs(supabase, site.id);
+    }
+
+    return { slug: site.slug, status: site.status, websiteType: site.website_type || 'single_location', locationSlugs };
   } catch {
     console.error('Error looking up site by slug:', slug);
     return null;
@@ -159,7 +174,20 @@ export async function middleware(request: NextRequest) {
 
       case 'active':
       default:
-        // Normal routing for active sites
+        // For multi-location sites, check if first path segment is a location slug
+        if (site.websiteType === 'multi_location' && site.locationSlugs.length > 0) {
+          const segments = pathname.split('/').filter(Boolean);
+          const firstSegment = segments[0];
+
+          if (firstSegment && site.locationSlugs.includes(firstSegment)) {
+            // Rewrite /{locationSlug}/rest → /sites/{siteSlug}/locations/{locationSlug}/rest
+            const rest = segments.slice(1).join('/');
+            url.pathname = `/sites/${site.slug}/locations/${firstSegment}${rest ? `/${rest}` : ''}`;
+            return NextResponse.rewrite(url);
+          }
+        }
+
+        // Normal routing: single-location or non-location path
         url.pathname = `/sites/${site.slug}${pathname}`;
         return NextResponse.rewrite(url);
     }

@@ -132,6 +132,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
       isPrimaryCategory={false}
       googleReviews={googleReviews}
       categories={navCategories}
+      locationSlug={location}
     />
   );
 }

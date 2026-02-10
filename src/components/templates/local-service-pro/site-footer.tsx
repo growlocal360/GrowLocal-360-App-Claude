@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { MapPin, Phone, Mail } from 'lucide-react';
 import type { Site, Location, ServiceAreaDB } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 
 interface SiteFooterProps {
   site: Site;
   primaryLocation: Location | null;
   serviceAreas?: ServiceAreaDB[];
   siteSlug?: string;
+  locationSlug?: string;
 }
 
-export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: SiteFooterProps) {
+export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, locationSlug }: SiteFooterProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -68,32 +70,32 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: Si
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/" className="hover:text-white">
+                <Link href={paths.locationHome(locationSlug)} className="hover:text-white">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-white">
+                <Link href={paths.aboutPage(locationSlug)} className="hover:text-white">
                   About
                 </Link>
               </li>
               <li>
-                <Link href="/services" className="hover:text-white">
+                <Link href={paths.servicesIndex(locationSlug)} className="hover:text-white">
                   Services
                 </Link>
               </li>
               <li>
-                <Link href="/#service-areas" className="hover:text-white">
+                <Link href={paths.areasIndex(locationSlug)} className="hover:text-white">
                   Service Areas
                 </Link>
               </li>
               <li>
-                <Link href="/jobs" className="hover:text-white">
+                <Link href={paths.jobsPage(locationSlug)} className="hover:text-white">
                   Jobs
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white">
+                <Link href={paths.contactPage(locationSlug)} className="hover:text-white">
                   Contact
                 </Link>
               </li>
@@ -110,7 +112,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug }: Si
                 {serviceAreas.slice(0, 8).map((area) => (
                   <li key={area.id}>
                     <Link
-                      href={`/areas/${area.slug}`}
+                      href={paths.areaPage(area.slug, locationSlug)}
                       className="hover:text-white"
                     >
                       {area.name}{area.state ? `, ${area.state}` : ''}

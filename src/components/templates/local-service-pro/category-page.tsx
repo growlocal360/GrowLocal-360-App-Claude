@@ -2,6 +2,7 @@
 
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, Neighborhood, SitePage } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -34,9 +35,10 @@ interface CategoryPageProps {
   googleReviews?: GoogleReview[];
   serviceAreas?: ServiceAreaDB[];
   neighborhoods?: Neighborhood[];
+  locationSlug?: string;
 }
 
-export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods }: CategoryPageProps) {
+export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, locationSlug }: CategoryPageProps) {
   const { site, location, category, services, allCategories, pageContent } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -84,7 +86,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
 
       <main>
         <HeroSection
@@ -107,6 +109,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
             primaryLocation={location}
             siteSlug={siteSlug}
             categorySlug={categorySlug}
+            locationSlug={locationSlug}
           />
         )}
         <LocalizedContentSection
@@ -131,6 +134,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
             serviceAreas={serviceAreas || []}
             neighborhoods={neighborhoods}
             siteSlug={siteSlug}
+            locationSlug={locationSlug}
           />
         )}
         <EmbeddedMapSection primaryLocation={location} />
@@ -141,6 +145,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
         primaryLocation={location}
         serviceAreas={serviceAreas}
         siteSlug={siteSlug}
+        locationSlug={locationSlug}
       />
     </div>
   );

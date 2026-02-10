@@ -12,9 +12,10 @@ interface AboutPageProps {
   serviceAreas?: ServiceAreaDB[];
   categories?: NavCategory[];
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, categories, siteSlug }: AboutPageProps) {
+export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, categories, siteSlug, locationSlug }: AboutPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
 
   const h1 = pageContent?.h1 || `About ${site.name}`;
@@ -24,7 +25,7 @@ export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, ca
 
   return (
     <div className="min-h-screen bg-white">
-      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} />
+      <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
         <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
@@ -64,7 +65,7 @@ export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, ca
 
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
       </main>
-      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} />
+      <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Wrench, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Service, Location } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 
 interface ServicesPreviewProps {
   site: Site;
@@ -11,17 +12,16 @@ interface ServicesPreviewProps {
   primaryLocation: Location | null;
   siteSlug: string;
   categorySlug?: string;
+  isPrimaryCategory?: boolean;
+  locationSlug?: string;
 }
 
-export function ServicesPreview({ site, services, primaryLocation, siteSlug, categorySlug }: ServicesPreviewProps) {
+export function ServicesPreview({ site, services, primaryLocation, categorySlug, isPrimaryCategory, locationSlug }: ServicesPreviewProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
 
   const getServiceUrl = (service: Service) => {
-    if (categorySlug) {
-      return `/${categorySlug}/${service.slug}`;
-    }
-    return `/${service.slug}`;
+    return paths.servicePage(service.slug, categorySlug, isPrimaryCategory, locationSlug);
   };
 
   if (services.length === 0) return null;

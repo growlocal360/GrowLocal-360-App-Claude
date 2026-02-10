@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SiteWithRelations, Location, Neighborhood, ServiceAreaDB } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 import { SiteHeader } from './site-header';
 import { SiteFooter } from './site-footer';
 
@@ -18,9 +19,10 @@ interface LocationPageProps {
     serviceAreas: ServiceAreaDB[];
   };
   siteSlug: string;
+  locationSlug?: string;
 }
 
-export function LocationPage({ data, siteSlug }: LocationPageProps) {
+export function LocationPage({ data, siteSlug, locationSlug }: LocationPageProps) {
   const { site, location, allLocations, neighborhoods, serviceAreas } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
@@ -72,7 +74,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SiteHeader site={site} primaryLocation={location} />
+      <SiteHeader site={site} primaryLocation={location} locationSlug={locationSlug} />
 
       <main>
         {/* Breadcrumb */}
@@ -80,7 +82,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
           <div className="mx-auto max-w-7xl px-4 py-3">
             <nav className="flex items-center gap-2 text-sm text-gray-600">
               <Link
-                href={`/sites/${siteSlug}`}
+                href="/"
                 className="hover:text-gray-900"
               >
                 Home
@@ -284,7 +286,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
                         {otherLocations.map((loc) => (
                           <Link
                             key={loc.id}
-                            href={`/sites/${siteSlug}/locations/${loc.slug}`}
+                            href={`/${loc.slug}`}
                             className="flex items-center gap-2 text-sm hover:underline"
                             style={{ color: brandColor }}
                           >
@@ -319,7 +321,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
                 {neighborhoods.map((neighborhood) => (
                   <Link
                     key={neighborhood.id}
-                    href={`/sites/${siteSlug}/locations/${location.slug}/neighborhoods/${neighborhood.slug}`}
+                    href={paths.neighborhoodPage(neighborhood.slug, locationSlug)}
                   >
                     <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-md">
                       <CardContent className="flex items-center gap-3 p-4">
@@ -357,7 +359,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
                 {serviceAreas.map((area) => (
                   <Link
                     key={area.id}
-                    href={`/sites/${siteSlug}/service-areas/${area.slug}`}
+                    href={paths.areaPage(area.slug, locationSlug)}
                   >
                     <Badge
                       variant="outline"
@@ -408,7 +410,7 @@ export function LocationPage({ data, siteSlug }: LocationPageProps) {
         </section>
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} />
+      <SiteFooter site={site} primaryLocation={location} serviceAreas={serviceAreas} locationSlug={locationSlug} />
     </div>
   );
 }

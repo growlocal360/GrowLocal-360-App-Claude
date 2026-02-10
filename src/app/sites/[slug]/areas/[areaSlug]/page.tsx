@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceAreaBySlug, getAllServiceAreaSlugs } from '@/lib/sites/get-service-areas';
+import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServiceAreaPage } from '@/components/templates/local-service-pro/service-area-page';
 
 interface ServiceAreaPageProps {
@@ -45,5 +47,18 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
     notFound();
   }
 
-  return <ServiceAreaPage data={data} siteSlug={slug} />;
+  const admin = createAdminClient();
+  const [googleReviews, { data: neighborhoods }] = await Promise.all([
+    getGoogleReviewsForSite(data.site.id),
+    admin.from('neighborhoods').select('*').eq('site_id', data.site.id).eq('is_active', true).order('sort_order'),
+  ]);
+
+  return (
+    <ServiceAreaPage
+      data={data}
+      siteSlug={slug}
+      googleReviews={googleReviews}
+      neighborhoods={neighborhoods || []}
+    />
+  );
 }

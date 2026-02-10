@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
@@ -69,13 +70,20 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   // Try to get as a category (secondary categories have their own page)
   const categoryData = await getCategoryBySlugSingleLocation(slug, serviceOrCategory);
   if (categoryData) {
-    const googleReviews = await getGoogleReviewsForSite(categoryData.site.id);
+    const admin = createAdminClient();
+    const [googleReviews, { data: serviceAreas }, { data: neighborhoods }] = await Promise.all([
+      getGoogleReviewsForSite(categoryData.site.id),
+      admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
+      admin.from('neighborhoods').select('*').eq('site_id', categoryData.site.id).eq('is_active', true).order('sort_order'),
+    ]);
 
     return (
       <CategoryPage
         data={categoryData}
         siteSlug={slug}
         googleReviews={googleReviews}
+        serviceAreas={serviceAreas || []}
+        neighborhoods={neighborhoods || []}
       />
     );
   }

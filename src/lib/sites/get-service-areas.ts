@@ -1,4 +1,4 @@
-import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type {
   SiteWithRelations,
   Location,
@@ -22,7 +22,7 @@ export async function getServiceAreaBySlug(
   siteSlug: string,
   areaSlug: string
 ): Promise<ServiceAreaPageData | null> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch site
   const { data: site } = await supabase
@@ -95,7 +95,7 @@ export async function getAllServiceAreaSlugs(): Promise<{
   siteSlug: string;
   areaSlug: string;
 }[]> {
-  const supabase = createStaticClient();
+  const supabase = createAdminClient();
 
   // Fetch all active sites
   const { data: sites } = await supabase

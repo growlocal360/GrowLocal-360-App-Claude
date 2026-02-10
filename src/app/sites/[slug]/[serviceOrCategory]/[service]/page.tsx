@@ -1,13 +1,22 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, getAllNestedServiceParams } from '@/lib/sites/get-services';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
 interface NestedServicePageProps {
   params: Promise<{ slug: string; serviceOrCategory: string; service: string }>;
+}
+
+export async function generateStaticParams() {
+  const params = await getAllNestedServiceParams();
+  return params.map(({ siteSlug, serviceOrCategory, service }) => ({
+    slug: siteSlug,
+    serviceOrCategory,
+    service,
+  }));
 }
 
 async function getNestedServiceData(

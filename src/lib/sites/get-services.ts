@@ -365,3 +365,82 @@ export async function getAllServiceSlugs(): Promise<{
 
   return slugs;
 }
+
+// Get all serviceOrCategory params for static generation
+// Combines: primary category service slugs + secondary category slugs
+export async function getAllServiceOrCategoryParams(): Promise<{
+  siteSlug: string;
+  serviceOrCategory: string;
+}[]> {
+  const supabase = createAdminClient();
+  const { data: sites } = await supabase.from('sites').select('id, slug').eq('is_active', true);
+  if (!sites) return [];
+
+  const params: { siteSlug: string; serviceOrCategory: string }[] = [];
+
+  for (const site of sites) {
+    const { data: categories } = await supabase
+      .from('site_categories')
+      .select('*, gbp_category:gbp_categories(*)')
+      .eq('site_id', site.id);
+
+    if (!categories) continue;
+
+    for (const cat of categories) {
+      if (cat.is_primary) {
+        // Primary category services live at /{serviceSlug}
+        const { data: services } = await supabase
+          .from('services').select('slug')
+          .eq('site_id', site.id).eq('site_category_id', cat.id).eq('is_active', true);
+        for (const svc of services || []) {
+          params.push({ siteSlug: site.slug, serviceOrCategory: svc.slug });
+        }
+      } else {
+        // Secondary categories live at /{categorySlug}
+        params.push({ siteSlug: site.slug, serviceOrCategory: cat.gbp_category.name });
+      }
+    }
+  }
+
+  return params;
+}
+
+// Get all nested service params for static generation (non-primary category services)
+export async function getAllNestedServiceParams(): Promise<{
+  siteSlug: string;
+  serviceOrCategory: string;
+  service: string;
+}[]> {
+  const supabase = createAdminClient();
+  const { data: sites } = await supabase.from('sites').select('id, slug').eq('is_active', true);
+  if (!sites) return [];
+
+  const params: { siteSlug: string; serviceOrCategory: string; service: string }[] = [];
+
+  for (const site of sites) {
+    const { data: categories } = await supabase
+      .from('site_categories')
+      .select('*, gbp_category:gbp_categories(*)')
+      .eq('site_id', site.id);
+
+    if (!categories) continue;
+
+    for (const cat of categories) {
+      if (cat.is_primary) continue;
+
+      const { data: services } = await supabase
+        .from('services').select('slug')
+        .eq('site_id', site.id).eq('site_category_id', cat.id).eq('is_active', true);
+
+      for (const svc of services || []) {
+        params.push({
+          siteSlug: site.slug,
+          serviceOrCategory: cat.gbp_category.name,
+          service: svc.slug,
+        });
+      }
+    }
+  }
+
+  return params;
+}

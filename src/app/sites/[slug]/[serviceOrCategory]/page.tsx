@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
@@ -8,6 +8,14 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 
 interface ServiceOrCategoryPageProps {
   params: Promise<{ slug: string; serviceOrCategory: string }>;
+}
+
+export async function generateStaticParams() {
+  const params = await getAllServiceOrCategoryParams();
+  return params.map(({ siteSlug, serviceOrCategory }) => ({
+    slug: siteSlug,
+    serviceOrCategory,
+  }));
 }
 
 export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {

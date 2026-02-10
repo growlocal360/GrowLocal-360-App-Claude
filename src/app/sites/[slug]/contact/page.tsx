@@ -1,9 +1,14 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getSiteBySlug } from '@/lib/sites/get-site';
+import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+
+export async function generateStaticParams() {
+  const slugs = await getAllSiteSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
 
 interface ContactPageProps {
   params: Promise<{ slug: string }>;

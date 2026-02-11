@@ -125,7 +125,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const corePageCount = 3; // home, about, contact
     const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount;
 
-    // Update site status to building
+    // Update build progress (keep site active if it already is — don't take it offline)
     const initialProgress: SiteBuildProgress = {
       total_tasks: totalTasks,
       completed_tasks: 0,
@@ -133,14 +133,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       started_at: new Date().toISOString(),
     };
 
+    const isAlreadyActive = site.status === 'active';
+    const statusUpdate: Record<string, unknown> = {
+      build_progress: initialProgress,
+      status_message: null,
+      status_updated_at: new Date().toISOString(),
+    };
+    if (!isAlreadyActive) {
+      statusUpdate.status = 'building';
+    }
+
     await supabase
       .from('sites')
-      .update({
-        status: 'building',
-        build_progress: initialProgress,
-        status_message: null,
-        status_updated_at: new Date().toISOString(),
-      })
+      .update(statusUpdate)
       .eq('id', siteId);
 
     // Capture Google access token for review fetching (only available during user session)
@@ -164,7 +169,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         serviceAreas || [],
         siteCategories || [],
         initialProgress,
-        googleAccessToken
+        googleAccessToken,
+        isAlreadyActive
       ).catch((error) => {
         console.error('Background content generation failed:', error);
       })
@@ -203,14 +209,17 @@ async function generateAllContent(
   serviceAreas: { id: string; name: string; state: string | null }[],
   siteCategories: { id: string; is_primary: boolean; gbp_categories: { display_name: string } | { display_name: string }[] }[],
   progress: SiteBuildProgress,
-  googleAccessToken: string | null
+  googleAccessToken: string | null,
+  wasAlreadyActive: boolean = false
 ) {
   const { createAdminClient } = await import('@/lib/supabase/admin');
   const supabase = createAdminClient();
 
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   if (!anthropicApiKey) {
-    await markFailed(supabase, siteId, 'API key not configured');
+    if (!wasAlreadyActive) {
+      await markFailed(supabase, siteId, 'API key not configured');
+    }
     return;
   }
 
@@ -496,11 +505,23 @@ async function generateAllContent(
     console.log(`Content generation complete for site ${siteId}`);
   } catch (error) {
     console.error(`Content generation failed for site ${siteId}:`, error);
-    await markFailed(
-      supabase,
-      siteId,
-      error instanceof Error ? error.message : 'Unknown error'
-    );
+    if (wasAlreadyActive) {
+      // Don't take an active site offline — just log the error and clear build progress
+      await supabase
+        .from('sites')
+        .update({
+          build_progress: null,
+          status_message: `Content regeneration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          status_updated_at: new Date().toISOString(),
+        })
+        .eq('id', siteId);
+    } else {
+      await markFailed(
+        supabase,
+        siteId,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
   }
 }
 

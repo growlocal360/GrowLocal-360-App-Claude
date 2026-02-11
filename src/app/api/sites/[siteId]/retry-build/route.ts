@@ -76,20 +76,25 @@ export async function POST(
 
   const totalTasks = servicesCount + serviceAreasCount + categoriesCount + corePages;
 
-  // Reset site status to building
+  // For active sites, keep them live — only set 'building' for failed/stuck builds
+  const keepLive = site.status === 'active';
+  const updateData: Record<string, unknown> = {
+    build_progress: {
+      total_tasks: totalTasks,
+      completed_tasks: 0,
+      current_task: 'Regenerating content...',
+      started_at: new Date().toISOString(),
+    },
+    status_message: null,
+    status_updated_at: new Date().toISOString(),
+  };
+  if (!keepLive) {
+    updateData.status = 'building';
+  }
+
   const { error: updateError } = await supabase
     .from('sites')
-    .update({
-      status: 'building',
-      build_progress: {
-        total_tasks: totalTasks,
-        completed_tasks: 0,
-        current_task: 'Restarting content generation...',
-        started_at: new Date().toISOString(),
-      },
-      status_message: null,
-      status_updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', siteId);
 
   if (updateError) {

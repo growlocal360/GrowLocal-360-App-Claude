@@ -162,10 +162,23 @@ export async function POST(
     }
   }
 
+  // If site is stuck in 'building' status, reset to 'active'
+  if (site.status === 'building') {
+    await admin
+      .from('sites')
+      .update({
+        status: 'active',
+        build_progress: null,
+        status_updated_at: new Date().toISOString(),
+      })
+      .eq('id', siteId);
+  }
+
   return NextResponse.json({
     success: true,
     fixed: results.length,
     unmatched: unmatched.length,
+    statusReset: site.status === 'building',
     results,
     unmatched_services: unmatched,
   });

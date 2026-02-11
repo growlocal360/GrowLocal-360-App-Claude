@@ -29,7 +29,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
   return (
     <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white lg:py-20">
       <div className="relative mx-auto max-w-7xl px-4">
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid gap-10 lg:grid-cols-[3fr_2fr]">
           {/* Left side: Content */}
           <div className="flex flex-col justify-center">
             {/* Star rating badge */}

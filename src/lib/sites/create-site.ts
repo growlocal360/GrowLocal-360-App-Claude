@@ -237,6 +237,9 @@ export async function createSiteFromWizardData(
     ...secondaryCategories.map((cat) => ({ ...cat, isPrimary: false })),
   ];
 
+  // Build GCID -> site_category_id map during creation (not via re-query)
+  const siteCategoryMap: Record<string, string> = {};
+
   for (let i = 0; i < allCategories.length; i++) {
     const cat = allCategories[i];
 
@@ -261,37 +264,22 @@ export async function createSiteFromWizardData(
       continue;
     }
 
-    // Then create the site_category link
-    const { error: siteCatError } = await supabase
+    // Then create the site_category link and capture the id
+    const { data: siteCat, error: siteCatError } = await supabase
       .from('site_categories')
       .insert({
         site_id: site.id,
         gbp_category_id: gbpCat.id,
         is_primary: cat.isPrimary,
         sort_order: i,
-      });
+      })
+      .select('id')
+      .single();
 
     if (siteCatError) {
       console.error('Error creating site category:', siteCatError);
-    }
-  }
-
-  // Build a map of categoryGcid -> site_category_id for services
-  const { data: siteCategoriesData } = await supabase
-    .from('site_categories')
-    .select('id, gbp_category_id, gbp_categories(gcid)')
-    .eq('site_id', site.id);
-
-  const siteCategoryMap: Record<string, string> = {};
-  if (siteCategoriesData) {
-    for (const sc of siteCategoriesData) {
-      const gbpCat = sc.gbp_categories;
-      const gcid = Array.isArray(gbpCat)
-        ? (gbpCat[0] as { gcid: string } | undefined)?.gcid
-        : (gbpCat as { gcid: string } | null)?.gcid;
-      if (gcid) {
-        siteCategoryMap[gcid] = sc.id;
-      }
+    } else if (siteCat) {
+      siteCategoryMap[cat.gcid] = siteCat.id;
     }
   }
 

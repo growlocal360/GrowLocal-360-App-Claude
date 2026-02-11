@@ -193,7 +193,7 @@ export async function getCategoryBySlugSingleLocation(
   const category = (allCategories || []).find(
     (c: SiteCategory & { gbp_category: GBPCategory }) =>
       c.gbp_category.name === categorySlug ||
-      c.gbp_category.display_name.toLowerCase().replace(/\s+/g, '-') === categorySlug
+      categorySlugFromName(c.gbp_category.display_name) === categorySlug
   );
 
   if (!category) return null;

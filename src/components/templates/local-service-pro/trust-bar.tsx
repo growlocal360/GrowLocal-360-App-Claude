@@ -15,15 +15,15 @@ export function TrustBar({ brandColor = '#00d9c0', averageRating, totalReviewCou
     : '5.0 Rating';
 
   return (
-    <section className="border-b bg-gray-50 py-4">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-8 px-4">
+    <section className="border-b bg-gray-50 py-6">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-10 px-4">
         {/* Star rating */}
         <div className="flex items-center gap-2">
           <div className="flex">
             {[1, 2, 3, 4, 5].map((i) => (
               <Star
                 key={i}
-                className={`h-4 w-4 ${
+                className={`h-5 w-5 ${
                   i <= Math.round(displayRating)
                     ? 'fill-yellow-400 text-yellow-400'
                     : 'fill-gray-200 text-gray-200'
@@ -31,19 +31,19 @@ export function TrustBar({ brandColor = '#00d9c0', averageRating, totalReviewCou
               />
             ))}
           </div>
-          <span className="text-sm font-medium text-gray-700">{ratingLabel}</span>
+          <span className="text-base font-medium text-gray-700">{ratingLabel}</span>
         </div>
 
         {/* Licensed badge */}
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5" style={{ color: brandColor }} />
-          <span className="text-sm font-medium text-gray-700">Licensed & Insured</span>
+          <Shield className="h-6 w-6" style={{ color: brandColor }} />
+          <span className="text-base font-medium text-gray-700">Licensed & Insured</span>
         </div>
 
         {/* Certified badge */}
         <div className="flex items-center gap-2">
-          <Award className="h-5 w-5" style={{ color: brandColor }} />
-          <span className="text-sm font-medium text-gray-700">Certified Professionals</span>
+          <Award className="h-6 w-6" style={{ color: brandColor }} />
+          <span className="text-base font-medium text-gray-700">Certified Professionals</span>
         </div>
       </div>
     </section>

@@ -20,7 +20,9 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
   const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
-  const h1 = pageContent?.h1 || site.name;
+  const primaryCategory = site.settings?.core_industry || 'Professional Services';
+  const locationStr = primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : '';
+  const h1 = `${primaryCategory}${locationStr} - ${site.name}`;
   const heroDescription = pageContent?.hero_description ||
     `Professional ${industry.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
 
@@ -52,7 +54,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
             </div>
 
             {/* H1 */}
-            <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
+            <h1 className="text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
               {h1}
             </h1>
 

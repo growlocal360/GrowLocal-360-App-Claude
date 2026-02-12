@@ -45,6 +45,8 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categorySlug = categorySlugFromName(category.gbp_category.display_name);
 
+  const categoryName = category.gbp_category.display_name;
+
   const navCategories: NavCategory[] = allCategories.map(c => ({
     name: c.gbp_category.display_name,
     slug: categorySlugFromName(c.gbp_category.display_name),
@@ -52,16 +54,16 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
   }));
 
   // Construct a SitePage-like object from the category's pageContent for section components
-  const sitePageContent = pageContent ? {
-    h1: pageContent.h1,
-    h2: pageContent.h2,
-    hero_description: pageContent.hero_description,
-    body_copy: pageContent.body_copy,
-    body_copy_2: pageContent.body_copy_2,
-  } as SitePage : null;
+  const categoryH1 = `${categoryName} in ${location.city}, ${location.state} - ${site.name}`;
+  const sitePageContent = {
+    h1: pageContent?.h1 || categoryH1,
+    h2: pageContent?.h2 || null,
+    hero_description: pageContent?.hero_description || null,
+    body_copy: pageContent?.body_copy || null,
+    body_copy_2: pageContent?.body_copy_2 || null,
+  } as SitePage;
 
   // Schema.org
-  const categoryName = category.gbp_category.display_name;
   const phone = site.settings?.phone || location.phone;
   const schemaData = {
     '@context': 'https://schema.org',

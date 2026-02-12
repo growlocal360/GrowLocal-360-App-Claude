@@ -6,6 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Location, SitePage, Service } from '@/types/database';
 import { MultiStepForm } from './multi-step-form';
 
+function toTitleCase(str: string): string {
+  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 interface HeroSectionProps {
   site: Site;
   primaryLocation: Location | null;
@@ -22,7 +26,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
 
   const primaryCategory = site.settings?.core_industry || 'Professional Services';
   const locationStr = primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : '';
-  const h1 = pageContent?.h1 || `${primaryCategory}${locationStr} - ${site.name}`;
+  const h1 = toTitleCase(pageContent?.h1 || `${primaryCategory}${locationStr} - ${site.name}`);
   const heroDescription = pageContent?.hero_description ||
     `Professional ${industry.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
 

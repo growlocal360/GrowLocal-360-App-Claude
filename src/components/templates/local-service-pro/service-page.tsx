@@ -44,7 +44,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
 
   // Construct SitePage-like object for shared HeroSection
   const heroContent = {
-    h1: service.h1 || `Professional ${service.name} Services in ${location.city}, ${location.state}`,
+    h1: service.h1 || `${service.name} in ${location.city}, ${location.state} - ${site.name}`,
     hero_description: service.intro_copy || service.description ||
       `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`,
   } as SitePage;

@@ -94,3 +94,13 @@ export function contactPage(locationSlug?: string): string {
 export function jobsPage(locationSlug?: string): string {
   return `${base(locationSlug)}/jobs`;
 }
+
+/** /work or /{locationSlug}/work */
+export function workHub(locationSlug?: string): string {
+  return `${base(locationSlug)}/work`;
+}
+
+/** /work/{slug} or /{locationSlug}/work/{slug} */
+export function workDetail(workSlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/work/${workSlug}`;
+}

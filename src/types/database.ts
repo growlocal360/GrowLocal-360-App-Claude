@@ -243,6 +243,45 @@ export interface GoogleReview {
   updated_at: string;
 }
 
+export type WorkItemStatus = 'draft' | 'published';
+
+export interface WorkItemImage {
+  url: string;
+  alt: string;
+  width?: number;
+  height?: number;
+}
+
+export interface WorkItem {
+  id: string;
+  site_id: string;
+  status: WorkItemStatus;
+  slug: string;
+  performed_at: string | null;
+  title: string;
+  h1: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  summary: string | null;
+  description: string | null;
+  service_id: string | null;
+  location_id: string | null;
+  brand_name: string | null;
+  brand_slug: string | null;
+  images: WorkItemImage[];
+  address_street_name: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_zip: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkItemWithRelations extends WorkItem {
+  service?: { id: string; name: string; slug: string } | null;
+  location?: { id: string; city: string; state: string; slug: string } | null;
+}
+
 export interface JobSnap {
   id: string;
   site_id: string;

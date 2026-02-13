@@ -90,6 +90,11 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                 </Link>
               </li>
               <li>
+                <Link href={paths.workHub(locationSlug)} className="hover:text-white">
+                  Work
+                </Link>
+              </li>
+              <li>
                 <Link href={paths.jobsPage(locationSlug)} className="hover:text-white">
                   Jobs
                 </Link>

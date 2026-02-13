@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface MultiLocationContactPageProps {
   params: Promise<{ slug: string; location: string }>;
 }

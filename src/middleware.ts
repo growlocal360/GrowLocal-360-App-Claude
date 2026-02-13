@@ -6,6 +6,14 @@ import { createServerClient } from '@supabase/ssr';
 const MAIN_APP_SUBDOMAINS = ['www', 'admin', 'app', 'api'];
 const MAIN_APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
 
+// Timeout wrapper: resolves to null if the promise doesn't settle in time
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
 // Check if this is a site subdomain request (e.g., bobshvac.growlocal360.com)
 function getSubdomainFromHost(host: string): string | null {
   // Remove port if present
@@ -196,31 +204,33 @@ export async function middleware(request: NextRequest) {
   // Check for subdomain (bobshvac.growlocal360.com)
   const subdomain = getSubdomainFromHost(host);
   if (subdomain) {
-    const site = await getSiteBySlug(subdomain, request);
+    const site = await withTimeout(getSiteBySlug(subdomain, request), 3000);
     const url = request.nextUrl.clone();
 
     if (site) {
       return handleSiteRouting(site, url);
-    } else {
-      // Subdomain not found
-      url.pathname = '/domain-not-found';
-      return NextResponse.rewrite(url);
     }
+
+    // Fallback: rewrite to ISR-cached site path
+    // If the site was previously built, Vercel serves the cached page even during DB outage
+    // If it never existed, Next.js route handler returns 404
+    url.pathname = `/sites/${subdomain}${pathname}`;
+    return NextResponse.rewrite(url);
   }
 
   // Check for custom domain (bobshvac.com)
   if (isCustomDomain(host)) {
     const hostname = host.split(':')[0];
-    const site = await getSiteByDomain(hostname, request);
+    const site = await withTimeout(getSiteByDomain(hostname, request), 3000);
     const url = request.nextUrl.clone();
 
     if (site) {
       return handleSiteRouting(site, url);
-    } else {
-      // Domain not found or not verified - show error page
-      url.pathname = '/domain-not-found';
-      return NextResponse.rewrite(url);
     }
+
+    // Can't resolve custom domain slug without DB — show temporary error
+    url.pathname = '/temporarily-unavailable';
+    return NextResponse.rewrite(url);
   }
 
   // Default: run auth middleware for main app

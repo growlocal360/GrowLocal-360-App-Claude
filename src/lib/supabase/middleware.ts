@@ -29,10 +29,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh session if expired (with 5s timeout to prevent hanging during outages)
+  const { data: { user } } = await Promise.race([
+    supabase.auth.getUser(),
+    new Promise<{ data: { user: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { user: null } }), 5000)
+    ),
+  ]);
 
   // Protected routes
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||

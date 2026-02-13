@@ -5,6 +5,8 @@ import { LocalServiceProTemplate } from '@/components/templates/local-service-pr
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface SitePageProps {
   params: Promise<{ slug: string }>;
 }

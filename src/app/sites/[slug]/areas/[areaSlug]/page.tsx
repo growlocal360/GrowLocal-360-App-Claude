@@ -5,6 +5,8 @@ import { getServiceAreaBySlug, getAllServiceAreaSlugs } from '@/lib/sites/get-se
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServiceAreaPage } from '@/components/templates/local-service-pro/service-area-page';
 
+export const revalidate = 3600;
+
 interface ServiceAreaPageProps {
   params: Promise<{ slug: string; areaSlug: string }>;
 }

@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getNeighborhoodBySlug } from '@/lib/sites/get-site';
 import { NeighborhoodPage } from '@/components/templates/local-service-pro/neighborhood-page';
 
+export const revalidate = 3600;
+
 interface NeighborhoodPageProps {
   params: Promise<{
     slug: string;

@@ -6,6 +6,8 @@ import { ServicePage } from '@/components/templates/local-service-pro/service-pa
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface ServiceOrCategoryPageProps {
   params: Promise<{ slug: string; serviceOrCategory: string }>;
 }

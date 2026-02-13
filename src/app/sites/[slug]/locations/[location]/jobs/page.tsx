@@ -5,6 +5,8 @@ import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get
 import { JobsPage } from '@/components/templates/local-service-pro/jobs-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface MultiLocationJobsPageProps {
   params: Promise<{ slug: string; location: string }>;
 }

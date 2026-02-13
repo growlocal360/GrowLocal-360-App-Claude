@@ -5,6 +5,8 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
 import type { Service } from '@/types/database';
 
+export const revalidate = 3600;
+
 interface MultiLocationServicesPageProps {
   params: Promise<{ slug: string; location: string }>;
 }

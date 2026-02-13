@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getLocationBySlug } from '@/lib/sites/get-site';
 import { LocationPage } from '@/components/templates/local-service-pro/location-page';
 
+export const revalidate = 3600;
+
 interface LocationPageProps {
   params: Promise<{
     slug: string;

@@ -5,6 +5,8 @@ import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get
 import { ServiceAreasListingPage } from '@/components/templates/local-service-pro/service-areas-listing-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const slugs = await getAllSiteSlugs();
   return slugs.map((slug) => ({ slug }));

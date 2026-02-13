@@ -4,6 +4,8 @@ import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get
 import { NeighborhoodPageSingleLocation } from '@/components/templates/local-service-pro/neighborhood-page-single';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface NeighborhoodPageProps {
   params: Promise<{
     slug: string;

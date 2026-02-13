@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 
+export const revalidate = 3600;
+
 interface MultiLocationAboutPageProps {
   params: Promise<{ slug: string; location: string }>;
 }

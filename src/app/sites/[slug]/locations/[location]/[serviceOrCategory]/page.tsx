@@ -7,6 +7,8 @@ import { CategoryPage } from '@/components/templates/local-service-pro/category-
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
+export const revalidate = 3600;
+
 interface MultiLocationServiceOrCategoryPageProps {
   params: Promise<{ slug: string; location: string; serviceOrCategory: string }>;
 }

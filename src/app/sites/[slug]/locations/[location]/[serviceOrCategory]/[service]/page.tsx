@@ -6,6 +6,8 @@ import { ServicePage } from '@/components/templates/local-service-pro/service-pa
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 
+export const revalidate = 3600;
+
 interface MultiLocationNestedServicePageProps {
   params: Promise<{ slug: string; location: string; serviceOrCategory: string; service: string }>;
 }

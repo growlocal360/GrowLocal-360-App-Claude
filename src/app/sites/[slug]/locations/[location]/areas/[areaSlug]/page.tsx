@@ -13,6 +13,8 @@ import type {
 } from '@/types/database';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
 
+export const revalidate = 3600;
+
 interface MultiLocationAreaDetailProps {
   params: Promise<{ slug: string; location: string; areaSlug: string }>;
 }

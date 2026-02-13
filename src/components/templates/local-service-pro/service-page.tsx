@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, Plus, Minus, ArrowRight } from 'lucide-react';
+import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, SitePage } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
@@ -274,10 +273,8 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
   );
 }
 
-// FAQ Accordion component
+// FAQ Section - always open for SEO crawlability
 function FAQSection({ faqs, brandColor }: { faqs: { question: string; answer: string }[]; brandColor: string }) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
   return (
     <section className="py-16">
       <div className="mx-auto max-w-3xl px-4">
@@ -287,22 +284,12 @@ function FAQSection({ faqs, brandColor }: { faqs: { question: string; answer: st
         <div className="mt-10 space-y-3">
           {faqs.map((faq, index) => (
             <div key={index} className="rounded-lg border">
-              <button
-                className="flex w-full items-center justify-between px-6 py-4 text-left"
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-              >
-                <span className="font-medium text-gray-900">{faq.question}</span>
-                {openIndex === index ? (
-                  <Minus className="h-5 w-5 shrink-0 text-gray-500" />
-                ) : (
-                  <Plus className="h-5 w-5 shrink-0 text-gray-500" />
-                )}
-              </button>
-              {openIndex === index && (
-                <div className="border-t px-6 py-4">
-                  <p className="text-gray-600">{faq.answer}</p>
-                </div>
-              )}
+              <div className="px-6 py-4">
+                <h3 className="font-medium text-gray-900">{faq.question}</h3>
+              </div>
+              <div className="border-t px-6 py-4">
+                <p className="text-gray-600">{faq.answer}</p>
+              </div>
             </div>
           ))}
         </div>

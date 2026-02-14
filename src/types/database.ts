@@ -282,6 +282,18 @@ export interface WorkItemWithRelations extends WorkItem {
   location?: { id: string; city: string; state: string; slug: string } | null;
 }
 
+export interface SiteBrand {
+  id: string;
+  site_id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface JobSnap {
   id: string;
   site_id: string;

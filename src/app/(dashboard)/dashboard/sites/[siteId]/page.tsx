@@ -16,6 +16,11 @@ import {
   RefreshCw,
   Loader2,
   Inbox,
+  Building2,
+  Tag,
+  Wrench,
+  Map,
+  Award,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -37,6 +42,10 @@ interface SiteData {
   custom_domain_verified: boolean;
   created_at: string;
   locations: { id: string; name: string }[];
+  services: { id: string }[];
+  service_areas: { id: string }[];
+  site_categories: { id: string }[];
+  site_brands: { id: string }[];
 }
 
 export default function SiteDashboardPage() {
@@ -76,7 +85,7 @@ export default function SiteDashboardPage() {
       const { data: siteData } = await supabase
         .from('sites')
         .select(
-          'id, name, slug, status, build_progress, status_message, settings, custom_domain, custom_domain_verified, created_at, locations(id, name)'
+          'id, name, slug, status, build_progress, status_message, settings, custom_domain, custom_domain_verified, created_at, locations(id, name), services(id), service_areas(id), site_categories(id), site_brands(id)'
         )
         .eq('id', siteId)
         .single();
@@ -352,6 +361,133 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/leads`}>
                   View Leads
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Business Info */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-slate-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Business Info</h3>
+                  <p className="text-sm text-gray-500">Name, phone & email</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {[site.settings?.phone, site.settings?.email].filter(Boolean).join(' & ') || 'Update your business details'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/business`}>
+                  Edit Info
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Categories */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
+                  <Tag className="h-5 w-5 text-teal-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Categories</h3>
+                  <p className="text-sm text-gray-500">GBP categories</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.site_categories?.length || 0} categor{(site.site_categories?.length || 0) === 1 ? 'y' : 'ies'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/categories`}>
+                  Manage Categories
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Services */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <Wrench className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Services</h3>
+                  <p className="text-sm text-gray-500">Service pages</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.services?.length || 0} service{(site.services?.length || 0) !== 1 ? 's' : ''}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/services`}>
+                  Manage Services
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Service Areas */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                  <Map className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Service Areas</h3>
+                  <p className="text-sm text-gray-500">Cities served</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.service_areas?.length || 0} service area{(site.service_areas?.length || 0) !== 1 ? 's' : ''}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/service-areas`}>
+                  Manage Areas
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Brands */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+                  <Award className="h-5 w-5 text-pink-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Brands</h3>
+                  <p className="text-sm text-gray-500">Product brands</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {(site.site_brands?.length || 0) > 0
+                  ? `${site.site_brands.length} brand${site.site_brands.length !== 1 ? 's' : ''}`
+                  : 'No brands yet'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/brands`}>
+                  Manage Brands
                 </Link>
               </Button>
             </CardContent>

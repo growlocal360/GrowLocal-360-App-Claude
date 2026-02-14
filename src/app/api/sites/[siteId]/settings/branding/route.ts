@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidatePath } from 'next/cache';
 
 // GET - Fetch current branding settings
 export async function GET(
@@ -116,8 +118,9 @@ export async function PATCH(
     logo_url: logoUrl !== undefined ? logoUrl : currentSettings.logo_url,
   };
 
-  // Update site settings
-  const { error: updateError } = await supabase
+  // Update site settings (use admin client to bypass RLS)
+  const adminSupabase = createAdminClient();
+  const { error: updateError } = await adminSupabase
     .from('sites')
     .update({
       settings: updatedSettings,
@@ -131,6 +134,17 @@ export async function PATCH(
       { error: 'Failed to update settings' },
       { status: 500 }
     );
+  }
+
+  // Revalidate public site pages so branding changes appear immediately
+  const { data: siteData } = await adminSupabase
+    .from('sites')
+    .select('slug')
+    .eq('id', siteId)
+    .single();
+
+  if (siteData?.slug) {
+    revalidatePath(`/sites/${siteData.slug}`, 'layout');
   }
 
   return NextResponse.json({

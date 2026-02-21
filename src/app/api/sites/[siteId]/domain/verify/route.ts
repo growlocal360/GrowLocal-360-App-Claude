@@ -34,11 +34,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         custom_domain_verified,
         organization:organizations!inner(
           id,
-          organization_members!inner(user_id)
+          profiles!inner(user_id)
         )
       `)
       .eq('id', siteId)
-      .eq('organization.organization_members.user_id', user.id)
+      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {

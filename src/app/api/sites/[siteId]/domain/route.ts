@@ -38,11 +38,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         vercel_domain_config,
         organization:organizations!inner(
           id,
-          organization_members!inner(user_id)
+          profiles!inner(user_id)
         )
       `)
       .eq('id', siteId)
-      .eq('organization.organization_members.user_id', user.id)
+      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {
@@ -119,11 +119,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         custom_domain,
         organization:organizations!inner(
           id,
-          organization_members!inner(user_id)
+          profiles!inner(user_id)
         )
       `)
       .eq('id', siteId)
-      .eq('organization.organization_members.user_id', user.id)
+      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {
@@ -216,11 +216,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         custom_domain,
         organization:organizations!inner(
           id,
-          organization_members!inner(user_id)
+          profiles!inner(user_id)
         )
       `)
       .eq('id', siteId)
-      .eq('organization.organization_members.user_id', user.id)
+      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {

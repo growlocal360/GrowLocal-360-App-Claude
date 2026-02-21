@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import {
   AlertCircle,
   Check,
   Loader2,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface Brand {
@@ -197,6 +199,13 @@ export default function BrandsPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <Link
+        href={`/dashboard/sites/${siteId}`}
+        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+      >
+        <ArrowLeft className="h-4 w-4 mr-1" />
+        Back to Site
+      </Link>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Brands</h1>

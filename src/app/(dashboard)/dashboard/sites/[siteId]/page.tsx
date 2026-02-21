@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
+import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 
 interface SiteData {
   id: string;
@@ -44,7 +45,8 @@ interface SiteData {
   locations: { id: string; name: string }[];
   services: { id: string }[];
   service_areas: { id: string }[];
-  site_categories: { id: string }[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  site_categories: { id: string; gbp_category: any }[];
   site_brands: { id: string }[];
 }
 
@@ -85,7 +87,7 @@ export default function SiteDashboardPage() {
       const { data: siteData } = await supabase
         .from('sites')
         .select(
-          'id, name, slug, status, build_progress, status_message, settings, custom_domain, custom_domain_verified, created_at, locations(id, name), services(id), service_areas(id), site_categories(id), site_brands(id)'
+          'id, name, slug, status, build_progress, status_message, settings, custom_domain, custom_domain_verified, created_at, locations(id, name), services(id), service_areas(id), site_categories(id, gbp_category:gbp_categories(gcid)), site_brands(id)'
         )
         .eq('id', siteId)
         .single();
@@ -466,7 +468,13 @@ export default function SiteDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Brands */}
+          {/* Brands — only for applicable industries */}
+          {((site.site_brands?.length || 0) > 0 ||
+            isBrandApplicable(
+              (site.site_categories || [])
+                .map((c) => c.gbp_category?.gcid)
+                .filter((g): g is string => !!g)
+            )) && (
           <Card className="hover:border-[#00d9c0]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -492,6 +500,7 @@ export default function SiteDashboardPage() {
               </Button>
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     </div>

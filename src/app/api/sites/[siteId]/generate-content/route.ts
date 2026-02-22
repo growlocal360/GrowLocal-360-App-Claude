@@ -5,8 +5,12 @@ import { waitUntil } from '@vercel/functions';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 
-// Vercel background function - up to 5 minutes
+// Vercel background function - up to 5 minutes per invocation
+// For large sites, we self-chain to get multiple 5-minute windows
 export const maxDuration = 300;
+
+// Leave 1 minute buffer before self-chaining to the next invocation
+const MAX_SAFE_DURATION = 240_000;
 
 interface RouteParams {
   params: Promise<{ siteId: string }>;
@@ -22,13 +26,14 @@ interface SiteBuildProgress {
 /**
  * POST /api/sites/[siteId]/generate-content
  * Generates AI content for all services, service areas, and core pages.
- * Runs as a background function (up to 5 minutes).
+ * Runs as a background function (up to 5 minutes per invocation).
+ * For large sites, self-chains to continue in a new invocation.
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
 
   try {
-    // Check for internal API key (used by webhook) or user session
+    // Check for internal API key (used by webhook and self-chaining) or user session
     const internalKey = request.headers.get('x-internal-key');
     const isInternalCall = internalKey === process.env.INTERNAL_API_KEY;
 
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
       site = siteData;
     } else {
-      // Internal call from webhook - skip user auth
+      // Internal call from webhook or self-chain - skip user auth
       const { data: siteData, error: siteError } = await supabase
         .from('sites')
         .select('id, name, website_type, settings, status, organization_id')
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       site = siteData;
     }
 
-    // Check if already building (skip for internal calls - they're triggering a fresh build)
+    // Check if already building (skip for internal calls - they're triggering a fresh build or continuing)
     if (!isInternalCall && site.status === 'building') {
       return NextResponse.json(
         { error: 'Content generation already in progress' },
@@ -125,28 +130,37 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const corePageCount = 3; // home, about, contact
     const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount;
 
-    // Update build progress (keep site active if it already is — don't take it offline)
-    const initialProgress: SiteBuildProgress = {
-      total_tasks: totalTasks,
-      completed_tasks: 0,
-      current_task: 'Initializing content generation...',
-      started_at: new Date().toISOString(),
-    };
+    // Check if this is a resume (self-chain) — if build_progress exists with completed_tasks > 0
+    const isResume = isInternalCall && site.status === 'building' &&
+      (site as Record<string, unknown>).build_progress &&
+      typeof ((site as Record<string, unknown>).build_progress as SiteBuildProgress)?.completed_tasks === 'number' &&
+      ((site as Record<string, unknown>).build_progress as SiteBuildProgress).completed_tasks > 0;
 
     const isAlreadyActive = site.status === 'active';
-    const statusUpdate: Record<string, unknown> = {
-      build_progress: initialProgress,
-      status_message: null,
-      status_updated_at: new Date().toISOString(),
-    };
-    if (!isAlreadyActive) {
-      statusUpdate.status = 'building';
-    }
 
-    await supabase
-      .from('sites')
-      .update(statusUpdate)
-      .eq('id', siteId);
+    if (!isResume) {
+      // Fresh build — initialize progress
+      const initialProgress: SiteBuildProgress = {
+        total_tasks: totalTasks,
+        completed_tasks: 0,
+        current_task: 'Initializing content generation...',
+        started_at: new Date().toISOString(),
+      };
+
+      const statusUpdate: Record<string, unknown> = {
+        build_progress: initialProgress,
+        status_message: null,
+        status_updated_at: new Date().toISOString(),
+      };
+      if (!isAlreadyActive) {
+        statusUpdate.status = 'building';
+      }
+
+      await supabase
+        .from('sites')
+        .update(statusUpdate)
+        .eq('id', siteId);
+    }
 
     // Capture Google access token for review fetching (only available during user session)
     let googleAccessToken: string | null = null;
@@ -168,7 +182,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         services || [],
         serviceAreas || [],
         siteCategories || [],
-        initialProgress,
+        totalTasks,
         googleAccessToken,
         isAlreadyActive
       ).catch((error) => {
@@ -196,7 +210,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 /**
  * Background function that generates all content for a site.
- * Updates progress in the database as it goes.
+ * Resume-aware: checks what's already generated and skips completed items.
+ * Self-chains when approaching the time limit for large sites.
  */
 async function generateAllContent(
   siteId: string,
@@ -205,13 +220,14 @@ async function generateAllContent(
   siteSettings: Record<string, unknown> | null,
   primaryLocation: { id: string; city: string; state: string; gbp_account_id?: string | null; gbp_location_id?: string | null },
   primaryCategory: { gbp_categories: { display_name: string } | { display_name: string }[] },
-  services: { id: string; name: string; description: string | null; site_category_id: string }[],
-  serviceAreas: { id: string; name: string; state: string | null }[],
+  allServices: { id: string; name: string; description: string | null; site_category_id: string; body_copy?: string | null }[],
+  allServiceAreas: { id: string; name: string; state: string | null; body_copy?: string | null }[],
   siteCategories: { id: string; is_primary: boolean; gbp_categories: { display_name: string } | { display_name: string }[] }[],
-  progress: SiteBuildProgress,
+  totalTasks: number,
   googleAccessToken: string | null,
   wasAlreadyActive: boolean = false
 ) {
+  const startTime = Date.now();
   const { createAdminClient } = await import('@/lib/supabase/admin');
   const supabase = createAdminClient();
 
@@ -229,11 +245,56 @@ async function generateAllContent(
     ? primaryCategory.gbp_categories[0]?.display_name || 'Services'
     : primaryCategory.gbp_categories?.display_name || 'Services';
 
-  let completedTasks = 0;
+  // Build progress tracker
+  const progress: SiteBuildProgress = {
+    total_tasks: totalTasks,
+    completed_tasks: 0,
+    current_task: '',
+    started_at: new Date().toISOString(),
+  };
+
+  // --- Resume-aware: check what's already been generated ---
+
+  // Check existing core + category pages
+  const { data: existingPages } = await supabase
+    .from('site_pages')
+    .select('slug')
+    .eq('site_id', siteId);
+  const existingPageSlugs = new Set((existingPages || []).map((p) => p.slug));
+
+  // Check which services already have content
+  const completedServiceIds = new Set(
+    allServices.filter((s) => s.body_copy).map((s) => s.id)
+  );
+
+  // Check which service areas already have content
+  const completedAreaIds = new Set(
+    allServiceAreas.filter((a) => a.body_copy).map((a) => a.id)
+  );
+
+  // Count already-completed tasks
+  const corePageTypes = ['home', 'about', 'contact'];
+  const completedCorePages = corePageTypes.filter((t) => existingPageSlugs.has(t)).length;
+  const completedCategoryPages = siteCategories.filter((cat) => {
+    const catSlug = getCategorySlug(cat);
+    return existingPageSlugs.has(catSlug);
+  }).length;
+  let completedTasks = completedCorePages + completedCategoryPages + completedServiceIds.size + completedAreaIds.size;
+
+  // Filter to only pending items
+  const pendingServices = allServices.filter((s) => !completedServiceIds.has(s.id));
+  const pendingAreas = allServiceAreas.filter((a) => !completedAreaIds.has(a.id));
+  const needsCorePages = completedCorePages < 3;
+  const pendingCategories = siteCategories.filter((cat) => {
+    const catSlug = getCategorySlug(cat);
+    return !existingPageSlugs.has(catSlug);
+  });
+
+  console.log(`[${siteId}] Resuming generation: ${completedTasks}/${totalTasks} done. Pending: ${needsCorePages ? 'core,' : ''} ${pendingCategories.length} categories, ${pendingServices.length} services, ${pendingAreas.length} areas`);
 
   try {
-    // 0. Fetch Google Reviews (non-fatal — continues if this fails)
-    if (googleAccessToken && primaryLocation.gbp_account_id && primaryLocation.gbp_location_id) {
+    // 0. Fetch Google Reviews (non-fatal, only on first run)
+    if (completedTasks === 0 && googleAccessToken && primaryLocation.gbp_account_id && primaryLocation.gbp_location_id) {
       try {
         await updateProgress(supabase, siteId, progress, completedTasks, 'Fetching Google Reviews...');
         const gbpClient = new GBPClient(googleAccessToken);
@@ -278,51 +339,66 @@ async function generateAllContent(
         }
       } catch (reviewError) {
         console.error('Failed to fetch Google Reviews (non-fatal):', reviewError);
-        // Continue with content generation — reviews are optional
       }
     }
 
-    // 1. Generate core pages (home, about, contact)
-    await updateProgress(supabase, siteId, progress, completedTasks, 'Generating home page...');
+    // 1. Generate core pages (home, about, contact) — skip if already done
+    if (needsCorePages) {
+      if (shouldSelfChain(startTime)) {
+        await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
+        await selfChain(siteId);
+        return;
+      }
 
-    const coreContent = await generateCorePages(
-      anthropic,
-      businessName,
-      primaryLocation.city,
-      primaryLocation.state,
-      categoryName,
-      websiteType
-    );
+      await updateProgress(supabase, siteId, progress, completedTasks, 'Generating home page...');
 
-    for (const page of coreContent) {
-      await supabase.from('site_pages').upsert(
-        {
-          site_id: siteId,
-          page_type: page.page_type,
-          slug: page.page_type,
-          meta_title: page.meta_title,
-          meta_description: page.meta_description,
-          h1: page.h1,
-          h2: page.h2,
-          hero_description: page.hero_description || null,
-          body_copy: page.body_copy,
-          body_copy_2: page.body_copy_2 || null,
-          is_active: true,
-        },
-        { onConflict: 'site_id,slug' }
+      const coreContent = await generateCorePages(
+        anthropic,
+        businessName,
+        primaryLocation.city,
+        primaryLocation.state,
+        categoryName,
+        websiteType
       );
-      completedTasks++;
-      await updateProgress(
-        supabase,
-        siteId,
-        progress,
-        completedTasks,
-        `Generated ${page.page_type} page`
-      );
+
+      for (const page of coreContent) {
+        if (existingPageSlugs.has(page.page_type)) continue; // Skip if already exists
+
+        await supabase.from('site_pages').upsert(
+          {
+            site_id: siteId,
+            page_type: page.page_type,
+            slug: page.page_type,
+            meta_title: page.meta_title,
+            meta_description: page.meta_description,
+            h1: page.h1,
+            h2: page.h2,
+            hero_description: page.hero_description || null,
+            body_copy: page.body_copy,
+            body_copy_2: page.body_copy_2 || null,
+            is_active: true,
+          },
+          { onConflict: 'site_id,slug' }
+        );
+        completedTasks++;
+        await updateProgress(
+          supabase,
+          siteId,
+          progress,
+          completedTasks,
+          `Generated ${page.page_type} page`
+        );
+      }
     }
 
-    // 2. Generate category pages
-    for (const category of siteCategories) {
+    // 2. Generate category pages — skip already-generated ones
+    for (const category of pendingCategories) {
+      if (shouldSelfChain(startTime)) {
+        await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
+        await selfChain(siteId);
+        return;
+      }
+
       const catName = Array.isArray(category.gbp_categories)
         ? category.gbp_categories[0]?.display_name || 'Services'
         : category.gbp_categories?.display_name || 'Services';
@@ -344,10 +420,7 @@ async function generateAllContent(
         category.is_primary
       );
 
-      const catSlug = catName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
+      const catSlug = getCategorySlug(category);
 
       await supabase.from('site_pages').upsert(
         {
@@ -370,120 +443,135 @@ async function generateAllContent(
       completedTasks++;
     }
 
-    // 3. Generate service pages (batch by category for efficiency)
-    const servicesBySiteCategory = new Map<string, typeof services>();
-    for (const service of services) {
-      const key = service.site_category_id || 'uncategorized';
-      if (!servicesBySiteCategory.has(key)) {
-        servicesBySiteCategory.set(key, []);
+    // 3. Generate service pages — only pending ones, batched
+    if (pendingServices.length > 0) {
+      const servicesBySiteCategory = new Map<string, typeof pendingServices>();
+      for (const service of pendingServices) {
+        const key = service.site_category_id || 'uncategorized';
+        if (!servicesBySiteCategory.has(key)) {
+          servicesBySiteCategory.set(key, []);
+        }
+        servicesBySiteCategory.get(key)!.push(service);
       }
-      servicesBySiteCategory.get(key)!.push(service);
+
+      for (const [siteCategoryId, categoryServices] of servicesBySiteCategory) {
+        const siteCat = siteCategories.find((c) => c.id === siteCategoryId);
+        const catNameForServices = siteCat
+          ? Array.isArray(siteCat.gbp_categories)
+            ? siteCat.gbp_categories[0]?.display_name || 'Services'
+            : siteCat.gbp_categories?.display_name || 'Services'
+          : 'Services';
+
+        const batchSize = 5;
+        for (let i = 0; i < categoryServices.length; i += batchSize) {
+          if (shouldSelfChain(startTime)) {
+            await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
+            await selfChain(siteId);
+            return;
+          }
+
+          const batch = categoryServices.slice(i, i + batchSize);
+
+          await updateProgress(
+            supabase,
+            siteId,
+            progress,
+            completedTasks,
+            `Generating ${batch[0].name}${batch.length > 1 ? ` and ${batch.length - 1} more services` : ''}...`
+          );
+
+          try {
+            const serviceContents = await generateServicePages(
+              anthropic,
+              businessName,
+              primaryLocation.city,
+              primaryLocation.state,
+              catNameForServices,
+              batch.map((s) => ({ name: s.name, description: s.description || '' }))
+            );
+
+            for (let j = 0; j < batch.length; j++) {
+              const service = batch[j];
+              const content = serviceContents[j];
+
+              if (content) {
+                await supabase
+                  .from('services')
+                  .update({
+                    meta_title: content.meta_title,
+                    meta_description: content.meta_description,
+                    h1: content.h1,
+                    body_copy: content.body_copy,
+                    intro_copy: content.intro_copy || null,
+                    problems: content.problems || null,
+                    detailed_sections: content.detailed_sections || null,
+                    faqs: content.faqs,
+                  })
+                  .eq('id', service.id);
+              }
+
+              completedTasks++;
+            }
+          } catch (batchError) {
+            console.error(`Failed to generate service batch starting at ${batch[0].name}:`, batchError);
+            completedTasks += batch.length;
+          }
+        }
+      }
     }
 
-    for (const [siteCategoryId, categoryServices] of servicesBySiteCategory) {
-      const siteCat = siteCategories.find((c) => c.id === siteCategoryId);
-      const catNameForServices = siteCat
-        ? Array.isArray(siteCat.gbp_categories)
-          ? siteCat.gbp_categories[0]?.display_name || 'Services'
-          : siteCat.gbp_categories?.display_name || 'Services'
-        : 'Services';
+    // 4. Generate service area pages — only pending ones, batched
+    if (pendingAreas.length > 0) {
+      const areasBatchSize = 10;
+      for (let i = 0; i < pendingAreas.length; i += areasBatchSize) {
+        if (shouldSelfChain(startTime)) {
+          await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
+          await selfChain(siteId);
+          return;
+        }
 
-      // Process services in batches of 5 to avoid timeouts
-      const batchSize = 5;
-      for (let i = 0; i < categoryServices.length; i += batchSize) {
-        const batch = categoryServices.slice(i, i + batchSize);
+        const batch = pendingAreas.slice(i, i + areasBatchSize);
 
         await updateProgress(
           supabase,
           siteId,
           progress,
           completedTasks,
-          `Generating ${batch[0].name} and ${batch.length - 1} more services...`
+          `Generating ${batch[0].name} service area page...`
         );
 
         try {
-          const serviceContents = await generateServicePages(
+          const areaContents = await generateServiceAreaPages(
             anthropic,
             businessName,
             primaryLocation.city,
             primaryLocation.state,
-            catNameForServices,
-            batch.map((s) => ({ name: s.name, description: s.description || '' }))
+            categoryName,
+            batch.map((a) => ({ name: a.name, state: a.state || primaryLocation.state }))
           );
 
           for (let j = 0; j < batch.length; j++) {
-            const service = batch[j];
-            const content = serviceContents[j];
+            const area = batch[j];
+            const content = areaContents[j];
 
             if (content) {
               await supabase
-                .from('services')
+                .from('service_areas')
                 .update({
                   meta_title: content.meta_title,
                   meta_description: content.meta_description,
                   h1: content.h1,
                   body_copy: content.body_copy,
-                  intro_copy: content.intro_copy || null,
-                  problems: content.problems || null,
-                  detailed_sections: content.detailed_sections || null,
-                  faqs: content.faqs,
                 })
-                .eq('id', service.id);
+                .eq('id', area.id);
             }
 
             completedTasks++;
           }
         } catch (batchError) {
-          console.error(`Failed to generate service batch starting at ${batch[0].name}:`, batchError);
+          console.error(`Failed to generate service area batch starting at ${batch[0].name}:`, batchError);
           completedTasks += batch.length;
         }
-      }
-    }
-
-    // 4. Generate service area pages (batch for efficiency)
-    const areasBatchSize = 10;
-    for (let i = 0; i < serviceAreas.length; i += areasBatchSize) {
-      const batch = serviceAreas.slice(i, i + areasBatchSize);
-
-      await updateProgress(
-        supabase,
-        siteId,
-        progress,
-        completedTasks,
-        `Generating ${batch[0].name} service area page...`
-      );
-
-      try {
-        const areaContents = await generateServiceAreaPages(
-          anthropic,
-          businessName,
-          primaryLocation.city,
-          primaryLocation.state,
-          categoryName,
-          batch.map((a) => ({ name: a.name, state: a.state || primaryLocation.state }))
-        );
-
-        for (let j = 0; j < batch.length; j++) {
-          const area = batch[j];
-          const content = areaContents[j];
-
-          if (content) {
-            await supabase
-              .from('service_areas')
-              .update({
-                meta_title: content.meta_title,
-                meta_description: content.meta_description,
-                h1: content.h1,
-                body_copy: content.body_copy,
-              })
-              .eq('id', area.id);
-          }
-
-          completedTasks++;
-        }
-      } catch (batchError) {
-        console.error(`Failed to generate service area batch starting at ${batch[0].name}:`, batchError);
-        completedTasks += batch.length;
       }
     }
 
@@ -502,7 +590,7 @@ async function generateAllContent(
       })
       .eq('id', siteId);
 
-    console.log(`Content generation complete for site ${siteId}`);
+    console.log(`Content generation complete for site ${siteId} (${completedTasks}/${totalTasks} tasks)`);
   } catch (error) {
     console.error(`Content generation failed for site ${siteId}:`, error);
     if (wasAlreadyActive) {
@@ -525,8 +613,43 @@ async function generateAllContent(
   }
 }
 
+// --- Helper functions ---
+
+function shouldSelfChain(startTime: number): boolean {
+  return Date.now() - startTime > MAX_SAFE_DURATION;
+}
+
+async function selfChain(siteId: string): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const internalKey = process.env.INTERNAL_API_KEY || '';
+
+  console.log(`[${siteId}] Self-chaining to continue generation in new invocation`);
+
+  try {
+    await fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-key': internalKey,
+      },
+    });
+  } catch (error) {
+    console.error(`[${siteId}] Self-chain failed:`, error);
+  }
+}
+
+function getCategorySlug(category: { gbp_categories: { display_name: string } | { display_name: string }[] }): string {
+  const catName = Array.isArray(category.gbp_categories)
+    ? category.gbp_categories[0]?.display_name || 'services'
+    : category.gbp_categories?.display_name || 'services';
+  return catName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 async function updateProgress(
-  supabase: ReturnType<typeof import('@/lib/supabase/static').createStaticClient>,
+  supabase: ReturnType<typeof createAdminClient>,
   siteId: string,
   progress: SiteBuildProgress,
   completedTasks: number,
@@ -546,7 +669,7 @@ async function updateProgress(
 }
 
 async function markFailed(
-  supabase: ReturnType<typeof import('@/lib/supabase/static').createStaticClient>,
+  supabase: ReturnType<typeof createAdminClient>,
   siteId: string,
   message: string
 ) {

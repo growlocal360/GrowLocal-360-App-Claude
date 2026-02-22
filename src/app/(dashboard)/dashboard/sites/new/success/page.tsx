@@ -38,6 +38,13 @@ function getProgressMessage(buildProgress: SiteBuildProgress | null): string {
   return `Building your website (${completed_tasks}/${total_tasks})...`;
 }
 
+function getTimeEstimate(buildProgress: SiteBuildProgress | null): string {
+  const total = buildProgress?.total_tasks || 0;
+  if (total >= 50) return '5-10 minutes';
+  if (total >= 20) return '3-5 minutes';
+  return '1-2 minutes';
+}
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -148,18 +155,12 @@ function PaymentSuccessContent() {
       setShowDashboardHint(true);
     }, 15000);
 
-    // Timeout after 5 minutes (content generation can take up to 5 min)
-    const timeout = setTimeout(() => {
-      if (status === 'building' || status === 'loading') {
-        // Don't error - just suggest checking dashboard
-        setProgressMessage('This is taking a while. Feel free to check your dashboard.');
-      }
-    }, 300000);
+    // No fixed timeout — large sites self-chain and can take 10+ minutes.
+    // The progress bar updates continuously via polling.
 
     return () => {
       clearInterval(interval);
       clearTimeout(hintTimeout);
-      clearTimeout(timeout);
     };
   }, [sessionId, status]);
 
@@ -223,7 +224,7 @@ function PaymentSuccessContent() {
               <div className="mt-6">
                 <Progress value={progress} className="h-2" />
                 <p className="mt-2 text-sm text-gray-500">
-                  This typically takes 2-3 minutes
+                  This typically takes {getTimeEstimate(siteData?.build_progress ?? null)}
                 </p>
               </div>
               <div className="mt-6 pt-6 border-t border-gray-100">

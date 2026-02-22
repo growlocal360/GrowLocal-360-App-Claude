@@ -11,31 +11,19 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // List users and find the one matching the email
-    const { data, error } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
+    const { data, error } = await supabase.rpc('get_auth_provider', {
+      email_input: email,
     });
 
-    if (error || !data?.users) {
+    if (error) {
+      console.error('check-provider error:', error.message);
       return NextResponse.json({ provider: null });
     }
 
-    const user = data.users.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-
-    if (!user) {
-      // Don't reveal whether email exists — return null for non-existent too
-      return NextResponse.json({ provider: null });
-    }
-
-    const hasGoogle = user.identities?.some(
-      (identity) => identity.provider === 'google'
-    );
-
-    return NextResponse.json({ provider: hasGoogle ? 'google' : null });
-  } catch {
+    // data is the provider string (e.g., 'google') or null
+    return NextResponse.json({ provider: data || null });
+  } catch (err) {
+    console.error('check-provider unexpected error:', err);
     return NextResponse.json({ provider: null });
   }
 }

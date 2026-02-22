@@ -29,6 +29,22 @@ export default function LoginPage() {
     });
 
     if (error) {
+      // Check if this email uses Google OAuth sign-in
+      try {
+        const res = await fetch('/api/auth/check-provider', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const { provider } = await res.json();
+        if (provider === 'google') {
+          setError('This account uses Google sign-in. Please click "Continue with Google" below.');
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through to generic error
+      }
       setError(error.message);
       setLoading(false);
     } else {

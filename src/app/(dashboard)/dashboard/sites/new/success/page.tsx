@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Sparkles, LayoutDashboard } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight, Sparkles, LayoutDashboard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -18,6 +18,7 @@ interface SiteData {
   status: SiteStatus;
   build_progress: SiteBuildProgress | null;
   status_message: string | null;
+  status_updated_at: string | null;
 }
 
 function getProgressPercentage(buildProgress: SiteBuildProgress | null): number {
@@ -54,6 +55,8 @@ function PaymentSuccessContent() {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('Verifying payment...');
   const [showDashboardHint, setShowDashboardHint] = useState(false);
+  const [buildStalled, setBuildStalled] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const sessionId = searchParams.get('session_id');
 
@@ -100,7 +103,7 @@ function PaymentSuccessContent() {
           // Site exists - check its build status
           const { data: site } = await supabase
             .from('sites')
-            .select('id, name, status, build_progress, status_message')
+            .select('id, name, status, build_progress, status_message, status_updated_at')
             .eq('id', subscription.site_id)
             .single();
 
@@ -119,6 +122,13 @@ function PaymentSuccessContent() {
               const buildProgress = site.build_progress as SiteBuildProgress | null;
               setProgress(getProgressPercentage(buildProgress));
               setProgressMessage(getProgressMessage(buildProgress));
+
+              // Detect stalled builds — no server-side update in 3 minutes
+              if (site.status_updated_at) {
+                const lastUpdate = new Date(site.status_updated_at).getTime();
+                const threeMinutesAgo = Date.now() - 3 * 60 * 1000;
+                setBuildStalled(lastUpdate < threeMinutesAgo);
+              }
             } else {
               // Pending or other status
               setStatus('building');
@@ -163,6 +173,18 @@ function PaymentSuccessContent() {
       clearTimeout(hintTimeout);
     };
   }, [sessionId, status]);
+
+  const handleRetryBuild = async () => {
+    if (!siteData) return;
+    setRetrying(true);
+    setBuildStalled(false);
+    try {
+      await fetch(`/api/sites/${siteData.id}/retry-build`, { method: 'POST' });
+    } catch (err) {
+      console.error('Retry build failed:', err);
+    }
+    setRetrying(false);
+  };
 
   // Redirect to site dashboard after success
   useEffect(() => {
@@ -227,6 +249,26 @@ function PaymentSuccessContent() {
                   This typically takes {getTimeEstimate(siteData?.build_progress ?? null)}
                 </p>
               </div>
+              {buildStalled && (
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm text-amber-700">
+                    Build may have stalled. Click below to retry.
+                  </p>
+                  <Button
+                    onClick={handleRetryBuild}
+                    disabled={retrying}
+                    variant="outline"
+                    className="mt-2 w-full"
+                  >
+                    {retrying ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Retry Build
+                  </Button>
+                </div>
+              )}
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <p className="text-sm text-gray-500 mb-4">
                   Your site will continue building in the background. Feel free to explore your dashboard while you wait.

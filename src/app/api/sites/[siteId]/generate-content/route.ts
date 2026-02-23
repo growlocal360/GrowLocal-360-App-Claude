@@ -66,7 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Get site and verify it belongs to user's organization
       const { data: siteData, error: siteError } = await supabase
         .from('sites')
-        .select('id, name, website_type, settings, status, organization_id')
+        .select('id, name, website_type, settings, status, organization_id, build_progress')
         .eq('id', siteId)
         .eq('organization_id', profile.organization_id)
         .single();
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Internal call from webhook or self-chain - skip user auth
       const { data: siteData, error: siteError } = await supabase
         .from('sites')
-        .select('id, name, website_type, settings, status, organization_id')
+        .select('id, name, website_type, settings, status, organization_id, build_progress')
         .eq('id', siteId)
         .single();
 
@@ -346,7 +346,10 @@ async function generateAllContent(
     if (needsCorePages) {
       if (shouldSelfChain(startTime)) {
         await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
-        await selfChain(siteId);
+        const chained = await selfChain(siteId);
+        if (!chained && !wasAlreadyActive) {
+          await markFailed(supabase, siteId, `Generation paused at ${completedTasks}/${totalTasks}. Click "Regenerate Content" to continue.`);
+        }
         return;
       }
 
@@ -395,7 +398,10 @@ async function generateAllContent(
     for (const category of pendingCategories) {
       if (shouldSelfChain(startTime)) {
         await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
-        await selfChain(siteId);
+        const chained = await selfChain(siteId);
+        if (!chained && !wasAlreadyActive) {
+          await markFailed(supabase, siteId, `Generation paused at ${completedTasks}/${totalTasks}. Click "Regenerate Content" to continue.`);
+        }
         return;
       }
 
@@ -466,7 +472,10 @@ async function generateAllContent(
         for (let i = 0; i < categoryServices.length; i += batchSize) {
           if (shouldSelfChain(startTime)) {
             await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
-            await selfChain(siteId);
+            const chained = await selfChain(siteId);
+            if (!chained && !wasAlreadyActive) {
+              await markFailed(supabase, siteId, `Generation paused at ${completedTasks}/${totalTasks}. Click "Regenerate Content" to continue.`);
+            }
             return;
           }
 
@@ -526,7 +535,10 @@ async function generateAllContent(
       for (let i = 0; i < pendingAreas.length; i += areasBatchSize) {
         if (shouldSelfChain(startTime)) {
           await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
-          await selfChain(siteId);
+          const chained = await selfChain(siteId);
+          if (!chained && !wasAlreadyActive) {
+            await markFailed(supabase, siteId, `Generation paused at ${completedTasks}/${totalTasks}. Click "Regenerate Content" to continue.`);
+          }
           return;
         }
 
@@ -619,22 +631,37 @@ function shouldSelfChain(startTime: number): boolean {
   return Date.now() - startTime > MAX_SAFE_DURATION;
 }
 
-async function selfChain(siteId: string): Promise<void> {
+async function selfChain(siteId: string): Promise<boolean> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const internalKey = process.env.INTERNAL_API_KEY || '';
+  const internalKey = process.env.INTERNAL_API_KEY;
+
+  if (!internalKey) {
+    console.error(`[${siteId}] Cannot self-chain: INTERNAL_API_KEY env var is not set`);
+    return false;
+  }
 
   console.log(`[${siteId}] Self-chaining to continue generation in new invocation`);
 
   try {
-    await fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
+    const res = await fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-internal-key': internalKey,
       },
     });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => 'Unknown error');
+      console.error(`[${siteId}] Self-chain returned HTTP ${res.status}: ${errorText}`);
+      return false;
+    }
+
+    console.log(`[${siteId}] Self-chain succeeded (HTTP ${res.status})`);
+    return true;
   } catch (error) {
-    console.error(`[${siteId}] Self-chain failed:`, error);
+    console.error(`[${siteId}] Self-chain network error:`, error);
+    return false;
   }
 }
 

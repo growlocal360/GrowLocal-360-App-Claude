@@ -5,12 +5,12 @@ import { waitUntil } from '@vercel/functions';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 
-// Vercel background function - up to 5 minutes per invocation
-// For large sites, we self-chain to get multiple 5-minute windows
-export const maxDuration = 300;
+// Vercel background function - up to 10 minutes per invocation (Pro max: 800s)
+// For large sites, we self-chain to get multiple windows
+export const maxDuration = 600;
 
 // Leave 1 minute buffer before self-chaining to the next invocation
-const MAX_SAFE_DURATION = 240_000;
+const MAX_SAFE_DURATION = 540_000;
 
 interface RouteParams {
   params: Promise<{ siteId: string }>;

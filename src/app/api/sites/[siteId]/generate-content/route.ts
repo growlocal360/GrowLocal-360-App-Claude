@@ -771,16 +771,18 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await withRetry(() =>
+  console.log(`[generateCorePages] Calling Anthropic API...`);
+  const message = await withRetry((signal) =>
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }],
       },
-      { timeout: 120_000 }
+      { signal }
     )
   );
+  console.log(`[generateCorePages] API call complete, parsing response...`);
 
   const result = parseJsonResponse<{
     pages: {
@@ -836,16 +838,18 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await withRetry(() =>
+  console.log(`[generateCategoryPage] Calling Anthropic API for "${categoryName}"...`);
+  const message = await withRetry((signal) =>
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       },
-      { timeout: 120_000 }
+      { signal }
     )
   );
+  console.log(`[generateCategoryPage] API call complete for "${categoryName}"`);
 
   const result = parseJsonResponse<{
     meta_title: string;
@@ -918,16 +922,18 @@ Format your response as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await withRetry(() =>
+  console.log(`[generateServicePages] Calling Anthropic API for ${services.length} services...`);
+  const message = await withRetry((signal) =>
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
         max_tokens: 8192,
         messages: [{ role: 'user', content: prompt }],
       },
-      { timeout: 120_000 }
+      { signal }
     )
   );
+  console.log(`[generateServicePages] API call complete`);
 
   const result = parseJsonResponse<{
     services: {
@@ -989,16 +995,18 @@ Format as JSON:
 
 Return ONLY valid JSON.`;
 
-  const message = await withRetry(() =>
+  console.log(`[generateServiceAreaPages] Calling Anthropic API for ${serviceAreas.length} areas...`);
+  const message = await withRetry((signal) =>
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
         max_tokens: 8192,
         messages: [{ role: 'user', content: prompt }],
       },
-      { timeout: 120_000 }
+      { signal }
     )
   );
+  console.log(`[generateServiceAreaPages] API call complete`);
 
   const result = parseJsonResponse<{
     service_areas: {
@@ -1013,13 +1021,19 @@ Return ONLY valid JSON.`;
   return result?.service_areas || [];
 }
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
+async function withRetry<T>(fn: (signal: AbortSignal) => Promise<T>, retries = 1, timeoutMs = 90_000): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fn();
+      const result = await fn(controller.signal);
+      clearTimeout(timer);
+      return result;
     } catch (error) {
+      clearTimeout(timer);
       if (attempt === retries) throw error;
-      console.warn(`API call failed, retrying (attempt ${attempt + 1}):`, error);
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+      console.warn(`API call failed (attempt ${attempt + 1}/${retries + 1}, ${isTimeout ? 'TIMEOUT' : 'error'}):`, error);
       await new Promise((r) => setTimeout(r, 2000));
     }
   }

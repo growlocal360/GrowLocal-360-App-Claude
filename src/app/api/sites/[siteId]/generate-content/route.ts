@@ -1021,7 +1021,7 @@ Return ONLY valid JSON.`;
   return result?.service_areas || [];
 }
 
-async function withRetry<T>(fn: (signal: AbortSignal) => Promise<T>, retries = 1, timeoutMs = 90_000): Promise<T> {
+async function withRetry<T>(fn: (signal: AbortSignal) => Promise<T>, retries = 1, timeoutMs = 120_000): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 // GET - Fetch current categories
 export async function GET(
@@ -186,6 +187,8 @@ export async function PUT(
     .eq('site_id', siteId)
     .order('is_primary', { ascending: false })
     .order('sort_order');
+
+  await revalidateSite(siteId);
 
   return NextResponse.json({ success: true, categories: updated || [] });
 }

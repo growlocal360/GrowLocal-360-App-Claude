@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 // GET - Fetch current business info
 export async function GET(
@@ -123,6 +124,8 @@ export async function PATCH(
       { status: 500 }
     );
   }
+
+  await revalidateSite(siteId);
 
   return NextResponse.json({ success: true });
 }

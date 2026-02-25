@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -112,6 +113,9 @@ export async function POST(
   const { data: urlData } = adminSupabase.storage
     .from('site-logos')
     .getPublicUrl(filePath);
+
+  // Revalidate public site pages so logo changes appear immediately
+  await revalidateSite(siteId);
 
   return NextResponse.json({
     success: true,

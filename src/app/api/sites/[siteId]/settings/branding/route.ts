@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { revalidatePath } from 'next/cache';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 // GET - Fetch current branding settings
 export async function GET(
@@ -137,15 +137,7 @@ export async function PATCH(
   }
 
   // Revalidate public site pages so branding changes appear immediately
-  const { data: siteData } = await adminSupabase
-    .from('sites')
-    .select('slug')
-    .eq('id', siteId)
-    .single();
-
-  if (siteData?.slug) {
-    revalidatePath(`/sites/${siteData.slug}`, 'layout');
-  }
+  await revalidateSite(siteId);
 
   return NextResponse.json({
     success: true,

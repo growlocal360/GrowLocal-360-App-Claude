@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, SitePage } from '@/types/database';
+import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, SitePage } from '@/types/database';
 import { categorySlugFromName } from '@/lib/sites/get-services';
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
@@ -25,10 +25,11 @@ interface ServicePageProps {
   isPrimaryCategory: boolean;
   googleReviews?: GoogleReview[];
   categories?: NavCategory[];
+  serviceAreas?: ServiceAreaDB[];
   locationSlug?: string;
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, locationSlug }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || location.phone;
@@ -268,7 +269,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         )}
       </main>
 
-      <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} locationSlug={locationSlug} />
+      <SiteFooter site={site} primaryLocation={location} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
   );
 }

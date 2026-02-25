@@ -124,9 +124,11 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
     notFound();
   }
 
-  const [googleReviews, { categories }] = await Promise.all([
+  const admin = createAdminClient();
+  const [googleReviews, { categories }, { data: serviceAreas }] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
+    admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -142,6 +144,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       isPrimaryCategory={false}
       googleReviews={googleReviews}
       categories={navCategories}
+      serviceAreas={serviceAreas || []}
     />
   );
 }

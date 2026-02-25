@@ -55,9 +55,11 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   const serviceData = await getServiceBySlugSingleLocation(slug, serviceOrCategory);
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
-    const [googleReviews, { categories }] = await Promise.all([
+    const admin = createAdminClient();
+    const [googleReviews, { categories }, { data: serviceAreas }] = await Promise.all([
       getGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
+      admin.from('service_areas').select('*').eq('site_id', serviceData.site.id).order('sort_order'),
     ]);
 
     const navCategories: NavCategory[] = categories.map(c => ({
@@ -73,6 +75,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         isPrimaryCategory={isPrimaryCategory}
         googleReviews={googleReviews}
         categories={navCategories}
+        serviceAreas={serviceAreas || []}
       />
     );
   }

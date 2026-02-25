@@ -60,7 +60,7 @@ export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: Mult
       {/* Progress indicator */}
       <div className="mb-4 flex items-center justify-between text-sm">
         <div>
-          <span className="font-bold text-gray-900 text-base">
+          <span className="font-bold text-gray-900 text-2xl">
             {step === 1 ? 'Book Online' : 'Your Contact Info'}
           </span>
           {step === 1 && (

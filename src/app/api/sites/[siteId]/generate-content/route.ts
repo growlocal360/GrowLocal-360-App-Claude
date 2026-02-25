@@ -468,7 +468,7 @@ async function generateAllContent(
             : siteCat.gbp_categories?.display_name || 'Services'
           : 'Services';
 
-        const batchSize = 5;
+        const batchSize = 2;
         for (let i = 0; i < categoryServices.length; i += batchSize) {
           if (shouldSelfChain(startTime)) {
             await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');

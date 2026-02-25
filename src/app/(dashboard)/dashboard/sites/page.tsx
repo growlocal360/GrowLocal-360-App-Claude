@@ -1,12 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Globe,
   Plus,
@@ -17,6 +25,8 @@ import {
   Play,
   RotateCcw,
   RefreshCw,
+  Archive,
+  RotateCw,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -41,6 +51,7 @@ export default function SitesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null);
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
@@ -75,6 +86,33 @@ export default function SitesPage() {
     loadData();
   }, [supabase]);
 
+  // Poll for build progress when any site is building
+  useEffect(() => {
+    const buildingSites = sites.filter(s => s.status === 'building');
+    if (buildingSites.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const ids = buildingSites.map(s => s.id);
+      const { data: updated } = await supabase
+        .from('sites')
+        .select('id, status, build_progress, status_message')
+        .in('id', ids);
+
+      if (updated && updated.length > 0) {
+        setSites(prev =>
+          prev.map(site => {
+            const match = updated.find(u => u.id === site.id);
+            return match
+              ? { ...site, status: match.status, build_progress: match.build_progress, status_message: match.status_message }
+              : site;
+          })
+        );
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [sites, supabase]);
+
   useEffect(() => {
     let result = sites;
 
@@ -84,7 +122,10 @@ export default function SitesPage() {
       );
     }
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'all') {
+      // 'All' excludes archived sites
+      result = result.filter(site => site.status !== 'archived');
+    } else {
       result = result.filter(site => site.status === statusFilter);
     }
 
@@ -125,10 +166,20 @@ export default function SitesPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
         setSites(prev =>
           prev.map(site =>
             site.id === siteId
-              ? { ...site, status: 'building' as SiteStatus, build_progress: null }
+              ? {
+                  ...site,
+                  status: 'building' as SiteStatus,
+                  build_progress: {
+                    total_tasks: data.totalTasks || 0,
+                    completed_tasks: 0,
+                    current_task: 'Starting build...',
+                    started_at: new Date().toISOString(),
+                  },
+                }
               : site
           )
         );
@@ -140,12 +191,62 @@ export default function SitesPage() {
     }
   }
 
+  const handleArchive = useCallback(async (siteId: string) => {
+    setActionLoading(siteId);
+    setArchiveConfirm(null);
+
+    try {
+      const response = await fetch(`/api/sites/${siteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+
+      if (response.ok) {
+        setSites(prev =>
+          prev.map(site =>
+            site.id === siteId ? { ...site, status: 'archived' as SiteStatus } : site
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to archive site:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  }, []);
+
+  async function handleRestore(siteId: string) {
+    setActionLoading(siteId);
+
+    try {
+      const response = await fetch(`/api/sites/${siteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      });
+
+      if (response.ok) {
+        setSites(prev =>
+          prev.map(site =>
+            site.id === siteId ? { ...site, status: 'active' as SiteStatus } : site
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Failed to restore site:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   const statusFilters: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'building', label: 'Building' },
     { value: 'paused', label: 'Paused' },
     { value: 'failed', label: 'Failed' },
+    { value: 'archived', label: 'Archived' },
   ];
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
@@ -180,7 +281,7 @@ export default function SitesPage() {
               className="pl-9"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {statusFilters.map((filter) => (
               <Button
                 key={filter.value}
@@ -315,6 +416,31 @@ export default function SitesPage() {
                         </Button>
                       )}
 
+                      {site.status === 'archived' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestore(site.id)}
+                          disabled={actionLoading === site.id}
+                        >
+                          <RotateCw className="mr-2 h-4 w-4" />
+                          Restore
+                        </Button>
+                      )}
+
+                      {(site.status === 'active' || site.status === 'paused' || site.status === 'failed') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setArchiveConfirm({ id: site.id, name: site.name })}
+                          disabled={actionLoading === site.id}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive
+                        </Button>
+                      )}
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -334,6 +460,31 @@ export default function SitesPage() {
           </div>
         )}
       </div>
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={!!archiveConfirm} onOpenChange={() => setArchiveConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive Site</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to archive <strong>{archiveConfirm?.name}</strong>? The site will
+              no longer be publicly accessible. You can restore it at any time from the Archived filter.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => archiveConfirm && handleArchive(archiveConfirm.id)}
+              disabled={actionLoading === archiveConfirm?.id}
+            >
+              Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

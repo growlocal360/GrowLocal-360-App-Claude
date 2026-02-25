@@ -5,7 +5,7 @@ export type WebsiteType = 'single_location' | 'multi_location' | 'microsite';
 export type UserRole = 'admin' | 'user';
 export type JobStatus = 'draft' | 'queued' | 'approved' | 'deployed' | 'rejected';
 export type TemplateId = 'local-service-pro';
-export type SiteStatus = 'building' | 'active' | 'paused' | 'failed' | 'suspended';
+export type SiteStatus = 'building' | 'active' | 'paused' | 'failed' | 'suspended' | 'archived';
 
 // Build progress tracking for site content generation
 export interface SiteBuildProgress {

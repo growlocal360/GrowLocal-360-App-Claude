@@ -5,10 +5,11 @@ import type { SiteStatus } from '@/types/database';
 // Valid status transitions
 const VALID_TRANSITIONS: Record<SiteStatus, SiteStatus[]> = {
   building: [], // Cannot manually change while building
-  active: ['paused'], // Can pause an active site
-  paused: ['active'], // Can resume a paused site
-  failed: ['building'], // Can retry a failed build (handled by retry-build endpoint)
+  active: ['paused', 'archived'], // Can pause or archive an active site
+  paused: ['active', 'archived'], // Can resume or archive a paused site
+  failed: ['building', 'archived'], // Can retry a failed build or archive
   suspended: [], // Only admins can change suspended status
+  archived: ['active'], // Can restore an archived site
 };
 
 export async function PATCH(
@@ -76,7 +77,7 @@ export async function PATCH(
     .update({
       status: newStatus,
       status_updated_at: new Date().toISOString(),
-      status_message: newStatus === 'paused' ? 'Paused by user' : null,
+      status_message: newStatus === 'paused' ? 'Paused by user' : newStatus === 'archived' ? 'Archived by user' : null,
     })
     .eq('id', siteId);
 

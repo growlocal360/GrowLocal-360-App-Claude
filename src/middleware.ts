@@ -175,6 +175,11 @@ export async function middleware(request: NextRequest) {
         url.pathname = `/sites/${site.slug}/suspended`;
         return NextResponse.rewrite(url);
 
+      case 'archived':
+        // Show suspended page for archived sites
+        url.pathname = `/sites/${site.slug}/suspended`;
+        return NextResponse.rewrite(url);
+
       case 'failed':
         // Show error page for failed builds
         url.pathname = `/sites/${site.slug}/build-error`;

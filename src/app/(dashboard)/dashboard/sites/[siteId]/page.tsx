@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Globe,
   Palette,
@@ -21,6 +29,8 @@ import {
   Wrench,
   Map,
   Award,
+  Archive,
+  RotateCw,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -57,12 +67,15 @@ export default function SiteDashboardPage() {
   const [site, setSite] = useState<SiteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [userData, setUserData] = useState({
     name: 'User',
     email: '',
     avatarUrl: undefined as string | undefined,
   });
 
+  const router = useRouter();
   const supabase = createClient();
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
 
@@ -135,12 +148,18 @@ export default function SiteDashboardPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
         setSite((prev) =>
           prev
             ? {
                 ...prev,
                 status: 'building' as SiteStatus,
-                build_progress: null,
+                build_progress: {
+                  total_tasks: data.totalTasks || 0,
+                  completed_tasks: 0,
+                  current_task: 'Starting build...',
+                  started_at: new Date().toISOString(),
+                },
               }
             : null
         );
@@ -149,6 +168,47 @@ export default function SiteDashboardPage() {
       console.error('Failed to regenerate:', error);
     } finally {
       setRegenerating(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    setArchiving(true);
+    setShowArchiveDialog(false);
+
+    try {
+      const response = await fetch(`/api/sites/${siteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+
+      if (response.ok) {
+        router.push('/dashboard/sites');
+      }
+    } catch (error) {
+      console.error('Failed to archive site:', error);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setArchiving(true);
+
+    try {
+      const response = await fetch(`/api/sites/${siteId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active' }),
+      });
+
+      if (response.ok) {
+        setSite((prev) => prev ? { ...prev, status: 'active' as SiteStatus } : null);
+      }
+    } catch (error) {
+      console.error('Failed to restore site:', error);
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -235,8 +295,42 @@ export default function SiteDashboardPage() {
                 Regenerate Content
               </Button>
             )}
+            {site.status === 'archived' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRestore}
+                disabled={archiving}
+              >
+                <RotateCw className="mr-2 h-4 w-4" />
+                Restore Site
+              </Button>
+            )}
+            {(site.status === 'active' || site.status === 'paused' || site.status === 'failed') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowArchiveDialog(true)}
+                disabled={archiving}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Archived Banner */}
+        {site.status === 'archived' && (
+          <Card className="border-gray-300 bg-gray-50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600">
+                This site is archived and no longer publicly accessible. Click &quot;Restore Site&quot; to make it active again.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Build Progress */}
         {site.status === 'building' && site.build_progress && (
@@ -503,6 +597,31 @@ export default function SiteDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Archive Site</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to archive <strong>{site.name}</strong>? The site will
+              no longer be publicly accessible. You can restore it at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowArchiveDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleArchive}
+              disabled={archiving}
+            >
+              Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

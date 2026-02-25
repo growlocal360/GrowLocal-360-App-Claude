@@ -1,6 +1,6 @@
 'use client';
 
-import { Circle, Loader2, Pause, AlertCircle, Ban } from 'lucide-react';
+import { Circle, Loader2, Pause, AlertCircle, Ban, Archive } from 'lucide-react';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 
 interface SiteStatusBadgeProps {
@@ -55,6 +55,14 @@ export function SiteStatusBadge({ status, progress, showLabel = true }: SiteStat
         <div className="flex items-center gap-1.5">
           <Ban className="h-3.5 w-3.5 text-red-500" />
           {showLabel && <span className="text-xs text-red-600">Suspended</span>}
+        </div>
+      );
+
+    case 'archived':
+      return (
+        <div className="flex items-center gap-1.5">
+          <Archive className="h-3.5 w-3.5 text-gray-400" />
+          {showLabel && <span className="text-xs text-gray-500">Archived</span>}
         </div>
       );
 

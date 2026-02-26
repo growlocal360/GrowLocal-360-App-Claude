@@ -79,6 +79,8 @@ export async function getCategoriesWithServices(siteId: string): Promise<{
 }
 
 // Get a specific service by slug for single-location sites
+// Only matches services in the PRIMARY category (secondary category services
+// are accessed via the nested /{categorySlug}/{serviceSlug} route instead)
 export async function getServiceBySlugSingleLocation(
   siteSlug: string,
   serviceSlug: string
@@ -127,6 +129,11 @@ export async function getServiceBySlugSingleLocation(
     .single();
 
   if (!category) return null;
+
+  // Only return services from the primary category at this route level.
+  // This prevents a service slug collision with a category slug (e.g. "dryer-vent-cleaning-service")
+  // from rendering as a ServicePage when it should fall through to the CategoryPage.
+  if (!category.is_primary) return null;
 
   // Fetch all services for this site
   const { data: allServices } = await supabase

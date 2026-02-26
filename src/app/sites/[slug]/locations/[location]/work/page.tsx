@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getLocationBySlug } from '@/lib/sites/get-site';
-import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -41,7 +42,7 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: categorySlugFromName(c.gbp_category.display_name),
+    slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

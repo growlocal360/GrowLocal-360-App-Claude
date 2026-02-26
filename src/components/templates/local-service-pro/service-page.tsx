@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, SitePage } from '@/types/database';
-import { categorySlugFromName } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
@@ -36,7 +36,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categoryName = category.gbp_category.display_name;
-  const categorySlug = categorySlugFromName(category.gbp_category.display_name);
+  const categorySlug = normalizeCategorySlug(category.gbp_category.display_name);
 
   const getServiceUrl = (svc: Service) => {
     return paths.servicePage(svc.slug, categorySlug, isPrimaryCategory, locationSlug);

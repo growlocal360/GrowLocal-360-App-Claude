@@ -31,6 +31,7 @@ import {
 } from '@/lib/hooks/use-content-generation';
 import { PlanSelectionModal } from '@/components/payments/plan-selection-modal';
 import type { PlanName } from '@/lib/stripe';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 
 type CreationStep =
   | 'idle'
@@ -484,10 +485,7 @@ export function StepReview() {
 
         // Create category pages in site_pages
         for (const categoryContent of generatedContent.categories) {
-          const categorySlug = categoryContent.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '');
+          const categorySlug = normalizeCategorySlug(categoryContent.name);
 
           await supabase.from('site_pages').insert({
             site_id: site.id,

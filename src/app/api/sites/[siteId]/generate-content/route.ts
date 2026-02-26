@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { waitUntil } from '@vercel/functions';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 
 // Vercel background function - up to 10 minutes per invocation (Pro max: 800s)
 // For large sites, we self-chain to get multiple windows
@@ -669,10 +670,7 @@ function getCategorySlug(category: { gbp_categories: { display_name: string } | 
   const catName = Array.isArray(category.gbp_categories)
     ? category.gbp_categories[0]?.display_name || 'services'
     : category.gbp_categories?.display_name || 'services';
-  return catName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+  return normalizeCategorySlug(catName);
 }
 
 async function updateProgress(

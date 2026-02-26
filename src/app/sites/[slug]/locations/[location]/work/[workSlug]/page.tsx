@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getWorkItemBySlug, getRelatedWorkItems } from '@/lib/sites/get-work-items';
-import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -71,7 +72,7 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: categorySlugFromName(c.gbp_category.display_name),
+    slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

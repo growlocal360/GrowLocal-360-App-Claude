@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
@@ -52,7 +53,7 @@ async function getNestedServiceData(
   const category = (allCategories || []).find(
     (c: SiteCategory & { gbp_category: GBPCategory }) =>
       c.gbp_category.name === categorySlug ||
-      categorySlugFromName(c.gbp_category.display_name) === categorySlug
+      normalizeCategorySlug(c.gbp_category.display_name) === categorySlug
   );
 
   if (!category) return null;
@@ -123,7 +124,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: categorySlugFromName(c.gbp_category.display_name),
+    slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

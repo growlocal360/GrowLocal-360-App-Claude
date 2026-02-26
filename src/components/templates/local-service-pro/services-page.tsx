@@ -5,7 +5,7 @@ import { Wrench, ArrowRight, Phone, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, Service, SiteCategory, GBPCategory, ServiceAreaDB } from '@/types/database';
-import { categorySlugFromName } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
@@ -28,17 +28,17 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: categorySlugFromName(c.gbp_category.display_name),
+    slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 
   const getCategoryUrl = (cat: SiteCategory & { gbp_category: GBPCategory }) => {
-    const catSlug = categorySlugFromName(cat.gbp_category.display_name);
+    const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.categoryPage(catSlug, cat.is_primary, locationSlug);
   };
 
   const getServiceUrl = (cat: SiteCategory & { gbp_category: GBPCategory }, serviceSlug: string) => {
-    const catSlug = categorySlugFromName(cat.gbp_category.display_name);
+    const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
   };
 

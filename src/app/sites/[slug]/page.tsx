@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
-import { getCategoriesWithServices, categorySlugFromName } from '@/lib/sites/get-services';
+import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -69,11 +70,11 @@ export default async function SitePage({ params }: SitePageProps) {
   // Single-location / microsite: render the full template
   const { categories, services } = await getCategoriesWithServices(data.site.id);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
-  const primaryCategorySlug = primaryCategory ? categorySlugFromName(primaryCategory.gbp_category.display_name) : undefined;
+  const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
-    slug: categorySlugFromName(c.gbp_category.display_name),
+    slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
 

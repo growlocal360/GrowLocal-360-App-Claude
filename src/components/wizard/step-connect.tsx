@@ -45,6 +45,8 @@ interface GBPLocation {
   }[];
   accountName?: string;
   accountId?: string;
+  // SAB vs physical location
+  businessType?: 'CUSTOMER_LOCATION_ONLY' | 'CUSTOMER_AND_BUSINESS_LOCATION';
   // Service areas from GBP profile
   serviceAreas?: GBPServiceArea[];
 }
@@ -56,8 +58,7 @@ export function StepConnect() {
     connectionType,
     setBusinessName,
     setLocations,
-    setPrimaryCategory,
-    setSecondaryCategories,
+    syncCategoriesFromLocations,
     setServiceAreas,
   } = useWizardStore();
 
@@ -160,7 +161,7 @@ export function StepConnect() {
       setBusinessName(selected[0].name);
     }
 
-    // Convert to wizard location format
+    // Convert to wizard location format — include per-location categories + businessType
     const wizardLocations = selected.map((loc, index) => ({
       name: loc.name,
       address: loc.address,
@@ -174,36 +175,22 @@ export function StepConnect() {
       gbpAccountId: loc.accountId,
       latitude: loc.latitude,
       longitude: loc.longitude,
+      // Per-location GBP categories
+      gbpPrimaryCategory: loc.primaryCategory
+        ? { gcid: loc.primaryCategory.name, displayName: loc.primaryCategory.displayName }
+        : undefined,
+      gbpAdditionalCategories: (loc.additionalCategories || []).map((cat) => ({
+        gcid: cat.name,
+        displayName: cat.displayName,
+      })),
+      // SAB vs physical location
+      businessType: loc.businessType,
     }));
 
     setLocations(wizardLocations);
 
-    // Set categories from first location if available
-    // Note: GBP returns minimal category data, so we create partial objects
-    // The categories step will allow users to refine their selection
-    if (selected[0]?.primaryCategory) {
-      setPrimaryCategory({
-        gcid: selected[0].primaryCategory.name,
-        name: selected[0].primaryCategory.name,
-        displayName: selected[0].primaryCategory.displayName,
-        keywords: [],
-        relatedCategories: [],
-        commonServices: [],
-      });
-    }
-
-    if (selected[0]?.additionalCategories?.length) {
-      setSecondaryCategories(
-        selected[0].additionalCategories.map((cat) => ({
-          gcid: cat.name,
-          name: cat.name,
-          displayName: cat.displayName,
-          keywords: [],
-          relatedCategories: [],
-          commonServices: [],
-        }))
-      );
-    }
+    // Merge unique categories from ALL locations into global primary + secondaries
+    syncCategoriesFromLocations();
 
     // Collect service areas from all selected GBP locations
     // Dedupe by placeId and exclude the primary location's city

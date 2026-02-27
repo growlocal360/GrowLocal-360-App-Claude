@@ -39,6 +39,7 @@ type CreationStep =
   | 'saving_locations'
   | 'saving_categories'
   | 'saving_services'
+  | 'saving_brands'
   | 'generating_content'
   | 'saving_content'
   | 'complete';
@@ -57,6 +58,7 @@ export function StepReview() {
     locations,
     primaryCategory,
     secondaryCategories,
+    brands,
     services,
     serviceAreas,
     neighborhoods,
@@ -129,6 +131,9 @@ export function StepReview() {
           placeId: n.placeId,
           latitude: n.latitude,
           longitude: n.longitude,
+        })),
+        brands: brands.filter((b) => b.isSelected).map((b) => ({
+          name: b.name,
         })),
       };
 
@@ -426,6 +431,27 @@ export function StepReview() {
         }
       }
 
+      // Save selected brands to site_brands table
+      const selectedBrands = brands.filter((b) => b.isSelected);
+      if (selectedBrands.length > 0) {
+        setCreationStep('saving_brands');
+        for (let i = 0; i < selectedBrands.length; i++) {
+          const brand = selectedBrands[i];
+          const brandSlug = brand.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          await supabase.from('site_brands').insert({
+            site_id: site.id,
+            name: brand.name,
+            slug: brandSlug,
+            sort_order: i,
+            is_active: true,
+          });
+        }
+      }
+
       // Generate SEO content for all pages
       setCreationStep('generating_content');
       const primaryLocation = locations.find((l) => l.isPrimary) || locations[0];
@@ -615,24 +641,41 @@ export function StepReview() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {locations.map((location, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{location.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {location.city}, {location.state} {location.zipCode}
-                  </p>
+            {locations.map((location, index) => {
+              const isSAB = location.businessType === 'CUSTOMER_LOCATION_ONLY';
+              return (
+                <div
+                  key={index}
+                  className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{location.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {isSAB && location.representativeCity
+                        ? `${location.representativeCity}, ${location.representativeState || location.state}`
+                        : `${location.city}, ${location.state} ${location.zipCode}`}
+                    </p>
+                    {location.gbpPrimaryCategory && (
+                      <span className="mt-1 inline-block text-xs text-blue-600">
+                        {location.gbpPrimaryCategory.displayName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isSAB && (
+                      <Badge variant="outline" className="text-xs text-amber-700 border-amber-200">
+                        SAB
+                      </Badge>
+                    )}
+                    {location.isPrimary && (
+                      <Badge variant="outline" className="text-[#00d9c0]">
+                        Primary
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                {location.isPrimary && (
-                  <Badge variant="outline" className="text-[#00d9c0]">
-                    Primary
-                  </Badge>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -646,9 +689,40 @@ export function StepReview() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Primary */}
+          {/* Per-location breakdown (if multiple locations with categories) */}
+          {locations.filter((l) => l.gbpPrimaryCategory).length > 1 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-500">By Location</p>
+              {locations
+                .filter((l) => l.gbpPrimaryCategory)
+                .map((loc, idx) => (
+                  <div key={idx} className="rounded bg-gray-50 px-3 py-2">
+                    <p className="text-xs font-medium text-gray-700">{loc.name}</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <span className="inline-block rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">
+                        {loc.gbpPrimaryCategory!.displayName}
+                      </span>
+                      {(loc.gbpAdditionalCategories || []).map((cat) => (
+                        <span
+                          key={cat.gcid}
+                          className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
+                        >
+                          {cat.displayName}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Merged site categories */}
           <div>
-            <p className="mb-2 text-sm font-medium text-gray-500">Primary Category</p>
+            <p className="mb-2 text-sm font-medium text-gray-500">
+              {locations.filter((l) => l.gbpPrimaryCategory).length > 1
+                ? 'Site Categories (merged)'
+                : 'Primary Category'}
+            </p>
             {primaryCategory && (
               <Badge className="bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/10">
                 <Sparkles className="mr-1 h-3 w-3" />
@@ -696,6 +770,32 @@ export function StepReview() {
             </div>
             <p className="mt-3 text-xs text-gray-500">
               Each service will get its own page at /services/[service-name]
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Brands */}
+      {brands.filter((b) => b.isSelected).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Tag className="h-4 w-4 text-gray-500" />
+              Brands ({brands.filter((b) => b.isSelected).length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {brands
+                .filter((b) => b.isSelected)
+                .map((brand) => (
+                  <Badge key={brand.id} variant="outline">
+                    {brand.name}
+                  </Badge>
+                ))}
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Each brand will get its own page at /brands/[brand-name]
             </p>
           </CardContent>
         </Card>
@@ -781,6 +881,10 @@ export function StepReview() {
               <CreationStepItem
                 label="Saving services"
                 status={getStepStatus('saving_services', creationStep)}
+              />
+              <CreationStepItem
+                label="Saving brands"
+                status={getStepStatus('saving_brands', creationStep)}
               />
               <CreationStepItem
                 label="Generating SEO content"
@@ -884,6 +988,7 @@ function getStepStatus(
     'saving_locations',
     'saving_categories',
     'saving_services',
+    'saving_brands',
     'generating_content',
     'saving_content',
     'complete',

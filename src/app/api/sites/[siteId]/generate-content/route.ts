@@ -104,6 +104,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { data: services },
       { data: serviceAreas },
       { data: siteCategories },
+      { data: brands },
     ] = await Promise.all([
       supabase.from('locations').select('*').eq('site_id', siteId),
       supabase.from('services').select('*').eq('site_id', siteId),
@@ -112,6 +113,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .from('site_categories')
         .select('*, gbp_categories(*)')
         .eq('site_id', siteId),
+      supabase
+        .from('site_brands')
+        .select('*')
+        .eq('site_id', siteId)
+        .eq('is_active', true)
+        .order('sort_order'),
     ]);
 
     const primaryLocation = locations?.find((l) => l.is_primary) || locations?.[0];
@@ -128,8 +135,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const serviceCount = services?.length || 0;
     const serviceAreaCount = serviceAreas?.length || 0;
     const categoryCount = siteCategories?.length || 0;
+    const brandCount = brands?.length || 0;
     const corePageCount = 3; // home, about, contact
-    const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount;
+    const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount + brandCount;
 
     // Check if this is a resume (self-chain) — if build_progress exists with completed_tasks > 0
     const isResume = isInternalCall && site.status === 'building' &&
@@ -183,6 +191,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         services || [],
         serviceAreas || [],
         siteCategories || [],
+        (brands || []).map(b => ({ id: b.id, name: b.name, slug: b.slug, h1: b.h1 || null })),
         totalTasks,
         googleAccessToken,
         isAlreadyActive
@@ -224,6 +233,7 @@ async function generateAllContent(
   allServices: { id: string; name: string; description: string | null; site_category_id: string; body_copy?: string | null }[],
   allServiceAreas: { id: string; name: string; state: string | null; body_copy?: string | null }[],
   siteCategories: { id: string; is_primary: boolean; gbp_categories: { display_name: string } | { display_name: string }[] }[],
+  allBrands: { id: string; name: string; slug: string; h1: string | null }[],
   totalTasks: number,
   googleAccessToken: string | null,
   wasAlreadyActive: boolean = false
@@ -273,6 +283,11 @@ async function generateAllContent(
     allServiceAreas.filter((a) => a.body_copy).map((a) => a.id)
   );
 
+  // Check which brands already have content
+  const completedBrandIds = new Set(
+    allBrands.filter((b) => b.h1).map((b) => b.id)
+  );
+
   // Count already-completed tasks
   const corePageTypes = ['home', 'about', 'contact'];
   const completedCorePages = corePageTypes.filter((t) => existingPageSlugs.has(t)).length;
@@ -280,18 +295,19 @@ async function generateAllContent(
     const catSlug = getCategorySlug(cat);
     return existingPageSlugs.has(catSlug);
   }).length;
-  let completedTasks = completedCorePages + completedCategoryPages + completedServiceIds.size + completedAreaIds.size;
+  let completedTasks = completedCorePages + completedCategoryPages + completedServiceIds.size + completedAreaIds.size + completedBrandIds.size;
 
   // Filter to only pending items
   const pendingServices = allServices.filter((s) => !completedServiceIds.has(s.id));
   const pendingAreas = allServiceAreas.filter((a) => !completedAreaIds.has(a.id));
+  const pendingBrands = allBrands.filter((b) => !completedBrandIds.has(b.id));
   const needsCorePages = completedCorePages < 3;
   const pendingCategories = siteCategories.filter((cat) => {
     const catSlug = getCategorySlug(cat);
     return !existingPageSlugs.has(catSlug);
   });
 
-  console.log(`[${siteId}] Resuming generation: ${completedTasks}/${totalTasks} done. Pending: ${needsCorePages ? 'core,' : ''} ${pendingCategories.length} categories, ${pendingServices.length} services, ${pendingAreas.length} areas`);
+  console.log(`[${siteId}] Resuming generation: ${completedTasks}/${totalTasks} done. Pending: ${needsCorePages ? 'core,' : ''} ${pendingCategories.length} categories, ${pendingServices.length} services, ${pendingAreas.length} areas, ${pendingBrands.length} brands`);
 
   try {
     // 0. Fetch Google Reviews (non-fatal, only on first run)
@@ -583,6 +599,69 @@ async function generateAllContent(
           }
         } catch (batchError) {
           console.error(`Failed to generate service area batch starting at ${batch[0].name}:`, batchError);
+          completedTasks += batch.length;
+        }
+      }
+    }
+
+    // 5. Generate brand pages — only pending ones, batched
+    if (pendingBrands.length > 0) {
+      const brandBatchSize = 5;
+      for (let i = 0; i < pendingBrands.length; i += brandBatchSize) {
+        if (shouldSelfChain(startTime)) {
+          await updateProgress(supabase, siteId, progress, completedTasks, 'Continuing in next batch...');
+          const chained = await selfChain(siteId);
+          if (!chained && !wasAlreadyActive) {
+            await markFailed(supabase, siteId, `Generation paused at ${completedTasks}/${totalTasks}. Click "Regenerate Content" to continue.`);
+          }
+          return;
+        }
+
+        const batch = pendingBrands.slice(i, i + brandBatchSize);
+
+        await updateProgress(
+          supabase,
+          siteId,
+          progress,
+          completedTasks,
+          `Generating ${batch[0].name} brand page${batch.length > 1 ? ` and ${batch.length - 1} more` : ''}...`
+        );
+
+        try {
+          const brandContents = await generateBrandPages(
+            anthropic,
+            businessName,
+            primaryLocation.city,
+            primaryLocation.state,
+            categoryName,
+            batch.map((b) => ({ name: b.name, slug: b.slug }))
+          );
+
+          for (let j = 0; j < batch.length; j++) {
+            const brand = batch[j];
+            const content = brandContents[j];
+
+            if (content) {
+              await supabase
+                .from('site_brands')
+                .update({
+                  meta_title: content.meta_title,
+                  meta_description: content.meta_description,
+                  h1: content.h1,
+                  hero_description: content.hero_description,
+                  body_copy: content.body_copy,
+                  value_props: content.value_props,
+                  faqs: content.faqs,
+                  cta_heading: content.cta_heading,
+                  cta_description: content.cta_description,
+                })
+                .eq('id', brand.id);
+            }
+
+            completedTasks++;
+          }
+        } catch (batchError) {
+          console.error(`Failed to generate brand batch starting at ${batch[0].name}:`, batchError);
           completedTasks += batch.length;
         }
       }
@@ -1017,6 +1096,96 @@ Return ONLY valid JSON.`;
   }>(message);
 
   return result?.service_areas || [];
+}
+
+async function generateBrandPages(
+  anthropic: Anthropic,
+  businessName: string,
+  city: string,
+  state: string,
+  primaryCategory: string,
+  brands: { name: string; slug: string }[]
+) {
+  const brandList = brands.map((b) => `- ${b.name}`).join('\n');
+
+  const prompt = `You are an SEO expert generating unique brand-specific landing page content for a local service business.
+
+Business: ${businessName}
+Location: ${city}, ${state}
+Industry/Category: ${primaryCategory}
+
+Generate unique, compelling content for each of these brand pages:
+${brandList}
+
+CRITICAL: Each brand MUST have genuinely different wording, tone, and selling points. Do NOT just swap the brand name into identical templates. Consider:
+- Premium/luxury brands (Sub-Zero, Wolf, Viking, Miele, Thermador) → emphasize specialized expertise, factory training, genuine parts, warranty protection
+- Popular brands (Samsung, LG, Whirlpool, GE, Frigidaire) → emphasize fast service, affordability, wide availability of parts, reliability
+- Mid-tier brands (KitchenAid, Bosch, Maytag) → emphasize quality workmanship, value, trusted service
+
+For EACH brand, provide ALL of these fields:
+1. meta_title: SEO title (max 60 chars) — include brand name, service type, and city
+2. meta_description: Compelling description with CTA (max 155 chars)
+3. h1: Main hero heading — be creative, vary structure between brands (don't just use "[Brand] [Category] in [City]" for every one)
+4. hero_description: 2-3 sentences below the H1 — unique value proposition for this specific brand. What makes ${businessName} the right choice for THIS brand?
+5. body_copy: 1-2 paragraphs (150-300 words) for the "Why Choose Us" section — specific to this brand. Mention what sets this brand apart and why expert service matters.
+6. value_props: 3-4 unique value propositions, each with a "title" (3-5 words) and "description" (1-2 sentences). VARY these between brands — not every brand should get "Experienced Technicians".
+7. faqs: 3-5 brand-specific Q&A pairs. Include questions customers actually ask about this brand (e.g., repair costs, common issues, parts availability, warranty). Naturally mention typical repair cost ranges where relevant.
+8. cta_heading: Action-oriented CTA heading — vary between brands
+9. cta_description: 1-2 sentences encouraging contact — mention the brand and city
+
+Format as JSON:
+{
+  "brands": [
+    {
+      "name": "Brand Name",
+      "meta_title": "...",
+      "meta_description": "...",
+      "h1": "...",
+      "hero_description": "...",
+      "body_copy": "...",
+      "value_props": [
+        { "title": "...", "description": "..." }
+      ],
+      "faqs": [
+        { "question": "...", "answer": "..." }
+      ],
+      "cta_heading": "...",
+      "cta_description": "..."
+    }
+  ]
+}
+
+Return ONLY valid JSON.`;
+
+  console.log(`[generateBrandPages] Calling Anthropic API for ${brands.length} brands...`);
+  const message = await withRetry((signal) =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { signal }
+    )
+  );
+  console.log(`[generateBrandPages] API call complete`);
+
+  const result = parseJsonResponse<{
+    brands: {
+      name: string;
+      meta_title: string;
+      meta_description: string;
+      h1: string;
+      hero_description: string;
+      body_copy: string;
+      value_props: { title: string; description: string }[];
+      faqs: { question: string; answer: string }[];
+      cta_heading: string;
+      cta_description: string;
+    }[];
+  }>(message);
+
+  return result?.brands || [];
 }
 
 async function withRetry<T>(fn: (signal: AbortSignal) => Promise<T>, retries = 1, timeoutMs = 120_000): Promise<T> {

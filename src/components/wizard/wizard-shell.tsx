@@ -2,6 +2,7 @@
 
 import { useWizardStore } from '@/lib/store/wizard-store';
 import { getStepsForFlow } from '@/types/wizard';
+import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
@@ -10,12 +11,19 @@ interface WizardShellProps {
 }
 
 export function WizardShell({ children }: WizardShellProps) {
-  const { currentStep, connectionType } = useWizardStore();
+  const { currentStep, connectionType, primaryCategory, secondaryCategories } = useWizardStore();
+
+  // Compute whether brands step should be included
+  const allGcids = [
+    primaryCategory?.gcid,
+    ...secondaryCategories.map((c) => c.gcid),
+  ].filter(Boolean) as string[];
+  const includeBrands = isBrandApplicable(allGcids);
 
   // Default to manual flow steps for display until connection type is chosen
   const steps = connectionType
-    ? getStepsForFlow(connectionType)
-    : ['connect', 'business', 'categories', 'service-areas', 'neighborhoods', 'website-type', 'review'];
+    ? getStepsForFlow(connectionType, { includeBrands })
+    : ['connect', 'business', 'categories', 'services', 'service-areas', 'neighborhoods', 'website-type', 'review'];
 
   const currentIndex = steps.indexOf(currentStep);
 
@@ -24,6 +32,8 @@ export function WizardShell({ children }: WizardShellProps) {
     locations: 'Locations',
     business: 'Business',
     categories: 'Categories',
+    brands: 'Brands',
+    services: 'Services',
     'service-areas': 'Areas',
     neighborhoods: 'Local',
     'website-type': 'Type',

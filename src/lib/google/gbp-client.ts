@@ -248,6 +248,8 @@ export function gbpLocationToAppLocation(gbpLocation: GBPLocation) {
     longitude: gbpLocation.latlng?.longitude,
     primaryCategory: gbpLocation.categories?.primaryCategory,
     additionalCategories: gbpLocation.categories?.additionalCategories || [],
+    // SAB vs physical location
+    businessType: gbpLocation.serviceArea?.businessType,
     // Service areas from GBP
     serviceAreas,
   };

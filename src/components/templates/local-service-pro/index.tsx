@@ -9,6 +9,7 @@ import { ServicesPreview } from './services-preview';
 import { LocalizedContentSection } from './localized-content-section';
 import { LeadCaptureSection } from './lead-capture-section';
 import { TestimonialsSection } from './testimonials-section';
+import { BrandsSection } from './brands-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
@@ -23,7 +24,7 @@ interface LocalServiceProTemplateProps {
 }
 
 export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories, locationSlug }: LocalServiceProTemplateProps) {
-  const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, primaryLocation } = data;
+  const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -64,6 +65,13 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           pageContent={homePageContent}
           businessName={site.name}
           city={primaryLocation?.city || ''}
+        />
+        <BrandsSection
+          site={site}
+          primaryLocation={primaryLocation}
+          brands={brands}
+          siteSlug={slug}
+          locationSlug={locationSlug}
         />
         <LeadCaptureSection
           siteId={site.id}

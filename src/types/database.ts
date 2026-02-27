@@ -282,6 +282,11 @@ export interface WorkItemWithRelations extends WorkItem {
   location?: { id: string; city: string; state: string; slug: string } | null;
 }
 
+export interface BrandValueProp {
+  title: string;
+  description: string;
+}
+
 export interface SiteBrand {
   id: string;
   site_id: string;
@@ -290,6 +295,16 @@ export interface SiteBrand {
   logo_url: string | null;
   sort_order: number;
   is_active: boolean;
+  // AI-generated content fields (populated by generate-content pipeline)
+  meta_title: string | null;
+  meta_description: string | null;
+  h1: string | null;
+  hero_description: string | null;
+  body_copy: string | null;
+  value_props: BrandValueProp[] | null;
+  faqs: ServiceFAQ[] | null;
+  cta_heading: string | null;
+  cta_description: string | null;
   created_at: string;
   updated_at: string;
 }

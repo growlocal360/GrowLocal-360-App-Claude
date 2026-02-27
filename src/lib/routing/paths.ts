@@ -104,3 +104,13 @@ export function workHub(locationSlug?: string): string {
 export function workDetail(workSlug: string, locationSlug?: string): string {
   return `${base(locationSlug)}/work/${workSlug}`;
 }
+
+/** /brands or /{locationSlug}/brands */
+export function brandsIndex(locationSlug?: string): string {
+  return `${base(locationSlug)}/brands`;
+}
+
+/** /brands/{brandSlug} or /{locationSlug}/brands/{brandSlug} */
+export function brandPage(brandSlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/brands/${brandSlug}`;
+}

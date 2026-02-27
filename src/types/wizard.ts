@@ -8,6 +8,7 @@ export type WizardStep =
   | 'locations'      // Step 2a: Select GBP Locations (if connected)
   | 'business'       // Step 2b: Business Basics (if manual)
   | 'categories'     // Step 3: GBP Categories
+  | 'brands'         // Step 3.5: Brands (conditional — brand-applicable categories only)
   | 'services'       // Step 4: Services offered
   | 'service-areas'  // Step 5: Service Areas (cities you travel to)
   | 'neighborhoods'  // Step 6: Neighborhoods (hyper-local within GBP city)
@@ -30,6 +31,13 @@ export interface WizardLocation {
   gbpCategory?: string;
   latitude?: number;
   longitude?: number;
+  // Per-location GBP categories (imported from GBP API)
+  gbpPrimaryCategory?: { gcid: string; displayName: string };
+  gbpAdditionalCategories?: { gcid: string; displayName: string }[];
+  // SAB (Service Area Business) support
+  businessType?: 'CUSTOMER_LOCATION_ONLY' | 'CUSTOMER_AND_BUSINESS_LOCATION';
+  representativeCity?: string;
+  representativeState?: string;
 }
 
 export interface ServiceArea {
@@ -53,6 +61,14 @@ export interface WizardNeighborhood {
   latitude?: number;
   longitude?: number;
   isCustom?: boolean;
+}
+
+// Brands serviced by the business (conditional — brand-applicable categories only)
+export interface WizardBrand {
+  id: string;
+  name: string;
+  isSelected: boolean;
+  isCustom: boolean;
 }
 
 // Services offered by the business
@@ -83,6 +99,9 @@ export interface WizardState {
   primaryCategory: GBPCategoryData | null;
   secondaryCategories: GBPCategoryData[];
 
+  // Step 3.5: Brands (conditional)
+  brands: WizardBrand[];
+
   // Step 4: Services
   services: WizardService[];
 
@@ -111,6 +130,7 @@ export const initialWizardState: WizardState = {
   locations: [],
   primaryCategory: null,
   secondaryCategories: [],
+  brands: [],
   services: [],
   serviceAreas: [],
   serviceAreaRadius: 25,
@@ -121,11 +141,12 @@ export const initialWizardState: WizardState = {
   error: null,
 };
 
-// Step configuration
+// Step configuration (includes all possible steps; brands is conditional)
 export const WIZARD_STEPS: { id: WizardStep; title: string; description: string }[] = [
   { id: 'connect', title: 'Connect', description: 'Import or start fresh' },
   { id: 'locations', title: 'Locations', description: 'Your business locations' },
   { id: 'categories', title: 'Categories', description: 'GBP categories' },
+  { id: 'brands', title: 'Brands', description: 'Brands you service' },
   { id: 'services', title: 'Services', description: 'Services you offer' },
   { id: 'service-areas', title: 'Areas', description: 'Cities you travel to' },
   { id: 'neighborhoods', title: 'Local', description: 'Neighborhoods in your city' },
@@ -134,9 +155,17 @@ export const WIZARD_STEPS: { id: WizardStep; title: string; description: string 
 ];
 
 // For manual flow, we use 'business' instead of 'locations'
-export const getStepsForFlow = (connectionType: 'google' | 'manual'): WizardStep[] => {
-  if (connectionType === 'google') {
-    return ['connect', 'locations', 'categories', 'services', 'service-areas', 'neighborhoods', 'website-type', 'review'];
-  }
-  return ['connect', 'business', 'categories', 'services', 'service-areas', 'neighborhoods', 'website-type', 'review'];
+// includeBrands is true when selected categories are brand-applicable (HVAC, appliance, auto, etc.)
+export const getStepsForFlow = (
+  connectionType: 'google' | 'manual',
+  options?: { includeBrands?: boolean }
+): WizardStep[] => {
+  const base: WizardStep[] = connectionType === 'google'
+    ? ['connect', 'locations', 'categories']
+    : ['connect', 'business', 'categories'];
+
+  if (options?.includeBrands) base.push('brands');
+
+  base.push('services', 'service-areas', 'neighborhoods', 'website-type', 'review');
+  return base;
 };

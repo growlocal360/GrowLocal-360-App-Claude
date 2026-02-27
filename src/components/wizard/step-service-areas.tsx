@@ -29,6 +29,7 @@ interface SuggestedCity {
   distanceMiles: number;
   latitude: number;
   longitude: number;
+  nearestLocationId?: string;
 }
 
 const RADIUS_OPTIONS = [
@@ -171,16 +172,68 @@ export function StepServiceAreas() {
     fetchNearbyCities();
   }, [locations, serviceAreaRadius, gbpCityNames]);
 
+  // Compute nearest location for each city (for grouping when multi-location)
+  const citiesWithNearest = useMemo(() => {
+    if (locations.length <= 1) return suggestedCities;
+
+    return suggestedCities.map((city) => {
+      if (city.nearestLocationId) return city;
+
+      let nearestId = locations[0]?.id || `loc-0`;
+      let nearestDist = Infinity;
+
+      locations.forEach((loc, idx) => {
+        if (!loc.latitude || !loc.longitude) return;
+        const dx = city.latitude - loc.latitude;
+        const dy = city.longitude - loc.longitude;
+        const dist = dx * dx + dy * dy;
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestId = loc.id || `loc-${idx}`;
+        }
+      });
+
+      return { ...city, nearestLocationId: nearestId };
+    });
+  }, [suggestedCities, locations]);
+
   // Filter cities by search query
   const filteredCities = useMemo(() => {
-    if (!searchQuery.trim()) return suggestedCities;
+    if (!searchQuery.trim()) return citiesWithNearest;
     const query = searchQuery.toLowerCase();
-    return suggestedCities.filter(
+    return citiesWithNearest.filter(
       (city) =>
         city.name.toLowerCase().includes(query) ||
         city.state.toLowerCase().includes(query)
     );
-  }, [suggestedCities, searchQuery]);
+  }, [citiesWithNearest, searchQuery]);
+
+  // Group filtered cities by nearest location (only when multi-location)
+  const citiesByLocation = useMemo(() => {
+    if (locations.length <= 1) return null;
+
+    const groups: Record<string, { location: typeof locations[0]; cities: SuggestedCity[] }> = {};
+    locations.forEach((loc, idx) => {
+      const locId = loc.id || `loc-${idx}`;
+      groups[locId] = { location: loc, cities: [] };
+    });
+
+    filteredCities.forEach((city) => {
+      const locId = city.nearestLocationId;
+      if (locId && groups[locId]) {
+        groups[locId].cities.push(city);
+      }
+    });
+
+    return Object.values(groups).filter((g) => g.cities.length > 0);
+  }, [filteredCities, locations]);
+
+  // Helper to get location display name
+  const getLocationLabel = (loc: typeof locations[0]) => {
+    const city = loc.representativeCity || loc.city;
+    const state = loc.representativeState || loc.state;
+    return city ? `${city}${state ? `, ${state}` : ''}` : loc.name;
+  };
 
   const handleToggleCity = (city: SuggestedCity) => {
     const serviceArea: ServiceArea = {
@@ -362,8 +415,61 @@ export function StepServiceAreas() {
         </div>
       )}
 
-      {/* Suggested Cities Grid */}
-      {!error && filteredCities.length > 0 && (
+      {/* Suggested Cities Grid — grouped by location when multi-location */}
+      {!error && filteredCities.length > 0 && citiesByLocation ? (
+        <div className="space-y-5">
+          {citiesByLocation.map((group) => (
+            <div key={group.location.id || group.location.name} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-gray-500" />
+                <Label className="text-sm font-semibold">
+                  {getLocationLabel(group.location)} Service Areas
+                </Label>
+                <span className="text-xs text-gray-400">({group.cities.length})</span>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                {group.cities.map((city) => {
+                  const selected = isSelected(city.id);
+                  return (
+                    <Card
+                      key={city.id}
+                      className={`cursor-pointer transition-all ${
+                        selected
+                          ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                          : 'hover:border-gray-300'
+                      }`}
+                      onClick={() => handleToggleCity(city)}
+                    >
+                      <CardContent className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex h-5 w-5 items-center justify-center rounded ${
+                              selected
+                                ? 'bg-[#00d9c0] text-white'
+                                : 'border-2 border-gray-300'
+                            }`}
+                          >
+                            {selected && <Check className="h-3 w-3" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {city.name}
+                              {city.state && <span className="text-gray-500">, {city.state}</span>}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {city.distanceMiles} mi away
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !error && filteredCities.length > 0 ? (
         <div className="space-y-3">
           <Label>Suggested Cities</Label>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -406,7 +512,7 @@ export function StepServiceAreas() {
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* No results */}
       {!error && !isLoading && filteredCities.length === 0 && searchQuery && (

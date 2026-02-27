@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood, SitePage, GoogleReview } from '@/types/database';
+import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood, SitePage, GoogleReview, SiteBrand } from '@/types/database';
 
 export interface PublicSiteData {
   site: SiteWithRelations;
@@ -8,6 +8,7 @@ export interface PublicSiteData {
   neighborhoods: Neighborhood[];
   sitePages: SitePage[];
   googleReviews: GoogleReview[];
+  brands: SiteBrand[];
   primaryLocation: Location | null;
 }
 
@@ -66,6 +67,14 @@ export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null
     .order('review_date', { ascending: false })
     .limit(10);
 
+  // Fetch brands
+  const { data: brands } = await supabase
+    .from('site_brands')
+    .select('*')
+    .eq('site_id', site.id)
+    .eq('is_active', true)
+    .order('sort_order');
+
   const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0] || null;
 
   return {
@@ -75,6 +84,7 @@ export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null
     neighborhoods: neighborhoods || [],
     sitePages: (sitePages || []) as SitePage[],
     googleReviews: (googleReviews || []) as GoogleReview[],
+    brands: (brands || []) as SiteBrand[],
     primaryLocation,
   };
 }

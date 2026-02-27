@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand } from '@/types/wizard';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
+import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 
 interface WizardStore extends WizardState {
   // Actions
@@ -15,6 +16,9 @@ interface WizardStore extends WizardState {
   addLocation: (location: WizardLocation) => void;
   removeLocation: (index: number) => void;
   updateLocation: (index: number, location: Partial<WizardLocation>) => void;
+  updateLocationRepCity: (index: number, city: string, state: string) => void;
+  updateLocationCategories: (index: number, primary: { gcid: string; displayName: string } | undefined, additional: { gcid: string; displayName: string }[]) => void;
+  syncCategoriesFromLocations: () => void;
   setPrimaryCategory: (category: GBPCategoryData | null) => void;
   setSecondaryCategories: (categories: GBPCategoryData[]) => void;
   toggleSecondaryCategory: (category: GBPCategoryData) => void;
@@ -27,6 +31,10 @@ interface WizardStore extends WizardState {
   addNeighborhood: (neighborhood: WizardNeighborhood) => void;
   removeNeighborhood: (id: string) => void;
   toggleNeighborhood: (neighborhood: WizardNeighborhood) => void;
+  setBrands: (brands: WizardBrand[]) => void;
+  toggleBrand: (id: string) => void;
+  addCustomBrand: (brand: WizardBrand) => void;
+  removeBrand: (id: string) => void;
   setServices: (services: WizardService[]) => void;
   toggleService: (id: string) => void;
   updateServiceDescription: (id: string, description: string) => void;
@@ -76,6 +84,65 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
         i === index ? { ...loc, ...updates } : loc
       ),
     })),
+
+  updateLocationRepCity: (index, city, state) =>
+    set((s) => ({
+      locations: s.locations.map((loc, i) =>
+        i === index ? { ...loc, representativeCity: city, representativeState: state } : loc
+      ),
+    })),
+
+  updateLocationCategories: (index, primary, additional) =>
+    set((s) => ({
+      locations: s.locations.map((loc, i) =>
+        i === index ? { ...loc, gbpPrimaryCategory: primary, gbpAdditionalCategories: additional } : loc
+      ),
+    })),
+
+  // Merge per-location categories into global primaryCategory + secondaryCategories
+  syncCategoriesFromLocations: () => {
+    const state = get();
+    const primaryLoc = state.locations.find((l) => l.isPrimary) || state.locations[0];
+    if (!primaryLoc?.gbpPrimaryCategory) return;
+
+    // Helper to convert minimal category data to full GBPCategoryData
+    const toGBPCategoryData = (cat: { gcid: string; displayName: string }): GBPCategoryData => ({
+      gcid: cat.gcid,
+      name: cat.gcid, // Use gcid as name (GBP API name field)
+      displayName: cat.displayName,
+      keywords: [],
+      relatedCategories: [],
+      commonServices: [],
+    });
+
+    // Site primary = primary location's primary category
+    const sitePrimary = toGBPCategoryData(primaryLoc.gbpPrimaryCategory);
+
+    // Collect all unique categories from all locations (excluding site primary)
+    const seen = new Set<string>([sitePrimary.gcid]);
+    const secondaries: GBPCategoryData[] = [];
+
+    for (const loc of state.locations) {
+      // Add this location's primary if different from site primary
+      if (loc.gbpPrimaryCategory && !seen.has(loc.gbpPrimaryCategory.gcid)) {
+        seen.add(loc.gbpPrimaryCategory.gcid);
+        secondaries.push(toGBPCategoryData(loc.gbpPrimaryCategory));
+      }
+      // Add this location's additional categories
+      for (const cat of loc.gbpAdditionalCategories || []) {
+        if (!seen.has(cat.gcid)) {
+          seen.add(cat.gcid);
+          secondaries.push(toGBPCategoryData(cat));
+        }
+      }
+    }
+
+    // Cap at 9 secondaries (GBP limit: 10 total including primary)
+    set({
+      primaryCategory: sitePrimary,
+      secondaryCategories: secondaries.slice(0, 9),
+    });
+  },
 
   setPrimaryCategory: (category) => set({ primaryCategory: category }),
 
@@ -154,6 +221,25 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       };
     }),
 
+  setBrands: (brands) => set({ brands }),
+
+  toggleBrand: (id) =>
+    set((state) => ({
+      brands: state.brands.map((b) =>
+        b.id === id ? { ...b, isSelected: !b.isSelected } : b
+      ),
+    })),
+
+  addCustomBrand: (brand) =>
+    set((state) => ({
+      brands: [...state.brands, brand],
+    })),
+
+  removeBrand: (id) =>
+    set((state) => ({
+      brands: state.brands.filter((b) => b.id !== id),
+    })),
+
   setServices: (services) => set({ services }),
 
   toggleService: (id) =>
@@ -190,7 +276,13 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     const state = get();
     if (!state.connectionType) return;
 
-    const steps = getStepsForFlow(state.connectionType);
+    const allGcids = [
+      state.primaryCategory?.gcid,
+      ...state.secondaryCategories.map((c) => c.gcid),
+    ].filter(Boolean) as string[];
+    const steps = getStepsForFlow(state.connectionType, {
+      includeBrands: isBrandApplicable(allGcids),
+    });
     const currentIndex = steps.indexOf(state.currentStep);
 
     if (currentIndex < steps.length - 1) {
@@ -202,7 +294,13 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     const state = get();
     if (!state.connectionType) return;
 
-    const steps = getStepsForFlow(state.connectionType);
+    const allGcids = [
+      state.primaryCategory?.gcid,
+      ...state.secondaryCategories.map((c) => c.gcid),
+    ].filter(Boolean) as string[];
+    const steps = getStepsForFlow(state.connectionType, {
+      includeBrands: isBrandApplicable(allGcids),
+    });
     const currentIndex = steps.indexOf(state.currentStep);
 
     if (currentIndex > 0) {
@@ -224,7 +322,15 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
         return state.connectionType !== null;
 
       case 'locations':
-        return state.locations.length > 0;
+        // Require at least one location AND all SABs must have representative city
+        return (
+          state.locations.length > 0 &&
+          state.locations.every(
+            (loc) =>
+              loc.businessType !== 'CUSTOMER_LOCATION_ONLY' ||
+              (loc.representativeCity?.trim() && loc.representativeState?.trim())
+          )
+        );
 
       case 'business':
         return (
@@ -235,6 +341,10 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
 
       case 'categories':
         return state.primaryCategory !== null;
+
+      case 'brands':
+        // Brands are optional, can always proceed
+        return true;
 
       case 'services':
         // Services are optional, can always proceed (but encourage at least 1)

@@ -22,7 +22,7 @@ export async function GET(
 
   const { data: site, error: siteError } = await supabase
     .from('sites')
-    .select('id, name, settings, organization:organizations!inner(profiles!inner(user_id))')
+    .select('id, name, website_type, settings, organization:organizations!inner(profiles!inner(user_id))')
     .eq('id', siteId)
     .single();
 
@@ -44,9 +44,23 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const settings = (site.settings || {}) as any;
 
+  // For single-location sites, fall back to the location's phone
+  // (wizard saves phone to locations table, not settings)
+  // For multi-location, only use settings.phone (location phones managed separately)
+  let phone = settings.phone || null;
+  if (!phone && site.website_type === 'single_location') {
+    const { data: primaryLocation } = await supabase
+      .from('locations')
+      .select('phone')
+      .eq('site_id', siteId)
+      .eq('is_primary', true)
+      .single();
+    phone = primaryLocation?.phone || null;
+  }
+
   return NextResponse.json({
     name: site.name,
-    phone: settings.phone || null,
+    phone,
     email: settings.email || null,
     coreIndustry: settings.core_industry || null,
   });

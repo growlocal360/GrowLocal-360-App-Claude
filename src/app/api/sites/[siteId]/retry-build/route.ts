@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { waitUntil } from '@vercel/functions';
+import { inngest } from '@/lib/inngest/client';
 
 export async function POST(
   request: NextRequest,
@@ -105,20 +105,18 @@ export async function POST(
     );
   }
 
-  // Trigger background content generation
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const internalKey = process.env.INTERNAL_API_KEY;
-  waitUntil(
-    fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-key': internalKey || '',
-      },
-    }).catch((err) => {
-      console.error('Failed to trigger content generation:', err);
-    })
-  );
+  // Capture Google access token for review fetching (only available during user session)
+  const { data: { session } } = await supabase.auth.getSession();
+  const googleAccessToken = session?.provider_token || null;
+
+  // Trigger Inngest content generation function
+  await inngest.send({
+    name: 'site/content.generate',
+    data: {
+      siteId,
+      googleAccessToken,
+    },
+  });
 
   return NextResponse.json({
     success: true,

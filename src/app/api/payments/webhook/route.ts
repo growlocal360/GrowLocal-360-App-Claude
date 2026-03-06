@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { waitUntil } from '@vercel/functions';
+import { inngest } from '@/lib/inngest/client';
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
@@ -124,21 +124,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
   }
 
-  // Trigger background content generation
-  // Site was created with status 'building', now start the AI content generation
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const internalKey = process.env.INTERNAL_API_KEY;
-  waitUntil(
-    fetch(`${baseUrl}/api/sites/${siteId}/generate-content`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-key': internalKey || '',
-      },
-    }).catch((err) => {
-      console.error('Failed to trigger content generation:', err);
-    })
-  );
+  // Trigger Inngest content generation function
+  await inngest.send({
+    name: 'site/content.generate',
+    data: {
+      siteId,
+      googleAccessToken: null, // No user session in webhook context
+    },
+  });
 
   console.log(`Site ${siteId} created for user ${userId} with plan ${planName}`);
 }

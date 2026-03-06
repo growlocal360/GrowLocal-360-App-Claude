@@ -1,5 +1,6 @@
 import { inngest } from '../client';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -536,6 +537,9 @@ export const generateSiteContent = inngest.createFunction(
           status_updated_at: new Date().toISOString(),
         })
         .eq('id', siteId);
+
+      // Revalidate all cached pages so new content is immediately visible
+      await revalidateSite(siteId);
 
       // Log to build_logs
       await supabase.from('build_logs').insert({

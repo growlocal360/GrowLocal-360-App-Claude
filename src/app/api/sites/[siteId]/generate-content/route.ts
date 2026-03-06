@@ -74,13 +74,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('id', siteId);
 
     // Trigger Inngest function
-    await inngest.send({
-      name: 'site/content.generate',
-      data: {
-        siteId,
-        googleAccessToken,
-      },
-    });
+    try {
+      const sendResult = await inngest.send({
+        name: 'site/content.generate',
+        data: {
+          siteId,
+          googleAccessToken,
+        },
+      });
+      console.log('Inngest send result:', JSON.stringify(sendResult));
+    } catch (inngestError) {
+      console.error('Inngest send failed:', inngestError);
+      return NextResponse.json(
+        { error: 'Failed to send to Inngest', details: String(inngestError) },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {

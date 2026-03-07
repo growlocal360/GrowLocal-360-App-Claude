@@ -41,7 +41,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
 
         {/* Services grid — 3 columns */}
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {services.slice(0, 9).map((service) => (
+          {services.map((service) => (
             <Link key={service.id} href={getServiceUrl(service)}>
               <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
                 <CardContent className="p-6">

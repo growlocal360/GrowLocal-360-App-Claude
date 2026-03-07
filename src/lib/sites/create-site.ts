@@ -103,11 +103,32 @@ export async function createSiteFromWizardData(
     neighborhoods,
   } = data;
 
-  // Generate slug from business name
-  const slug = businessName
+  // Generate a globally unique slug from business name
+  let slug = businessName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+
+  // Check for existing sites with the same slug (across ALL orgs)
+  const { count: existingCount } = await supabase
+    .from('sites')
+    .select('id', { count: 'exact', head: true })
+    .eq('slug', slug);
+
+  if (existingCount && existingCount > 0) {
+    // Find the next available suffix
+    const { data: similarSlugs } = await supabase
+      .from('sites')
+      .select('slug')
+      .like('slug', `${slug}%`);
+
+    const usedSlugs = new Set(similarSlugs?.map(s => s.slug) || []);
+    let suffix = 2;
+    while (usedSlugs.has(`${slug}-${suffix}`)) {
+      suffix++;
+    }
+    slug = `${slug}-${suffix}`;
+  }
 
   // Calculate total tasks for progress tracking
   const selectedServicesCount = services.filter((s) => s.isSelected).length;

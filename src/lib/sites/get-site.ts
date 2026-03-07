@@ -15,14 +15,16 @@ export interface PublicSiteData {
 export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null> {
   const supabase = createAdminClient();
 
-  // Fetch site
-  const { data: site, error: siteError } = await supabase
+  // Fetch site (use limit(1) instead of single() to handle duplicate slugs gracefully)
+  const { data: sites, error: siteError } = await supabase
     .from('sites')
     .select('*')
     .eq('slug', slug)
     .eq('is_active', true)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
 
+  const site = sites?.[0];
   if (siteError || !site) {
     return null;
   }
@@ -103,13 +105,15 @@ export async function getNeighborhoodBySlug(
   const supabase = createAdminClient();
 
   // Fetch site
-  const { data: site } = await supabase
+  const { data: sites } = await supabase
     .from('sites')
     .select('*')
     .eq('slug', siteSlug)
     .eq('is_active', true)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
 
+  const site = sites?.[0];
   if (!site) return null;
 
   // Fetch location
@@ -175,13 +179,15 @@ export async function getNeighborhoodBySlugSingleLocation(
   const supabase = createAdminClient();
 
   // Fetch site
-  const { data: site } = await supabase
+  const { data: sites } = await supabase
     .from('sites')
     .select('*')
     .eq('slug', siteSlug)
     .eq('is_active', true)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
 
+  const site = sites?.[0];
   if (!site) return null;
 
   // For single-location sites, get the primary location
@@ -235,13 +241,15 @@ export async function getLocationBySlug(
   const supabase = createAdminClient();
 
   // Fetch site
-  const { data: site } = await supabase
+  const { data: sites } = await supabase
     .from('sites')
     .select('*')
     .eq('slug', siteSlug)
     .eq('is_active', true)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
 
+  const site = sites?.[0];
   if (!site) return null;
 
   // Fetch the specific location

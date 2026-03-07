@@ -87,13 +87,15 @@ async function getSiteByDomain(domain: string, request: NextRequest): Promise<Si
   try {
     const supabase = createMiddlewareClient(request);
 
-    const { data: site } = await supabase
+    const { data: sites } = await supabase
       .from('sites')
       .select('id, slug, status, website_type')
       .eq('custom_domain', domain)
       .eq('custom_domain_verified', true)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
+    const site = sites?.[0];
     if (!site) return null;
 
     let locationSlugs: string[] = [];
@@ -113,12 +115,14 @@ async function getSiteBySlug(slug: string, request: NextRequest): Promise<SiteLo
   try {
     const supabase = createMiddlewareClient(request);
 
-    const { data: site } = await supabase
+    const { data: sites } = await supabase
       .from('sites')
       .select('id, slug, status, website_type')
       .eq('slug', slug)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
+    const site = sites?.[0];
     if (!site) return null;
 
     let locationSlugs: string[] = [];

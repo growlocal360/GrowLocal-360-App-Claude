@@ -86,9 +86,12 @@ export default function SitesPage() {
     loadData();
   }, [supabase]);
 
-  // Poll for build progress when any site is building
+  // Poll for build progress when any site is building or regenerating
   useEffect(() => {
-    const buildingSites = sites.filter(s => s.status === 'building');
+    const buildingSites = sites.filter(s =>
+      s.status === 'building' ||
+      (s.status === 'active' && s.build_progress && s.build_progress.completed_tasks < s.build_progress.total_tasks && s.build_progress.current_task !== 'Complete')
+    );
     if (buildingSites.length === 0) return;
 
     const interval = setInterval(async () => {
@@ -342,7 +345,7 @@ export default function SitesPage() {
                         <span>{site.locations?.length || 0} location{site.locations?.length !== 1 ? 's' : ''}</span>
                         <span>Created {new Date(site.created_at).toLocaleDateString()}</span>
                       </div>
-                      {site.status === 'building' && site.build_progress && (
+                      {site.build_progress && site.build_progress.completed_tasks < site.build_progress.total_tasks && site.build_progress.current_task !== 'Complete' && (
                         <div className="mt-2 max-w-md">
                           <BuildProgressBar progress={site.build_progress} />
                         </div>

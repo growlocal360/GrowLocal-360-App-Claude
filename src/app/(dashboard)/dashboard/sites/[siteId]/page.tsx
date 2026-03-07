@@ -112,9 +112,14 @@ export default function SiteDashboardPage() {
     loadData();
   }, [supabase, siteId]);
 
+  // Detect if site is actively regenerating (even if we didn't trigger it this session)
+  const isActivelyRegenerating = site?.status === 'active' && site?.build_progress &&
+    site.build_progress.completed_tasks < site.build_progress.total_tasks &&
+    site.build_progress.current_task !== 'Complete';
+
   // Poll for build progress when building or regenerating
   useEffect(() => {
-    if (site?.status !== 'building' && !regenerating) return;
+    if (site?.status !== 'building' && !regenerating && !isActivelyRegenerating) return;
 
     const interval = setInterval(async () => {
       const { data: siteData } = await supabase
@@ -136,14 +141,14 @@ export default function SiteDashboardPage() {
         );
 
         // Stop polling when regeneration completes
-        if (regenerating && siteData.build_progress?.current_task === 'Complete') {
+        if (siteData.build_progress?.current_task === 'Complete') {
           setRegenerating(false);
         }
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [site?.status, regenerating, supabase, siteId]);
+  }, [site?.status, regenerating, isActivelyRegenerating, supabase, siteId]);
 
   const handleRegenerate = async () => {
     setRegenerating(true);
@@ -350,7 +355,7 @@ export default function SiteDashboardPage() {
         )}
 
         {/* Regeneration Progress (active sites) */}
-        {regenerating && site.status === 'active' && site.build_progress && (
+        {(regenerating || isActivelyRegenerating) && site.status === 'active' && site.build_progress && (
           <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">

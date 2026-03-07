@@ -9,9 +9,27 @@ interface SiteStatusBadgeProps {
   showLabel?: boolean;
 }
 
+function isRegenerating(progress?: SiteBuildProgress | null): boolean {
+  if (!progress) return false;
+  return progress.completed_tasks < progress.total_tasks && progress.current_task !== 'Complete';
+}
+
 export function SiteStatusBadge({ status, progress, showLabel = true }: SiteStatusBadgeProps) {
   switch (status) {
     case 'active':
+      if (isRegenerating(progress)) {
+        const percentage = Math.round((progress!.completed_tasks / progress!.total_tasks) * 100);
+        return (
+          <div className="flex items-center gap-1.5">
+            <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin" />
+            {showLabel && (
+              <span className="text-xs text-blue-600">
+                Regenerating {percentage}%
+              </span>
+            )}
+          </div>
+        );
+      }
       return (
         <div className="flex items-center gap-1.5">
           <Circle className="h-2.5 w-2.5 fill-[#00d9c0] stroke-none" />

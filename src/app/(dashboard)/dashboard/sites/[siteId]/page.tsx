@@ -112,9 +112,9 @@ export default function SiteDashboardPage() {
     loadData();
   }, [supabase, siteId]);
 
-  // Poll for build progress when building
+  // Poll for build progress when building or regenerating
   useEffect(() => {
-    if (site?.status !== 'building') return;
+    if (site?.status !== 'building' && !regenerating) return;
 
     const interval = setInterval(async () => {
       const { data: siteData } = await supabase
@@ -134,11 +134,16 @@ export default function SiteDashboardPage() {
               }
             : null
         );
+
+        // Stop polling when regeneration completes
+        if (regenerating && siteData.build_progress?.current_task === 'Complete') {
+          setRegenerating(false);
+        }
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [site?.status, supabase, siteId]);
+  }, [site?.status, regenerating, supabase, siteId]);
 
   const handleRegenerate = async () => {
     setRegenerating(true);
@@ -153,20 +158,20 @@ export default function SiteDashboardPage() {
           prev
             ? {
                 ...prev,
-                status: 'building' as SiteStatus,
                 build_progress: {
                   total_tasks: data.totalTasks || 0,
                   completed_tasks: 0,
-                  current_task: 'Starting build...',
+                  current_task: 'Starting content generation...',
                   started_at: new Date().toISOString(),
                 },
               }
             : null
         );
+      } else {
+        setRegenerating(false);
       }
     } catch (error) {
       console.error('Failed to regenerate:', error);
-    } finally {
       setRegenerating(false);
     }
   };
@@ -340,6 +345,27 @@ export default function SiteDashboardPage() {
                 {site.build_progress.current_task || 'Building your website...'}
               </p>
               <BuildProgressBar progress={site.build_progress} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Regeneration Progress (active sites) */}
+        {regenerating && site.status === 'active' && site.build_progress && (
+          <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#00d9c0]" />
+                <p className="text-sm font-medium text-gray-700">
+                  Regenerating content...
+                </p>
+              </div>
+              <p className="text-sm text-gray-500 mb-2">
+                {site.build_progress.current_task || 'Starting...'}
+              </p>
+              <BuildProgressBar progress={site.build_progress} />
+              <p className="text-xs text-gray-400 mt-2">
+                Your site remains live while content is being regenerated.
+              </p>
             </CardContent>
           </Card>
         )}

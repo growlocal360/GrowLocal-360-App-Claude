@@ -1,10 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { Wrench, ArrowRight } from 'lucide-react';
+import { Wrench, Layers, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Service, Location } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
+
+interface NavCategory {
+  name: string;
+  slug: string;
+  isPrimary: boolean;
+}
 
 interface ServicesPreviewProps {
   site: Site;
@@ -13,10 +19,11 @@ interface ServicesPreviewProps {
   siteSlug: string;
   categorySlug?: string;
   isPrimaryCategory?: boolean;
+  secondaryCategories?: NavCategory[];
   locationSlug?: string;
 }
 
-export function ServicesPreview({ site, services, primaryLocation, categorySlug, isPrimaryCategory, locationSlug }: ServicesPreviewProps) {
+export function ServicesPreview({ site, services, primaryLocation, categorySlug, isPrimaryCategory, secondaryCategories, locationSlug }: ServicesPreviewProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
 
@@ -24,7 +31,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
     return paths.servicePage(service.slug, categorySlug, isPrimaryCategory, locationSlug);
   };
 
-  if (services.length === 0) return null;
+  if (services.length === 0 && (!secondaryCategories || secondaryCategories.length === 0)) return null;
 
   return (
     <section id="services" className="py-16">
@@ -41,6 +48,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
 
         {/* Services grid — 3 columns */}
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Primary category services */}
           {services.map((service) => (
             <Link key={service.id} href={getServiceUrl(service)}>
               <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
@@ -64,6 +72,34 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                         style={{ color: brandColor }}
                       >
                         Learn More
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+
+          {/* Secondary GBP category cards */}
+          {secondaryCategories?.map((cat) => (
+            <Link key={cat.slug} href={paths.categoryPage(cat.slug, false, locationSlug)}>
+              <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: `${brandColor}20` }}
+                    >
+                      <Layers className="h-6 w-6" style={{ color: brandColor }} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{cat.name}</h3>
+                      <div
+                        className="mt-3 flex items-center gap-1 text-sm font-medium"
+                        style={{ color: brandColor }}
+                      >
+                        View Services
                         <ArrowRight className="h-4 w-4" />
                       </div>
                     </div>

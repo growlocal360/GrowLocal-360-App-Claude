@@ -20,10 +20,11 @@ interface LocalServiceProTemplateProps {
   services?: Service[];
   primaryCategorySlug?: string;
   categories?: NavCategory[];
+  secondaryCategories?: NavCategory[];
   locationSlug?: string;
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories, locationSlug }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories, secondaryCategories, locationSlug }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -50,14 +51,15 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
-        {services && services.length > 0 && (
+        {((services && services.length > 0) || (secondaryCategories && secondaryCategories.length > 0)) && (
           <ServicesPreview
             site={site}
-            services={services}
+            services={services || []}
             primaryLocation={primaryLocation}
             siteSlug={slug}
             categorySlug={primaryCategorySlug}
             isPrimaryCategory={true}
+            secondaryCategories={secondaryCategories}
             locationSlug={locationSlug}
           />
         )}

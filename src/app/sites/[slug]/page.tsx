@@ -72,6 +72,20 @@ export default async function SitePage({ params }: SitePageProps) {
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
 
+  // Only show primary-category services on the home page (others would 404)
+  const primaryCategoryServices = primaryCategory
+    ? services.filter(s => s.site_category_id === primaryCategory.id)
+    : services;
+
+  // Non-primary categories to show as cards on the home page
+  const secondaryCategories: NavCategory[] = categories
+    .filter(c => !c.is_primary)
+    .map(c => ({
+      name: c.gbp_category.display_name,
+      slug: normalizeCategorySlug(c.gbp_category.display_name),
+      isPrimary: false,
+    }));
+
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),
@@ -84,9 +98,10 @@ export default async function SitePage({ params }: SitePageProps) {
       return (
         <LocalServiceProTemplate
           data={data}
-          services={services}
+          services={primaryCategoryServices}
           primaryCategorySlug={primaryCategorySlug}
           categories={navCategories}
+          secondaryCategories={secondaryCategories}
         />
       );
   }

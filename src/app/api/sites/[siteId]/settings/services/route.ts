@@ -201,7 +201,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { id, name, description, isActive, sortOrder } = body;
+  const { id, name, description, isActive, sortOrder, siteCategoryId } = body;
 
   if (!id || typeof id !== 'string') {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -216,6 +216,7 @@ export async function PATCH(
   if (description !== undefined) updateData.description = description;
   if (isActive !== undefined) updateData.is_active = isActive;
   if (sortOrder !== undefined) updateData.sort_order = sortOrder;
+  if (siteCategoryId !== undefined) updateData.site_category_id = siteCategoryId;
 
   const adminSupabase = createAdminClient();
   const { error: updateError } = await adminSupabase

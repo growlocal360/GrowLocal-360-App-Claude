@@ -304,10 +304,45 @@ export async function createSiteFromWizardData(
     }
   }
 
+  // Verify category map by re-querying DB (catches any GCID mismatches)
+  if (Object.keys(siteCategoryMap).length < allCategories.length) {
+    const { data: verifiedCategories } = await supabase
+      .from('site_categories')
+      .select('id, is_primary, gbp_category:gbp_categories(gcid)')
+      .eq('site_id', site.id);
+
+    if (verifiedCategories) {
+      for (const vc of verifiedCategories) {
+        const gbp = Array.isArray(vc.gbp_category) ? vc.gbp_category[0] : vc.gbp_category;
+        if (gbp?.gcid && !siteCategoryMap[gbp.gcid]) {
+          siteCategoryMap[gbp.gcid] = vc.id;
+        }
+      }
+    }
+  }
+
+  // Build a name-based fallback map for services whose GCID doesn't match
+  const categoryNameMap: Record<string, string> = {};
+  for (const cat of allCategories) {
+    if (siteCategoryMap[cat.gcid]) {
+      categoryNameMap[cat.name.toLowerCase()] = siteCategoryMap[cat.gcid];
+      if (cat.displayName) {
+        categoryNameMap[cat.displayName.toLowerCase()] = siteCategoryMap[cat.gcid];
+      }
+    }
+  }
+
+  // Find the primary category ID as last-resort fallback
+  const primaryCatId = primaryCategory ? siteCategoryMap[primaryCategory.gcid] : null;
+
   // Save selected services to services table
   const selectedServices = services.filter((s) => s.isSelected);
   for (const service of selectedServices) {
-    const siteCategoryId = siteCategoryMap[service.categoryGcid] || null;
+    const siteCategoryId =
+      siteCategoryMap[service.categoryGcid] ||
+      categoryNameMap[service.categoryName?.toLowerCase()] ||
+      primaryCatId ||
+      null;
 
     const { error: serviceError } = await supabase
       .from('services')

@@ -86,7 +86,7 @@ export default function ServicesPage() {
   // Expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Deleting / toggling
+  // Deleting / toggling / moving
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -193,6 +193,29 @@ export default function ServicesPage() {
       setServices((prev) => prev.filter((s) => s.id !== serviceId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete service');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleMoveService = async (serviceId: string, newCategoryId: string) => {
+    try {
+      setActionLoading(serviceId);
+      const response = await fetch(`/api/sites/${siteId}/settings/services`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: serviceId, siteCategoryId: newCategoryId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to move service');
+
+      setServices((prev) =>
+        prev.map((s) =>
+          s.id === serviceId ? { ...s, site_category_id: newCategoryId } : s
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to move service');
     } finally {
       setActionLoading(null);
     }
@@ -372,6 +395,22 @@ export default function ServicesPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 ml-4">
+                          <Select
+                            value={service.site_category_id}
+                            onValueChange={(value) => handleMoveService(service.id, value)}
+                            disabled={actionLoading === service.id}
+                          >
+                            <SelectTrigger className="w-40 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((c) => (
+                                <SelectItem key={c.id} value={c.id} className="text-xs">
+                                  {c.gbp_category.display_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Button
                             variant="ghost"
                             size="sm"

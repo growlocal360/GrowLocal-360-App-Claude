@@ -27,6 +27,46 @@ export const generateSiteContent = inngest.createFunction(
   {
     id: 'generate-site-content',
     retries: 0,
+    onFailure: async ({ event }) => {
+      const siteId = event.data.event.data.siteId;
+      const errorMessage = event.data.error?.message || 'Unknown error';
+      const supabase = createAdminClient();
+
+      // Fetch current site to check status
+      const { data: site } = await supabase
+        .from('sites')
+        .select('status, build_progress')
+        .eq('id', siteId)
+        .single();
+
+      if (!site) return;
+
+      // Mark build_progress as failed so dashboard stops showing "Regenerating"
+      const updates: Record<string, unknown> = {
+        build_progress: {
+          ...(site.build_progress || { total_tasks: 0, completed_tasks: 0 }),
+          current_task: 'Failed',
+          started_at: site.build_progress?.started_at || new Date().toISOString(),
+        },
+        status_updated_at: new Date().toISOString(),
+        status_message: `Build failed: ${errorMessage}`,
+      };
+
+      // If site was in 'building' status, mark it as failed
+      if (site.status === 'building') {
+        updates.status = 'failed';
+      }
+
+      await supabase.from('sites').update(updates).eq('id', siteId);
+
+      // Log failure
+      await supabase.from('build_logs').insert({
+        site_id: siteId,
+        level: 'error',
+        message: `Content generation failed: ${errorMessage}`,
+        metadata: { error: errorMessage },
+      });
+    },
   },
   { event: 'site/content.generate' },
   async ({ event, step }) => {

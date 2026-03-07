@@ -11,8 +11,19 @@ interface SiteStatusBadgeProps {
 
 function isRegenerating(progress?: SiteBuildProgress | null): boolean {
   if (!progress) return false;
-  return progress.completed_tasks < progress.total_tasks && progress.current_task !== 'Complete';
+  if (progress.current_task === 'Complete' || progress.current_task === 'Failed') return false;
+  if (progress.completed_tasks >= progress.total_tasks) return false;
+
+  // Treat progress older than 10 minutes as stale (build failed silently)
+  const startedAt = new Date(progress.started_at).getTime();
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  if (startedAt < tenMinutesAgo) return false;
+
+  return true;
 }
+
+/** Exported for reuse in dashboard polling logic */
+export { isRegenerating };
 
 export function SiteStatusBadge({ status, progress, showLabel = true }: SiteStatusBadgeProps) {
   switch (status) {

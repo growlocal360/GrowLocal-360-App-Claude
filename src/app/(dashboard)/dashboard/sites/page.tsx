@@ -28,7 +28,7 @@ import {
   Archive,
   RotateCw,
 } from 'lucide-react';
-import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
+import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 
 type StatusFilter = 'all' | SiteStatus;
@@ -90,7 +90,7 @@ export default function SitesPage() {
   useEffect(() => {
     const buildingSites = sites.filter(s =>
       s.status === 'building' ||
-      (s.status === 'active' && s.build_progress && s.build_progress.completed_tasks < s.build_progress.total_tasks && s.build_progress.current_task !== 'Complete')
+      (s.status === 'active' && isRegenerating(s.build_progress))
     );
     if (buildingSites.length === 0) return;
 

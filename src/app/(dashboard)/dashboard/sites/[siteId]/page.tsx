@@ -32,7 +32,7 @@ import {
   Archive,
   RotateCw,
 } from 'lucide-react';
-import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
+import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 
@@ -113,9 +113,7 @@ export default function SiteDashboardPage() {
   }, [supabase, siteId]);
 
   // Detect if site is actively regenerating (even if we didn't trigger it this session)
-  const isActivelyRegenerating = site?.status === 'active' && site?.build_progress &&
-    site.build_progress.completed_tasks < site.build_progress.total_tasks &&
-    site.build_progress.current_task !== 'Complete';
+  const isActivelyRegenerating = site?.status === 'active' && isRegenerating(site?.build_progress);
 
   // Poll for build progress when building or regenerating
   useEffect(() => {
@@ -140,8 +138,8 @@ export default function SiteDashboardPage() {
             : null
         );
 
-        // Stop polling when regeneration completes
-        if (siteData.build_progress?.current_task === 'Complete') {
+        // Stop polling when regeneration completes or fails
+        if (siteData.build_progress?.current_task === 'Complete' || siteData.build_progress?.current_task === 'Failed') {
           setRegenerating(false);
         }
       }

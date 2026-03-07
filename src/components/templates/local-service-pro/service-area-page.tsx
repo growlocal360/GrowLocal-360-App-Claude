@@ -1,13 +1,15 @@
 'use client';
 
-import type { GoogleReview, Neighborhood, SitePage } from '@/types/database';
+import Link from 'next/link';
+import { Wrench, ArrowRight, CheckCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import type { GoogleReview, SitePage, Service, SiteCategory, GBPCategory } from '@/types/database';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
-import { ServicesPreview } from './services-preview';
 import { LocalizedContentSection } from './localized-content-section';
 import { LeadCaptureSection } from './lead-capture-section';
 import { TestimonialsSection } from './testimonials-section';
@@ -19,11 +21,10 @@ interface ServiceAreaPageProps {
   data: ServiceAreaPageData;
   siteSlug: string;
   googleReviews?: GoogleReview[];
-  neighborhoods?: Neighborhood[];
   locationSlug?: string;
 }
 
-export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods, locationSlug }: ServiceAreaPageProps) {
+export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -40,6 +41,26 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods, 
     slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,
   }));
+
+  // Group services by category for the category-grouped layout
+  const servicesByCategory: Record<string, Service[]> = {};
+  for (const service of services) {
+    const catId = service.site_category_id || 'uncategorized';
+    if (!servicesByCategory[catId]) servicesByCategory[catId] = [];
+    servicesByCategory[catId].push(service);
+  }
+
+  const getCategoryUrl = (cat: SiteCategory & { gbp_category: GBPCategory }) => {
+    const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
+    return paths.categoryPage(catSlug, cat.is_primary, locationSlug);
+  };
+
+  const getServiceUrl = (cat: SiteCategory & { gbp_category: GBPCategory }, serviceSlug: string) => {
+    const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
+    return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
+  };
+
+  const areaState = serviceArea.state || location.state;
 
   // Construct SitePage-like object from serviceArea's SEO content for HeroSection & LocalizedContentSection
   const pageContent = {
@@ -100,16 +121,102 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods, 
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
+        {/* Category-grouped services */}
         {services.length > 0 && (
-          <ServicesPreview
-            site={site}
-            services={services}
-            primaryLocation={location}
-            siteSlug={siteSlug}
-            categorySlug={primaryCategorySlug}
-            isPrimaryCategory={true}
-            locationSlug={locationSlug}
-          />
+          <section className="py-16">
+            <div className="mx-auto max-w-7xl px-4">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Services Offered in {serviceArea.name}{areaState ? `, ${areaState}` : ''}
+                </h2>
+                <p className="mx-auto mt-4 max-w-2xl text-gray-600">
+                  Browse our full range of professional services available in {serviceArea.name}.
+                </p>
+              </div>
+
+              <div className="mt-12 space-y-16">
+                {categories.map((cat, index) => {
+                  const catServices = servicesByCategory[cat.id] || [];
+                  if (catServices.length === 0) return null;
+                  const categoryName = cat.gbp_category.display_name;
+
+                  return (
+                    <div key={cat.id}>
+                      {/* Category Header */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-12 w-12 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `${brandColor}15` }}
+                          >
+                            <Wrench className="h-6 w-6" style={{ color: brandColor }} />
+                          </div>
+                          <div>
+                            <Link href={getCategoryUrl(cat)} className="hover:underline">
+                              <h3 className="text-2xl font-bold text-gray-900">
+                                {categoryName}
+                              </h3>
+                            </Link>
+                            <p className="mt-1 text-sm text-gray-500">
+                              Professional {categoryName.toLowerCase()} services in {serviceArea.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Link
+                          href={getCategoryUrl(cat)}
+                          className="hidden items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:flex"
+                          style={{ backgroundColor: brandColor }}
+                        >
+                          View All {categoryName}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+
+                      {/* Services Grid */}
+                      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {catServices.map((service) => (
+                          <Link key={service.id} href={getServiceUrl(cat, service.slug)}>
+                            <Card className="group h-full cursor-pointer border-gray-200 transition-all hover:border-gray-300 hover:shadow-lg">
+                              <CardContent className="p-5">
+                                <div className="flex items-start gap-3">
+                                  <CheckCircle
+                                    className="mt-0.5 h-5 w-5 shrink-0"
+                                    style={{ color: brandColor }}
+                                  />
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-900 group-hover:underline">
+                                      {service.name}
+                                    </h4>
+                                    {service.description && (
+                                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                                        {service.description}
+                                      </p>
+                                    )}
+                                    <span
+                                      className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
+                                      style={{ color: brandColor }}
+                                    >
+                                      Learn More
+                                      <ArrowRight className="h-3 w-3" />
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </Link>
+                        ))}
+                      </div>
+
+                      {/* Divider between categories */}
+                      {index < categories.length - 1 && (
+                        <div className="mt-12 border-b" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
         )}
         <LocalizedContentSection
           pageContent={pageContent}
@@ -127,11 +234,10 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, neighborhoods, 
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
-        {(allServiceAreas.length > 0 || (neighborhoods && neighborhoods.length > 0)) && (
+        {allServiceAreas.length > 0 && (
           <ServiceAreasSection
             site={site}
             serviceAreas={allServiceAreas}
-            neighborhoods={neighborhoods}
             siteSlug={siteSlug}
             locationSlug={locationSlug}
           />

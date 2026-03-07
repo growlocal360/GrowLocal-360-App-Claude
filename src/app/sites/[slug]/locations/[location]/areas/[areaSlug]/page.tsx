@@ -103,17 +103,13 @@ export default async function MultiLocationAreaDetailRoute({ params }: MultiLoca
     notFound();
   }
 
-  const [googleReviews, { data: neighborhoods }] = await Promise.all([
-    getGoogleReviewsForSite(data.site.id),
-    createAdminClient().from('neighborhoods').select('*').eq('site_id', data.site.id).eq('is_active', true).order('sort_order'),
-  ]);
+  const googleReviews = await getGoogleReviewsForSite(data.site.id);
 
   return (
     <ServiceAreaPage
       data={data}
       siteSlug={slug}
       googleReviews={googleReviews}
-      neighborhoods={neighborhoods || []}
       locationSlug={location}
     />
   );

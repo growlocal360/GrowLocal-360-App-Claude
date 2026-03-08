@@ -43,10 +43,18 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
 
   const { categories, services } = await getCategoriesWithServices(data.site.id);
 
-  // Group services by category ID
+  // Group services by category ID (including orphaned services under primary category)
   const servicesByCategory: Record<string, Service[]> = {};
   for (const cat of categories) {
     servicesByCategory[cat.id] = services.filter(s => s.site_category_id === cat.id);
+  }
+  // Assign orphaned services (null site_category_id) to the primary category
+  const orphaned = services.filter(s => !s.site_category_id);
+  if (orphaned.length > 0) {
+    const primaryCat = categories.find(c => c.is_primary) || categories[0];
+    if (primaryCat) {
+      servicesByCategory[primaryCat.id] = [...(servicesByCategory[primaryCat.id] || []), ...orphaned];
+    }
   }
 
   return (

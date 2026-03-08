@@ -72,9 +72,9 @@ export default async function SitePage({ params }: SitePageProps) {
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
 
-  // Only show primary-category services on the home page (others would 404)
+  // Show primary-category services + orphaned services (null category) on the home page
   const primaryCategoryServices = primaryCategory
-    ? services.filter(s => s.site_category_id === primaryCategory.id)
+    ? services.filter(s => s.site_category_id === primaryCategory.id || !s.site_category_id)
     : services;
 
   // Non-primary categories to show as cards on the home page

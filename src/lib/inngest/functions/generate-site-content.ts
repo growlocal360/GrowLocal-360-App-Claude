@@ -132,14 +132,93 @@ export const generateSiteContent = inngest.createFunction(
       site,
       primaryLocation,
       primaryCategory,
-      allServices,
       allServiceAreas,
       siteCategories,
       allBrands,
     } = siteData;
+    let { allServices } = siteData;
 
     const wasAlreadyActive = site.status === 'active';
     const categoryName = getCategoryName(primaryCategory);
+
+    // Step 1b: Auto-fix orphaned services (null site_category_id)
+    const orphanedServices = allServices.filter((s) => !s.site_category_id);
+    if (orphanedServices.length > 0) {
+      allServices = await step.run('fix-orphaned-services', async () => {
+        const primaryCatId = siteCategories.find((c) => c.is_primary)?.id;
+
+        // Build matching helpers from categories
+        const categoryMatchers = siteCategories.map((sc) => {
+          const gbp = Array.isArray(sc.gbp_categories) ? sc.gbp_categories[0] : sc.gbp_categories;
+          const displayName: string = gbp?.display_name || '';
+          const serviceTypes: string[] = (gbp?.service_types || []) as string[];
+          const normalizedServiceTypes = serviceTypes.map((st: string) => st.toLowerCase().trim());
+          const categoryKeywords = displayName.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '')
+            .split(/\s+/)
+            .filter((w: string) => w.length > 2 && !['and', 'the', 'for', 'service', 'repair'].includes(w));
+          return { id: sc.id, isPrimary: sc.is_primary, displayName, normalizedServiceTypes, categoryKeywords };
+        });
+
+        let fixedCount = 0;
+        for (const service of orphanedServices) {
+          const nameLower = service.name.toLowerCase();
+          let matchedId: string | null = null;
+
+          // Method 1: exact match against service_types
+          for (const cat of categoryMatchers) {
+            if (cat.normalizedServiceTypes.some((st: string) => st === nameLower)) {
+              matchedId = cat.id; break;
+            }
+          }
+          // Method 2: fuzzy match (contains)
+          if (!matchedId) {
+            for (const cat of categoryMatchers) {
+              if (cat.normalizedServiceTypes.some((st: string) => nameLower.includes(st) || st.includes(nameLower))) {
+                matchedId = cat.id; break;
+              }
+            }
+          }
+          // Method 3: keyword overlap
+          if (!matchedId) {
+            const serviceWords = nameLower.replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+              .filter((w: string) => w.length > 2 && !['and', 'the', 'for', 'service', 'repair', 'professional'].includes(w));
+            let bestScore = 0;
+            for (const cat of categoryMatchers) {
+              const overlap = serviceWords.filter((w: string) => cat.categoryKeywords.includes(w)).length;
+              if (overlap > bestScore) { bestScore = overlap; matchedId = cat.id; }
+            }
+          }
+          // Method 4: single category
+          if (!matchedId && categoryMatchers.length === 1) {
+            matchedId = categoryMatchers[0].id;
+          }
+          // Method 5: primary fallback
+          if (!matchedId) {
+            matchedId = primaryCatId || null;
+          }
+
+          if (matchedId) {
+            await supabase.from('services').update({ site_category_id: matchedId }).eq('id', service.id);
+            fixedCount++;
+          }
+        }
+
+        await supabase.from('build_logs').insert({
+          site_id: siteId,
+          level: 'info',
+          step: 'fix-orphaned-services',
+          message: `Auto-fixed ${fixedCount}/${orphanedServices.length} orphaned services`,
+        });
+
+        // Re-fetch services with updated category assignments
+        const { data: refreshedServices } = await supabase
+          .from('services')
+          .select('*')
+          .eq('site_id', siteId);
+        return refreshedServices || [];
+      });
+    }
 
     // Calculate totals
     const serviceCount = allServices.length;

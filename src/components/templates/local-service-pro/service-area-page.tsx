@@ -43,9 +43,11 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
   }));
 
   // Group services by category for the category-grouped layout
+  const primaryCatId = primaryCategory?.id;
   const servicesByCategory: Record<string, Service[]> = {};
   for (const service of services) {
-    const catId = service.site_category_id || 'uncategorized';
+    // Assign orphaned services (null category) to the primary category
+    const catId = service.site_category_id || primaryCatId || 'uncategorized';
     if (!servicesByCategory[catId]) servicesByCategory[catId] = [];
     servicesByCategory[catId].push(service);
   }

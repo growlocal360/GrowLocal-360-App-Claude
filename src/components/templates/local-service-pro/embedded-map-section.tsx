@@ -4,20 +4,31 @@ import type { Location } from '@/types/database';
 
 interface EmbeddedMapSectionProps {
   primaryLocation: Location | null;
-  /** Override the map query (e.g. "Sulphur, LA" for service area pages) */
+  /** Override the map query entirely (e.g. "Sulphur, LA" for service area pages) */
   mapQuery?: string;
 }
 
 export function EmbeddedMapSection({ primaryLocation, mapQuery }: EmbeddedMapSectionProps) {
   if (!primaryLocation && !mapQuery) return null;
 
-  const query = mapQuery
-    ? encodeURIComponent(mapQuery)
-    : encodeURIComponent(
-        `${primaryLocation!.address_line1}, ${primaryLocation!.city}, ${primaryLocation!.state} ${primaryLocation!.zip_code}`
-      );
+  let query: string;
+  let title: string;
 
-  const title = mapQuery || `${primaryLocation!.city}, ${primaryLocation!.state}`;
+  if (mapQuery) {
+    // Service area pages: show city-level map
+    query = encodeURIComponent(mapQuery);
+    title = mapQuery;
+  } else if (primaryLocation?.gbp_place_id) {
+    // GBP Place ID: guaranteed match to exact business listing (shows reviews, hours, etc.)
+    query = `place_id:${primaryLocation.gbp_place_id}`;
+    title = `${primaryLocation.city}, ${primaryLocation.state}`;
+  } else {
+    // Fallback: query by address
+    query = encodeURIComponent(
+      `${primaryLocation!.address_line1}, ${primaryLocation!.city}, ${primaryLocation!.state} ${primaryLocation!.zip_code}`
+    );
+    title = `${primaryLocation!.city}, ${primaryLocation!.state}`;
+  }
 
   return (
     <section className="py-16">

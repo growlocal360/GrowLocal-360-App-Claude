@@ -242,7 +242,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
             locationSlug={locationSlug}
           />
         )}
-        <EmbeddedMapSection primaryLocation={location} />
+        <EmbeddedMapSection primaryLocation={location} mapQuery={`${serviceArea.name}${areaState ? `, ${areaState}` : ''}`} />
       </main>
 
       <SiteFooter

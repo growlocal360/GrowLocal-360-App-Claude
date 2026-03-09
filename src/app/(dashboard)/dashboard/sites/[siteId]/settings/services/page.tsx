@@ -377,7 +377,9 @@ export default function ServicesPage() {
 
       {/* Services grouped by category */}
       {categories.map((cat) => {
-        const catServices = services.filter((s) => s.site_category_id === cat.id);
+        const catServices = services.filter((s) =>
+          s.site_category_id === cat.id || (cat.is_primary && !s.site_category_id)
+        );
         const isExpanded = expandedCategories.has(cat.id);
 
         return (

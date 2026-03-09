@@ -116,15 +116,31 @@ export async function getServiceBySlugSingleLocation(
 
   if (!service) return null;
 
-  // Fetch the category for this service
-  const { data: category } = await supabase
-    .from('site_categories')
-    .select(`
-      *,
-      gbp_category:gbp_categories(*)
-    `)
-    .eq('id', service.site_category_id)
-    .single();
+  // Fetch the category for this service (fall back to primary category for orphaned services)
+  let category;
+  if (service.site_category_id) {
+    const { data } = await supabase
+      .from('site_categories')
+      .select(`
+        *,
+        gbp_category:gbp_categories(*)
+      `)
+      .eq('id', service.site_category_id)
+      .single();
+    category = data;
+  } else {
+    // Orphaned service (null site_category_id) — treat as primary category
+    const { data } = await supabase
+      .from('site_categories')
+      .select(`
+        *,
+        gbp_category:gbp_categories(*)
+      `)
+      .eq('site_id', site.id)
+      .eq('is_primary', true)
+      .single();
+    category = data;
+  }
 
   if (!category) return null;
 
@@ -141,9 +157,12 @@ export async function getServiceBySlugSingleLocation(
     .eq('is_active', true)
     .order('sort_order');
 
-  // Fetch sibling services (same category)
+  // Fetch sibling services (same category, including orphans treated as primary)
+  const effectiveCategoryId = service.site_category_id || category.id;
   const siblingServices = (allServices || []).filter(
-    (s: Service) => s.site_category_id === service.site_category_id && s.id !== service.id
+    (s: Service) =>
+      s.id !== service.id &&
+      (s.site_category_id === effectiveCategoryId || (!s.site_category_id && category.is_primary))
   );
 
   return {
@@ -396,10 +415,12 @@ export async function getAllServiceOrCategoryParams(): Promise<{
 
     for (const cat of categories) {
       if (cat.is_primary) {
-        // Primary category services live at /{serviceSlug}
+        // Primary category services live at /{serviceSlug} (includes orphaned services)
         const { data: services } = await supabase
           .from('services').select('slug')
-          .eq('site_id', site.id).eq('site_category_id', cat.id).eq('is_active', true);
+          .eq('site_id', site.id)
+          .or(`site_category_id.eq.${cat.id},site_category_id.is.null`)
+          .eq('is_active', true);
         for (const svc of services || []) {
           params.push({ siteSlug: site.slug, serviceOrCategory: svc.slug });
         }

@@ -4,6 +4,7 @@ import { revalidateSite } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { createAnthropicClient, withRetry, parseJsonResponse } from '@/lib/content/generators';
 
 // Types
 
@@ -675,12 +676,6 @@ export const generateSiteContent = inngest.createFunction(
 
 // --- Helper functions ---
 
-function createAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
-  return new Anthropic({ apiKey });
-}
-
 function getCategoryName(
   category: { gbp_categories: { display_name: string } | { display_name: string }[] }
 ): string {
@@ -708,51 +703,6 @@ async function updateProgress(
       status_updated_at: new Date().toISOString(),
     })
     .eq('id', siteId);
-}
-
-async function withRetry<T>(
-  fn: (signal: AbortSignal) => Promise<T>,
-  retries = 1,
-  timeoutMs = 120_000
-): Promise<T> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const result = await fn(controller.signal);
-      clearTimeout(timer);
-      return result;
-    } catch (error) {
-      clearTimeout(timer);
-      if (attempt === retries) throw error;
-      const isTimeout = error instanceof Error && error.name === 'AbortError';
-      console.warn(
-        `API call failed (attempt ${attempt + 1}/${retries + 1}, ${isTimeout ? 'TIMEOUT' : 'error'}):`,
-        error
-      );
-      await new Promise((r) => setTimeout(r, 2000));
-    }
-  }
-  throw new Error('Unreachable');
-}
-
-function parseJsonResponse<T>(message: Anthropic.Message): T | null {
-  const textContent = message.content.find((block) => block.type === 'text');
-  if (!textContent || textContent.type !== 'text') {
-    return null;
-  }
-
-  try {
-    const responseText = textContent.text.trim();
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as T;
-    }
-  } catch (parseError) {
-    console.error('Failed to parse LLM response:', parseError);
-  }
-
-  return null;
 }
 
 // --- Content generation functions ---

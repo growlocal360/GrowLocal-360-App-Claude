@@ -42,6 +42,7 @@ interface ServiceItem {
   description: string | null;
   is_active: boolean;
   sort_order: number;
+  h1: string | null;
 }
 
 interface CategoryWithGbp {
@@ -88,6 +89,9 @@ export default function ServicesPage() {
 
   // Deleting / toggling / moving
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Content generation
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchServices();
@@ -282,6 +286,34 @@ export default function ServicesPage() {
     }
   };
 
+  const handleGenerateContent = async (serviceId: string) => {
+    try {
+      setGeneratingId(serviceId);
+      setError(null);
+      const response = await fetch(`/api/sites/${siteId}/generate-content/service`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate content');
+      }
+
+      // Mark service as having content
+      setServices((prev) =>
+        prev.map((s) => (s.id === serviceId ? { ...s, h1: 'generated' } : s))
+      );
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate content');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -331,14 +363,14 @@ export default function ServicesPage() {
 
       {error && (
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <p>{error}</p>
         </div>
       )}
 
       {success && (
         <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
-          <Check className="h-5 w-5 flex-shrink-0" />
+          <Check className="h-5 w-5 shrink-0" />
           <p>Service added successfully!</p>
         </div>
       )}
@@ -387,7 +419,14 @@ export default function ServicesPage() {
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{service.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm truncate">{service.name}</p>
+                            {service.h1 ? (
+                              <span className="inline-flex h-2 w-2 rounded-full bg-green-500 shrink-0" title="Content generated" />
+                            ) : (
+                              <span className="inline-flex h-2 w-2 rounded-full bg-gray-300 shrink-0" title="No content" />
+                            )}
+                          </div>
                           {service.description && (
                             <p className="text-xs text-gray-500 truncate mt-0.5">
                               {service.description}
@@ -395,6 +434,20 @@ export default function ServicesPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 ml-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGenerateContent(service.id)}
+                            disabled={generatingId === service.id || actionLoading === service.id}
+                            className="text-xs"
+                            title={service.h1 ? 'Regenerate content' : 'Generate content'}
+                          >
+                            {generatingId === service.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
                           <Select
                             value={service.site_category_id}
                             onValueChange={(value) => handleMoveService(service.id, value)}

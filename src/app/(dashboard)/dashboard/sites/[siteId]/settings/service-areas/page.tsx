@@ -32,6 +32,7 @@ interface ServiceArea {
   state: string | null;
   is_custom: boolean;
   sort_order: number;
+  h1: string | null;
 }
 
 export default function ServiceAreasPage() {
@@ -56,6 +57,9 @@ export default function ServiceAreasPage() {
 
   // Deleting
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Content generation
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAreas();
@@ -184,6 +188,33 @@ export default function ServiceAreasPage() {
     }
   };
 
+  const handleGenerateContent = async (areaId: string) => {
+    try {
+      setGeneratingId(areaId);
+      setError(null);
+      const response = await fetch(`/api/sites/${siteId}/generate-content/service-area`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceAreaId: areaId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate content');
+      }
+
+      setAreas((prev) =>
+        prev.map((a) => (a.id === areaId ? { ...a, h1: 'generated' } : a))
+      );
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate content');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto p-6">
@@ -233,14 +264,14 @@ export default function ServiceAreasPage() {
 
       {error && (
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <p>{error}</p>
         </div>
       )}
 
       {success && (
         <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
-          <Check className="h-5 w-5 flex-shrink-0" />
+          <Check className="h-5 w-5 shrink-0" />
           <p>Service area added successfully!</p>
         </div>
       )}
@@ -257,29 +288,54 @@ export default function ServiceAreasPage() {
         </CardHeader>
         <CardContent>
           {areas.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {areas.map((area) => (
-                <Badge
+                <div
                   key={area.id}
-                  variant="secondary"
-                  className="text-sm px-3 py-1.5 flex items-center gap-1"
+                  className="flex items-center justify-between p-3 rounded-lg border bg-white border-gray-200"
                 >
-                  {area.name}
-                  {area.state && (
-                    <span className="text-gray-400">, {area.state}</span>
-                  )}
-                  <button
-                    onClick={() => handleDeleteArea(area.id)}
-                    disabled={deletingId === area.id}
-                    className="ml-1 hover:text-red-600"
-                  >
-                    {deletingId === area.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium text-sm truncate">
+                      {area.name}
+                      {area.state && (
+                        <span className="text-gray-400">, {area.state}</span>
+                      )}
+                    </span>
+                    {area.h1 ? (
+                      <span className="inline-flex h-2 w-2 rounded-full bg-green-500 shrink-0" title="Content generated" />
                     ) : (
-                      <Trash2 className="h-3 w-3" />
+                      <span className="inline-flex h-2 w-2 rounded-full bg-gray-300 shrink-0" title="No content" />
                     )}
-                  </button>
-                </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 ml-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleGenerateContent(area.id)}
+                      disabled={generatingId === area.id || deletingId === area.id}
+                      title={area.h1 ? 'Regenerate content' : 'Generate content'}
+                    >
+                      {generatingId === area.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteArea(area.id)}
+                      disabled={deletingId === area.id || generatingId === area.id}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      {deletingId === area.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

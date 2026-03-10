@@ -95,6 +95,11 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                 </Link>
               </li>
               <li>
+                <Link href={paths.faqPage(locationSlug)} className="hover:text-white">
+                  FAQ
+                </Link>
+              </li>
+              <li>
                 <Link href={paths.jobsPage(locationSlug)} className="hover:text-white">
                   Jobs
                 </Link>

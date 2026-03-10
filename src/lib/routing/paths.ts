@@ -105,6 +105,11 @@ export function workDetail(workSlug: string, locationSlug?: string): string {
   return `${base(locationSlug)}/work/${workSlug}`;
 }
 
+/** /faq or /{locationSlug}/faq */
+export function faqPage(locationSlug?: string): string {
+  return `${base(locationSlug)}/faq`;
+}
+
 /** /brands or /{locationSlug}/brands */
 export function brandsIndex(locationSlug?: string): string {
   return `${base(locationSlug)}/brands`;

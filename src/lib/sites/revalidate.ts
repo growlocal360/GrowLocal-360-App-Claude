@@ -31,8 +31,9 @@ export async function revalidateSite(siteId: string) {
   // Revalidate the layout (catches home, about, contact, etc.)
   revalidatePath(base, 'layout');
 
-  // Revalidate the services listing page
+  // Revalidate the services listing page and FAQ hub
   revalidatePath(`${base}/services`, 'page');
+  revalidatePath(`${base}/faq`, 'page');
 
   // Build category slug map
   const catSlugMap = new Map<string, { slug: string; isPrimary: boolean }>();

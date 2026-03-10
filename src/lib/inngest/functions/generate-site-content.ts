@@ -641,7 +641,40 @@ export const generateSiteContent = inngest.createFunction(
       }
     }
 
-    // Step 9: Mark complete
+    // Step 9: Generate FAQ hub page
+    await step.run('generate-faq-page', async () => {
+      const anthropic = createAnthropicClient();
+
+      await updateProgress(supabase, siteId, totalTasks, completedTasks, 'Generating FAQ hub page...');
+
+      const faqContent = await generateFAQPage(
+        anthropic,
+        site.name,
+        primaryLocation.city,
+        primaryLocation.state,
+        categoryName
+      );
+
+      if (faqContent) {
+        await supabase.from('site_pages').upsert(
+          {
+            site_id: siteId,
+            page_type: 'faq' as const,
+            slug: 'faq',
+            meta_title: faqContent.meta_title,
+            meta_description: faqContent.meta_description,
+            h1: faqContent.h1,
+            hero_description: faqContent.hero_description,
+            is_active: true,
+          },
+          { onConflict: 'site_id,slug' }
+        );
+      }
+
+      await log('Generated FAQ hub page', 'generate-faq-page');
+    });
+
+    // Step 10: Mark complete
     await step.run('mark-complete', async () => {
       await supabase
         .from('sites')
@@ -1106,4 +1139,54 @@ Return ONLY valid JSON.`;
   }>(message);
 
   return result?.brands || [];
+}
+
+async function generateFAQPage(
+  anthropic: Anthropic,
+  businessName: string,
+  city: string,
+  state: string,
+  primaryCategory: string
+) {
+  const prompt = `You are an SEO expert generating the FAQ hub page intro content for a local service business website.
+
+Business: ${businessName}
+Location: ${city}, ${state}
+Primary Category: ${primaryCategory}
+
+This is NOT a page that contains full FAQ answers. It is a master FAQ index page that links to the individual service and brand pages where the full answers live.
+
+Generate:
+1. meta_title: SEO-optimized title like "FAQ | ${businessName} — ${city}, ${state}" (max 60 chars)
+2. meta_description: Compelling description encouraging visitors to browse FAQs (max 155 chars)
+3. h1: Main heading for the FAQ hub, like "Frequently Asked Questions" or "${primaryCategory} FAQ — ${businessName}"
+4. hero_description: 1-2 sentence intro shown below the H1, mentioning the business, location, and that answers are organized by topic
+
+Format as JSON:
+{
+  "meta_title": "...",
+  "meta_description": "...",
+  "h1": "...",
+  "hero_description": "..."
+}
+
+Return ONLY valid JSON.`;
+
+  const message = await withRetry((signal) =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { signal }
+    )
+  );
+
+  return parseJsonResponse<{
+    meta_title: string;
+    meta_description: string;
+    h1: string;
+    hero_description: string;
+  }>(message);
 }

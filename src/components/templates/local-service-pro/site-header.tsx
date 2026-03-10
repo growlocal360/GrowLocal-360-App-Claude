@@ -32,6 +32,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
     { label: 'Services', href: paths.servicesIndex(locationSlug) },
     { label: 'Service Areas', href: paths.areasIndex(locationSlug) },
     { label: 'Work', href: paths.workHub(locationSlug) },
+    { label: 'FAQ', href: paths.faqPage(locationSlug) },
     { label: 'About', href: paths.aboutPage(locationSlug) },
     { label: 'Jobs', href: paths.jobsPage(locationSlug) },
     { label: 'Contact', href: paths.contactPage(locationSlug) },

@@ -187,7 +187,7 @@ export interface ServiceFAQ {
   answer: string;
 }
 
-export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area';
+export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area' | 'faq';
 
 export interface SitePage {
   id: string;

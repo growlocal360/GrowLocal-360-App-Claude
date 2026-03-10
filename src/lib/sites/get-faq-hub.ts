@@ -82,7 +82,7 @@ export async function getFAQHubData(
   const items: FAQHubItem[] = [];
   const topicGroupSet = new Set<string>();
 
-  // Process service FAQs
+  // Process service FAQs — pick 1 best FAQ per service to spread links across pages
   for (const service of services || []) {
     const faqs = service.faqs as ServiceFAQ[] | null;
     if (!faqs || faqs.length === 0) continue;
@@ -102,19 +102,19 @@ export async function getFAQHubData(
       locationSlug
     );
 
-    for (const faq of faqs) {
-      items.push({
-        question: faq.question,
-        teaserAnswer: createTeaser(faq.answer),
-        canonicalUrl: serviceUrl,
-        canonicalPageTitle: service.name,
-        topicGroup,
-        sourceType: 'service',
-      });
-    }
+    // Take only the first FAQ from each service so the hub links to many different pages
+    const bestFaq = faqs[0];
+    items.push({
+      question: bestFaq.question,
+      teaserAnswer: createTeaser(bestFaq.answer),
+      canonicalUrl: serviceUrl,
+      canonicalPageTitle: service.name,
+      topicGroup,
+      sourceType: 'service',
+    });
   }
 
-  // Process brand FAQs
+  // Process brand FAQs — pick 1 best FAQ per brand
   for (const brand of brands || []) {
     const faqs = brand.faqs as ServiceFAQ[] | null;
     if (!faqs || faqs.length === 0) continue;
@@ -124,16 +124,15 @@ export async function getFAQHubData(
 
     const brandUrl = paths.brandPage(brand.slug, locationSlug);
 
-    for (const faq of faqs) {
-      items.push({
-        question: faq.question,
-        teaserAnswer: createTeaser(faq.answer),
-        canonicalUrl: brandUrl,
-        canonicalPageTitle: brand.name,
-        topicGroup,
-        sourceType: 'brand',
-      });
-    }
+    const bestFaq = faqs[0];
+    items.push({
+      question: bestFaq.question,
+      teaserAnswer: createTeaser(bestFaq.answer),
+      canonicalUrl: brandUrl,
+      canonicalPageTitle: brand.name,
+      topicGroup,
+      sourceType: 'brand',
+    });
   }
 
   // Order topic groups: service categories first (in their natural order), brands last

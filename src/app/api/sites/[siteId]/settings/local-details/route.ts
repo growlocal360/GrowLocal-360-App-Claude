@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { revalidateSite } from '@/lib/sites/revalidate';
 
-// GET - Fetch current business info
+// GET - Fetch local details settings
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -22,7 +21,7 @@ export async function GET(
 
   const { data: site, error: siteError } = await supabase
     .from('sites')
-    .select('id, name, website_type, settings, organization:organizations!inner(profiles!inner(user_id))')
+    .select('id, settings, organization:organizations!inner(profiles!inner(user_id))')
     .eq('id', siteId)
     .single();
 
@@ -44,31 +43,12 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const settings = (site.settings || {}) as any;
 
-  // For single-location sites, fall back to the location's phone
-  // (wizard saves phone to locations table, not settings)
-  // For multi-location, only use settings.phone (location phones managed separately)
-  let phone = settings.phone || null;
-  if (!phone && site.website_type === 'single_location') {
-    const { data: primaryLocation } = await supabase
-      .from('locations')
-      .select('phone')
-      .eq('site_id', siteId)
-      .eq('is_primary', true)
-      .single();
-    phone = primaryLocation?.phone || null;
-  }
-
   return NextResponse.json({
-    name: site.name,
-    phone,
-    email: settings.email || null,
-    coreIndustry: settings.core_industry || null,
-    businessDescription: settings.business_description || '',
-    credentials: settings.credentials || '',
+    localDetails: settings.local_details || '',
   });
 }
 
-// PATCH - Update business info
+// PATCH - Update local details settings
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -87,7 +67,7 @@ export async function PATCH(
 
   const { data: site, error: siteError } = await supabase
     .from('sites')
-    .select('id, name, settings, organization:organizations!inner(profiles!inner(user_id))')
+    .select('id, settings, organization:organizations!inner(profiles!inner(user_id))')
     .eq('id', siteId)
     .single();
 
@@ -107,43 +87,31 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { name, phone, email, coreIndustry, businessDescription, credentials } = body;
+  const { localDetails } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
   const updatedSettings = {
     ...currentSettings,
-    phone: phone !== undefined ? phone : currentSettings.phone,
-    email: email !== undefined ? email : currentSettings.email,
-    core_industry: coreIndustry !== undefined ? coreIndustry : currentSettings.core_industry,
-    ...(businessDescription !== undefined && { business_description: businessDescription }),
-    ...(credentials !== undefined && { credentials }),
+    ...(localDetails !== undefined && { local_details: localDetails }),
   };
-
-  const updateData: Record<string, unknown> = {
-    settings: updatedSettings,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (name !== undefined && typeof name === 'string' && name.trim()) {
-    updateData.name = name.trim();
-  }
 
   const adminSupabase = createAdminClient();
   const { error: updateError } = await adminSupabase
     .from('sites')
-    .update(updateData)
+    .update({
+      settings: updatedSettings,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', siteId);
 
   if (updateError) {
-    console.error('Failed to update business info:', updateError);
+    console.error('Failed to update local details:', updateError);
     return NextResponse.json(
-      { error: 'Failed to update business info' },
+      { error: 'Failed to update local details' },
       { status: 500 }
     );
   }
-
-  await revalidateSite(siteId);
 
   return NextResponse.json({ success: true });
 }

@@ -4,7 +4,8 @@ import { revalidateSite } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { createAnthropicClient, withRetry, parseJsonResponse } from '@/lib/content/generators';
+import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives } from '@/lib/content/generators';
+import type { SiteSettings } from '@/types/database';
 
 // Types
 
@@ -141,6 +142,7 @@ export const generateSiteContent = inngest.createFunction(
 
     const wasAlreadyActive = site.status === 'active';
     const categoryName = getCategoryName(primaryCategory);
+    const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings);
 
     // Step 1b: Auto-fix orphaned services (null site_category_id)
     const orphanedServices = allServices.filter((s) => !s.site_category_id);
@@ -350,7 +352,8 @@ export const generateSiteContent = inngest.createFunction(
         primaryLocation.city,
         primaryLocation.state,
         categoryName,
-        site.website_type
+        site.website_type,
+        contentDirectives
       );
 
       for (const page of coreContent) {
@@ -401,7 +404,8 @@ export const generateSiteContent = inngest.createFunction(
             primaryLocation.city,
             primaryLocation.state,
             catName,
-            category.is_primary
+            category.is_primary,
+            contentDirectives
           );
 
           const catSlug = normalizeCategorySlug(catName);
@@ -471,7 +475,8 @@ export const generateSiteContent = inngest.createFunction(
                 primaryLocation.city,
                 primaryLocation.state,
                 catNameForServices,
-                batch.map((s) => ({ name: s.name, description: s.description || '' }))
+                batch.map((s) => ({ name: s.name, description: s.description || '' })),
+                contentDirectives
               );
 
               for (let j = 0; j < batch.length; j++) {
@@ -539,7 +544,8 @@ export const generateSiteContent = inngest.createFunction(
                 batch.map((a) => ({
                   name: a.name,
                   state: a.state || primaryLocation.state,
-                }))
+                })),
+                contentDirectives
               );
 
               for (let j = 0; j < batch.length; j++) {
@@ -601,7 +607,8 @@ export const generateSiteContent = inngest.createFunction(
                 primaryLocation.city,
                 primaryLocation.state,
                 categoryName,
-                batch.map((b) => ({ name: b.name, slug: b.slug }))
+                batch.map((b) => ({ name: b.name, slug: b.slug })),
+                contentDirectives
               );
 
               for (let j = 0; j < batch.length; j++) {
@@ -652,7 +659,8 @@ export const generateSiteContent = inngest.createFunction(
         site.name,
         primaryLocation.city,
         primaryLocation.state,
-        categoryName
+        categoryName,
+        contentDirectives
       );
 
       if (faqContent) {
@@ -746,7 +754,8 @@ async function generateCorePages(
   city: string,
   state: string,
   primaryCategory: string,
-  websiteType: string
+  websiteType: string,
+  directives: string = ''
 ) {
   const homePageFocus =
     websiteType === 'single_location'
@@ -761,7 +770,7 @@ Primary Category: ${primaryCategory}
 Website Type: ${websiteType}
 
 ${homePageFocus}
-
+${directives}
 Generate content for these core pages: home, about, contact
 
 For EACH page, provide:
@@ -832,14 +841,15 @@ async function generateCategoryPage(
   city: string,
   state: string,
   categoryName: string,
-  isPrimary: boolean
+  isPrimary: boolean,
+  directives: string = ''
 ) {
   const prompt = `You are an SEO expert generating a category page for a local service business.
 
 Business: ${businessName}
 Location: ${city}, ${state}
 Category: ${categoryName}${isPrimary ? ' (Primary — this is also the home page for single-location sites)' : ''}
-
+${directives}
 Generate content for this category page:
 1. meta_title: "[Category Name] in [City], [State] | [Business Name]" (max 60 chars)
 2. meta_description: Overview of services in this category with CTA (max 155 chars)
@@ -904,7 +914,8 @@ async function generateServicePages(
   city: string,
   state: string,
   categoryName: string,
-  services: { name: string; description: string }[]
+  services: { name: string; description: string }[],
+  directives: string = ''
 ) {
   const serviceList = services
     .map((s) => `- ${s.name}: ${s.description || 'No description'}`)
@@ -915,7 +926,7 @@ async function generateServicePages(
 Business: ${businessName}
 Location: ${city}, ${state}
 Category: ${categoryName}
-
+${directives}
 Generate SEO-optimized content for these services:
 ${serviceList}
 
@@ -992,7 +1003,8 @@ async function generateServiceAreaPages(
   primaryCity: string,
   state: string,
   primaryCategory: string,
-  serviceAreas: { name: string; state: string }[]
+  serviceAreas: { name: string; state: string }[],
+  directives: string = ''
 ) {
   const areaList = serviceAreas.map((a) => `- ${a.name}, ${a.state}`).join('\n');
 
@@ -1001,7 +1013,7 @@ async function generateServiceAreaPages(
 Business: ${businessName}
 Primary Location: ${primaryCity}, ${state}
 Primary Category: ${primaryCategory}
-
+${directives}
 Generate content for these service area pages (nearby cities we serve):
 ${areaList}
 
@@ -1059,7 +1071,8 @@ async function generateBrandPages(
   city: string,
   state: string,
   primaryCategory: string,
-  brands: { name: string; slug: string }[]
+  brands: { name: string; slug: string }[],
+  directives: string = ''
 ) {
   const brandList = brands.map((b) => `- ${b.name}`).join('\n');
 
@@ -1068,7 +1081,7 @@ async function generateBrandPages(
 Business: ${businessName}
 Location: ${city}, ${state}
 Industry/Category: ${primaryCategory}
-
+${directives}
 Generate unique, compelling content for each of these brand pages:
 ${brandList}
 
@@ -1146,14 +1159,15 @@ async function generateFAQPage(
   businessName: string,
   city: string,
   state: string,
-  primaryCategory: string
+  primaryCategory: string,
+  directives: string = ''
 ) {
   const prompt = `You are an SEO expert generating the FAQ hub page intro content for a local service business website.
 
 Business: ${businessName}
 Location: ${city}, ${state}
 Primary Category: ${primaryCategory}
-
+${directives}
 This is NOT a page that contains full FAQ answers. It is a master FAQ index page that links to the individual service and brand pages where the full answers live.
 
 Generate:

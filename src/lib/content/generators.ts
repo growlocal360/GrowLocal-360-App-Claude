@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { SiteSettings } from '@/types/database';
 
 // --- Shared types ---
 
@@ -8,6 +9,7 @@ export interface BusinessContext {
   primaryCity: string;
   state: string;
   primaryCategoryName: string;
+  settings?: SiteSettings;
 }
 
 export interface ServiceContentResult {
@@ -81,13 +83,65 @@ export function parseJsonResponse<T>(message: Anthropic.Message): T | null {
   return null;
 }
 
+// --- Content directives builder ---
+
+const POV_LABELS: Record<string, string> = {
+  first_person_plural: 'Write in first person plural (we/our/us)',
+  first_person_singular: 'Write in first person singular (I/my/me)',
+  third_person: 'Write in third person (they/the company)',
+};
+
+export function buildContentDirectives(settings?: SiteSettings): string {
+  if (!settings) return '';
+
+  const lines: string[] = [];
+
+  if (settings.tone_values?.length) {
+    lines.push(`**Voice & Tone:** ${settings.tone_values.join(', ')}`);
+  }
+  if (settings.point_of_view) {
+    lines.push(`**Point of View:** ${POV_LABELS[settings.point_of_view] || settings.point_of_view}`);
+  }
+  if (settings.words_to_use?.trim()) {
+    lines.push(`**Words & phrases to use:** ${settings.words_to_use.trim()}`);
+  }
+  if (settings.words_to_avoid?.trim()) {
+    lines.push(`**Words & phrases to NEVER use:** ${settings.words_to_avoid.trim()}`);
+  }
+  if (settings.target_audience?.trim()) {
+    lines.push(`**Target Audience:** ${settings.target_audience.trim()}`);
+  }
+  if (settings.business_description?.trim()) {
+    lines.push(`**About the Business:** ${settings.business_description.trim()}`);
+  }
+  if (settings.credentials?.trim()) {
+    lines.push(`**Credentials & Certifications:** ${settings.credentials.trim()}`);
+  }
+  if (settings.local_details?.trim()) {
+    lines.push(`**Local Context:** ${settings.local_details.trim()}`);
+  }
+  if (settings.writing_samples?.trim()) {
+    lines.push(`**Writing Samples (match this voice and style):**\n${settings.writing_samples.trim()}`);
+  }
+  if (settings.specific_requests?.trim()) {
+    lines.push(`**Specific Requests (follow these closely):**\n${settings.specific_requests.trim()}`);
+  }
+  if (settings.onboarding_notes?.trim()) {
+    lines.push(`**Additional Business Context:**\n${settings.onboarding_notes.trim()}`);
+  }
+
+  if (lines.length === 0) return '';
+
+  return `\n## Content Directives — follow these closely when writing:\n${lines.join('\n')}\n`;
+}
+
 // --- Context loader ---
 
 export async function loadBusinessContext(siteId: string): Promise<BusinessContext & { siteSlug: string }> {
   const supabase = createAdminClient();
 
   const [{ data: site }, { data: locations }, { data: categories }] = await Promise.all([
-    supabase.from('sites').select('name, slug').eq('id', siteId).single(),
+    supabase.from('sites').select('name, slug, settings').eq('id', siteId).single(),
     supabase.from('locations').select('city, state').eq('site_id', siteId).eq('is_primary', true).limit(1),
     supabase
       .from('site_categories')
@@ -113,6 +167,7 @@ export async function loadBusinessContext(siteId: string): Promise<BusinessConte
     state: primaryLocation?.state || '',
     primaryCategoryName: gbp?.display_name || 'Professional Services',
     siteSlug: site.slug,
+    settings: (site.settings || {}) as SiteSettings,
   };
 }
 
@@ -125,12 +180,14 @@ export async function generateSingleServiceContent(
 ): Promise<ServiceContentResult> {
   const anthropic = createAnthropicClient();
 
+  const directives = buildContentDirectives(ctx.settings);
+
   const prompt = `You are an SEO expert generating rich, structured content for a local service business website.
 
 Business: ${ctx.businessName}
 Location: ${ctx.primaryCity}, ${ctx.state}
 Category: ${categoryName}
-
+${directives}
 Generate SEO-optimized content for this service:
 - ${service.name}: ${service.description || 'No description'}
 
@@ -191,12 +248,14 @@ export async function generateSingleServiceAreaContent(
 ): Promise<ServiceAreaContentResult> {
   const anthropic = createAnthropicClient();
 
+  const directives = buildContentDirectives(ctx.settings);
+
   const prompt = `You are an SEO expert generating service area page content for a local service business.
 
 Business: ${ctx.businessName}
 Primary Location: ${ctx.primaryCity}, ${ctx.state}
 Primary Category: ${ctx.primaryCategoryName}
-
+${directives}
 Generate content for this service area page (a nearby city we serve):
 - ${area.name}, ${area.state}
 

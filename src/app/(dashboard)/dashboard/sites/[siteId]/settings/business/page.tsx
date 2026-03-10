@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Building2, AlertCircle, Check, Loader2, ArrowLeft } from 'lucide-react';
 
 interface BusinessInfo {
@@ -14,6 +15,8 @@ interface BusinessInfo {
   phone: string | null;
   email: string | null;
   coreIndustry: string | null;
+  businessDescription: string;
+  credentials: string;
 }
 
 export default function BusinessInfoPage() {
@@ -30,6 +33,8 @@ export default function BusinessInfoPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [coreIndustry, setCoreIndustry] = useState('');
+  const [businessDescription, setBusinessDescription] = useState('');
+  const [credentials, setCredentials] = useState('');
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -47,6 +52,8 @@ export default function BusinessInfoPage() {
       setPhone(data.phone || '');
       setEmail(data.email || '');
       setCoreIndustry(data.coreIndustry || '');
+      setBusinessDescription(data.businessDescription || '');
+      setCredentials(data.credentials || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load business info');
     } finally {
@@ -58,7 +65,9 @@ export default function BusinessInfoPage() {
     name !== (original?.name || '') ||
     phone !== (original?.phone || '') ||
     email !== (original?.email || '') ||
-    coreIndustry !== (original?.coreIndustry || '');
+    coreIndustry !== (original?.coreIndustry || '') ||
+    businessDescription !== (original?.businessDescription || '') ||
+    credentials !== (original?.credentials || '');
 
   const handleSave = async () => {
     try {
@@ -69,7 +78,7 @@ export default function BusinessInfoPage() {
       const response = await fetch(`/api/sites/${siteId}/settings/business`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, coreIndustry }),
+        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials }),
       });
 
       if (!response.ok) {
@@ -77,7 +86,7 @@ export default function BusinessInfoPage() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setOriginal({ name, phone, email, coreIndustry });
+      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -182,6 +191,36 @@ export default function BusinessInfoPage() {
             />
             <p className="text-xs text-gray-400 mt-1">
               Used to improve AI-generated content for your site
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="businessDescription">About the Business</Label>
+            <Textarea
+              id="businessDescription"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="Describe your business, what makes it unique, your history, and what sets you apart from competitors..."
+              className="mt-1"
+              rows={5}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used to generate your About page and inform all content
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="credentials">Credentials & Certifications</Label>
+            <Textarea
+              id="credentials"
+              value={credentials}
+              onChange={(e) => setCredentials(e.target.value)}
+              placeholder="e.g., Licensed & Insured, EPA Certified, BBB A+ Rating, NATE Certified Technicians, 20+ years experience..."
+              className="mt-1"
+              rows={3}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Licenses, certifications, and qualifications to highlight across your site
             </p>
           </div>
         </CardContent>

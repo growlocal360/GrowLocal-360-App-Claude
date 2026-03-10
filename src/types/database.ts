@@ -58,13 +58,37 @@ export interface Site {
 }
 
 export interface SiteSettings {
+  // Branding & Contact
   brand_color?: string;
   logo_url?: string;
   phone?: string;
   email?: string;
   core_industry?: string;
+  cta_text?: string;
+  // Review Data
   google_average_rating?: number;
   google_total_reviews?: number;
+  review_source_url?: string;
+  // About the Business
+  business_description?: string;
+  credentials?: string;
+  // Voice & Tone
+  tone_values?: string[];
+  point_of_view?: string;
+  words_to_use?: string;
+  words_to_avoid?: string;
+  // Audience
+  target_audience?: string;
+  // Reference Material
+  writing_samples?: string;
+  onboarding_notes?: string;
+  // Specific Requests
+  specific_requests?: string;
+  // Local Details
+  local_details?: string;
+  // Image Preferences
+  default_image_style?: string;
+  brand_style_guide?: string;
 }
 
 export interface ServiceAreaDB {

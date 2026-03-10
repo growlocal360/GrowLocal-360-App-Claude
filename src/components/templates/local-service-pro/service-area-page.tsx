@@ -7,6 +7,14 @@ import type { GoogleReview, SitePage, Service, SiteCategory, GBPCategory } from 
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildLocalBusinessSchema,
+  buildBreadcrumbSchema,
+  getSiteUrl,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -72,40 +80,30 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
     body_copy: serviceArea.body_copy,
   } as SitePage;
 
-  // Schema.org
-  const phone = site.settings?.phone || location.phone;
-  const schemaData = {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    '@id': `https://${site.domain || `${siteSlug}.growlocal360.com`}#business`,
-    name: site.name,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: location.address_line1,
-      addressLocality: location.city,
-      addressRegion: location.state,
-      postalCode: location.zip_code,
-      addressCountry: location.country || 'US',
-    },
-    telephone: phone,
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, location);
+  const locationInput = toLocationInput(location);
+  const siteUrl = getSiteUrl(businessInput);
+
+  const localBusinessSchema = buildLocalBusinessSchema(businessInput, locationInput, {
     areaServed: {
       '@type': 'City',
       name: serviceArea.name,
       ...(serviceArea.state && {
-        containedInPlace: {
-          '@type': 'State',
-          name: serviceArea.state,
-        },
+        containedInPlace: { '@type': 'State', name: serviceArea.state },
       }),
     },
-  };
+  });
+
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: siteUrl + paths.locationHome(locationSlug) },
+    { name: 'Service Areas', url: siteUrl + paths.areasIndex(locationSlug) },
+    { name: serviceArea.name, url: siteUrl + paths.areaPage(serviceArea.slug, locationSlug) },
+  ]);
 
   return (
     <div className="min-h-screen bg-white">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
+      <JsonLd data={[localBusinessSchema, breadcrumbSchema]} />
 
       <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
 

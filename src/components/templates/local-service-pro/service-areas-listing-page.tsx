@@ -6,6 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, ServiceAreaDB, Neighborhood } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildCollectionPageSchema,
+  getSiteUrl,
+  toBusinessInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -25,8 +31,19 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const collectionSchema = buildCollectionPageSchema(
+    `Areas We Serve${city ? ` in ${city}` : ''}`,
+    `${site.name} proudly serves these communities and surrounding areas${city ? ` throughout the ${city} region` : ''}.`,
+    siteUrl + paths.areasIndex(locationSlug),
+    businessInput
+  );
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[collectionSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import type { Site, Location, Service, SiteCategory, GBPCategory, ServiceAreaDB } from '@/types/database';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildCollectionPageSchema,
+  getSiteUrl,
+  toBusinessInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -42,8 +48,19 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
     return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
   };
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const collectionSchema = buildCollectionPageSchema(
+    `Our Services${city ? ` in ${city}` : ''}`,
+    `${site.name} offers professional services${city ? ` in ${city}` : ''}. Browse our full range of services.`,
+    siteUrl + paths.servicesIndex(locationSlug),
+    businessInput
+  );
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[collectionSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

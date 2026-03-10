@@ -7,6 +7,14 @@ import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildServiceSchema,
+  buildBreadcrumbSchema,
+  getSiteUrl,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 
 interface WorkDetailPageProps {
   site: Site;
@@ -59,40 +67,36 @@ export function WorkDetailPage({
   ].filter(Boolean);
   const addressLine = addressParts.length > 0 ? addressParts.join(' ') : null;
 
-  // Schema.org JSON-LD
-  const domain = site.domain || site.custom_domain || `${siteSlug}.growlocal360.com`;
-  const schemaData = {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    name: h1,
-    provider: {
-      '@type': 'LocalBusiness',
-      name: site.name,
-      telephone: phone,
-      address: {
-        '@type': 'PostalAddress',
-        addressLocality: primaryLocation.city,
-        addressRegion: primaryLocation.state,
-        postalCode: primaryLocation.zip_code,
-      },
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const locationInput = toLocationInput(primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+
+  const serviceSchema = buildServiceSchema(
+    {
+      name: h1,
+      slug: workItem.slug,
+      description: workItem.description ? workItem.description.slice(0, 300) : null,
+      categoryName: serviceName || 'Service',
     },
-    ...(workItem.description && { description: workItem.description.slice(0, 300) }),
-    ...(workItem.images.length > 0 && {
-      image: workItem.images.map(img => img.url),
-    }),
-    areaServed: city && state ? {
-      '@type': 'City',
-      name: city,
-      containedInPlace: { '@type': 'State', name: state },
-    } : undefined,
-  };
+    businessInput,
+    locationInput,
+    { serviceUrl: siteUrl + paths.workDetail(workItem.slug, locationSlug) }
+  );
+  // Add images if available
+  if (workItem.images.length > 0) {
+    serviceSchema.image = workItem.images.map(img => img.url);
+  }
+
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: siteUrl + paths.locationHome(locationSlug) },
+    { name: 'Our Work', url: siteUrl + paths.workHub(locationSlug) },
+    { name: h1, url: siteUrl + paths.workDetail(workItem.slug, locationSlug) },
+  ]);
 
   return (
     <div className="min-h-screen bg-white">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
+      <JsonLd data={[serviceSchema, breadcrumbSchema]} />
 
       <SiteHeader
         site={site}

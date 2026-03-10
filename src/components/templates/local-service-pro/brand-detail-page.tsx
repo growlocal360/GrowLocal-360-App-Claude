@@ -6,6 +6,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, SiteBrand, ServiceAreaDB, GoogleReview, BrandValueProp, ServiceFAQ } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildWebPageSchema,
+  buildFAQPageSchema,
+  buildBreadcrumbSchema,
+  getSiteUrl,
+  toBusinessInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -68,8 +76,29 @@ export function BrandDetailPage({
   const ctaDescription = brand.cta_description || `Contact ${site.name} today for expert ${brand.name} ${industry.toLowerCase()} service.${phone ? ' Call now or fill out the form below.' : ' Fill out the form below to get started.'}`;
   const faqs = brand.faqs as ServiceFAQ[] | null;
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const brandUrl = siteUrl + paths.brandPage(brand.slug, locationSlug);
+  const webPageSchema = buildWebPageSchema(
+    heroHeading,
+    heroDescription,
+    brandUrl,
+    'WebPage',
+    businessInput
+  );
+  const faqSchema = faqs && faqs.length > 0
+    ? buildFAQPageSchema(faqs.map(f => ({ question: f.question, answer: f.answer })))
+    : null;
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: siteUrl },
+    { name: 'Brands', url: siteUrl + paths.brandsIndex(locationSlug) },
+    { name: brand.name, url: brandUrl },
+  ]);
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[webPageSchema, faqSchema, breadcrumbSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

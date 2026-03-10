@@ -3,6 +3,15 @@
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Location, SitePage, Service, ServiceAreaDB } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildWebPageSchema,
+  buildLocalBusinessSchema,
+  getSiteUrl,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -28,8 +37,23 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
   const heroDescription = pageContent?.hero_description || '';
   const bodyCopy = pageContent?.body_copy || '';
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const contactPageSchema = buildWebPageSchema(
+    h1,
+    heroDescription || `Get in touch with ${site.name}`,
+    siteUrl + paths.contactPage(locationSlug),
+    'ContactPage',
+    businessInput
+  );
+  const localBusinessSchema = primaryLocation
+    ? buildLocalBusinessSchema(businessInput, toLocationInput(primaryLocation))
+    : null;
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[contactPageSchema, localBusinessSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

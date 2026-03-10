@@ -3,6 +3,14 @@
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, Neighborhood, SitePage } from '@/types/database';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildServiceSchema,
+  buildBreadcrumbSchema,
+  getSiteUrl,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -63,30 +71,26 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
     body_copy_2: pageContent?.body_copy_2 || null,
   } as SitePage;
 
-  // Schema.org
-  const phone = site.settings?.phone || location.phone;
-  const schemaData = {
-    '@context': 'https://schema.org',
-    '@type': 'Service',
-    name: categoryName,
-    description: `Professional ${categoryName.toLowerCase()} services in ${location.city}, ${location.state}`,
-    provider: {
-      '@type': 'LocalBusiness',
-      name: site.name,
-      telephone: phone,
-    },
-    areaServed: {
-      '@type': 'City',
-      name: `${location.city}, ${location.state}`,
-    },
-  };
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, location);
+  const locationInput = toLocationInput(location);
+  const siteUrl = getSiteUrl(businessInput);
+
+  const serviceSchema = buildServiceSchema(
+    { name: categoryName, slug: categorySlug, description: `Professional ${categoryName.toLowerCase()} services in ${location.city}, ${location.state}`, categoryName },
+    businessInput,
+    locationInput,
+    { serviceUrl: siteUrl + paths.categoryPage(categorySlug, category.is_primary, locationSlug) }
+  );
+
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: siteUrl + paths.locationHome(locationSlug) },
+    { name: categoryName, url: siteUrl + paths.categoryPage(categorySlug, category.is_primary, locationSlug) },
+  ]);
 
   return (
     <div className="min-h-screen bg-white">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
+      <JsonLd data={[serviceSchema, breadcrumbSchema]} />
 
       <SiteHeader site={site} primaryLocation={location} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
 

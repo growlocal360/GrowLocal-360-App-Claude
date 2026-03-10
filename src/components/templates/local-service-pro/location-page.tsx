@@ -7,6 +7,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SiteWithRelations, Location, Neighborhood, ServiceAreaDB } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildLocalBusinessSchema,
+  buildBreadcrumbSchema,
+  getSiteUrl,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 import { SiteHeader } from './site-header';
 import { SiteFooter } from './site-footer';
 
@@ -31,48 +39,30 @@ export function LocationPage({ data, siteSlug, locationSlug }: LocationPageProps
   // Other locations in this site (for internal linking)
   const otherLocations = allLocations.filter(l => l.id !== location.id);
 
-  // Generate LocalBusiness schema for this location (GBP landing page)
-  const schemaData = {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    '@id': `https://${site.domain || `${siteSlug}.growlocal360.com`}/locations/${location.slug}#business`,
-    name: site.name,
-    description: `${industry} services in ${location.city}, ${location.state}`,
-    telephone: phone,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: location.address_line1,
-      addressLocality: location.city,
-      addressRegion: location.state,
-      postalCode: location.zip_code,
-      addressCountry: location.country || 'US',
-    },
-    geo: location.latitude && location.longitude ? {
-      '@type': 'GeoCoordinates',
-      latitude: location.latitude,
-      longitude: location.longitude,
-    } : undefined,
-    // Area served includes the city and all neighborhoods
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, location);
+  const locationInput = toLocationInput(location);
+  const siteUrl = getSiteUrl(businessInput);
+
+  const localBusinessSchema = buildLocalBusinessSchema(businessInput, locationInput, {
     areaServed: [
-      {
-        '@type': 'City',
-        name: `${location.city}, ${location.state}`,
-      },
+      { '@type': 'City', name: `${location.city}, ${location.state}` },
       ...neighborhoods.map(n => ({
-        '@type': 'Place',
+        '@type': 'Place' as const,
         name: `${n.name}, ${location.city}, ${location.state}`,
       })),
     ],
-    url: `https://${site.domain || `${siteSlug}.growlocal360.com`}/locations/${location.slug}`,
-  };
+  });
+
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: 'Home', url: siteUrl + '/' },
+    { name: 'Locations', url: siteUrl + '/locations' },
+    { name: location.city, url: siteUrl + `/locations/${location.slug}` },
+  ]);
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Schema.org JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
+      <JsonLd data={[localBusinessSchema, breadcrumbSchema]} />
 
       <SiteHeader site={site} primaryLocation={location} locationSlug={locationSlug} />
 

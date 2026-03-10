@@ -2,6 +2,13 @@
 
 import { PublicSiteData } from '@/lib/sites/get-site';
 import type { Service } from '@/types/database';
+import {
+  JsonLd,
+  buildLocalBusinessSchema,
+  buildWebSiteSchema,
+  toBusinessInput,
+  toLocationInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
@@ -34,8 +41,17 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
   // Find home page content from sitePages
   const homePageContent = sitePages?.find(p => p.page_type === 'home') || null;
 
+  // Schema.org structured data
+  const businessInput = primaryLocation ? toBusinessInput(site, primaryLocation) : null;
+  const locationInput = primaryLocation ? toLocationInput(primaryLocation) : null;
+  const localBusinessSchema = businessInput && locationInput
+    ? buildLocalBusinessSchema(businessInput, locationInput)
+    : null;
+  const webSiteSchema = businessInput ? buildWebSiteSchema(businessInput) : null;
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[localBusinessSchema, webSiteSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={slug} locationSlug={locationSlug} />
       <main>
         <HeroSection

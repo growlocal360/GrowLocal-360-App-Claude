@@ -6,6 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Site, Location, SiteBrand, ServiceAreaDB } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildCollectionPageSchema,
+  getSiteUrl,
+  toBusinessInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -26,8 +32,19 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
   const industry = (site.settings?.core_industry as string) || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const collectionSchema = buildCollectionPageSchema(
+    `${industry ? `${industry} Brands` : 'Brands'} We Service${city ? ` in ${city}` : ''}`,
+    `${site.name} services, repairs, and installs all major${industry ? ` ${industry.toLowerCase()}` : ''} brands${city ? ` in ${city} and nearby communities` : ''}.`,
+    siteUrl + paths.brandsIndex(locationSlug),
+    businessInput
+  );
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[collectionSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

@@ -1,6 +1,13 @@
 'use client';
 
 import type { Site, Location, SitePage, ServiceAreaDB } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
+import {
+  JsonLd,
+  buildWebPageSchema,
+  getSiteUrl,
+  toBusinessInput,
+} from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -23,8 +30,20 @@ export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, ca
   const bodyCopy = pageContent?.body_copy || '';
   const bodyCopy2 = pageContent?.body_copy_2 || '';
 
+  // Schema.org structured data
+  const businessInput = toBusinessInput(site, primaryLocation);
+  const siteUrl = getSiteUrl(businessInput);
+  const aboutSchema = buildWebPageSchema(
+    h1,
+    heroDescription || `Learn more about ${site.name}`,
+    siteUrl + paths.aboutPage(locationSlug),
+    'AboutPage',
+    businessInput
+  );
+
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={[aboutSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

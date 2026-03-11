@@ -10,7 +10,7 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-// GET - Fetch service areas
+// GET - Fetch neighborhoods
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -49,26 +49,16 @@ export async function GET(
   }
 
   const adminSupabase = createAdminClient();
-  const [{ data: serviceAreas }, { data: locations }] = await Promise.all([
-    adminSupabase
-      .from('service_areas')
-      .select('*')
-      .eq('site_id', siteId)
-      .order('sort_order'),
-    adminSupabase
-      .from('locations')
-      .select('id, city, state, latitude, longitude')
-      .eq('site_id', siteId)
-      .order('is_primary', { ascending: false }),
-  ]);
+  const { data: neighborhoods } = await adminSupabase
+    .from('neighborhoods')
+    .select('*')
+    .eq('site_id', siteId)
+    .order('sort_order');
 
-  return NextResponse.json({
-    serviceAreas: serviceAreas || [],
-    locations: locations || [],
-  });
+  return NextResponse.json({ neighborhoods: neighborhoods || [] });
 }
 
-// POST - Add a service area
+// POST - Add a neighborhood
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -107,7 +97,7 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { name, state, slug, placeId, latitude, longitude } = body;
+  const { name, locationId, placeId, latitude, longitude } = body;
 
   if (!name || typeof name !== 'string') {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -115,47 +105,64 @@ export async function POST(
 
   const adminSupabase = createAdminClient();
 
+  // If no locationId provided, use the primary location
+  let resolvedLocationId = locationId;
+  if (!resolvedLocationId) {
+    const { data: primaryLocation } = await adminSupabase
+      .from('locations')
+      .select('id')
+      .eq('site_id', siteId)
+      .eq('is_primary', true)
+      .limit(1)
+      .single();
+
+    if (!primaryLocation) {
+      return NextResponse.json({ error: 'No primary location found' }, { status: 400 });
+    }
+    resolvedLocationId = primaryLocation.id;
+  }
+
   // Get max sort_order
-  const { data: lastArea } = await adminSupabase
-    .from('service_areas')
+  const { data: lastNeighborhood } = await adminSupabase
+    .from('neighborhoods')
     .select('sort_order')
     .eq('site_id', siteId)
     .order('sort_order', { ascending: false })
     .limit(1)
     .single();
 
-  const nextSortOrder = (lastArea?.sort_order ?? -1) + 1;
+  const nextSortOrder = (lastNeighborhood?.sort_order ?? -1) + 1;
 
-  const { data: newArea, error: insertError } = await adminSupabase
-    .from('service_areas')
+  const { data: newNeighborhood, error: insertError } = await adminSupabase
+    .from('neighborhoods')
     .insert({
       site_id: siteId,
+      location_id: resolvedLocationId,
       name: name.trim(),
-      slug: slug || slugify(name),
-      state: state || null,
+      slug: slugify(name),
       place_id: placeId || null,
       latitude: latitude || null,
       longitude: longitude || null,
-      is_custom: true,
       sort_order: nextSortOrder,
+      is_active: true,
     })
     .select()
     .single();
 
   if (insertError) {
-    console.error('Failed to add service area:', insertError);
+    console.error('Failed to add neighborhood:', insertError);
     return NextResponse.json(
-      { error: 'Failed to add service area' },
+      { error: 'Failed to add neighborhood' },
       { status: 500 }
     );
   }
 
   await revalidateSite(siteId);
 
-  return NextResponse.json({ success: true, serviceArea: newArea });
+  return NextResponse.json({ success: true, neighborhood: newNeighborhood });
 }
 
-// DELETE - Remove a service area
+// DELETE - Remove a neighborhood
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
@@ -194,23 +201,23 @@ export async function DELETE(
   }
 
   const { searchParams } = new URL(request.url);
-  const areaId = searchParams.get('id');
+  const neighborhoodId = searchParams.get('id');
 
-  if (!areaId) {
+  if (!neighborhoodId) {
     return NextResponse.json({ error: 'id query param is required' }, { status: 400 });
   }
 
   const adminSupabase = createAdminClient();
   const { error: deleteError } = await adminSupabase
-    .from('service_areas')
+    .from('neighborhoods')
     .delete()
-    .eq('id', areaId)
+    .eq('id', neighborhoodId)
     .eq('site_id', siteId);
 
   if (deleteError) {
-    console.error('Failed to delete service area:', deleteError);
+    console.error('Failed to delete neighborhood:', deleteError);
     return NextResponse.json(
-      { error: 'Failed to delete service area' },
+      { error: 'Failed to delete neighborhood' },
       { status: 500 }
     );
   }

@@ -33,6 +33,7 @@ import {
   RotateCw,
   MessageSquare,
   MapPinned,
+  Search,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -638,6 +639,31 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/settings/service-areas`}>
                   Manage Areas
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Search Performance */}
+          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                  <Search className="h-5 w-5 text-cyan-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Search Performance</h3>
+                  <p className="text-sm text-gray-500">Google Search Console data</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                See what people search to find your site
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/search-performance`}>
+                  View Data
                 </Link>
               </Button>
             </CardContent>

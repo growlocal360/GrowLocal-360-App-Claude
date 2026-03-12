@@ -58,7 +58,7 @@ export default function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/oauth2callback`,
-        scopes: 'https://www.googleapis.com/auth/business.manage',
+        scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
       },
     });
 

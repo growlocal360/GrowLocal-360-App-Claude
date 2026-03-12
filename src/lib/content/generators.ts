@@ -135,6 +135,29 @@ export function buildContentDirectives(settings?: SiteSettings): string {
   return `\n## Content Directives — follow these closely when writing:\n${lines.join('\n')}\n`;
 }
 
+// --- GSC context builder ---
+
+export async function buildGSCContext(siteId: string): Promise<string> {
+  const supabase = createAdminClient();
+  const { data: queries } = await supabase
+    .from('gsc_queries')
+    .select('query, impressions, clicks, position')
+    .eq('site_id', siteId)
+    .order('impressions', { ascending: false })
+    .limit(50);
+
+  if (!queries?.length) return '';
+
+  const topQueries = queries
+    .map(
+      (q) =>
+        `- "${q.query}" (${q.impressions} impressions, ${q.clicks} clicks, avg position ${q.position.toFixed(1)})`
+    )
+    .join('\n');
+
+  return `\n## Real Search Data — use these insights to optimize content:\nThese are actual Google search queries that lead people to this business:\n${topQueries}\n\nNaturally incorporate high-impression queries into headings, body copy, and FAQs where relevant. Focus especially on queries with high impressions but few clicks (position > 10) as content optimization opportunities.\n`;
+}
+
 // --- Context loader ---
 
 export async function loadBusinessContext(siteId: string): Promise<BusinessContext & { siteSlug: string }> {

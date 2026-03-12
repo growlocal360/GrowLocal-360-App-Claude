@@ -89,6 +89,10 @@ export interface SiteSettings {
   // Image Preferences
   default_image_style?: string;
   brand_style_guide?: string;
+  // Google Search Console
+  gsc_property_url?: string;
+  gsc_last_synced_at?: string;
+  gsc_connected?: boolean;
 }
 
 export interface ServiceAreaDB {
@@ -447,4 +451,19 @@ export interface Payment {
 
 export interface SubscriptionWithPlan extends Subscription {
   plan?: SubscriptionPlan;
+}
+
+export interface GSCQuery {
+  id: string;
+  site_id: string;
+  query: string;
+  page_url: string | null;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  date_range_start: string;
+  date_range_end: string;
+  fetched_at: string;
+  created_at: string;
 }

@@ -130,7 +130,7 @@ export function StepConnect() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/oauth2callback?next=/dashboard/sites/new`,
-        scopes: 'https://www.googleapis.com/auth/business.manage',
+        scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
       },
     });
 

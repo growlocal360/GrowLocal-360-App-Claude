@@ -4,7 +4,7 @@ import { revalidateSite } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives } from '@/lib/content/generators';
+import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
 import type { SiteSettings } from '@/types/database';
 
 // Types
@@ -142,7 +142,8 @@ export const generateSiteContent = inngest.createFunction(
 
     const wasAlreadyActive = site.status === 'active';
     const categoryName = getCategoryName(primaryCategory);
-    const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings);
+    const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings)
+      + await buildGSCContext(siteId);
 
     // Step 1b: Auto-fix orphaned services (null site_category_id)
     const orphanedServices = allServices.filter((s) => !s.site_category_id);

@@ -13,7 +13,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 export async function revalidateSite(siteId: string) {
   const supabase = createAdminClient();
 
-  const [{ data: site }, { data: services }, { data: categories }, { data: serviceAreas }] =
+  const [{ data: site }, { data: services }, { data: categories }, { data: serviceAreas }, { data: neighborhoods }] =
     await Promise.all([
       supabase.from('sites').select('slug').eq('id', siteId).single(),
       supabase.from('services').select('slug, site_category_id').eq('site_id', siteId).eq('is_active', true),
@@ -22,6 +22,7 @@ export async function revalidateSite(siteId: string) {
         .select('id, is_primary, gbp_category:gbp_categories(display_name)')
         .eq('site_id', siteId),
       supabase.from('service_areas').select('slug').eq('site_id', siteId),
+      supabase.from('neighborhoods').select('slug').eq('site_id', siteId).eq('is_active', true),
     ]);
 
   if (!site?.slug) return;
@@ -69,5 +70,10 @@ export async function revalidateSite(siteId: string) {
   // Revalidate service area pages
   for (const area of serviceAreas || []) {
     revalidatePath(`${base}/areas/${area.slug}`, 'page');
+  }
+
+  // Revalidate neighborhood pages
+  for (const n of neighborhoods || []) {
+    revalidatePath(`${base}/neighborhoods/${n.slug}`, 'page');
   }
 }

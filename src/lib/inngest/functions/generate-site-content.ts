@@ -84,6 +84,7 @@ export const generateSiteContent = inngest.createFunction(
         { data: serviceAreas },
         { data: siteCategories },
         { data: brands },
+        { data: neighborhoods },
       ] = await Promise.all([
         supabase
           .from('sites')
@@ -99,6 +100,12 @@ export const generateSiteContent = inngest.createFunction(
           .eq('site_id', siteId),
         supabase
           .from('site_brands')
+          .select('*')
+          .eq('site_id', siteId)
+          .eq('is_active', true)
+          .order('sort_order'),
+        supabase
+          .from('neighborhoods')
           .select('*')
           .eq('site_id', siteId)
           .eq('is_active', true)
@@ -127,6 +134,13 @@ export const generateSiteContent = inngest.createFunction(
           slug: b.slug,
           h1: b.h1 || null,
         })),
+        allNeighborhoods: (neighborhoods || []).map((n) => ({
+          id: n.id,
+          name: n.name,
+          slug: n.slug,
+          latitude: n.latitude,
+          longitude: n.longitude,
+        })),
       };
     });
 
@@ -137,6 +151,7 @@ export const generateSiteContent = inngest.createFunction(
       allServiceAreas,
       siteCategories,
       allBrands,
+      allNeighborhoods,
     } = siteData;
     let { allServices } = siteData;
 
@@ -229,8 +244,9 @@ export const generateSiteContent = inngest.createFunction(
     const serviceAreaCount = allServiceAreas.length;
     const categoryCount = siteCategories.length;
     const brandCount = allBrands.length;
+    const neighborhoodCount = allNeighborhoods.length;
     const corePageCount = 3;
-    const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount + brandCount;
+    const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount + brandCount + neighborhoodCount;
 
     // Step 2: Initialize build progress
     await step.run('init-build-progress', async () => {
@@ -257,7 +273,7 @@ export const generateSiteContent = inngest.createFunction(
         level: 'info',
         step: 'init',
         message: `Content generation started (${totalTasks} tasks)`,
-        metadata: { totalTasks, serviceCount, serviceAreaCount, categoryCount, brandCount },
+        metadata: { totalTasks, serviceCount, serviceAreaCount, categoryCount, brandCount, neighborhoodCount },
       });
     });
 
@@ -638,6 +654,75 @@ export const generateSiteContent = inngest.createFunction(
             } catch (batchError) {
               console.error(
                 `Failed to generate brand batch starting at ${batch[0].name}:`,
+                batchError
+              );
+              completed += batch.length;
+            }
+
+            return completed;
+          }
+        );
+      }
+    }
+
+    // Step 8.5: Generate neighborhood pages (batched, 10 at a time)
+    if (allNeighborhoods.length > 0) {
+      const neighborhoodBatchSize = 10;
+      for (let i = 0; i < allNeighborhoods.length; i += neighborhoodBatchSize) {
+        const batch = allNeighborhoods.slice(i, i + neighborhoodBatchSize);
+
+        completedTasks = await step.run(
+          `generate-neighborhoods-batch-${i}`,
+          async () => {
+            let completed = completedTasks;
+            const anthropic = createAnthropicClient();
+
+            await updateProgress(
+              supabase,
+              siteId,
+              totalTasks,
+              completed,
+              `Generating ${batch[0].name} neighborhood page...`
+            );
+
+            try {
+              const neighborhoodContents = await generateNeighborhoodPages(
+                anthropic,
+                site.name,
+                primaryLocation.city,
+                primaryLocation.state,
+                categoryName,
+                batch.map((n) => ({
+                  name: n.name,
+                  latitude: n.latitude,
+                  longitude: n.longitude,
+                })),
+                contentDirectives
+              );
+
+              for (let j = 0; j < batch.length; j++) {
+                const neighborhood = batch[j];
+                const content = neighborhoodContents[j];
+
+                if (content) {
+                  await supabase
+                    .from('neighborhoods')
+                    .update({
+                      meta_title: content.meta_title,
+                      meta_description: content.meta_description,
+                      h1: content.h1,
+                      body_copy: content.body_copy,
+                      local_features: content.local_features,
+                      faqs: content.faqs,
+                    })
+                    .eq('id', neighborhood.id);
+                }
+
+                completed++;
+              }
+            } catch (batchError) {
+              console.error(
+                `Failed to generate neighborhood batch starting at ${batch[0].name}:`,
                 batchError
               );
               completed += batch.length;
@@ -1204,4 +1289,106 @@ Return ONLY valid JSON.`;
     h1: string;
     hero_description: string;
   }>(message);
+}
+
+async function generateNeighborhoodPages(
+  anthropic: Anthropic,
+  businessName: string,
+  primaryCity: string,
+  state: string,
+  primaryCategory: string,
+  neighborhoods: { name: string; latitude: number | null; longitude: number | null }[],
+  directives: string = ''
+) {
+  const neighborhoodList = neighborhoods
+    .map((n) => {
+      let entry = `- ${n.name}`;
+      if (n.latitude && n.longitude) {
+        entry += ` (lat: ${n.latitude}, lng: ${n.longitude})`;
+      }
+      return entry;
+    })
+    .join('\n');
+
+  const prompt = `You are an SEO expert and local area researcher generating rich, neighborhood-specific content for a local service business website.
+
+Business: ${businessName}
+Primary Location: ${primaryCity}, ${state}
+Primary Category: ${primaryCategory}
+${directives}
+Generate unique, locally-specific content for each of these neighborhoods:
+${neighborhoodList}
+
+IMPORTANT: Use your knowledge to include REAL, SPECIFIC local details about each neighborhood. Do NOT write generic filler. Include actual school names, real landmarks, parks, and accurate descriptions of the area's character. If you are unsure about specific details for a neighborhood, focus on the general area character and housing types typical for that part of ${primaryCity}.
+
+For EACH neighborhood, provide ALL of these fields:
+1. meta_title: "${primaryCategory} in [Neighborhood], ${primaryCity} | ${businessName}" (max 60 chars)
+2. meta_description: Compelling description mentioning ${primaryCategory.toLowerCase()} services in this neighborhood (max 155 chars)
+3. h1: Creative main heading — vary between neighborhoods (not just "${primaryCategory} in [Neighborhood]" for every one)
+4. body_copy: 2-3 paragraphs (200-350 words) about:
+   - The neighborhood's character and what makes it distinct
+   - Why ${businessName} is a great fit for residents here
+   - Specific services relevant to the types of homes/buildings in this area
+   - Call to action
+5. local_features: Object with:
+   - landmarks: 2-3 notable landmarks, parks, or points of interest with brief descriptions (1 sentence each)
+   - schools: 2-3 nearby schools (any level) with brief descriptions (1 sentence each)
+   - housing: 1 paragraph about typical housing types and architectural character
+   - community: 1 paragraph about the neighborhood's community character, local businesses, and vibe
+   - why_choose_us: 4-6 reasons specific to THIS neighborhood (not generic — reference local factors like housing age, climate, proximity)
+6. faqs: 3-4 questions and answers specific to this neighborhood (e.g., "How quickly can you reach [Neighborhood]?", "What ${primaryCategory.toLowerCase()} issues are common in [Neighborhood] homes?")
+
+Format as JSON:
+{
+  "neighborhoods": [
+    {
+      "name": "Neighborhood Name",
+      "meta_title": "...",
+      "meta_description": "...",
+      "h1": "...",
+      "body_copy": "...",
+      "local_features": {
+        "landmarks": [{"name": "...", "description": "..."}],
+        "schools": [{"name": "...", "description": "..."}],
+        "housing": "...",
+        "community": "...",
+        "why_choose_us": ["...", "..."]
+      },
+      "faqs": [{"question": "...", "answer": "..."}]
+    }
+  ]
+}
+
+Return ONLY valid JSON.`;
+
+  const message = await withRetry((signal) =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { signal }
+    )
+  );
+
+  const result = parseJsonResponse<{
+    neighborhoods: {
+      name: string;
+      meta_title: string;
+      meta_description: string;
+      h1: string;
+      body_copy: string;
+      local_features: {
+        landmarks: { name: string; description: string }[];
+        schools: { name: string; description: string }[];
+        housing: string;
+        community: string;
+        why_choose_us: string[];
+      };
+      faqs: { question: string; answer: string }[];
+    }[];
+  }>(message);
+
+  return result?.neighborhoods || [];
 }

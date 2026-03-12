@@ -157,6 +157,14 @@ export interface SiteCategory {
   created_at: string;
 }
 
+export interface NeighborhoodLocalFeatures {
+  landmarks: { name: string; description: string }[];
+  schools: { name: string; description: string }[];
+  housing: string;
+  community: string;
+  why_choose_us: string[];
+}
+
 export interface Neighborhood {
   id: string;
   site_id: string;
@@ -170,6 +178,10 @@ export interface Neighborhood {
   description: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  h1: string | null;
+  body_copy: string | null;
+  local_features: NeighborhoodLocalFeatures | null;
+  faqs: { question: string; answer: string }[] | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Phone, MapPin, ArrowLeft, Home, ChevronRight } from 'lucide-react';
+import { Phone, MapPin, ArrowLeft, Home, ChevronRight, Landmark, GraduationCap, HomeIcon, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,22 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone || location.phone;
+  const localFeatures = neighborhood.local_features;
 
   // Other neighborhoods (for internal linking)
   const otherNeighborhoods = allNeighborhoods.filter(n => n.id !== neighborhood.id);
+
+  // Why Choose Us items — use AI-generated if available, else fallback
+  const whyChooseUs = localFeatures?.why_choose_us?.length
+    ? localFeatures.why_choose_us
+    : [
+        'Local experts who know the area',
+        'Fast response times',
+        'Upfront, honest pricing',
+        'Licensed and insured',
+        'Satisfaction guaranteed',
+        'Emergency services available',
+      ];
 
   // Schema.org structured data
   const businessInput = toBusinessInput(site, location);
@@ -98,7 +111,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
 
               {/* H1 - SEO optimized */}
               <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
-                {industry} in {neighborhood.name}
+                {neighborhood.h1 || `${industry} in ${neighborhood.name}`}
               </h1>
 
               <p className="mt-4 text-lg text-gray-300 md:text-xl">
@@ -136,11 +149,18 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                   About Our Services in {neighborhood.name}
                 </h2>
 
+                {/* Content: user HTML > AI body_copy > generic fallback */}
                 {neighborhood.description ? (
                   <div
                     className="mt-4 prose prose-gray max-w-none"
                     dangerouslySetInnerHTML={{ __html: neighborhood.description }}
                   />
+                ) : neighborhood.body_copy ? (
+                  <div className="mt-4 space-y-4 text-gray-600">
+                    {neighborhood.body_copy.split('\n\n').map((paragraph, i) => (
+                      <p key={i}>{paragraph}</p>
+                    ))}
+                  </div>
                 ) : (
                   <div className="mt-4 space-y-4 text-gray-600">
                     <p>
@@ -160,23 +180,74 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                   </div>
                 )}
 
+                {/* Local Features: Landmarks */}
+                {localFeatures?.landmarks && localFeatures.landmarks.length > 0 && (
+                  <div className="mt-12">
+                    <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                      <Landmark className="h-5 w-5" style={{ color: brandColor }} />
+                      Notable Landmarks & Parks
+                    </h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {localFeatures.landmarks.map((landmark, i) => (
+                        <div key={i} className="rounded-lg border p-4">
+                          <h4 className="font-semibold text-gray-900">{landmark.name}</h4>
+                          <p className="mt-1 text-sm text-gray-600">{landmark.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Local Features: Schools */}
+                {localFeatures?.schools && localFeatures.schools.length > 0 && (
+                  <div className="mt-10">
+                    <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                      <GraduationCap className="h-5 w-5" style={{ color: brandColor }} />
+                      Nearby Schools
+                    </h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {localFeatures.schools.map((school, i) => (
+                        <div key={i} className="rounded-lg border p-4">
+                          <h4 className="font-semibold text-gray-900">{school.name}</h4>
+                          <p className="mt-1 text-sm text-gray-600">{school.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Local Features: Housing */}
+                {localFeatures?.housing && (
+                  <div className="mt-10">
+                    <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                      <HomeIcon className="h-5 w-5" style={{ color: brandColor }} />
+                      Housing & Architecture
+                    </h3>
+                    <p className="mt-4 text-gray-600">{localFeatures.housing}</p>
+                  </div>
+                )}
+
+                {/* Local Features: Community */}
+                {localFeatures?.community && (
+                  <div className="mt-10">
+                    <h3 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                      <Users className="h-5 w-5" style={{ color: brandColor }} />
+                      Community & Local Character
+                    </h3>
+                    <p className="mt-4 text-gray-600">{localFeatures.community}</p>
+                  </div>
+                )}
+
                 {/* Why Choose Us */}
                 <div className="mt-12">
                   <h3 className="text-xl font-bold text-gray-900">
                     Why {neighborhood.name} Residents Choose {site.name}
                   </h3>
                   <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-                    {[
-                      'Local experts who know the area',
-                      'Fast response times',
-                      'Upfront, honest pricing',
-                      'Licensed and insured',
-                      'Satisfaction guaranteed',
-                      'Emergency services available',
-                    ].map((item, index) => (
+                    {whyChooseUs.map((item, index) => (
                       <li key={index} className="flex items-center gap-2 text-gray-600">
                         <span
-                          className="flex h-5 w-5 items-center justify-center rounded-full text-white text-xs"
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-white text-xs shrink-0"
                           style={{ backgroundColor: brandColor }}
                         >
                           ✓
@@ -186,6 +257,23 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
                     ))}
                   </ul>
                 </div>
+
+                {/* FAQs */}
+                {neighborhood.faqs && neighborhood.faqs.length > 0 && (
+                  <div className="mt-12">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Frequently Asked Questions — {neighborhood.name}
+                    </h3>
+                    <div className="mt-4 space-y-6">
+                      {neighborhood.faqs.map((faq, i) => (
+                        <div key={i}>
+                          <h4 className="font-semibold text-gray-900">{faq.question}</h4>
+                          <p className="mt-2 text-gray-600">{faq.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Sidebar */}

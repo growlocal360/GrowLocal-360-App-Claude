@@ -562,7 +562,9 @@ export const generateSiteContent = inngest.createFunction(
                   name: a.name,
                   state: a.state || primaryLocation.state,
                 })),
-                contentDirectives
+                contentDirectives,
+                allServices.map((s) => s.name),
+                allServiceAreas.map((a) => a.name)
               );
 
               for (let j = 0; j < batch.length; j++) {
@@ -665,9 +667,48 @@ export const generateSiteContent = inngest.createFunction(
       }
     }
 
-    // Step 8.5: Generate neighborhood pages (batched, 10 at a time)
+    // Step 8.5: Generate neighborhood pages (batched, 5 at a time with enriched context)
     if (allNeighborhoods.length > 0) {
-      const neighborhoodBatchSize = 10;
+      // Pre-fetch real landmarks for all neighborhoods via Google Places API
+      const landmarkMap = await step.run('fetch-neighborhood-landmarks', async () => {
+        const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+        const map: Record<string, { name: string; type: string }[]> = {};
+
+        if (!apiKey) return map;
+
+        await Promise.all(
+          allNeighborhoods.map(async (n) => {
+            if (n.latitude && n.longitude) {
+              map[n.name] = await fetchNearbyLandmarks(n.latitude, n.longitude, apiKey);
+            }
+          })
+        );
+
+        return map;
+      });
+
+      // Fetch top Google reviews for voice/tone context
+      const reviewSnippets = await step.run('fetch-reviews-for-neighborhoods', async () => {
+        const { data: reviews } = await supabase
+          .from('google_reviews')
+          .select('comment, rating, author_name')
+          .eq('site_id', siteId)
+          .not('comment', 'is', null)
+          .order('rating', { ascending: false })
+          .limit(5);
+
+        return (reviews || [])
+          .filter((r) => r.comment && r.comment.length > 20)
+          .map((r) => `"${r.comment!.slice(0, 200)}" — ${r.author_name} (${r.rating}★)`);
+      });
+
+      // Build enrichment data available to all batches
+      const serviceNames = allServices.map((s) => s.name);
+      const categoryNames = siteCategories.map((c) => getCategoryName(c));
+      const serviceAreaNames = allServiceAreas.map((a) => a.name);
+      const allNeighborhoodNames = allNeighborhoods.map((n) => n.name);
+
+      const neighborhoodBatchSize = 5;
       for (let i = 0; i < allNeighborhoods.length; i += neighborhoodBatchSize) {
         const batch = allNeighborhoods.slice(i, i + neighborhoodBatchSize);
 
@@ -696,8 +737,14 @@ export const generateSiteContent = inngest.createFunction(
                   name: n.name,
                   latitude: n.latitude,
                   longitude: n.longitude,
+                  landmarks: landmarkMap[n.name] || [],
                 })),
-                contentDirectives
+                contentDirectives,
+                serviceNames,
+                categoryNames,
+                serviceAreaNames,
+                allNeighborhoodNames,
+                reviewSnippets
               );
 
               for (let j = 0; j < batch.length; j++) {
@@ -1090,27 +1137,58 @@ async function generateServiceAreaPages(
   state: string,
   primaryCategory: string,
   serviceAreas: { name: string; state: string }[],
-  directives: string = ''
+  directives: string = '',
+  services: string[] = [],
+  allAreaNames: string[] = []
 ) {
   const areaList = serviceAreas.map((a) => `- ${a.name}, ${a.state}`).join('\n');
 
-  const prompt = `You are an SEO expert generating service area page content for a local service business.
+  const servicesContext = services.length > 0
+    ? `\n## Services Offered\n${services.slice(0, 30).join(', ')}\nReference 2-3 specific services per area — vary which ones you highlight.\n`
+    : '';
 
-Business: ${businessName}
-Primary Location: ${primaryCity}, ${state}
-Primary Category: ${primaryCategory}
+  const diffContext = allAreaNames.length > 1
+    ? `\nAll service areas: ${allAreaNames.join(', ')}\nEach page must read distinctly different — vary openings, angles, and which services you feature.\n`
+    : '';
+
+  const prompt = `You are a local copywriter creating service area landing pages. Write like a real person — conversational, specific, and varied.
+
+## Business Profile
+- Business: ${businessName}
+- Based in: ${primaryCity}, ${state}
+- Primary Category: ${primaryCategory}
+${servicesContext}${diffContext}
 ${directives}
-Generate content for these service area pages (nearby cities we serve):
+
+## Service Areas to Generate
 ${areaList}
 
+## WRITING RULES:
+- NEVER use: "proudly serves", "unique needs", "trusted provider", "look no further", "we take pride", "your go-to", "one-stop shop"
+- NEVER start with "${businessName} proudly..." or "${businessName} is your trusted..."
+- Each area MUST open differently: a question, a local scenario, a weather/seasonal angle, a homeowner pain point — vary the approach
+- If a services list is provided above, reference 2-3 specific services per area and rotate which ones. If no services list, reference common ${primaryCategory.toLowerCase()} services for the area
+- Mention the relationship to ${primaryCity} naturally (e.g., "just 15 minutes from our ${primaryCity} team" or "serving [City] and the surrounding area")
+- If search query data is included in the directives, weave relevant queries into the copy
+- Write 2-3 paragraphs (200-300 words) per area — enough to be genuinely useful, not just filler
+
+## DATA PRIORITY — use whatever is available:
+1. ALWAYS use: business name, category, city/state — these are always present
+2. If a services list is provided above, reference specific services in every area page
+3. If NO services list, focus on the primary category and common needs for that industry
+4. If Content Directives include Local Context, About the Business, or Credentials — weave those details in to build trust
+5. If search query data is in the Content Directives, optimize around high-impression queries
+6. Every page must be conversion-focused — connect the business to why residents in THAT specific city need these services
+
 For EACH service area, provide:
-1. meta_title: "[Primary Category] in [City], [State] | [Business Name]" (max 60 chars)
-2. meta_description: Compelling description mentioning we serve this area (max 155 chars)
-3. h1: Main heading emphasizing service in that city
-4. body_copy: 1-2 paragraphs (150-250 words) explaining:
-   - That ${businessName} proudly serves [City]
-   - The services available to residents of [City]
-   - Call to action to contact us
+1. meta_title: "${primaryCategory} in [City], [State] | ${businessName}" (max 60 chars)
+2. meta_description: Compelling, specific description (max 155 chars)
+3. h1: Varied heading — NOT "${primaryCategory} in [City]" for every single one
+4. body_copy: 2-3 paragraphs (200-300 words) that:
+   - Connect the area to the business naturally
+   - Reference specific services relevant to that community
+   - Include a clear call to action
+   - Sound like they were written for THIS city, not templated
 
 Format as JSON:
 {
@@ -1297,46 +1375,99 @@ async function generateNeighborhoodPages(
   primaryCity: string,
   state: string,
   primaryCategory: string,
-  neighborhoods: { name: string; latitude: number | null; longitude: number | null }[],
-  directives: string = ''
+  neighborhoods: { name: string; latitude: number | null; longitude: number | null; landmarks: { name: string; type: string }[] }[],
+  directives: string = '',
+  services: string[] = [],
+  categories: string[] = [],
+  serviceAreaNames: string[] = [],
+  allNeighborhoodNames: string[] = [],
+  reviews: string[] = []
 ) {
   const neighborhoodList = neighborhoods
     .map((n) => {
-      let entry = `- ${n.name}`;
+      let entry = `### ${n.name}`;
       if (n.latitude && n.longitude) {
-        entry += ` (lat: ${n.latitude}, lng: ${n.longitude})`;
+        entry += ` (${n.latitude}, ${n.longitude})`;
+      }
+      if (n.landmarks.length > 0) {
+        entry += `\nNearby landmarks & POIs:`;
+        for (const lm of n.landmarks) {
+          entry += `\n  - ${lm.name} (${lm.type.replace(/_/g, ' ')})`;
+        }
+      } else {
+        entry += `\n(No landmark data available — focus on area character and housing instead)`;
       }
       return entry;
     })
-    .join('\n');
+    .join('\n\n');
 
-  const prompt = `You are an SEO expert and local area researcher generating rich, neighborhood-specific content for a local service business website.
+  // Build services context
+  const servicesContext = services.length > 0
+    ? `\n## Services This Business Offers\n${services.slice(0, 30).join(', ')}\nReference 2-3 SPECIFIC services per neighborhood — vary which ones based on the housing types and demographics of each area.\n`
+    : '';
 
-Business: ${businessName}
-Primary Location: ${primaryCity}, ${state}
-Primary Category: ${primaryCategory}
+  // Build categories context
+  const categoriesContext = categories.length > 1
+    ? `\nBusiness Categories: ${categories.join(', ')}\n`
+    : '';
+
+  // Build service areas context
+  const areasContext = serviceAreaNames.length > 0
+    ? `\nNearby cities also served: ${serviceAreaNames.slice(0, 15).join(', ')}\n`
+    : '';
+
+  // Build reviews context
+  const reviewsContext = reviews.length > 0
+    ? `\n## Customer Voice — echo this tone and these themes in the copy:\n${reviews.join('\n')}\n`
+    : '';
+
+  // Build differentiation context
+  const diffContext = allNeighborhoodNames.length > 1
+    ? `\n## All neighborhoods being covered: ${allNeighborhoodNames.join(', ')}\nEach page MUST read distinctly different from the others. Vary which services you highlight, how you open, and what local angle you take.\n`
+    : '';
+
+  const prompt = `You are a local copywriter creating neighborhood landing pages. You write like a real human — conversational, specific, and varied. Never robotic or templated.
+
+## Business Profile
+- Business: ${businessName}
+- Primary Location: ${primaryCity}, ${state}
+- Primary Category: ${primaryCategory}
+${categoriesContext}${servicesContext}${areasContext}${reviewsContext}${diffContext}
 ${directives}
-Generate unique, locally-specific content for each of these neighborhoods:
+
+## Neighborhoods to Generate
 ${neighborhoodList}
 
-IMPORTANT: Use your knowledge to include REAL, SPECIFIC local details about each neighborhood. Do NOT write generic filler. Include actual school names, real landmarks, parks, and accurate descriptions of the area's character. If you are unsure about specific details for a neighborhood, focus on the general area character and housing types typical for that part of ${primaryCity}.
+## WRITING RULES — follow these strictly:
+- NEVER use these phrases: "proudly serves", "unique needs", "trusted provider", "look no further", "we take pride", "your go-to", "one-stop shop", "second to none", "peace of mind"
+- NEVER start body_copy with "${businessName} is your..." or "${businessName} proudly..."
+- Each neighborhood MUST open differently: use a question, a seasonal scenario, a landmark reference, a homeowner pain point, or a local fact — vary the approach
+- If a services list is provided above, reference 2-3 SPECIFIC services per neighborhood and vary which ones. If no services list, reference common ${primaryCategory.toLowerCase()} services relevant to the housing types in each area
+- For landmarks: use the REAL landmarks listed under each neighborhood. Weave them naturally (e.g., "Families near [Park] count on us for..." or "Just down the road from [School]...")
+- For local_features: ONLY use landmarks from the provided data. If no landmarks are provided, write about general area character instead — do NOT invent place names
+- If the Content Directives above include search queries, naturally incorporate relevant ones into headings and body copy
+- Write body_copy that sounds like it was written by someone who lives in ${primaryCity}, not by a content mill
+
+## DATA PRIORITY — use whatever is available, in this order:
+1. ALWAYS use: business name, category, city/state, and services list — these are always present
+2. If landmarks are provided for a neighborhood, weave them into the copy and local_features
+3. If NO landmarks are provided, lean heavily into: the services offered, housing/climate factors for ${primaryCity}, and any Local Context or About the Business info from the Content Directives above
+4. If customer reviews are provided above, mirror their tone and themes
+5. If search query data is in the Content Directives, optimize headings and body copy around high-impression queries
+6. Even with minimal data, every neighborhood page must be specific, useful, and conversion-focused — connect the services to the types of homes and residents in each area
 
 For EACH neighborhood, provide ALL of these fields:
 1. meta_title: "${primaryCategory} in [Neighborhood], ${primaryCity} | ${businessName}" (max 60 chars)
-2. meta_description: Compelling description mentioning ${primaryCategory.toLowerCase()} services in this neighborhood (max 155 chars)
-3. h1: Creative main heading — vary between neighborhoods (not just "${primaryCategory} in [Neighborhood]" for every one)
-4. body_copy: 2-3 paragraphs (200-350 words) about:
-   - The neighborhood's character and what makes it distinct
-   - Why ${businessName} is a great fit for residents here
-   - Specific services relevant to the types of homes/buildings in this area
-   - Call to action
+2. meta_description: Compelling, specific description (max 155 chars) — NOT a generic template
+3. h1: Creative, varied heading — each one structurally different from the others
+4. body_copy: 2-3 paragraphs (200-350 words) weaving together neighborhood character, relevant services, and local landmarks
 5. local_features: Object with:
-   - landmarks: 2-3 notable landmarks, parks, or points of interest with brief descriptions (1 sentence each)
-   - schools: 2-3 nearby schools (any level) with brief descriptions (1 sentence each)
-   - housing: 1 paragraph about typical housing types and architectural character
-   - community: 1 paragraph about the neighborhood's community character, local businesses, and vibe
-   - why_choose_us: 4-6 reasons specific to THIS neighborhood (not generic — reference local factors like housing age, climate, proximity)
-6. faqs: 3-4 questions and answers specific to this neighborhood (e.g., "How quickly can you reach [Neighborhood]?", "What ${primaryCategory.toLowerCase()} issues are common in [Neighborhood] homes?")
+   - landmarks: 2-3 from the provided landmark data with 1-sentence descriptions (or empty array if none provided)
+   - schools: 2-3 nearby schools from the provided data with 1-sentence descriptions (or empty array if none provided)
+   - housing: 1 paragraph about typical housing types — connect to relevant services
+   - community: 1 paragraph about the neighborhood's vibe and character
+   - why_choose_us: 4-6 reasons specific to THIS neighborhood (reference local factors, housing age, climate, specific services)
+6. faqs: 3-4 neighborhood-specific Q&As that reference actual services and local conditions
 
 Format as JSON:
 {
@@ -1391,4 +1522,52 @@ Return ONLY valid JSON.`;
   }>(message);
 
   return result?.neighborhoods || [];
+}
+
+// Fetch real landmarks/POIs near a neighborhood using Google Places Nearby Search
+async function fetchNearbyLandmarks(
+  lat: number,
+  lng: number,
+  apiKey: string
+): Promise<{ name: string; type: string }[]> {
+  try {
+    const types = ['park', 'school', 'church', 'museum', 'library', 'shopping_mall', 'stadium', 'tourist_attraction'];
+    const radius = 3000; // 3km
+    const seen = new Set<string>();
+    const landmarks: { name: string; type: string }[] = [];
+
+    // Search for multiple types to get variety
+    const typeGroups = [
+      'park|tourist_attraction|museum',
+      'school|library',
+      'church|stadium|shopping_mall',
+    ];
+
+    for (const typeGroup of typeGroups) {
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${typeGroup.split('|')[0]}&keyword=${encodeURIComponent(typeGroup.replace(/\|/g, ' OR '))}&key=${apiKey}`;
+
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      if (data.status !== 'OK' || !data.results) continue;
+
+      for (const place of data.results.slice(0, 5)) {
+        const name = place.name as string;
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+
+        // Determine the most useful type label
+        const placeTypes = (place.types || []) as string[];
+        const matchedType = types.find((t) => placeTypes.includes(t)) || placeTypes[0] || 'point_of_interest';
+
+        landmarks.push({ name, type: matchedType });
+      }
+    }
+
+    return landmarks.slice(0, 10);
+  } catch (error) {
+    console.error(`Failed to fetch landmarks for ${lat},${lng}:`, error);
+    return [];
+  }
 }

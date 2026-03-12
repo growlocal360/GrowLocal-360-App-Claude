@@ -1447,6 +1447,12 @@ ${neighborhoodList}
 - For local_features: ONLY use landmarks from the provided data. If no landmarks are provided, write about general area character instead — do NOT invent place names
 - If the Content Directives above include search queries, naturally incorporate relevant ones into headings and body copy
 - Write body_copy that sounds like it was written by someone who lives in ${primaryCity}, not by a content mill
+- Some entries may be subdivisions (planned communities) rather than organic neighborhoods. For these:
+  * Use your knowledge to identify and mention specific sections, phases, or areas within the subdivision (e.g., "the Willow section of Graywood" or "homes in the Jasmine area")
+  * Use the word "subdivision" naturally in the copy alongside "neighborhood" for SEO coverage
+  * Emphasize services relevant to newer construction, HOA-maintained properties, and higher-end homes
+  * In the housing field, describe the different sections/areas within the subdivision and their housing character
+  * In FAQs, include questions about the subdivision's specific needs (e.g., "What ${primaryCategory.toLowerCase()} issues are common in newer [Subdivision] homes?")
 
 ## DATA PRIORITY — use whatever is available, in this order:
 1. ALWAYS use: business name, category, city/state, and services list — these are always present

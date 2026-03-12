@@ -63,6 +63,8 @@ export function StepReview() {
     serviceAreas,
     neighborhoods,
     websiteType,
+    gscPropertyUrl,
+    gscQueries,
     prevStep,
     reset,
   } = useWizardStore();
@@ -135,6 +137,9 @@ export function StepReview() {
         brands: brands.filter((b) => b.isSelected).map((b) => ({
           name: b.name,
         })),
+        // GSC data (optional — enhances content generation)
+        gscPropertyUrl: gscPropertyUrl || undefined,
+        gscQueries: gscQueries.length > 0 ? gscQueries : undefined,
       };
 
       // Create Stripe checkout session
@@ -887,6 +892,26 @@ export function StepReview() {
             </div>
             <p className="mt-3 text-xs text-gray-500">
               Each neighborhood feeds geographic relevance to its parent location page
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* GSC Data */}
+      {gscPropertyUrl && gscQueries.length > 0 && (
+        <Card className="border-blue-100 bg-blue-50/30">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+              <p className="text-sm font-medium text-gray-900">
+                Google Search Console Connected
+              </p>
+              <Badge variant="secondary" className="text-xs">
+                {gscQueries.length} queries
+              </Badge>
+            </div>
+            <p className="mt-1 ml-6 text-xs text-gray-500">
+              Real search data from {gscPropertyUrl} will be used to optimize your content
             </p>
           </CardContent>
         </Card>

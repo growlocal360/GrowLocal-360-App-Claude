@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand, WizardGSCQuery } from '@/types/wizard';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
@@ -42,6 +42,8 @@ interface WizardStore extends WizardState {
   removeService: (id: string) => void;
   setWebsiteType: (type: WebsiteType) => void;
   setDomain: (domain: string) => void;
+  setGSCPropertyUrl: (url: string | null) => void;
+  setGSCQueries: (queries: WizardGSCQuery[]) => void;
   setCurrentStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -269,6 +271,10 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
   setWebsiteType: (type) => set({ websiteType: type }),
 
   setDomain: (domain) => set({ domain }),
+
+  setGSCPropertyUrl: (url) => set({ gscPropertyUrl: url }),
+
+  setGSCQueries: (queries) => set({ gscQueries: queries }),
 
   setCurrentStep: (step) => set({ currentStep: step }),
 

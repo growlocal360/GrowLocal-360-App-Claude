@@ -1,13 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useWizardStore } from '@/lib/store/wizard-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Plus, Trash2, MapPin, Tag } from 'lucide-react';
-import type { WizardLocation } from '@/types/wizard';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ArrowLeft, ArrowRight, Plus, Trash2, MapPin, Tag, BarChart3, Loader2, CheckCircle2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import type { WizardLocation, WizardGSCQuery } from '@/types/wizard';
+
+interface GSCProperty {
+  siteUrl: string;
+  permissionLevel: string;
+}
 
 export function StepBusiness() {
   const {
@@ -22,10 +36,91 @@ export function StepBusiness() {
     addLocation,
     removeLocation,
     updateLocation,
+    setGSCPropertyUrl,
+    setGSCQueries,
     prevStep,
     nextStep,
     canProceed,
   } = useWizardStore();
+
+  const supabase = useMemo(() => createClient(), []);
+
+  // GSC state for manual path
+  const [gscProperties, setGscProperties] = useState<GSCProperty[]>([]);
+  const [gscLoading, setGscLoading] = useState(false);
+  const [gscConnecting, setGscConnecting] = useState(false);
+  const [gscConnected, setGscConnected] = useState(false);
+  const [selectedGscProperty, setSelectedGscProperty] = useState('');
+  const [gscSyncing, setGscSyncing] = useState(false);
+  const [gscSynced, setGscSynced] = useState(false);
+  const [gscQueryCount, setGscQueryCount] = useState(0);
+
+  // Check if user already has a Google token (they may have logged in with Google)
+  useEffect(() => {
+    const checkGoogleToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.provider_token) {
+        fetchGSCProperties();
+      }
+    };
+    checkGoogleToken();
+  }, [supabase]);
+
+  const fetchGSCProperties = async () => {
+    try {
+      setGscLoading(true);
+      const response = await fetch('/api/gsc/properties');
+      if (!response.ok) return;
+      const data = await response.json();
+      const props = data.properties || [];
+      setGscProperties(props);
+      if (props.length > 0) setGscConnected(true);
+    } catch {
+      // Silent fail — GSC is optional
+    } finally {
+      setGscLoading(false);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    setGscConnecting(true);
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/oauth2callback?next=/dashboard/sites/new`,
+        scopes: 'https://www.googleapis.com/auth/webmasters.readonly',
+      },
+    });
+  };
+
+  const handleSyncGSCQueries = async (propertyUrl: string) => {
+    try {
+      setGscSyncing(true);
+      setSelectedGscProperty(propertyUrl);
+
+      const response = await fetch('/api/gsc/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyUrl }),
+      });
+
+      if (!response.ok) {
+        setGscSynced(false);
+        return;
+      }
+
+      const data = await response.json();
+      const queries: WizardGSCQuery[] = data.queries || [];
+      setGSCPropertyUrl(propertyUrl);
+      setGSCQueries(queries);
+      setGscQueryCount(queries.length);
+      setGscSynced(true);
+    } catch {
+      setGscSynced(false);
+    } finally {
+      setGscSyncing(false);
+    }
+  };
 
   // Auto-fill core industry from primary category if connected via GBP
   useEffect(() => {
@@ -322,6 +417,93 @@ export function StepBusiness() {
           </Card>
         )}
       </div>
+
+      {/* GSC Section — optional for manual path */}
+      {connectionType === 'manual' && (
+        <Card className="border-blue-100 bg-blue-50/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <div>
+                <h4 className="font-semibold text-gray-900 text-sm">
+                  Have an existing website?
+                </h4>
+                <p className="text-xs text-gray-500">
+                  Connect Google Search Console to use your real search data for better content
+                </p>
+              </div>
+            </div>
+
+            {gscConnected && gscProperties.length > 0 ? (
+              <>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={selectedGscProperty}
+                      onValueChange={(value) => {
+                        setSelectedGscProperty(value);
+                        setGscSynced(false);
+                      }}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select a property..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gscProperties.map((p) => (
+                          <SelectItem key={p.siteUrl} value={p.siteUrl}>
+                            {p.siteUrl}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!selectedGscProperty || gscSyncing}
+                    onClick={() => handleSyncGSCQueries(selectedGscProperty)}
+                    className="shrink-0"
+                  >
+                    {gscSyncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : gscSynced ? (
+                      <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+                    ) : (
+                      'Sync Data'
+                    )}
+                  </Button>
+                </div>
+                {gscSynced && (
+                  <div className="flex items-center gap-2 text-xs text-[#00d9c0]">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {gscQueryCount} queries synced — this data will enhance your site content
+                  </div>
+                )}
+              </>
+            ) : gscLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking for Search Console access...
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleConnectGoogle}
+                disabled={gscConnecting}
+                className="w-full"
+              >
+                {gscConnecting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                )}
+                Connect Google Search Console
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation */}
       <div className="flex justify-between pt-4">

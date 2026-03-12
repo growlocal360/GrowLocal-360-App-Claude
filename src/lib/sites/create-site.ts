@@ -56,6 +56,17 @@ export interface WizardNeighborhood {
   longitude?: number;
 }
 
+export interface WizardGSCQueryData {
+  query: string;
+  pageUrl: string | null;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+}
+
 export interface WizardSiteData {
   businessName: string;
   coreIndustry: string;
@@ -66,6 +77,9 @@ export interface WizardSiteData {
   services: WizardService[];
   serviceAreas: WizardServiceArea[];
   neighborhoods: WizardNeighborhood[];
+  // GSC data (optional — synced during wizard if user has Search Console)
+  gscPropertyUrl?: string;
+  gscQueries?: WizardGSCQueryData[];
 }
 
 export interface CreateSiteResult {
@@ -160,12 +174,38 @@ export async function createSiteFromWizardData(
       status_updated_at: new Date().toISOString(),
       settings: {
         core_industry: coreIndustry,
+        ...(data.gscPropertyUrl ? {
+          gsc_property_url: data.gscPropertyUrl,
+          gsc_connected: true,
+          gsc_last_synced_at: new Date().toISOString(),
+        } : {}),
       },
     })
     .select()
     .single();
 
   if (siteError) throw siteError;
+
+  // Write GSC query data if provided (synced during wizard)
+  if (data.gscQueries && data.gscQueries.length > 0) {
+    const gscRecords = data.gscQueries.map((q) => ({
+      site_id: site.id,
+      query: q.query,
+      page_url: q.pageUrl,
+      clicks: q.clicks,
+      impressions: q.impressions,
+      ctr: q.ctr,
+      position: q.position,
+      date_range_start: q.dateRangeStart,
+      date_range_end: q.dateRangeEnd,
+    }));
+
+    // Insert in batches of 200
+    for (let i = 0; i < gscRecords.length; i += 200) {
+      const batch = gscRecords.slice(i, i + 200);
+      await supabase.from('gsc_queries').insert(batch);
+    }
+  }
 
   // Create locations
   for (const location of locations) {

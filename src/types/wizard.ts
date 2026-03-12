@@ -84,6 +84,18 @@ export interface WizardService {
   sortOrder: number;
 }
 
+// GSC query data fetched during wizard (pre-site-creation)
+export interface WizardGSCQuery {
+  query: string;
+  pageUrl: string | null;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+}
+
 export interface WizardState {
   // Step 1
   connectionType: 'google' | 'manual' | null;
@@ -116,6 +128,10 @@ export interface WizardState {
   websiteType: WebsiteType | null;
   domain?: string;
 
+  // GSC (Google Search Console) — optional, enhances content generation
+  gscPropertyUrl: string | null;
+  gscQueries: WizardGSCQuery[];
+
   // Metadata
   currentStep: WizardStep;
   isLoading: boolean;
@@ -136,6 +152,8 @@ export const initialWizardState: WizardState = {
   serviceAreaRadius: 25,
   neighborhoods: [],
   websiteType: null,
+  gscPropertyUrl: null,
+  gscQueries: [],
   currentStep: 'connect',
   isLoading: false,
   error: null,

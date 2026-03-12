@@ -14,9 +14,21 @@ import {
   CheckCircle2,
   AlertCircle,
   Search,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
+import type { WizardGSCQuery } from '@/types/wizard';
 
 interface GBPServiceArea {
   name: string;
@@ -51,6 +63,11 @@ interface GBPLocation {
   serviceAreas?: GBPServiceArea[];
 }
 
+interface GSCProperty {
+  siteUrl: string;
+  permissionLevel: string;
+}
+
 export function StepConnect() {
   const {
     setConnectionType,
@@ -60,6 +77,8 @@ export function StepConnect() {
     setLocations,
     syncCategoriesFromLocations,
     setServiceAreas,
+    setGSCPropertyUrl,
+    setGSCQueries,
   } = useWizardStore();
 
   const supabase = useMemo(() => createClient(), []);
@@ -70,13 +89,23 @@ export function StepConnect() {
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
+  // GSC state
+  const [gscProperties, setGscProperties] = useState<GSCProperty[]>([]);
+  const [gscLoading, setGscLoading] = useState(false);
+  const [gscExpanded, setGscExpanded] = useState(false);
+  const [selectedGscProperty, setSelectedGscProperty] = useState<string>('');
+  const [gscQueryCount, setGscQueryCount] = useState(0);
+  const [gscSynced, setGscSynced] = useState(false);
+  const [gscSyncing, setGscSyncing] = useState(false);
+
   // Check if user is already connected via Google
   useEffect(() => {
     const checkGoogleConnection = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.provider_token) {
-        // User has Google token, try to fetch locations
+        // User has Google token, try to fetch locations and GSC properties in parallel
         fetchGBPLocations();
+        fetchGSCProperties();
       }
     };
     checkGoogleConnection();
@@ -117,6 +146,55 @@ export function StepConnect() {
       setIsConnected(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchGSCProperties = async () => {
+    try {
+      setGscLoading(true);
+      const response = await fetch('/api/gsc/properties');
+      if (!response.ok) return; // Silently fail — GSC is optional
+      const data = await response.json();
+      const props = data.properties || [];
+      setGscProperties(props);
+      if (props.length > 0) {
+        setGscExpanded(true);
+      }
+    } catch {
+      // GSC is optional — don't show errors
+    } finally {
+      setGscLoading(false);
+    }
+  };
+
+  const handleSyncGSCQueries = async (propertyUrl: string) => {
+    try {
+      setGscSyncing(true);
+      setSelectedGscProperty(propertyUrl);
+
+      const response = await fetch('/api/gsc/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyUrl }),
+      });
+
+      if (!response.ok) {
+        setGscSynced(false);
+        return;
+      }
+
+      const data = await response.json();
+      const queries: WizardGSCQuery[] = data.queries || [];
+
+      // Store in wizard state
+      setGSCPropertyUrl(propertyUrl);
+      setGSCQueries(queries);
+      setGscQueryCount(queries.length);
+      setGscSynced(true);
+    } catch {
+      setGscSynced(false);
+    } finally {
+      setGscSyncing(false);
     }
   };
 
@@ -364,6 +442,101 @@ export function StepConnect() {
           })}
         </div>
 
+        {/* GSC Section — optional, enhances content generation */}
+        {(gscProperties.length > 0 || gscLoading) && (
+          <Card className="border-blue-100 bg-blue-50/30">
+            <CardContent className="p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between"
+                onClick={() => setGscExpanded(!gscExpanded)}
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  <div className="text-left">
+                    <h4 className="font-semibold text-gray-900 text-sm">
+                      Google Search Console
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Import search data to optimize your content
+                    </p>
+                  </div>
+                  {gscSynced && (
+                    <Badge variant="secondary" className="bg-[#00d9c0]/10 text-[#00d9c0] text-xs">
+                      {gscQueryCount} queries synced
+                    </Badge>
+                  )}
+                </div>
+                {gscExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                )}
+              </button>
+
+              {gscExpanded && (
+                <div className="mt-4 space-y-3">
+                  {gscLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Checking for Search Console properties...
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-500">
+                        If you have an existing website connected to Search Console, we&apos;ll use your real search data to create better content.
+                      </p>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Select
+                            value={selectedGscProperty}
+                            onValueChange={(value) => {
+                              setSelectedGscProperty(value);
+                              setGscSynced(false);
+                            }}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Select a property..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {gscProperties.map((p) => (
+                                <SelectItem key={p.siteUrl} value={p.siteUrl}>
+                                  {p.siteUrl}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!selectedGscProperty || gscSyncing}
+                          onClick={() => handleSyncGSCQueries(selectedGscProperty)}
+                          className="shrink-0"
+                        >
+                          {gscSyncing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : gscSynced ? (
+                            <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+                          ) : (
+                            'Sync Data'
+                          )}
+                        </Button>
+                      </div>
+                      {gscSynced && (
+                        <div className="flex items-center gap-2 text-xs text-[#00d9c0]">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Search data will be used to optimize your site content
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex justify-between">
           <Button
             variant="ghost"
@@ -403,6 +576,77 @@ export function StepConnect() {
             {error || "We couldn't find any Google Business Profile locations connected to your account."}
           </p>
         </div>
+
+        {/* GSC Section — even without GBP, they may have Search Console */}
+        {(gscProperties.length > 0 || gscLoading) && (
+          <Card className="border-blue-100 bg-blue-50/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm">
+                    Google Search Console Data Found
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    We can use your existing search data to create better content
+                  </p>
+                </div>
+              </div>
+              {gscLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading properties...
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select
+                        value={selectedGscProperty}
+                        onValueChange={(value) => {
+                          setSelectedGscProperty(value);
+                          setGscSynced(false);
+                        }}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Select a property..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {gscProperties.map((p) => (
+                            <SelectItem key={p.siteUrl} value={p.siteUrl}>
+                              {p.siteUrl}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!selectedGscProperty || gscSyncing}
+                      onClick={() => handleSyncGSCQueries(selectedGscProperty)}
+                      className="shrink-0"
+                    >
+                      {gscSyncing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : gscSynced ? (
+                        <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+                      ) : (
+                        'Sync Data'
+                      )}
+                    </Button>
+                  </div>
+                  {gscSynced && (
+                    <div className="flex items-center gap-2 text-xs text-[#00d9c0]">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {gscQueryCount} queries synced — this data will enhance your site content
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="rounded-lg border-2 border-dashed border-gray-200 p-8 text-center">
           <MapPin className="mx-auto h-12 w-12 text-gray-400" />

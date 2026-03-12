@@ -34,6 +34,7 @@ import {
   MessageSquare,
   MapPinned,
   Search,
+  Sparkles,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -51,6 +52,7 @@ interface SiteData {
     logo_url?: string;
     phone?: string;
     email?: string;
+    onboarding_completed?: boolean;
   } | null;
   custom_domain: string | null;
   custom_domain_verified: boolean;
@@ -381,6 +383,34 @@ export default function SiteDashboardPage() {
           <Card className="border-red-200 bg-red-50">
             <CardContent className="pt-6">
               <p className="text-sm text-red-700">{site.status_message}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Onboarding Completed Banner */}
+        {site.status === 'active' && site.settings?.onboarding_completed && !regenerating && !isActivelyRegenerating && (
+          <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-[#00d9c0] mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">
+                    Your business details are saved!
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Regenerate your site to update all content with your personalized voice, tone, and business details.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="shrink-0 hover:opacity-90"
+                  style={{ backgroundColor: '#00d9c0' }}
+                  onClick={handleRegenerate}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate Now
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

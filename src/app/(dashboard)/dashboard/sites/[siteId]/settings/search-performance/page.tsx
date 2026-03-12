@@ -25,7 +25,9 @@ import {
   MousePointerClick,
   Eye,
   ArrowUpDown,
+  LogIn,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface GSCProperty {
   siteUrl: string;
@@ -68,6 +70,7 @@ export default function SearchPerformancePage() {
   const [syncing, setSyncing] = useState(false);
   const [sortField, setSortField] = useState<SortField>('impressions');
   const [sortAsc, setSortAsc] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -96,20 +99,45 @@ export default function SearchPerformancePage() {
     try {
       setLoadingProperties(true);
       setError(null);
+      setNeedsReauth(false);
       const response = await fetch(`/api/sites/${siteId}/settings/search-performance/properties`);
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to fetch properties');
+        const errorMsg = data.error || 'Failed to fetch properties';
+        if (response.status === 401 || errorMsg.toLowerCase().includes('authenticate') || errorMsg.toLowerCase().includes('token')) {
+          setNeedsReauth(true);
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
       setProperties(data.properties || []);
+      setNeedsReauth(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load properties');
+      const msg = err instanceof Error ? err.message : 'Failed to load properties';
+      if (msg.toLowerCase().includes('authenticate') || msg.toLowerCase().includes('token')) {
+        setNeedsReauth(true);
+      }
+      setError(msg);
     } finally {
       setLoadingProperties(false);
     }
+  };
+
+  const handleReauthenticate = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
+        redirectTo: `${window.location.origin}/oauth2callback?next=${encodeURIComponent(window.location.pathname)}`,
+        queryParams: {
+          prompt: 'consent',
+          access_type: 'offline',
+        },
+      },
+    });
   };
 
   const handleSaveProperty = async () => {
@@ -147,7 +175,11 @@ export default function SearchPerformancePage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Sync failed');
+        const errorMsg = data.error || 'Sync failed';
+        if (response.status === 401 || errorMsg.toLowerCase().includes('authenticate') || errorMsg.toLowerCase().includes('token')) {
+          setNeedsReauth(true);
+        }
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
@@ -157,7 +189,11 @@ export default function SearchPerformancePage() {
       // Refresh the data
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sync failed');
+      const msg = err instanceof Error ? err.message : 'Sync failed';
+      if (msg.toLowerCase().includes('authenticate') || msg.toLowerCase().includes('token')) {
+        setNeedsReauth(true);
+      }
+      setError(msg);
     } finally {
       setSyncing(false);
     }
@@ -237,7 +273,20 @@ export default function SearchPerformancePage() {
       {error && (
         <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>{error}</p>
+          <div className="flex-1">
+            <p>{error}</p>
+            {needsReauth && (
+              <Button
+                onClick={handleReauthenticate}
+                variant="outline"
+                size="sm"
+                className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Re-authenticate with Google
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

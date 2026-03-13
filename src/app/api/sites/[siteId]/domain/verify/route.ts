@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
   verifyDomainDNS,
   getDomainConfig,
@@ -19,26 +20,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { siteId } = await params;
     const supabase = await createClient();
 
-    // Verify user owns this site
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Get site with organization check
+    // Fetch site data (no org join needed — access already verified)
     const { data: site, error: siteError } = await supabase
       .from('sites')
-      .select(`
-        id,
-        custom_domain,
-        custom_domain_verified,
-        organization:organizations!inner(
-          id,
-          profiles!inner(user_id)
-        )
-      `)
+      .select('id, custom_domain, custom_domain_verified')
       .eq('id', siteId)
-      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {

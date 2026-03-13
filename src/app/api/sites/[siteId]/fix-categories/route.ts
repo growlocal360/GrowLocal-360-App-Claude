@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(
@@ -9,36 +10,19 @@ export async function POST(
   const { siteId } = await params;
   const supabase = await createClient();
 
-  // Get authenticated user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Verify ownership
-  const { data: site, error: siteError } = await supabase
-    .from('sites')
-    .select('*, organization:organizations!inner(profiles!inner(user_id))')
-    .eq('id', siteId)
-    .single();
-
-  if (siteError || !site) {
-    return NextResponse.json({ error: 'Site not found' }, { status: 404 });
-  }
-
-  const hasAccess = site.organization?.profiles?.some(
-    (p: { user_id: string }) => p.user_id === user.id
-  );
-
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const access = await verifySiteAccess(supabase, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   const admin = createAdminClient();
+
+  // Fetch site status for later check
+  const { data: site } = await admin
+    .from('sites')
+    .select('status')
+    .eq('id', siteId)
+    .single();
 
   // Get site_categories with GBP category data (including service_types)
   const { data: siteCategories } = await admin
@@ -163,7 +147,8 @@ export async function POST(
   }
 
   // If site is stuck in 'building' status, reset to 'active'
-  if (site.status === 'building') {
+  const siteStatus = site?.status;
+  if (siteStatus === 'building') {
     await admin
       .from('sites')
       .update({
@@ -178,7 +163,7 @@ export async function POST(
     success: true,
     fixed: results.length,
     unmatched: unmatched.length,
-    statusReset: site.status === 'building',
+    statusReset: siteStatus === 'building',
     results,
     unmatched_services: unmatched,
   });

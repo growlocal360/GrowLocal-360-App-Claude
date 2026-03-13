@@ -5,7 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, Briefcase, Users, Plus } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
-import type { SiteStatus, SiteBuildProgress } from '@/types/database';
+import type { SiteStatus, SiteBuildProgress, UserRole } from '@/types/database';
+import { getAccessibleSiteIds } from '@/lib/auth/permissions';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -21,32 +22,50 @@ export default async function DashboardPage() {
     .eq('user_id', user?.id)
     .single();
 
-  // Get stats
-  const { count: sitesCount } = await supabase
+  // Determine which sites this user can access
+  const accessibleSiteIds = await getAccessibleSiteIds(
+    supabase,
+    profile?.id,
+    (profile?.role as UserRole) || 'user'
+  );
+
+  // Get stats — scoped to accessible sites
+  let sitesCountQuery = supabase
     .from('sites')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', profile?.organization_id);
+  if (accessibleSiteIds) sitesCountQuery = sitesCountQuery.in('id', accessibleSiteIds);
+  const { count: sitesCount } = await sitesCountQuery;
+
+  // Get accessible site IDs for job count query
+  let jobSiteIds: string[];
+  if (accessibleSiteIds) {
+    jobSiteIds = accessibleSiteIds;
+  } else {
+    const { data: allSites } = await supabase
+      .from('sites')
+      .select('id')
+      .eq('organization_id', profile?.organization_id);
+    jobSiteIds = allSites?.map(s => s.id) || [];
+  }
 
   const { count: jobsCount } = await supabase
     .from('job_snaps')
     .select('*', { count: 'exact', head: true })
-    .in('site_id', (await supabase
-      .from('sites')
-      .select('id')
-      .eq('organization_id', profile?.organization_id)
-    ).data?.map(s => s.id) || []);
+    .in('site_id', jobSiteIds);
 
   const { count: teamCount } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', profile?.organization_id);
 
-  // Get sites with status and build progress
-  const { data: sites } = await supabase
+  // Get sites with status and build progress — scoped
+  let sitesQuery = supabase
     .from('sites')
     .select('*, locations(*), status, build_progress, status_message')
-    .eq('organization_id', profile?.organization_id)
-    .order('created_at', { ascending: false });
+    .eq('organization_id', profile?.organization_id);
+  if (accessibleSiteIds) sitesQuery = sitesQuery.in('id', accessibleSiteIds);
+  const { data: sites } = await sitesQuery.order('created_at', { ascending: false });
 
   const userData = {
     name: profile?.full_name || user?.user_metadata?.full_name || 'User',

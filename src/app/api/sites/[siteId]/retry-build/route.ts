@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
 
 export async function POST(
@@ -9,34 +10,20 @@ export async function POST(
   const { siteId } = await params;
   const supabase = await createClient();
 
-  // Get authenticated user
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await verifySiteAccess(supabase, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  // Get current site and verify ownership
+  // Fetch site data (no org join needed — access already verified)
   const { data: site, error: siteError } = await supabase
     .from('sites')
-    .select('*, organization:organizations!inner(profiles!inner(user_id))')
+    .select('id, status, status_updated_at')
     .eq('id', siteId)
     .single();
 
   if (siteError || !site) {
     return NextResponse.json({ error: 'Site not found' }, { status: 404 });
-  }
-
-  // Verify user has access to this site's organization
-  const hasAccess = site.organization?.profiles?.some(
-    (p: { user_id: string }) => p.user_id === user.id
-  );
-
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Allow retry for failed builds, active sites, or stuck building sites

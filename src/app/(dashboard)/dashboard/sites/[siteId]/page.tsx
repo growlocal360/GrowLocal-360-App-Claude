@@ -102,6 +102,27 @@ export default function SiteDashboardPage() {
         avatarUrl: profile?.avatar_url,
       });
 
+      // Check site access for non-owners
+      const role = profile?.role as string;
+      if (role !== 'owner') {
+        const { data: assignments } = await supabase
+          .from('profile_site_assignments')
+          .select('site_id')
+          .eq('profile_id', profile?.id);
+        const hasAssignments = assignments && assignments.length > 0;
+        if (hasAssignments) {
+          const canAccess = assignments.some((a: { site_id: string }) => a.site_id === siteId);
+          if (!canAccess) {
+            router.replace('/dashboard/sites');
+            return;
+          }
+        } else if (role !== 'admin') {
+          // User with no assignments = no access
+          router.replace('/dashboard/sites');
+          return;
+        }
+      }
+
       const { data: siteData } = await supabase
         .from('sites')
         .select(

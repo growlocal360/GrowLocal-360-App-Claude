@@ -72,11 +72,29 @@ export default function SitesPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      const { data: sitesData } = await supabase
+      // Determine accessible sites based on role + assignments
+      let accessibleSiteIds: string[] | null = null;
+      const role = profile?.role as string;
+      if (role !== 'owner') {
+        const { data: assignments } = await supabase
+          .from('profile_site_assignments')
+          .select('site_id')
+          .eq('profile_id', profile?.id);
+        if (assignments && assignments.length > 0) {
+          accessibleSiteIds = assignments.map((a: { site_id: string }) => a.site_id);
+        } else if (role !== 'admin') {
+          // User with no assignments = no access
+          accessibleSiteIds = [];
+        }
+        // admin with no assignments = null (all sites)
+      }
+
+      let sitesQuery = supabase
         .from('sites')
         .select('id, name, slug, status, build_progress, status_message, created_at, locations(id)')
-        .eq('organization_id', profile?.organization_id)
-        .order('created_at', { ascending: false });
+        .eq('organization_id', profile?.organization_id);
+      if (accessibleSiteIds) sitesQuery = sitesQuery.in('id', accessibleSiteIds);
+      const { data: sitesData } = await sitesQuery.order('created_at', { ascending: false });
 
       setSites(sitesData as SiteWithLocations[] || []);
       setFilteredSites(sitesData as SiteWithLocations[] || []);

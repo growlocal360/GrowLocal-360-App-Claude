@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { UserRole } from '@/types/database';
 
 export interface CallerProfile {
@@ -75,4 +76,69 @@ export async function canAccessSite(
     .limit(1);
 
   return (match && match.length > 0) || false;
+}
+
+/**
+ * Get the list of site IDs a user can access.
+ * Returns null if the user has access to ALL sites in their org.
+ * Returns string[] of specific site IDs if scoped.
+ * Returns [] if user has no access (user role with no assignments).
+ */
+export async function getAccessibleSiteIds(
+  supabase: SupabaseClient,
+  profileId: string,
+  role: UserRole
+): Promise<string[] | null> {
+  if (role === 'owner') return null;
+
+  const { data: assignments } = await supabase
+    .from('profile_site_assignments')
+    .select('site_id')
+    .eq('profile_id', profileId);
+
+  if (!assignments || assignments.length === 0) {
+    // Admin with no assignments = all sites; user with no assignments = none
+    return role === 'admin' ? null : [];
+  }
+
+  return assignments.map((a) => a.site_id);
+}
+
+/**
+ * Verify that the authenticated user can access a specific site.
+ * Checks: auth → org membership → site assignment scoping.
+ * Returns { caller, siteOrgId } on success, or { error, status } on failure.
+ */
+export async function verifySiteAccess(
+  supabase: SupabaseClient,
+  siteId: string
+): Promise<
+  | { caller: CallerProfile; siteOrgId: string; error?: never; status?: never }
+  | { error: string; status: number; caller?: never; siteOrgId?: never }
+> {
+  const caller = await getCallerProfile(supabase);
+  if (!caller) {
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  // Verify site belongs to caller's org
+  const adminSupabase = createAdminClient();
+  const { data: site } = await adminSupabase
+    .from('sites')
+    .select('id, organization_id')
+    .eq('id', siteId)
+    .eq('organization_id', caller.organization_id)
+    .single();
+
+  if (!site) {
+    return { error: 'Site not found', status: 404 };
+  }
+
+  // Check site-level access
+  const hasAccess = await canAccessSite(adminSupabase, caller.id, caller.role, siteId);
+  if (!hasAccess) {
+    return { error: 'You do not have access to this site', status: 403 };
+  }
+
+  return { caller, siteOrgId: site.organization_id };
 }

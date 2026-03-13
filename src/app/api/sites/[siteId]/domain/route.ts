@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
   addDomainToVercel,
   removeDomainFromVercel,
-  getDomainConfig,
   getDNSInstructions,
   isVercelConfigured,
 } from '@/lib/vercel/domains';
@@ -21,28 +21,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { siteId } = await params;
     const supabase = await createClient();
 
-    // Verify user owns this site
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Get site with organization check
+    // Fetch site data (no org join needed — access already verified)
     const { data: site, error: siteError } = await supabase
       .from('sites')
-      .select(`
-        id,
-        slug,
-        custom_domain,
-        custom_domain_verified,
-        vercel_domain_config,
-        organization:organizations!inner(
-          id,
-          profiles!inner(user_id)
-        )
-      `)
+      .select('id, slug, custom_domain, custom_domain_verified, vercel_domain_config')
       .eq('id', siteId)
-      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {
@@ -87,10 +75,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { siteId } = await params;
     const supabase = await createClient();
 
-    // Verify user owns this site
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // Parse request body
@@ -108,26 +95,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/;
     if (!domainRegex.test(normalizedDomain)) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
-    }
-
-    // Verify user owns this site
-    const { data: site, error: siteError } = await supabase
-      .from('sites')
-      .select(`
-        id,
-        slug,
-        custom_domain,
-        organization:organizations!inner(
-          id,
-          profiles!inner(user_id)
-        )
-      `)
-      .eq('id', siteId)
-      .eq('organization.profiles.user_id', user.id)
-      .single();
-
-    if (siteError || !site) {
-      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
     }
 
     // Check if domain is already in use by another site
@@ -202,25 +169,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { siteId } = await params;
     const supabase = await createClient();
 
-    // Verify user owns this site
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Get site with organization check
+    // Fetch site data (no org join needed — access already verified)
     const { data: site, error: siteError } = await supabase
       .from('sites')
-      .select(`
-        id,
-        custom_domain,
-        organization:organizations!inner(
-          id,
-          profiles!inner(user_id)
-        )
-      `)
+      .select('id, custom_domain')
       .eq('id', siteId)
-      .eq('organization.profiles.user_id', user.id)
       .single();
 
     if (siteError || !site) {

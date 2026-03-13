@@ -3,14 +3,10 @@
 -- updates trigger and RLS policies for three-tier permissions.
 
 -- ============================================
--- 1. Add 'owner' to user_role enum
+-- 1. Migrate existing admins to owners
 -- ============================================
-ALTER TYPE user_role ADD VALUE 'owner' BEFORE 'admin';
-
--- Migrate existing admins to owners (account creators become owners)
--- NOTE: Run this AFTER the enum change has been committed.
--- In a separate transaction since ADD VALUE cannot be used in a transaction
--- with DML in some Postgres versions. If needed, run this as a separate step:
+-- NOTE: The 'owner' enum value was added in 023a_add_owner_enum.sql
+-- (must be committed in a separate transaction first)
 UPDATE profiles SET role = 'owner' WHERE role = 'admin';
 
 -- ============================================

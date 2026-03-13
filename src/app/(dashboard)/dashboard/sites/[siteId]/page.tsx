@@ -90,11 +90,13 @@ export default function SiteDashboardPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const { data: profile } = await supabase
+      // Handle multi-org users — prefer invited org profile
+      const { data: allProfiles } = await supabase
         .from('profiles')
         .select('*, organization:organizations(*)')
         .eq('user_id', user?.id)
-        .single();
+        .order('created_at', { ascending: false });
+      const profile = allProfiles?.find((p: { role: string }) => p.role !== 'owner') || allProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',

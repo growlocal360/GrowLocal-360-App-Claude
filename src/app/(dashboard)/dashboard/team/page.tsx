@@ -96,11 +96,12 @@ export default function TeamPage() {
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
+      const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, avatar_url, role')
         .eq('user_id', user?.id)
-        .single();
+        .order('created_at', { ascending: false });
+      const profile = userProfiles?.find((p: { role: string }) => p.role !== 'owner') || userProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',

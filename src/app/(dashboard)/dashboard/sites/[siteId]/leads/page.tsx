@@ -38,11 +38,12 @@ export default function LeadsPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const { data: profile } = await supabase
+      const { data: leadProfiles } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
-        .single();
+        .order('created_at', { ascending: false });
+      const profile = leadProfiles?.find((p: { role: string }) => p.role !== 'owner') || leadProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',

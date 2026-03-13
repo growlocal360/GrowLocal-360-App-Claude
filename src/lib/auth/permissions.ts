@@ -24,12 +24,14 @@ export async function getCallerProfile(
 
   if (authError || !user) return null;
 
-  const { data: profile } = await supabase
+  // Handle multi-org users — prefer the invited (non-owner) profile
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('id, user_id, organization_id, role, full_name')
     .eq('user_id', user.id)
-    .single();
+    .order('created_at', { ascending: false });
 
+  const profile = profiles?.find(p => p.role !== 'owner') || profiles?.[0] || null;
   return profile as CallerProfile | null;
 }
 

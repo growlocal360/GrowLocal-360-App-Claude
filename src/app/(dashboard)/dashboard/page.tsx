@@ -15,12 +15,13 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get profile and org
-  const { data: profile } = await supabase
+  // Get profile and org — handle multi-org users
+  const { data: allProfiles } = await supabase
     .from('profiles')
     .select('*, organization:organizations(*)')
     .eq('user_id', user?.id)
-    .single();
+    .order('created_at', { ascending: false });
+  const profile = allProfiles?.find(p => p.role !== 'owner') || allProfiles?.[0] || null;
 
   // Determine which sites this user can access
   const accessibleSiteIds = await getAccessibleSiteIds(

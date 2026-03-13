@@ -18,12 +18,16 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  // Get user profile
-  const { data: profile } = await supabase
+  // Get user profile — use limit(1) to handle users with multiple profiles (multi-org)
+  // Prefer the profile in an org that has sites (invited org), fall back to most recent
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .order('created_at', { ascending: false });
+
+  // Pick the non-owner profile first (invited org), then fall back to the first one
+  const profile = profiles?.find(p => p.role !== 'owner') || profiles?.[0] || null;
 
   const userData = {
     name: profile?.full_name || user.user_metadata?.full_name || 'User',

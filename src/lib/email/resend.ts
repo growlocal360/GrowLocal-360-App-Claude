@@ -25,7 +25,7 @@ export async function sendInviteEmail({
 }: SendInviteEmailParams) {
   const resend = getResendClient();
   const { error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@goleadflow.com>',
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
     to,
     subject: `${inviterName} invited you to join ${orgName} on GrowLocal 360`,
     html: `

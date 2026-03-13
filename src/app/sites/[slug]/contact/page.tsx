@@ -27,9 +27,16 @@ export async function generateMetadata({ params }: ContactPageProps): Promise<Me
 
   const contactPage = data.sitePages?.find(p => p.page_type === 'contact');
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/contact`;
+
   return {
     title: contactPage?.meta_title || `Contact ${data.site.name}`,
     description: contactPage?.meta_description || `Get in touch with ${data.site.name}. Call us or fill out our form for a free estimate.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

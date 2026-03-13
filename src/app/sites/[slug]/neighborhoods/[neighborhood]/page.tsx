@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
 import { getNeighborhoodBySlugSingleLocation } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -14,9 +15,9 @@ interface NeighborhoodPageProps {
   }>;
 }
 
-export async function generateMetadata({ params }: NeighborhoodPageProps) {
-  const { slug, neighborhood } = await params;
-  const data = await getNeighborhoodBySlugSingleLocation(slug, neighborhood);
+export async function generateMetadata({ params }: NeighborhoodPageProps): Promise<Metadata> {
+  const { slug, neighborhood: neighborhoodSlug } = await params;
+  const data = await getNeighborhoodBySlugSingleLocation(slug, neighborhoodSlug);
 
   if (!data) {
     return { title: 'Neighborhood Not Found' };
@@ -33,6 +34,10 @@ export async function generateMetadata({ params }: NeighborhoodPageProps) {
   const description = neighborhoodData.meta_description ||
     `Looking for ${industry.toLowerCase()} in ${neighborhoodData.name}? ${site.name} proudly serves ${neighborhoodData.name} and the greater ${locationData.city}, ${locationData.state} area. Call today for a free quote.`;
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/neighborhoods/${neighborhoodSlug}`;
+
   return {
     title,
     description,
@@ -40,6 +45,9 @@ export async function generateMetadata({ params }: NeighborhoodPageProps) {
       title,
       description,
       type: 'website',
+    },
+    alternates: {
+      canonical: canonicalUrl,
     },
   };
 }

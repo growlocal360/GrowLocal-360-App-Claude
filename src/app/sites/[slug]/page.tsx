@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -17,7 +18,7 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({ params }: SitePageProps) {
+export async function generateMetadata({ params }: SitePageProps): Promise<Metadata> {
   const { slug } = await params;
   const data = await getSiteBySlug(slug);
 
@@ -26,6 +27,9 @@ export async function generateMetadata({ params }: SitePageProps) {
   }
 
   const { site, primaryLocation, sitePages } = data;
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}`;
 
   // Use generated home page metadata if available
   const homePage = sitePages?.find(p => p.page_type === 'home');
@@ -34,16 +38,26 @@ export async function generateMetadata({ params }: SitePageProps) {
     return {
       title: homePage.meta_title,
       description: homePage.meta_description || `${site.name} - Professional services. Contact us today for a free quote.`,
+      alternates: { canonical: canonicalUrl },
     };
   }
 
+  // Fallback: use primary category from DB for better SEO
+  const { categories } = await getCategoriesWithServices(site.id);
+  const primaryCategory = categories.find(c => c.is_primary) || categories[0];
+  const categoryName = primaryCategory?.gbp_category?.display_name;
   const locationText = primaryLocation
     ? `${primaryLocation.city}, ${primaryLocation.state}`
     : '';
 
   return {
-    title: `${site.name}${locationText ? ` | ${locationText}` : ''}`,
-    description: `${site.name} - Professional services${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`,
+    title: categoryName && locationText
+      ? `${categoryName} in ${locationText} | ${site.name}`
+      : `${site.name}${locationText ? ` | ${locationText}` : ''}`,
+    description: categoryName
+      ? `${site.name} - ${categoryName}${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`
+      : `${site.name} - Professional services${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`,
+    alternates: { canonical: canonicalUrl },
   };
 }
 
@@ -100,6 +114,7 @@ export default async function SitePage({ params }: SitePageProps) {
           data={data}
           services={primaryCategoryServices}
           primaryCategorySlug={primaryCategorySlug}
+          primaryCategoryName={primaryCategory?.gbp_category?.display_name}
           categories={navCategories}
           secondaryCategories={secondaryCategories}
         />

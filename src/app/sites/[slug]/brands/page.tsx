@@ -29,9 +29,16 @@ export async function generateMetadata({ params }: BrandsPageProps): Promise<Met
   const city = primaryLocation?.city;
   const industry = (site.settings?.core_industry as string) || '';
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/brands`;
+
   return {
     title: `${industry ? `${industry} ` : ''}Brands We Service${city ? ` in ${city}` : ''} | ${site.name}`,
     description: `${site.name} services all major${industry ? ` ${industry.toLowerCase()}` : ''} brands${city ? ` in ${city} and surrounding areas` : ''}. See the full list of brands we work with.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

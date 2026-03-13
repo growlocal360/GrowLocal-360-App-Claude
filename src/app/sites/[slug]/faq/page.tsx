@@ -29,9 +29,16 @@ export async function generateMetadata({ params }: FAQPageProps): Promise<Metada
   const faqPage = data.sitePages?.find(p => p.page_type === 'faq');
   const city = data.primaryLocation?.city || '';
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/faq`;
+
   return {
     title: faqPage?.meta_title || `FAQ | ${data.site.name}${city ? ` — ${city}` : ''}`,
     description: faqPage?.meta_description || `Find answers to frequently asked questions about ${data.site.name}'s services${city ? ` in ${city}` : ''}.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

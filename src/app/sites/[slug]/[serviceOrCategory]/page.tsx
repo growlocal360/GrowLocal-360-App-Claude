@@ -24,14 +24,21 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
   const { slug, serviceOrCategory } = await params;
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+
   // Try to get as a service first (primary category services)
   const serviceData = await getServiceBySlugSingleLocation(slug, serviceOrCategory);
   if (serviceData) {
     const { service, location, site } = serviceData;
+    const domain = site.custom_domain || `${slug}.${appDomain}`;
+    const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
     return {
       title: service.meta_title || `${service.name} in ${location.city}, ${location.state} | ${site.name}`,
       description: service.meta_description || service.description ||
         `Professional ${service.name.toLowerCase()} services in ${location.city}. Contact ${site.name} for fast, reliable service.`,
+      alternates: {
+        canonical: canonicalUrl,
+      },
     };
   }
 
@@ -40,9 +47,14 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
   if (categoryData) {
     const { category, location, site, pageContent } = categoryData;
     const categoryName = category.gbp_category.display_name;
+    const domain = site.custom_domain || `${slug}.${appDomain}`;
+    const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
     return {
       title: pageContent?.meta_title || `${categoryName} in ${location.city}, ${location.state} | ${site.name}`,
       description: pageContent?.meta_description || `Professional ${categoryName.toLowerCase()} services in ${location.city}. ${site.name} provides expert service with upfront pricing.`,
+      alternates: {
+        canonical: canonicalUrl,
+      },
     };
   }
 

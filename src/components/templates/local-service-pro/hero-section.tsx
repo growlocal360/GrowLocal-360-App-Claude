@@ -6,8 +6,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Site, Location, SitePage, Service } from '@/types/database';
 import { MultiStepForm } from './multi-step-form';
 
+const LOWERCASE_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
+  'in', 'on', 'at', 'to', 'of', 'by', 'with', 'from', 'as', 'into',
+]);
+
 function toTitleCase(str: string): string {
-  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+  return str.split(' ').map((word, i) => {
+    if (i === 0) return word.charAt(0).toUpperCase() + word.slice(1);
+    if (LOWERCASE_WORDS.has(word.toLowerCase())) return word.toLowerCase();
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ');
 }
 
 interface HeroSectionProps {
@@ -17,18 +26,18 @@ interface HeroSectionProps {
   services?: Service[];
   averageRating?: number;
   totalReviewCount?: number;
+  primaryCategoryName?: string;
 }
 
-export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount }: HeroSectionProps) {
+export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount, primaryCategoryName }: HeroSectionProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
-  const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
-  const primaryCategory = site.settings?.core_industry || 'Professional Services';
+  const category = primaryCategoryName || site.settings?.core_industry || 'Professional Services';
   const locationStr = primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : '';
-  const h1 = toTitleCase(pageContent?.h1 || `${primaryCategory}${locationStr} - ${site.name}`);
+  const h1 = toTitleCase(pageContent?.h1 || `${category}${locationStr} - ${site.name}`);
   const heroDescription = pageContent?.hero_description ||
-    `Professional ${industry.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
+    `${site.name} provides expert ${category.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
 
   return (
     <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white lg:py-20">

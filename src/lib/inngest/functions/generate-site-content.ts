@@ -892,7 +892,7 @@ async function generateCorePages(
 ) {
   const homePageFocus =
     websiteType === 'single_location'
-      ? `The home page IS the primary category page. It should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business. The H1 should be like "Your Trusted ${primaryCategory} in ${city}, ${state}".`
+      ? `The home page IS the primary category page. It should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business.`
       : `The home page should be brand-focused for ${businessName} since this is a multi-location business.`;
 
   const prompt = `You are an SEO expert generating core page content for a local service business website.
@@ -904,16 +904,33 @@ Website Type: ${websiteType}
 
 ${homePageFocus}
 ${directives}
+
 Generate content for these core pages: home, about, contact
 
+CRITICAL FORMATTING RULES:
+- meta_title for home MUST follow this exact pattern: "${primaryCategory} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the category or city)
+- meta_description for home MUST mention the primary category, city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${primaryCategory.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"
+- h1 for home MUST include the primary category and location. Pattern: "${primaryCategory} in ${city}, ${state}" or "Your Trusted ${primaryCategory} in ${city}, ${state}" — NEVER use generic phrases like "Professional Services"
+- hero_description MUST mention specific services or capabilities, NOT generic "professional services" language
+- About page meta_title: "About ${businessName} | ${primaryCategory} in ${city}"
+- Contact page meta_title: "Contact ${businessName} | ${city}, ${state}"
+
+BANNED PHRASES (never use these):
+- "Professional services" (use the actual category name instead)
+- "Professional professional" or any doubled words
+- "Quality service" as a standalone phrase
+- "Your one-stop shop"
+- "Look no further"
+- "Proudly serving"
+
 For EACH page, provide:
-1. meta_title: SEO-optimized title (max 60 chars)
-2. meta_description: Compelling description with CTA (max 155 chars)
-3. h1: Main heading
-4. h2: Supporting subheading (for home page: something like "Serving ${city} With Quality ${primaryCategory}" or "Your Local ${primaryCategory} Expert")
-5. hero_description: 1-2 sentence hero subheading for the page (compelling value proposition, used below the H1)
+1. meta_title: SEO title following the patterns above (max 60 chars)
+2. meta_description: Compelling description with CTA (max 155 chars). Mention specific services.
+3. h1: Main heading — must include the primary category name
+4. h2: Supporting subheading (for home page: something action-oriented like "Expert ${primaryCategory} You Can Count On" or a value proposition mentioning 2-3 specific services)
+5. hero_description: 1-2 sentence hero subheading (compelling value proposition with specific services mentioned, used below the H1)
 6. body_copy: Main content block:
-   - Home: 2-3 paragraphs about the business, services, and why customers trust them (300-500 words). Write naturally about the business and its commitment to the community.
+   - Home: 2-3 paragraphs about the business, specific services offered, and why customers trust them (300-500 words). Write naturally — mention real services, not generic platitudes.
    - About: Company story, values, team expertise, and why choose us (300-500 words)
    - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
 7. body_copy_2: Secondary content block (used in alternating layout sections):
@@ -983,14 +1000,21 @@ Business: ${businessName}
 Location: ${city}, ${state}
 Category: ${categoryName}${isPrimary ? ' (Primary — this is also the home page for single-location sites)' : ''}
 ${directives}
+
+CRITICAL FORMATTING RULES:
+- meta_title MUST follow: "${categoryName} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed)
+- meta_description MUST mention the category name, city, and a CTA. Never use generic "professional services".
+- h1 MUST include "${categoryName}" and the location. Example: "${categoryName} in ${city}, ${state}" or "Expert ${categoryName} in ${city}"
+- NEVER use "Professional Services" — always use the actual category name "${categoryName}"
+
 Generate content for this category page:
-1. meta_title: "[Category Name] in [City], [State] | [Business Name]" (max 60 chars)
-2. meta_description: Overview of services in this category with CTA (max 155 chars)
-3. h1: Main heading (e.g., "Your Trusted ${categoryName} in ${city}, ${state}")
-4. h2: Supporting subheading for localized content section (e.g., "Serving ${city} With Expert ${categoryName}")
-5. hero_description: 1-2 sentence value proposition shown below the H1 in the hero section
-6. body_copy: 2-3 paragraphs introducing this category of services (200-400 words). Write naturally about the business capabilities, experience, and commitment to the local community.
-7. body_copy_2: 1-2 paragraphs for a secondary content block (150-250 words) — focus on certifications, community involvement, or additional value propositions.
+1. meta_title: Following the pattern above (max 60 chars)
+2. meta_description: Compelling description mentioning specific services in this category with CTA (max 155 chars)
+3. h1: Main heading with category name and location
+4. h2: Supporting subheading — action-oriented, mentioning specific services in this category
+5. hero_description: 1-2 sentence value proposition mentioning specific services, shown below the H1
+6. body_copy: 2-3 paragraphs introducing this category of services (200-400 words). Mention specific services by name. Write naturally about capabilities and local commitment.
+7. body_copy_2: 1-2 paragraphs for a secondary content block (150-250 words) — certifications, community involvement, or value propositions.
 
 Use double newlines (\\n\\n) to separate paragraphs.
 

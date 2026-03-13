@@ -25,9 +25,16 @@ export async function generateMetadata({ params }: JobsPageProps): Promise<Metad
     return { title: 'Site Not Found' };
   }
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/jobs`;
+
   return {
     title: `Careers at ${data.site.name} | Job Opportunities`,
     description: `Looking for a career in ${data.site.settings?.core_industry?.toLowerCase() || 'professional services'}? Join the ${data.site.name} team.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

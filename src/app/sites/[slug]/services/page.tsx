@@ -27,9 +27,16 @@ export async function generateMetadata({ params }: ServicesPageProps): Promise<M
   const { site, primaryLocation } = data;
   const city = primaryLocation?.city;
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/services`;
+
   return {
     title: `Our Services${city ? ` in ${city}` : ''} | ${site.name}`,
     description: `${site.name} offers professional services${city ? ` in ${city}` : ''}. Browse our full range of services and request a free estimate today.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

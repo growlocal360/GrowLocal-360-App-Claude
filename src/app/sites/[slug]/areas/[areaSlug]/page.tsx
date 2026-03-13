@@ -34,9 +34,16 @@ export async function generateMetadata({ params }: ServiceAreaPageProps): Promis
   const description = serviceArea.meta_description ||
     `${site.name} proudly serves ${serviceArea.name}. Contact us for professional services in your area.`;
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/areas/${areaSlug}`;
+
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

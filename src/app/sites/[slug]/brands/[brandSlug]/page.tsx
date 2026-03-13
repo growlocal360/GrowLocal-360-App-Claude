@@ -58,9 +58,16 @@ export async function generateMetadata({ params }: BrandDetailPageProps): Promis
   const state = primaryLocation?.state || '';
   const industry = (site.settings?.core_industry as string) || '';
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/brands/${brandSlug}`;
+
   return {
     title: brand.meta_title || `${brand.name} ${industry} ${city} ${state} | ${site.name}`.trim(),
     description: brand.meta_description || `Professional ${brand.name} ${industry.toLowerCase()} services in ${city}, ${state} and surrounding areas. ${site.name} is your trusted local ${brand.name} service provider.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

@@ -28,9 +28,16 @@ export async function generateMetadata({ params }: AreasPageProps): Promise<Meta
   const { site, primaryLocation } = data;
   const city = primaryLocation?.city;
 
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/areas`;
+
   return {
     title: `Areas We Serve${city ? ` in ${city}` : ''} | ${site.name}`,
     description: `${site.name} proudly serves${city ? ` ${city} and` : ''} surrounding communities. See all the areas we cover and contact us for service.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

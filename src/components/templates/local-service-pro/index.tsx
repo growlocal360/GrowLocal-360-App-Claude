@@ -26,12 +26,13 @@ interface LocalServiceProTemplateProps {
   siteSlug?: string;
   services?: Service[];
   primaryCategorySlug?: string;
+  primaryCategoryName?: string;
   categories?: NavCategory[];
   secondaryCategories?: NavCategory[];
   locationSlug?: string;
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, categories, secondaryCategories, locationSlug }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -61,6 +62,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           services={services}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
+          primaryCategoryName={primaryCategoryName}
         />
         <TrustBar
           brandColor={brandColor}

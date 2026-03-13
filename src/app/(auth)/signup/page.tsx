@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { Suspense, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { createClient } from '@/lib/supabase/client';
 
 export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +26,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const supabase = useMemo(() => createClient(), []);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -32,7 +42,7 @@ export default function SignupPage() {
         data: {
           full_name: fullName,
         },
-        emailRedirectTo: `${window.location.origin}/oauth2callback`,
+        emailRedirectTo: `${window.location.origin}/oauth2callback${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`,
       },
     });
 
@@ -49,7 +59,7 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/oauth2callback`,
+        redirectTo: `${window.location.origin}/oauth2callback${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`,
         scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
       },
     });

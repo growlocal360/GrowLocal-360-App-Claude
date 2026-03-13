@@ -57,6 +57,22 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // Owner-only actions: pause and archive
+  if (newStatus === 'paused' || newStatus === 'archived') {
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (callerProfile?.role !== 'owner') {
+      return NextResponse.json(
+        { error: 'Only the account owner can pause or archive sites' },
+        { status: 403 }
+      );
+    }
+  }
+
   // Validate status transition
   const currentStatus = site.status as SiteStatus;
   const allowedTransitions = VALID_TRANSITIONS[currentStatus] || [];

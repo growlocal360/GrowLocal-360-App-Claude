@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { Suspense, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const supabase = useMemo(() => createClient(), []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -48,7 +58,7 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/dashboard');
+      router.push(redirectTo || '/dashboard');
       router.refresh();
     }
   };
@@ -57,7 +67,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/oauth2callback`,
+        redirectTo: `${window.location.origin}/oauth2callback${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`,
         scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
       },
     });
@@ -168,7 +178,7 @@ export default function LoginPage() {
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-medium text-[#00d9c0] hover:underline">
+            <Link href={`/signup${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`} className="font-medium text-[#00d9c0] hover:underline">
               Sign up
             </Link>
           </p>

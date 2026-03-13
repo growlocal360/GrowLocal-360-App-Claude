@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================
 
 CREATE TYPE website_type AS ENUM ('single_location', 'multi_location', 'microsite');
-CREATE TYPE user_role AS ENUM ('admin', 'user');
+CREATE TYPE user_role AS ENUM ('owner', 'admin', 'user');
 CREATE TYPE job_status AS ENUM ('draft', 'queued', 'approved', 'deployed', 'rejected');
 CREATE TYPE social_platform AS ENUM ('google_business', 'facebook', 'instagram', 'youtube');
 

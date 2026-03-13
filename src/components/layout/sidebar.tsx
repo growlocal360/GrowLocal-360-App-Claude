@@ -17,12 +17,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
+import type { UserRole } from '@/types/database';
+import { Badge } from '@/components/ui/badge';
+
 interface SidebarProps {
   user?: {
     name: string;
     email: string;
     avatarUrl?: string;
   };
+  role?: UserRole;
 }
 
 const mainNavItems = [
@@ -56,7 +60,7 @@ const shortcutItems = [
   },
 ];
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, role }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -77,24 +81,30 @@ export function Sidebar({ user }: SidebarProps) {
         <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-gray-400">
           Main Menu
         </p>
-        {mainNavItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-[#00d9c0]/10 text-black'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.title}
-            </Link>
-          );
-        })}
+        {mainNavItems
+          .filter((item) => {
+            // Hide Team link for 'user' role
+            if (item.href === '/dashboard/team' && role === 'user') return false;
+            return true;
+          })
+          .map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-[#00d9c0]/10 text-black'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.title}
+              </Link>
+            );
+          })}
 
         <Separator className="my-4" />
 
@@ -123,9 +133,23 @@ export function Sidebar({ user }: SidebarProps) {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 truncate">
-            <p className="text-sm font-medium text-gray-900">
-              {user?.name || 'User'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-900">
+                {user?.name || 'User'}
+              </p>
+              {role && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-[10px] px-1.5 py-0',
+                    role === 'owner' && 'bg-purple-100 text-purple-700',
+                    role === 'admin' && 'bg-blue-100 text-blue-700'
+                  )}
+                >
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </Badge>
+              )}
+            </div>
             <p className="truncate text-xs text-gray-500">
               {user?.email || 'user@example.com'}
             </p>

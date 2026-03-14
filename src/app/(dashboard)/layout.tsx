@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/layout/sidebar';
-import { getActiveOrgId, setActiveOrgId } from '@/lib/auth/active-org';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 import type { UserRole } from '@/types/database';
 import type { OrgOption } from '@/components/layout/org-switcher';
 
@@ -37,9 +37,8 @@ export default async function DashboardLayout({
   // Validate the cookie — must match one of the user's orgs
   const validOrg = activeOrgId && profiles.some(p => p.organization_id === activeOrgId);
   if (!validOrg) {
-    // Auto-select: first profile's org
+    // Auto-select: first profile's org (cookie will be set on next org-switch action)
     activeOrgId = profiles[0].organization_id as string;
-    await setActiveOrgId(activeOrgId);
   }
 
   // Pick the profile for the active org

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 
 // PUT - Replace site assignments for a member
 export async function PUT(
@@ -10,7 +11,7 @@ export async function PUT(
 ) {
   const { profileId } = await params;
   const supabase = await createClient();
-  const caller = await getCallerProfile(supabase);
+  const caller = await getCallerProfile(supabase, await getActiveOrgId());
 
   if (!caller || !hasRole(caller, 'owner', 'admin')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

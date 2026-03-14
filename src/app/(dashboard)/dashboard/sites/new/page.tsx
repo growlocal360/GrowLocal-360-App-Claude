@@ -1,6 +1,7 @@
 import { Header } from '@/components/layout/header';
 import { SiteWizard } from '@/components/wizard';
 import { createClient } from '@/lib/supabase/server';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 
 export default async function NewSitePage() {
   const supabase = await createClient();
@@ -9,12 +10,15 @@ export default async function NewSitePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const activeOrgId = await getActiveOrgId();
   const { data: newSiteProfiles } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false });
-  const profile = newSiteProfiles?.find(p => p.role !== 'owner') || newSiteProfiles?.[0] || null;
+  const profile = (activeOrgId
+    ? newSiteProfiles?.find(p => p.organization_id === activeOrgId)
+    : newSiteProfiles?.[0]) || newSiteProfiles?.[0] || null;
 
   const userData = {
     name: profile?.full_name || user?.user_metadata?.full_name || 'User',

@@ -7,6 +7,7 @@ import { Globe, Briefcase, Users, Plus } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, UserRole } from '@/types/database';
 import { getAccessibleSiteIds } from '@/lib/auth/permissions';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -15,13 +16,16 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get profile and org — handle multi-org users
+  // Get profile for the active org
+  const activeOrgId = await getActiveOrgId();
   const { data: allProfiles } = await supabase
     .from('profiles')
     .select('*, organization:organizations(*)')
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false });
-  const profile = allProfiles?.find(p => p.role !== 'owner') || allProfiles?.[0] || null;
+  const profile = (activeOrgId
+    ? allProfiles?.find(p => p.organization_id === activeOrgId)
+    : allProfiles?.[0]) || allProfiles?.[0] || null;
 
   // Determine which sites this user can access
   const accessibleSiteIds = await getAccessibleSiteIds(

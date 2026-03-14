@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
+import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
 type StatusFilter = 'all' | SiteStatus;
 
@@ -60,13 +61,16 @@ export default function SitesPage() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Handle multi-org users — prefer invited org profile
+      // Get profile for active org
+      const activeOrgId = getActiveOrgIdClient();
       const { data: allProfiles } = await supabase
         .from('profiles')
         .select('*, organization:organizations(*)')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
-      const profile = allProfiles?.find((p: { role: string }) => p.role !== 'owner') || allProfiles?.[0] || null;
+      const profile = (activeOrgId
+        ? allProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
+        : allProfiles?.[0]) || allProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',

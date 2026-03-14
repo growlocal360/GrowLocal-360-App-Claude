@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 
 import type { UserRole } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
+import { OrgSwitcher, type OrgOption } from '@/components/layout/org-switcher';
 
 interface SidebarProps {
   user?: {
@@ -27,6 +28,8 @@ interface SidebarProps {
     avatarUrl?: string;
   };
   role?: UserRole;
+  orgs?: OrgOption[];
+  activeOrgId?: string;
 }
 
 const mainNavItems = [
@@ -60,7 +63,7 @@ const shortcutItems = [
   },
 ];
 
-export function Sidebar({ user, role }: SidebarProps) {
+export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -75,6 +78,13 @@ export function Sidebar({ user, role }: SidebarProps) {
           priority
         />
       </div>
+
+      {/* Org Switcher */}
+      {orgs && orgs.length > 1 && activeOrgId && (
+        <div className="px-3 pb-2">
+          <OrgSwitcher orgs={orgs} activeOrgId={activeOrgId} />
+        </div>
+      )}
 
       {/* Main Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">

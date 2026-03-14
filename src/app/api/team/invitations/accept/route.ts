@@ -97,5 +97,58 @@ export async function POST(request: NextRequest) {
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invitation.id);
 
+  // Clean up orphaned empty orgs — if the user had an auto-created org
+  // with no sites and no other members, delete it to prevent clutter
+  const { data: userOrgs } = await adminSupabase
+    .from('profiles')
+    .select('id, organization_id, role')
+    .eq('user_id', user.id);
+
+  if (userOrgs && userOrgs.length > 1) {
+    for (const orgProfile of userOrgs) {
+      // Skip the org we just joined
+      if (orgProfile.organization_id === invitation.organization_id) continue;
+      // Only clean up orgs where user is the owner
+      if (orgProfile.role !== 'owner') continue;
+
+      // Check if this org has any sites
+      const { count: siteCount } = await adminSupabase
+        .from('sites')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgProfile.organization_id);
+
+      if (siteCount && siteCount > 0) continue;
+
+      // Check if this org has other members besides this user
+      const { count: memberCount } = await adminSupabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', orgProfile.organization_id);
+
+      if (memberCount && memberCount > 1) continue;
+
+      // Safe to delete — empty org with only this user
+      await adminSupabase
+        .from('profiles')
+        .delete()
+        .eq('id', orgProfile.id);
+      await adminSupabase
+        .from('organizations')
+        .delete()
+        .eq('id', orgProfile.organization_id);
+    }
+  }
+
+  // Set the active org cookie to the newly joined org
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  cookieStore.set('active_org_id', invitation.organization_id, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 365,
+    path: '/',
+  });
+
   return NextResponse.json({ success: true });
 }

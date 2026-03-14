@@ -12,10 +12,12 @@ export interface CallerProfile {
 
 /**
  * Get the authenticated user's profile with role info.
- * Uses the user-scoped Supabase client (RLS enforced).
+ * If activeOrgId is provided, returns the profile for that org.
+ * Otherwise returns the first (most recent) profile.
  */
 export async function getCallerProfile(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  activeOrgId?: string | null
 ): Promise<CallerProfile | null> {
   const {
     data: { user },
@@ -24,15 +26,22 @@ export async function getCallerProfile(
 
   if (authError || !user) return null;
 
-  // Handle multi-org users — prefer the invited (non-owner) profile
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, user_id, organization_id, role, full_name')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
-  const profile = profiles?.find(p => p.role !== 'owner') || profiles?.[0] || null;
-  return profile as CallerProfile | null;
+  if (!profiles || profiles.length === 0) return null;
+
+  // If activeOrgId specified, use that org's profile
+  if (activeOrgId) {
+    const match = profiles.find(p => p.organization_id === activeOrgId);
+    if (match) return match as CallerProfile;
+  }
+
+  // Fallback: first profile (most recent)
+  return profiles[0] as CallerProfile;
 }
 
 /**
@@ -108,7 +117,7 @@ export async function getAccessibleSiteIds(
 
 /**
  * Verify that the authenticated user can access a specific site.
- * Checks: auth → org membership → site assignment scoping.
+ * Resolves the correct profile by looking up which org the site belongs to.
  * Returns { caller, siteOrgId } on success, or { error, status } on failure.
  */
 export async function verifySiteAccess(
@@ -118,21 +127,38 @@ export async function verifySiteAccess(
   | { caller: CallerProfile; siteOrgId: string; error?: never; status?: never }
   | { error: string; status: number; caller?: never; siteOrgId?: never }
 > {
-  const caller = await getCallerProfile(supabase);
-  if (!caller) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
     return { error: 'Unauthorized', status: 401 };
   }
 
-  // Verify site belongs to caller's org
   const adminSupabase = createAdminClient();
+
+  // Look up the site's org
   const { data: site } = await adminSupabase
     .from('sites')
     .select('id, organization_id')
     .eq('id', siteId)
-    .eq('organization_id', caller.organization_id)
     .single();
 
   if (!site) {
+    return { error: 'Site not found', status: 404 };
+  }
+
+  // Find the user's profile in this site's org
+  const { data: profiles } = await adminSupabase
+    .from('profiles')
+    .select('id, user_id, organization_id, role, full_name')
+    .eq('user_id', user.id)
+    .eq('organization_id', site.organization_id);
+
+  const caller = profiles?.[0] as CallerProfile | undefined;
+
+  if (!caller) {
     return { error: 'Site not found', status: 404 };
   }
 

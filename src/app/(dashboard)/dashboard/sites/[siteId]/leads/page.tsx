@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Inbox, Phone, Mail, Clock } from 'lucide-react';
 import type { Lead, LeadStatus } from '@/types/database';
+import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
 const STATUS_OPTIONS: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'new', label: 'New', color: 'bg-green-100 text-green-800' },
@@ -38,12 +39,15 @@ export default function LeadsPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
+      const activeOrgId = getActiveOrgIdClient();
       const { data: leadProfiles } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
-      const profile = leadProfiles?.find((p: { role: string }) => p.role !== 'owner') || leadProfiles?.[0] || null;
+      const profile = (activeOrgId
+        ? leadProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
+        : leadProfiles?.[0]) || leadProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',

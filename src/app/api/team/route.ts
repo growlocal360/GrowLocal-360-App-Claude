@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 
 // GET - List team members with their site assignments
 export async function GET() {
   const supabase = await createClient();
-  const caller = await getCallerProfile(supabase);
+  const activeOrgId = await getActiveOrgId();
+  const caller = await getCallerProfile(supabase, activeOrgId);
 
   if (!caller) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +19,7 @@ export async function GET() {
   // Fetch all profiles in the org with their auth user emails
   const { data: profiles, error } = await adminSupabase
     .from('profiles')
-    .select('id, user_id, organization_id, role, full_name, avatar_url, created_at')
+    .select('id, user_id, organization_id, role, full_name, avatar_url, bio, title, created_at')
     .eq('organization_id', caller.organization_id)
     .order('created_at');
 
@@ -70,7 +72,7 @@ export async function GET() {
 // PATCH - Update a member's role
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
-  const caller = await getCallerProfile(supabase);
+  const caller = await getCallerProfile(supabase, await getActiveOrgId());
 
   if (!caller) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -131,7 +133,7 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Remove a member from the org
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient();
-  const caller = await getCallerProfile(supabase);
+  const caller = await getCallerProfile(supabase, await getActiveOrgId());
 
   if (!caller) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

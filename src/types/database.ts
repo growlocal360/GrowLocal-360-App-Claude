@@ -30,6 +30,8 @@ export interface Profile {
   role: UserRole;
   full_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
+  title: string | null;
   created_at: string;
   updated_at: string;
 }

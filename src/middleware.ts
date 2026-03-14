@@ -151,7 +151,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/oauth2callback') ||
     pathname.startsWith('/sites/') || // Already routed
     pathname === '/favicon.ico' ||
-    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/)
+    (!pathname.startsWith('/public/') && pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/))
   ) {
     // For dashboard/login routes, still run auth middleware
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {

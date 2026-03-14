@@ -22,9 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User } from 'lucide-react';
 import { InviteMemberDialog } from '@/components/team/invite-member-dialog';
 import type { UserRole } from '@/types/database';
+import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
 interface TeamMember {
   id: string;
@@ -32,6 +34,8 @@ interface TeamMember {
   role: UserRole;
   full_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
+  title: string | null;
   email: string;
   created_at: string;
   site_assignments: { site_id: string; site_name: string; site_slug: string }[];
@@ -96,12 +100,15 @@ export default function TeamPage() {
   useEffect(() => {
     async function loadUser() {
       const { data: { user } } = await supabase.auth.getUser();
+      const activeOrgId = getActiveOrgIdClient();
       const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url, role')
+        .select('full_name, avatar_url, role, organization_id')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
-      const profile = userProfiles?.find((p: { role: string }) => p.role !== 'owner') || userProfiles?.[0] || null;
+      const profile = (activeOrgId
+        ? userProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
+        : userProfiles?.[0]) || userProfiles?.[0] || null;
 
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',
@@ -198,9 +205,14 @@ export default function TeamPage() {
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-600">
-                      {member.full_name?.charAt(0)?.toUpperCase() || member.email.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar className="h-10 w-10">
+                      {member.avatar_url && (
+                        <AvatarImage src={member.avatar_url} alt={member.full_name || member.email} />
+                      )}
+                      <AvatarFallback className="bg-gray-100 text-sm font-medium text-gray-600">
+                        {member.full_name?.charAt(0)?.toUpperCase() || member.email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900">
@@ -208,6 +220,9 @@ export default function TeamPage() {
                         </span>
                         {roleBadge(member.role)}
                       </div>
+                      {member.title && (
+                        <p className="text-sm text-gray-600">{member.title}</p>
+                      )}
                       <p className="text-sm text-gray-500">{member.email}</p>
                       {member.site_assignments.length > 0 && (
                         <p className="text-xs text-gray-400 mt-0.5">

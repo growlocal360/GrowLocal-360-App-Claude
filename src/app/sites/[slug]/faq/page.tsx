@@ -6,6 +6,7 @@ import { getFAQHubData } from '@/lib/sites/get-faq-hub';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { FAQHubPage } from '@/components/templates/local-service-pro/faq-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -65,12 +66,12 @@ export default async function FAQPageRoute({ params }: FAQPageProps) {
 
   return (
     <FAQHubPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      pageContent={faqContent}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      pageContent={faqContent ? toPublicPageContent(faqContent) : null}
       faqItems={faqHub.items}
       topicGroups={faqHub.topicGroups}
-      serviceAreas={data.serviceAreas}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

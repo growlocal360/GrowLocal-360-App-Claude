@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { Service } from '@/types/database';
+import type { PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 
 interface LeadCaptureSectionProps {
   siteId: string;
   brandColor?: string;
-  services?: Service[];
+  services?: PublicRenderServiceListing[];
 }
 
 export function LeadCaptureSection({ siteId, brandColor = '#00d9c0', services }: LeadCaptureSectionProps) {

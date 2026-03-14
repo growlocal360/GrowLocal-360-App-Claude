@@ -1,6 +1,6 @@
 'use client';
 
-import type { Site, Location, SitePage, ServiceAreaDB } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -13,10 +13,10 @@ import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 
 interface AboutPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  pageContent: SitePage | null;
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  pageContent: PublicRenderPageContent | null;
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

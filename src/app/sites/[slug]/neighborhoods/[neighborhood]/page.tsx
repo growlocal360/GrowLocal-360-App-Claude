@@ -5,6 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { NeighborhoodPageSingleLocation } from '@/components/templates/local-service-pro/neighborhood-page-single';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -67,5 +68,16 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     isPrimary: c.is_primary,
   }));
 
-  return <NeighborhoodPageSingleLocation data={data} siteSlug={slug} categories={navCategories} />;
+  return (
+    <NeighborhoodPageSingleLocation
+      data={{
+        site: toPublicSite(data.site),
+        location: toPublicLocation(data.location),
+        neighborhood: toPublicNeighborhoodDetail(data.neighborhood),
+        allNeighborhoods: data.allNeighborhoods.map(toPublicNeighborhoodListing),
+      }}
+      siteSlug={slug}
+      categories={navCategories}
+    />
+  );
 }

@@ -4,6 +4,13 @@ import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
 import type { Service } from '@/types/database';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicCategory,
+  toPublicServiceListing,
+  toPublicAreaListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -43,13 +50,19 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
     servicesByCategory[cat.id] = services.filter(s => s.site_category_id === cat.id);
   }
 
+  // Map servicesByCategory values to render model
+  const mappedServicesByCategory: Record<string, ReturnType<typeof toPublicServiceListing>[]> = {};
+  for (const [catId, svcs] of Object.entries(servicesByCategory)) {
+    mappedServicesByCategory[catId] = svcs.map(toPublicServiceListing);
+  }
+
   return (
     <ServicesPage
-      site={data.site}
-      primaryLocation={data.location}
-      categories={categories}
-      servicesByCategory={servicesByCategory}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.location)}
+      categories={categories.map(toPublicCategory)}
+      servicesByCategory={mappedServicesByCategory}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       siteSlug={slug}
       locationSlug={location}
     />

@@ -5,7 +5,12 @@ import { Phone, MapPin, Clock, ChevronRight, Building2, Map } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { SiteWithRelations, Location, Neighborhood, ServiceAreaDB } from '@/types/database';
+import type {
+  PublicRenderSite,
+  PublicRenderLocation,
+  PublicRenderNeighborhoodListing,
+  PublicRenderAreaListing,
+} from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -20,11 +25,11 @@ import { SiteFooter } from './site-footer';
 
 interface LocationPageProps {
   data: {
-    site: SiteWithRelations;
-    location: Location;
-    allLocations: Location[];
-    neighborhoods: Neighborhood[];
-    serviceAreas: ServiceAreaDB[];
+    site: PublicRenderSite;
+    location: PublicRenderLocation;
+    allLocations: PublicRenderLocation[];
+    neighborhoods: PublicRenderNeighborhoodListing[];
+    serviceAreas: PublicRenderAreaListing[];
   };
   siteSlug: string;
   locationSlug?: string;
@@ -355,12 +360,7 @@ export function LocationPage({ data, siteSlug, locationSlug }: LocationPageProps
                       variant="outline"
                       className="cursor-pointer px-4 py-2 text-sm hover:bg-gray-100"
                     >
-                      {area.name}, {area.state}
-                      {area.distance_miles && (
-                        <span className="ml-1 text-xs text-gray-400">
-                          ({Math.round(area.distance_miles)} mi)
-                        </span>
-                      )}
+                      {area.name}{area.state ? `, ${area.state}` : ''}
                     </Badge>
                   </Link>
                 ))}

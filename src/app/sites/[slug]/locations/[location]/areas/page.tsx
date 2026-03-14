@@ -5,6 +5,12 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ServiceAreasListingPage } from '@/components/templates/local-service-pro/service-areas-listing-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicAreaListing,
+  toPublicNeighborhoodListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -46,10 +52,10 @@ export default async function MultiLocationAreasPageRoute({ params }: MultiLocat
 
   return (
     <ServiceAreasListingPage
-      site={data.site}
-      primaryLocation={data.location}
-      serviceAreas={data.serviceAreas}
-      neighborhoods={data.neighborhoods}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.location)}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
+      neighborhoods={data.neighborhoods.map(toPublicNeighborhoodListing)}
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}

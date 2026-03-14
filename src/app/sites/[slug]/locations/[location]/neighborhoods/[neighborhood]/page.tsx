@@ -1,6 +1,12 @@
 import { notFound } from 'next/navigation';
 import { getNeighborhoodBySlug } from '@/lib/sites/get-site';
 import { NeighborhoodPage } from '@/components/templates/local-service-pro/neighborhood-page';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicNeighborhoodDetail,
+  toPublicNeighborhoodListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -50,5 +56,16 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
-  return <NeighborhoodPage data={data} siteSlug={slug} locationSlug={location} />;
+  return (
+    <NeighborhoodPage
+      data={{
+        site: toPublicSite(data.site),
+        location: toPublicLocation(data.location),
+        neighborhood: toPublicNeighborhoodDetail(data.neighborhood),
+        allNeighborhoods: data.allNeighborhoods.map(toPublicNeighborhoodListing),
+      }}
+      siteSlug={slug}
+      locationSlug={location}
+    />
+  );
 }

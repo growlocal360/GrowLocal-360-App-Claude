@@ -1,6 +1,12 @@
 import { notFound } from 'next/navigation';
 import { getLocationBySlug } from '@/lib/sites/get-site';
 import { LocationPage } from '@/components/templates/local-service-pro/location-page';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicNeighborhoodListing,
+  toPublicAreaListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -48,5 +54,17 @@ export default async function LocationRoute({ params }: LocationPageProps) {
     notFound();
   }
 
-  return <LocationPage data={data} siteSlug={slug} locationSlug={location} />;
+  return (
+    <LocationPage
+      data={{
+        site: toPublicSite(data.site),
+        location: toPublicLocation(data.location),
+        allLocations: data.allLocations.map(toPublicLocation),
+        neighborhoods: data.neighborhoods.map(toPublicNeighborhoodListing),
+        serviceAreas: data.serviceAreas.map(toPublicAreaListing),
+      }}
+      siteSlug={slug}
+      locationSlug={location}
+    />
+  );
 }

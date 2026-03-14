@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Wrench, Layers, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Service, Location } from '@/types/database';
+import type { PublicRenderSite, PublicRenderServiceListing, PublicRenderLocation } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
 interface NavCategory {
@@ -13,9 +13,9 @@ interface NavCategory {
 }
 
 interface ServicesPreviewProps {
-  site: Site;
-  services: Service[];
-  primaryLocation: Location | null;
+  site: PublicRenderSite;
+  services: PublicRenderServiceListing[];
+  primaryLocation: PublicRenderLocation | null;
   siteSlug: string;
   categorySlug?: string;
   isPrimaryCategory?: boolean;
@@ -27,7 +27,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
 
-  const getServiceUrl = (service: Service) => {
+  const getServiceUrl = (service: PublicRenderServiceListing) => {
     return paths.servicePage(service.slug, categorySlug, isPrimaryCategory, locationSlug);
   };
 

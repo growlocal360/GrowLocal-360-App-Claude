@@ -6,6 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -86,13 +87,13 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
 
   return (
     <WorkDetailPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      workItem={data.workItem}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.primaryLocation)}
+      workItem={toPublicWorkItem(data.workItem)}
       service={data.service}
       itemLocation={data.itemLocation}
-      relatedItems={relatedItems}
-      serviceAreas={serviceAreas || []}
+      relatedItems={relatedItems.map(toPublicWorkItem)}
+      serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

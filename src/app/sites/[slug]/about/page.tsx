@@ -5,6 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -60,10 +61,10 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
 
   return (
     <AboutPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      pageContent={aboutContent}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

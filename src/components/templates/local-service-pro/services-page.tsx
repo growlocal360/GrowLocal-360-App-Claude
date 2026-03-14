@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Wrench, ArrowRight, Phone, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { Site, Location, Service, SiteCategory, GBPCategory, ServiceAreaDB } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceListing, PublicRenderCategory, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -18,11 +18,11 @@ import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 
 interface ServicesPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  categories: (SiteCategory & { gbp_category: GBPCategory })[];
-  servicesByCategory: Record<string, Service[]>;
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  categories: PublicRenderCategory[];
+  servicesByCategory: Record<string, PublicRenderServiceListing[]>;
+  serviceAreas?: PublicRenderAreaListing[];
   siteSlug: string;
   locationSlug?: string;
 }
@@ -38,12 +38,12 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
     isPrimary: c.is_primary,
   }));
 
-  const getCategoryUrl = (cat: SiteCategory & { gbp_category: GBPCategory }) => {
+  const getCategoryUrl = (cat: PublicRenderCategory) => {
     const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.categoryPage(catSlug, cat.is_primary, locationSlug);
   };
 
-  const getServiceUrl = (cat: SiteCategory & { gbp_category: GBPCategory }, serviceSlug: string) => {
+  const getServiceUrl = (cat: PublicRenderCategory, serviceSlug: string) => {
     const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
   };

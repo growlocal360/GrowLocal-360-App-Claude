@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { MapPin, Phone, Mail } from 'lucide-react';
-import type { Site, Location, ServiceAreaDB } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
 interface SiteFooterProps {
-  site: Site;
-  primaryLocation: Location | null;
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  serviceAreas?: PublicRenderAreaListing[];
   siteSlug?: string;
   locationSlug?: string;
 }

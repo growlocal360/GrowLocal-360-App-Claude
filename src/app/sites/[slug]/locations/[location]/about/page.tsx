@@ -6,6 +6,12 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicAreaListing,
+  toPublicPageContent,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -62,10 +68,10 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
 
   return (
     <AboutPage
-      site={data.site}
-      primaryLocation={data.location}
-      pageContent={aboutContent}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.location)}
+      pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}

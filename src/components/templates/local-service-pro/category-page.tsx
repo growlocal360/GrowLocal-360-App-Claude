@@ -1,6 +1,6 @@
 'use client';
 
-import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, Neighborhood, SitePage } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderNeighborhoodListing, PublicRenderPageContent } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -24,25 +24,17 @@ import { SiteFooter } from './site-footer';
 
 interface CategoryPageProps {
   data: {
-    site: SiteWithRelations;
-    location: Location;
-    category: SiteCategory & { gbp_category: GBPCategory };
-    services: Service[];
-    allCategories: (SiteCategory & { gbp_category: GBPCategory })[];
-    pageContent?: {
-      meta_title?: string | null;
-      meta_description?: string | null;
-      h1?: string | null;
-      h2?: string | null;
-      hero_description?: string | null;
-      body_copy?: string | null;
-      body_copy_2?: string | null;
-    } | null;
+    site: PublicRenderSite;
+    location: PublicRenderLocation;
+    category: PublicRenderCategory;
+    services: PublicRenderServiceListing[];
+    allCategories: PublicRenderCategory[];
+    pageContent?: PublicRenderPageContent | null;
   };
   siteSlug: string;
-  googleReviews?: GoogleReview[];
-  serviceAreas?: ServiceAreaDB[];
-  neighborhoods?: Neighborhood[];
+  googleReviews?: PublicRenderReview[];
+  serviceAreas?: PublicRenderAreaListing[];
+  neighborhoods?: PublicRenderNeighborhoodListing[];
   locationSlug?: string;
 }
 
@@ -69,7 +61,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
     hero_description: pageContent?.hero_description || null,
     body_copy: pageContent?.body_copy || null,
     body_copy_2: pageContent?.body_copy_2 || null,
-  } as SitePage;
+  } as PublicRenderPageContent;
 
   // Schema.org structured data
   const businessInput = toBusinessInput(site, location);

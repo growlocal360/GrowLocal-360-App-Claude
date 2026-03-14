@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { Site, Location, ServiceAreaDB, Neighborhood } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderNeighborhoodListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -17,10 +17,10 @@ import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 
 interface ServiceAreasListingPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  serviceAreas: ServiceAreaDB[];
-  neighborhoods: Neighborhood[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  serviceAreas: PublicRenderAreaListing[];
+  neighborhoods: PublicRenderNeighborhoodListing[];
   categories: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

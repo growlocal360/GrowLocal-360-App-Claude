@@ -5,6 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { BrandsListingPage } from '@/components/templates/local-service-pro/brands-listing-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicBrandListing, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -60,10 +61,10 @@ export default async function BrandsPageRoute({ params }: BrandsPageProps) {
 
   return (
     <BrandsListingPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      brands={data.brands}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      brands={data.brands.map(toPublicBrandListing)}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

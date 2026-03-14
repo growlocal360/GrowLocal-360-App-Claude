@@ -5,7 +5,12 @@ import { Phone, MapPin, ArrowLeft, Home, ChevronRight, Landmark, GraduationCap, 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { SiteWithRelations, Location, Neighborhood } from '@/types/database';
+import type {
+  PublicRenderSite,
+  PublicRenderLocation,
+  PublicRenderNeighborhoodDetail,
+  PublicRenderNeighborhoodListing,
+} from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -20,10 +25,10 @@ import { SiteFooter } from './site-footer';
 
 interface NeighborhoodPageProps {
   data: {
-    site: SiteWithRelations;
-    location: Location;
-    neighborhood: Neighborhood;
-    allNeighborhoods: Neighborhood[];
+    site: PublicRenderSite;
+    location: PublicRenderLocation;
+    neighborhood: PublicRenderNeighborhoodDetail;
+    allNeighborhoods: PublicRenderNeighborhoodListing[];
   };
   siteSlug: string;
   locationSlug?: string;

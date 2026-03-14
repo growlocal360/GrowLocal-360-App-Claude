@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Site, Location } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
 export interface NavCategory {
@@ -14,8 +14,8 @@ export interface NavCategory {
 }
 
 interface SiteHeaderProps {
-  site: Site;
-  primaryLocation: Location | null;
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
   categories?: NavCategory[];
   siteSlug?: string;
   locationSlug?: string;

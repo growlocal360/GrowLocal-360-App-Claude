@@ -12,6 +12,15 @@ import type {
   GBPCategory,
 } from '@/types/database';
 import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicAreaDetail,
+  toPublicAreaListing,
+  toPublicServiceListing,
+  toPublicCategory,
+  toPublicReview,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -107,9 +116,16 @@ export default async function MultiLocationAreaDetailRoute({ params }: MultiLoca
 
   return (
     <ServiceAreaPage
-      data={data}
+      data={{
+        site: toPublicSite(data.site),
+        location: toPublicLocation(data.location),
+        serviceArea: toPublicAreaDetail(data.serviceArea),
+        allServiceAreas: data.allServiceAreas.map(toPublicAreaListing),
+        services: data.services.map(toPublicServiceListing),
+        categories: data.categories.map(toPublicCategory),
+      }}
       siteSlug={slug}
-      googleReviews={googleReviews}
+      googleReviews={googleReviews.map(toPublicReview)}
       locationSlug={location}
     />
   );

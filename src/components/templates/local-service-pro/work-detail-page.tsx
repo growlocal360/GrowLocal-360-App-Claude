@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { Site, Location, ServiceAreaDB } from '@/types/database';
-import type { WorkItem, WorkItemWithRelations } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
@@ -17,13 +16,13 @@ import {
 } from '@/lib/schema';
 
 interface WorkDetailPageProps {
-  site: Site;
-  primaryLocation: Location;
-  workItem: WorkItem;
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation;
+  workItem: PublicRenderWorkItem;
   service?: { id: string; name: string; slug: string } | null;
   itemLocation?: { id: string; city: string; state: string; slug: string } | null;
-  relatedItems: WorkItemWithRelations[];
-  serviceAreas?: ServiceAreaDB[];
+  relatedItems: PublicRenderWorkItem[];
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

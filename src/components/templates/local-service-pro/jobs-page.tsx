@@ -2,15 +2,19 @@
 
 import { Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Site, Location, ServiceAreaDB } from '@/types/database';
+import type {
+  PublicRenderSite,
+  PublicRenderLocation,
+  PublicRenderAreaListing,
+} from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
 interface JobsPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

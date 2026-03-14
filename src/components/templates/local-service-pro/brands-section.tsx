@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Location, SiteBrand } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
 interface BrandsSectionProps {
-  site: Site;
-  primaryLocation: Location | null;
-  brands: SiteBrand[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  brands: PublicRenderBrandListing[];
   siteSlug: string;
   locationSlug?: string;
 }

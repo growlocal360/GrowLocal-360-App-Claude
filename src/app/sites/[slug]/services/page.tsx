@@ -3,7 +3,10 @@ import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
-import type { Service } from '@/types/database';
+import {
+  toPublicSite, toPublicLocation, toPublicCategory, toPublicServiceListing, toPublicAreaListing,
+} from '@/lib/sites/public-render-model';
+import type { PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -50,13 +53,16 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
 
   const { categories, services } = await getCategoriesWithServices(data.site.id);
 
+  // Map services to render model
+  const publicServices = services.map(toPublicServiceListing);
+
   // Group services by category ID (including orphaned services under primary category)
-  const servicesByCategory: Record<string, Service[]> = {};
+  const servicesByCategory: Record<string, PublicRenderServiceListing[]> = {};
   for (const cat of categories) {
-    servicesByCategory[cat.id] = services.filter(s => s.site_category_id === cat.id);
+    servicesByCategory[cat.id] = publicServices.filter(s => s.site_category_id === cat.id);
   }
   // Assign orphaned services (null site_category_id) to the primary category
-  const orphaned = services.filter(s => !s.site_category_id);
+  const orphaned = publicServices.filter(s => !s.site_category_id);
   if (orphaned.length > 0) {
     const primaryCat = categories.find(c => c.is_primary) || categories[0];
     if (primaryCat) {
@@ -66,11 +72,11 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
 
   return (
     <ServicesPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      categories={categories}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      categories={categories.map(toPublicCategory)}
       servicesByCategory={servicesByCategory}
-      serviceAreas={data.serviceAreas}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       siteSlug={slug}
     />
   );

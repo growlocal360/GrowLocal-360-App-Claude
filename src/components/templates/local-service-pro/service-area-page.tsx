@@ -3,8 +3,16 @@
 import Link from 'next/link';
 import { Wrench, ArrowRight, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { GoogleReview, SitePage, Service, SiteCategory, GBPCategory } from '@/types/database';
-import type { ServiceAreaPageData } from '@/lib/sites/get-service-areas';
+import type {
+  PublicRenderSite,
+  PublicRenderLocation,
+  PublicRenderAreaDetail,
+  PublicRenderAreaListing,
+  PublicRenderServiceListing,
+  PublicRenderCategory,
+  PublicRenderReview,
+  PublicRenderPageContent,
+} from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -26,9 +34,16 @@ import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
 
 interface ServiceAreaPageProps {
-  data: ServiceAreaPageData;
+  data: {
+    site: PublicRenderSite;
+    location: PublicRenderLocation;
+    serviceArea: PublicRenderAreaDetail;
+    allServiceAreas: PublicRenderAreaListing[];
+    services: PublicRenderServiceListing[];
+    categories: PublicRenderCategory[];
+  };
   siteSlug: string;
-  googleReviews?: GoogleReview[];
+  googleReviews?: PublicRenderReview[];
   locationSlug?: string;
 }
 
@@ -52,7 +67,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
 
   // Group services by category for the category-grouped layout
   const primaryCatId = primaryCategory?.id;
-  const servicesByCategory: Record<string, Service[]> = {};
+  const servicesByCategory: Record<string, PublicRenderServiceListing[]> = {};
   for (const service of services) {
     // Assign orphaned services (null category) to the primary category
     const catId = service.site_category_id || primaryCatId || 'uncategorized';
@@ -60,25 +75,27 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
     servicesByCategory[catId].push(service);
   }
 
-  const getCategoryUrl = (cat: SiteCategory & { gbp_category: GBPCategory }) => {
+  const getCategoryUrl = (cat: PublicRenderCategory) => {
     const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.categoryPage(catSlug, cat.is_primary, locationSlug);
   };
 
-  const getServiceUrl = (cat: SiteCategory & { gbp_category: GBPCategory }, serviceSlug: string) => {
+  const getServiceUrl = (cat: PublicRenderCategory, serviceSlug: string) => {
     const catSlug = normalizeCategorySlug(cat.gbp_category.display_name);
     return paths.servicePage(serviceSlug, catSlug, cat.is_primary, locationSlug);
   };
 
   const areaState = serviceArea.state || location.state;
 
-  // Construct SitePage-like object from serviceArea's SEO content for HeroSection & LocalizedContentSection
-  const pageContent = {
+  // Construct page content from serviceArea's SEO content for HeroSection & LocalizedContentSection
+  const pageContent: PublicRenderPageContent = {
     h1: serviceArea.h1 || `Your Trusted ${primaryCategoryName} Provider in ${serviceArea.name}`,
     hero_description: null,
     h2: `Serving ${serviceArea.name}`,
     body_copy: serviceArea.body_copy,
-  } as SitePage;
+    body_copy_2: null,
+    faqs: null,
+  };
 
   // Schema.org structured data
   const businessInput = toBusinessInput(site, location);

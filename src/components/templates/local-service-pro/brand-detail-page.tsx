@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Phone, ArrowRight, MapPin, Wrench, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { Site, Location, SiteBrand, ServiceAreaDB, GoogleReview, BrandValueProp, ServiceFAQ } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandDetail, PublicRenderAreaListing, PublicRenderReview, PublicRenderBrandListing } from '@/lib/sites/public-render-model';
+import type { BrandValueProp, ServiceFAQ } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -29,14 +30,14 @@ interface BrandService {
 }
 
 interface BrandDetailPageProps {
-  site: Site;
-  brand: SiteBrand;
-  primaryLocation: Location | null;
+  site: PublicRenderSite;
+  brand: PublicRenderBrandDetail;
+  primaryLocation: PublicRenderLocation | null;
   services: BrandService[];
-  serviceAreas: ServiceAreaDB[];
-  brands: SiteBrand[];
+  serviceAreas: PublicRenderAreaListing[];
+  brands: PublicRenderBrandListing[];
   categories: NavCategory[];
-  googleReviews: GoogleReview[];
+  googleReviews: PublicRenderReview[];
   siteSlug: string;
   locationSlug?: string;
 }

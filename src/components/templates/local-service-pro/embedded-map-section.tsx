@@ -1,9 +1,9 @@
 'use client';
 
-import type { Location } from '@/types/database';
+import type { PublicRenderLocation } from '@/lib/sites/public-render-model';
 
 interface EmbeddedMapSectionProps {
-  primaryLocation: Location | null;
+  primaryLocation: PublicRenderLocation | null;
   /** Override the map query entirely (e.g. "Sulphur, LA" for service area pages) */
   mapQuery?: string;
 }

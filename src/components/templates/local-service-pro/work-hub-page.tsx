@@ -1,18 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import type { Site, Location, ServiceAreaDB } from '@/types/database';
-import type { WorkItemWithRelations } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 import * as paths from '@/lib/routing/paths';
 
 interface WorkHubPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  workItems: WorkItemWithRelations[];
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  workItems: PublicRenderWorkItem[];
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
@@ -27,7 +26,7 @@ function WorkItemCard({
   item,
   locationSlug,
 }: {
-  item: WorkItemWithRelations;
+  item: PublicRenderWorkItem;
   locationSlug?: string;
 }) {
   const firstImage = item.images?.[0];

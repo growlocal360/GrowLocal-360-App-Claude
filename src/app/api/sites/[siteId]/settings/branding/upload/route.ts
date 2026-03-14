@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { uploadAsset } from '@/lib/assets/upload';
+import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/assets/types';
 import { revalidateSite } from '@/lib/sites/revalidate';
-
-const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(
   request: NextRequest,
@@ -19,9 +17,6 @@ export async function POST(
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  // Use admin client for storage operations (bypasses RLS policies)
-  const adminSupabase = createAdminClient();
-
   // Parse the multipart form data
   const formData = await request.formData();
   const file = formData.get('logo') as File | null;
@@ -31,7 +26,7 @@ export async function POST(
   }
 
   // Validate file type
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return NextResponse.json(
       { error: 'Invalid file type. Allowed: PNG, JPG, WEBP, SVG' },
       { status: 400 }
@@ -41,57 +36,35 @@ export async function POST(
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: 'File too large. Maximum size is 5MB' },
+      { error: 'File too large. Maximum size is 10MB' },
       { status: 400 }
     );
   }
 
-  // Generate file path
-  const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
-  const fileName = `logo.${fileExt}`;
-  const filePath = `sites/${siteId}/${fileName}`;
-
-  // Convert File to Buffer
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  // Check if there's an existing logo to delete
-  const { data: existingFiles } = await adminSupabase.storage
-    .from('site-logos')
-    .list(`sites/${siteId}`);
-
-  if (existingFiles && existingFiles.length > 0) {
-    // Delete existing logo files
-    const filesToDelete = existingFiles.map((f) => `sites/${siteId}/${f.name}`);
-    await adminSupabase.storage.from('site-logos').remove(filesToDelete);
-  }
-
-  // Upload to Supabase Storage
-  const { error: uploadError } = await adminSupabase.storage
-    .from('site-logos')
-    .upload(filePath, buffer, {
-      contentType: file.type,
-      upsert: true,
+  try {
+    // Upload via the asset system — preserves original filename for brand assets
+    const result = await uploadAsset({
+      siteId,
+      assetType: 'brand_asset',
+      file,
+      preserveFilename: true,
     });
 
-  if (uploadError) {
-    console.error('Failed to upload logo:', uploadError);
+    // Return the clean public path for storage in site settings
+    const publicUrl = `/public/${result.publicPath}`;
+
+    // Revalidate public site pages so logo changes appear immediately
+    await revalidateSite(siteId);
+
+    return NextResponse.json({
+      success: true,
+      url: publicUrl,
+    });
+  } catch (err) {
+    console.error('Failed to upload logo:', err);
     return NextResponse.json(
-      { error: 'Failed to upload logo' },
+      { error: err instanceof Error ? err.message : 'Failed to upload logo' },
       { status: 500 }
     );
   }
-
-  // Get the public URL
-  const { data: urlData } = adminSupabase.storage
-    .from('site-logos')
-    .getPublicUrl(filePath);
-
-  // Revalidate public site pages so logo changes appear immediately
-  await revalidateSite(siteId);
-
-  return NextResponse.json({
-    success: true,
-    url: urlData.publicUrl,
-  });
 }

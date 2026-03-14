@@ -6,6 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -53,10 +54,10 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
 
   return (
     <WorkHubPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      workItems={workItems}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      workItems={workItems.map(toPublicWorkItem)}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

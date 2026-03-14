@@ -6,6 +6,12 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicWorkItem,
+  toPublicAreaListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -76,15 +82,21 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
     isPrimary: c.is_primary,
   }));
 
+  const workItemWithRelations = {
+    ...data.workItem,
+    service: data.service || null,
+    location: data.itemLocation || null,
+  };
+
   return (
     <WorkDetailPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      workItem={data.workItem}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.primaryLocation)}
+      workItem={toPublicWorkItem(workItemWithRelations)}
       service={data.service}
       itemLocation={data.itemLocation}
-      relatedItems={relatedItems}
-      serviceAreas={serviceAreas || []}
+      relatedItems={relatedItems.map(toPublicWorkItem)}
+      serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}

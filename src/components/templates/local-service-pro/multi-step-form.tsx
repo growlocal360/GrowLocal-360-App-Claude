@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Service } from '@/types/database';
+import type { PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 
 interface MultiStepFormProps {
   siteId: string;
   brandColor?: string;
-  services?: Service[];
+  services?: PublicRenderServiceListing[];
 }
 
 export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: MultiStepFormProps) {

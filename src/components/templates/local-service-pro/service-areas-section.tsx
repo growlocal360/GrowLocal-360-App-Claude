@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import type { Site, ServiceAreaDB, Neighborhood } from '@/types/database';
+import type { PublicRenderSite, PublicRenderAreaListing, PublicRenderNeighborhoodListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
 interface ServiceAreasSectionProps {
-  site: Site;
-  serviceAreas: ServiceAreaDB[];
-  neighborhoods?: Neighborhood[];
+  site: PublicRenderSite;
+  serviceAreas: PublicRenderAreaListing[];
+  neighborhoods?: PublicRenderNeighborhoodListing[];
   siteSlug: string;
   locationSlug?: string;
 }

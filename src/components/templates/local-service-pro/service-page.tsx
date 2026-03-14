@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory, GoogleReview, ServiceAreaDB, SitePage } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceDetail, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderPageContent } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -24,17 +24,17 @@ import { LeadCaptureSection } from './lead-capture-section';
 
 interface ServicePageProps {
   data: {
-    site: SiteWithRelations;
-    location: Location;
-    service: Service;
-    category: SiteCategory & { gbp_category: GBPCategory };
-    siblingServices: Service[];
+    site: PublicRenderSite;
+    location: PublicRenderLocation;
+    service: PublicRenderServiceDetail;
+    category: PublicRenderCategory;
+    siblingServices: PublicRenderServiceListing[];
   };
   siteSlug: string;
   isPrimaryCategory: boolean;
-  googleReviews?: GoogleReview[];
+  googleReviews?: PublicRenderReview[];
   categories?: NavCategory[];
-  serviceAreas?: ServiceAreaDB[];
+  serviceAreas?: PublicRenderAreaListing[];
   locationSlug?: string;
 }
 
@@ -47,7 +47,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
   const categoryName = category.gbp_category.display_name;
   const categorySlug = normalizeCategorySlug(category.gbp_category.display_name);
 
-  const getServiceUrl = (svc: Service) => {
+  const getServiceUrl = (svc: PublicRenderServiceListing) => {
     return paths.servicePage(svc.slug, categorySlug, isPrimaryCategory, locationSlug);
   };
 
@@ -56,9 +56,9 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
     h1: service.h1 || `${service.name} in ${location.city}, ${location.state} - ${site.name}`,
     hero_description: service.intro_copy || service.description ||
       `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`,
-  } as SitePage;
+  } as PublicRenderPageContent;
 
-  const allServices = siblingServices.length > 0 ? [service, ...siblingServices] : [service];
+  const allServices: PublicRenderServiceListing[] = siblingServices.length > 0 ? [service, ...siblingServices] : [service];
 
   const bodyCopy = service.body_copy ||
     `${site.name} provides expert ${service.name.toLowerCase()} services in ${location.city}. Our experienced team delivers quality workmanship with upfront pricing.`;

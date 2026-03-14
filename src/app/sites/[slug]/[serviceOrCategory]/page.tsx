@@ -6,6 +6,11 @@ import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
+  toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
+  toPublicPageContent,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -83,12 +88,18 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     return (
       <ServicePage
-        data={serviceData}
+        data={{
+          site: toPublicSite(serviceData.site),
+          location: toPublicLocation(serviceData.location),
+          service: toPublicServiceDetail(serviceData.service),
+          category: toPublicCategory(serviceData.category),
+          siblingServices: serviceData.siblingServices.map(toPublicServiceListing),
+        }}
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
-        googleReviews={googleReviews}
+        googleReviews={googleReviews.map(toPublicReview)}
         categories={navCategories}
-        serviceAreas={serviceAreas || []}
+        serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       />
     );
   }
@@ -105,11 +116,18 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     return (
       <CategoryPage
-        data={categoryData}
+        data={{
+          site: toPublicSite(categoryData.site),
+          location: toPublicLocation(categoryData.location),
+          category: toPublicCategory(categoryData.category),
+          services: categoryData.services.map(toPublicServiceListing),
+          allCategories: categoryData.allCategories.map(toPublicCategory),
+          pageContent: categoryData.pageContent ? toPublicPageContent(categoryData.pageContent) : null,
+        }}
         siteSlug={slug}
-        googleReviews={googleReviews}
-        serviceAreas={serviceAreas || []}
-        neighborhoods={neighborhoods || []}
+        googleReviews={googleReviews.map(toPublicReview)}
+        serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
+        neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
       />
     );
   }

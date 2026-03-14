@@ -1,7 +1,6 @@
 'use client';
 
-import { PublicSiteData } from '@/lib/sites/get-site';
-import type { Service } from '@/types/database';
+import type { PublicRenderData, PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 import {
   JsonLd,
   buildLocalBusinessSchema,
@@ -22,9 +21,9 @@ import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
 
 interface LocalServiceProTemplateProps {
-  data: PublicSiteData;
+  data: PublicRenderData;
   siteSlug?: string;
-  services?: Service[];
+  services?: PublicRenderServiceListing[];
   primaryCategorySlug?: string;
   primaryCategoryName?: string;
   categories?: NavCategory[];
@@ -33,14 +32,14 @@ interface LocalServiceProTemplateProps {
 }
 
 export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug }: LocalServiceProTemplateProps) {
-  const { site, locations, serviceAreas, neighborhoods, sitePages, googleReviews, brands, primaryLocation } = data;
+  const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
 
-  // Find home page content from sitePages
-  const homePageContent = sitePages?.find(p => p.page_type === 'home') || null;
+  // Find home page content from sitePages (already filtered to page content objects)
+  const homePageContent = sitePages?.[0] || null;
 
   // Schema.org structured data
   const businessInput = primaryLocation ? toBusinessInput(site, primaryLocation) : null;
@@ -100,7 +99,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
         />
         <TestimonialsSection
           city={primaryLocation?.city || 'Our'}
-          reviews={googleReviews}
+          reviews={reviews}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />

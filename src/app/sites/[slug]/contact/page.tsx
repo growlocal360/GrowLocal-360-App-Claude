@@ -5,6 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -60,11 +61,11 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   return (
     <ContactPage
-      site={data.site}
-      primaryLocation={data.primaryLocation}
-      pageContent={contactContent}
-      services={services}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      pageContent={contactContent ? toPublicPageContent(contactContent) : null}
+      services={services.map(toPublicServiceListing)}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
     />

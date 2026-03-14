@@ -7,6 +7,14 @@ import { ServicePage } from '@/components/templates/local-service-pro/service-pa
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicServiceDetail,
+  toPublicServiceListing,
+  toPublicCategory,
+  toPublicReview,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -200,10 +208,16 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
 
     return (
       <ServicePage
-        data={serviceData}
+        data={{
+          site: toPublicSite(serviceData.site),
+          location: toPublicLocation(serviceData.location),
+          service: toPublicServiceDetail(serviceData.service),
+          category: toPublicCategory(serviceData.category),
+          siblingServices: serviceData.siblingServices.map(toPublicServiceListing),
+        }}
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
-        googleReviews={googleReviews}
+        googleReviews={googleReviews.map(toPublicReview)}
         categories={navCategories}
         locationSlug={location}
       />
@@ -217,9 +231,15 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
 
     return (
       <CategoryPage
-        data={categoryData}
+        data={{
+          site: toPublicSite(categoryData.site),
+          location: toPublicLocation(categoryData.location),
+          category: toPublicCategory(categoryData.category),
+          services: categoryData.services.map(toPublicServiceListing),
+          allCategories: categoryData.allCategories.map(toPublicCategory),
+        }}
         siteSlug={slug}
-        googleReviews={googleReviews}
+        googleReviews={googleReviews.map(toPublicReview)}
         locationSlug={location}
       />
     );

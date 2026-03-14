@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Location } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-render-model';
 
 interface BrandHomepageProps {
-  site: Site;
-  locations: Location[];
+  site: PublicRenderSite;
+  locations: PublicRenderLocation[];
 }
 
 export function BrandHomepage({ site, locations }: BrandHomepageProps) {

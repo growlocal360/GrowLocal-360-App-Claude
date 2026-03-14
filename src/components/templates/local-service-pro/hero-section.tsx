@@ -3,7 +3,7 @@
 import { Star, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Location, SitePage, Service } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 import { MultiStepForm } from './multi-step-form';
 
 const LOWERCASE_WORDS = new Set([
@@ -20,10 +20,10 @@ function toTitleCase(str: string): string {
 }
 
 interface HeroSectionProps {
-  site: Site;
-  primaryLocation: Location | null;
-  pageContent?: SitePage | null;
-  services?: Service[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  pageContent?: PublicRenderPageContent | null;
+  services?: PublicRenderServiceListing[];
   averageRating?: number;
   totalReviewCount?: number;
   primaryCategoryName?: string;

@@ -6,11 +6,11 @@ interface SiteInput {
   domain: string | null;
   custom_domain: string | null;
   settings: {
-    phone?: string;
-    email?: string;
-    logo_url?: string;
-    google_average_rating?: number;
-    google_total_reviews?: number;
+    phone?: string | null;
+    email?: string | null;
+    logo_url?: string | null;
+    google_average_rating?: number | null;
+    google_total_reviews?: number | null;
   };
 }
 

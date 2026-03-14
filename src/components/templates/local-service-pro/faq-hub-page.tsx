@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { HelpCircle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Location, SitePage, ServiceAreaDB } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import type { FAQHubItem } from '@/lib/sites/get-faq-hub';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -17,12 +17,12 @@ import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 
 interface FAQHubPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  pageContent: SitePage | null;
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  pageContent: PublicRenderPageContent | null;
   faqItems: FAQHubItem[];
   topicGroups: string[];
-  serviceAreas?: ServiceAreaDB[];
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

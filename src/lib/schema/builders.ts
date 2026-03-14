@@ -72,8 +72,12 @@ export function buildLocalBusinessSchema(
     schema.email = business.email;
   }
   if (business.logoUrl) {
-    schema.logo = business.logoUrl;
-    schema.image = business.logoUrl;
+    // Resolve relative paths (e.g., /public/assets/brand/logo.svg) to absolute URLs
+    const logoAbsoluteUrl = business.logoUrl.startsWith('/')
+      ? `${siteUrl}${business.logoUrl}`
+      : business.logoUrl;
+    schema.logo = logoAbsoluteUrl;
+    schema.image = logoAbsoluteUrl;
   }
   if (location.latitude && location.longitude) {
     schema.geo = {

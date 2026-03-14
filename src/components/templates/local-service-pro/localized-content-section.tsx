@@ -1,9 +1,9 @@
 'use client';
 
-import type { SitePage } from '@/types/database';
+import type { PublicRenderPageContent } from '@/lib/sites/public-render-model';
 
 interface LocalizedContentSectionProps {
-  pageContent?: SitePage | null;
+  pageContent?: PublicRenderPageContent | null;
   businessName: string;
   city: string;
 }

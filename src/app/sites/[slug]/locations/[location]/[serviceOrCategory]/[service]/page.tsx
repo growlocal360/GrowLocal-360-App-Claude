@@ -6,6 +6,14 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicServiceDetail,
+  toPublicServiceListing,
+  toPublicCategory,
+  toPublicReview,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -130,10 +138,16 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
 
   return (
     <ServicePage
-      data={data}
+      data={{
+        site: toPublicSite(data.site),
+        location: toPublicLocation(data.location),
+        service: toPublicServiceDetail(data.service),
+        category: toPublicCategory(data.category),
+        siblingServices: data.siblingServices.map(toPublicServiceListing),
+      }}
       siteSlug={slug}
       isPrimaryCategory={false}
-      googleReviews={googleReviews}
+      googleReviews={googleReviews.map(toPublicReview)}
       categories={navCategories}
       locationSlug={location}
     />

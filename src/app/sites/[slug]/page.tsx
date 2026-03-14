@@ -6,6 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -75,8 +76,8 @@ export default async function SitePage({ params }: SitePageProps) {
   if (site.website_type === 'multi_location') {
     return (
       <BrandHomepage
-        site={site}
-        locations={data.locations}
+        site={toPublicSite(site)}
+        locations={data.locations.map(toPublicLocation)}
       />
     );
   }
@@ -111,8 +112,8 @@ export default async function SitePage({ params }: SitePageProps) {
     default:
       return (
         <LocalServiceProTemplate
-          data={data}
-          services={primaryCategoryServices}
+          data={toPublicRenderData(data)}
+          services={primaryCategoryServices.map(toPublicServiceListing)}
           primaryCategorySlug={primaryCategorySlug}
           primaryCategoryName={primaryCategory?.gbp_category?.display_name}
           categories={navCategories}

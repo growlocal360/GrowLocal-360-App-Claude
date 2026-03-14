@@ -2,7 +2,7 @@
 
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Site, Location, SitePage, Service, ServiceAreaDB } from '@/types/database';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -18,11 +18,11 @@ import { LeadCaptureSection } from './lead-capture-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 
 interface ContactPageProps {
-  site: Site;
-  primaryLocation: Location | null;
-  pageContent: SitePage | null;
-  services?: Service[];
-  serviceAreas?: ServiceAreaDB[];
+  site: PublicRenderSite;
+  primaryLocation: PublicRenderLocation | null;
+  pageContent: PublicRenderPageContent | null;
+  services?: PublicRenderServiceListing[];
+  serviceAreas?: PublicRenderAreaListing[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;

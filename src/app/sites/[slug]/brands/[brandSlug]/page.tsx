@@ -7,6 +7,10 @@ import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite, toPublicLocation, toPublicBrandDetail, toPublicBrandListing,
+  toPublicAreaListing, toPublicReview,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -110,14 +114,14 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
 
   return (
     <BrandDetailPage
-      site={site}
-      brand={brand}
-      primaryLocation={primaryLocation}
+      site={toPublicSite(site)}
+      brand={toPublicBrandDetail(brand)}
+      primaryLocation={primaryLocation ? toPublicLocation(primaryLocation) : null}
       services={allServices}
-      serviceAreas={serviceAreas}
-      brands={brands}
+      serviceAreas={serviceAreas.map(toPublicAreaListing)}
+      brands={brands.map(toPublicBrandListing)}
       categories={navCategories}
-      googleReviews={googleReviews}
+      googleReviews={googleReviews.map(toPublicReview)}
       siteSlug={slug}
     />
   );

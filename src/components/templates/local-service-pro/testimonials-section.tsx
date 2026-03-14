@@ -2,12 +2,12 @@
 
 import { Star, Quote } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { GoogleReview } from '@/types/database';
+import type { PublicRenderReview } from '@/lib/sites/public-render-model';
 
 interface TestimonialsSectionProps {
   city: string;
   count?: number;
-  reviews?: GoogleReview[];
+  reviews?: PublicRenderReview[];
   averageRating?: number;
   totalReviewCount?: number;
 }

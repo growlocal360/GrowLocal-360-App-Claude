@@ -5,6 +5,11 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { JobsPage } from '@/components/templates/local-service-pro/jobs-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import {
+  toPublicSite,
+  toPublicLocation,
+  toPublicAreaListing,
+} from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
 
@@ -44,9 +49,9 @@ export default async function MultiLocationJobsPageRoute({ params }: MultiLocati
 
   return (
     <JobsPage
-      site={data.site}
-      primaryLocation={data.location}
-      serviceAreas={data.serviceAreas}
+      site={toPublicSite(data.site)}
+      primaryLocation={toPublicLocation(data.location)}
+      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}

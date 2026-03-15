@@ -25,17 +25,34 @@ function isRegenerating(progress?: SiteBuildProgress | null): boolean {
 /** Exported for reuse in dashboard polling logic */
 export { isRegenerating };
 
+function getScopeLabel(progress: SiteBuildProgress): string {
+  const scopeType = progress.scope_type;
+  if (!scopeType || scopeType === 'full') return 'Regenerating';
+
+  const labels: Record<string, string> = {
+    'core-pages': 'Generating pages',
+    services: 'Generating services',
+    categories: 'Generating categories',
+    'service-areas': 'Generating areas',
+    brands: 'Generating brands',
+    neighborhoods: 'Generating neighborhoods',
+    reviews: 'Fetching reviews',
+  };
+  return labels[scopeType] || 'Generating';
+}
+
 export function SiteStatusBadge({ status, progress, showLabel = true }: SiteStatusBadgeProps) {
   switch (status) {
     case 'active':
       if (isRegenerating(progress)) {
         const percentage = Math.round((progress!.completed_tasks / progress!.total_tasks) * 100);
+        const scopeLabel = getScopeLabel(progress!);
         return (
           <div className="flex items-center gap-1.5">
             <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin" />
             {showLabel && (
               <span className="text-xs text-blue-600">
-                Regenerating {percentage}%
+                {scopeLabel} {percentage}%
               </span>
             )}
           </div>

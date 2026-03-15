@@ -305,10 +305,12 @@ export default function ServicesPage() {
     try {
       setGeneratingId(serviceId);
       setError(null);
-      const response = await fetch(`/api/sites/${siteId}/generate-content/service`, {
+      const response = await fetch(`/api/sites/${siteId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId }),
+        body: JSON.stringify({
+          scope: { type: 'services', serviceIds: [serviceId] },
+        }),
       });
 
       if (!response.ok) {
@@ -316,9 +318,9 @@ export default function ServicesPage() {
         throw new Error(data.error || 'Failed to generate content');
       }
 
-      // Mark service as having content
+      // Mark service as having content (will be confirmed on next fetch)
       setServices((prev) =>
-        prev.map((s) => (s.id === serviceId ? { ...s, h1: 'generated' } : s))
+        prev.map((s) => (s.id === serviceId ? { ...s, h1: 'generating...' } : s))
       );
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);

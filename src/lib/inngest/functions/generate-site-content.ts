@@ -1,11 +1,11 @@
 import { inngest } from '../client';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { revalidateSite } from '@/lib/sites/revalidate';
+import { revalidateSite, revalidatePages } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
-import type { SiteSettings } from '@/types/database';
+import type { SiteSettings, GenerationScope } from '@/types/database';
 
 // Types
 
@@ -14,6 +14,7 @@ interface SiteBuildProgress {
   completed_tasks: number;
   current_task: string;
   started_at: string;
+  scope_type?: GenerationScope['type'];
 }
 
 interface GenerateSiteContentEvent {
@@ -21,6 +22,7 @@ interface GenerateSiteContentEvent {
   data: {
     siteId: string;
     googleAccessToken: string | null;
+    scope?: GenerationScope;
   };
 }
 
@@ -73,6 +75,8 @@ export const generateSiteContent = inngest.createFunction(
   { event: 'site/content.generate' },
   async ({ event, step }) => {
     const { siteId, googleAccessToken } = event.data;
+    const scope: GenerationScope = event.data.scope ?? { type: 'full' };
+    const isFullBuild = scope.type === 'full';
     const supabase = createAdminClient();
 
     // Step 1: Load site data
@@ -239,22 +243,17 @@ export const generateSiteContent = inngest.createFunction(
       });
     }
 
-    // Calculate totals
-    const serviceCount = allServices.length;
-    const serviceAreaCount = allServiceAreas.length;
-    const categoryCount = siteCategories.length;
-    const brandCount = allBrands.length;
-    const neighborhoodCount = allNeighborhoods.length;
-    const corePageCount = 3; // 2 core (home+contact) + 1 about
-    const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount + brandCount + neighborhoodCount;
+    // Calculate totals based on scope
+    const totalTasks = calculateTotalTasks(scope, allServices, allServiceAreas, siteCategories, allBrands, allNeighborhoods);
 
     // Step 2: Initialize build progress
     await step.run('init-build-progress', async () => {
       const initialProgress: SiteBuildProgress = {
         total_tasks: totalTasks,
         completed_tasks: 0,
-        current_task: 'Initializing content generation...',
+        current_task: isFullBuild ? 'Initializing content generation...' : `Generating ${scope.type}...`,
         started_at: new Date().toISOString(),
+        scope_type: scope.type,
       };
 
       const statusUpdate: Record<string, unknown> = {
@@ -262,7 +261,7 @@ export const generateSiteContent = inngest.createFunction(
         status_message: null,
         status_updated_at: new Date().toISOString(),
       };
-      if (!wasAlreadyActive) {
+      if (!wasAlreadyActive && isFullBuild) {
         statusUpdate.status = 'building';
       }
 
@@ -272,8 +271,8 @@ export const generateSiteContent = inngest.createFunction(
         site_id: siteId,
         level: 'info',
         step: 'init',
-        message: `Content generation started (${totalTasks} tasks)`,
-        metadata: { totalTasks, serviceCount, serviceAreaCount, categoryCount, brandCount, neighborhoodCount },
+        message: `Content generation started (${totalTasks} tasks, scope: ${scope.type})`,
+        metadata: { totalTasks, scope },
       });
     });
 
@@ -293,7 +292,8 @@ export const generateSiteContent = inngest.createFunction(
       });
     };
 
-    // Step 3: Fetch Google Reviews (non-fatal)
+    // Step 3: Fetch Google Reviews (non-fatal) — only for full builds or reviews scope
+    if (isFullBuild || scope.type === 'reviews') {
     await step.run('fetch-google-reviews', async () => {
       if (
         !googleAccessToken ||
@@ -352,98 +352,127 @@ export const generateSiteContent = inngest.createFunction(
         return { error: 'Failed to fetch reviews' };
       }
     });
+    } // end reviews scope check
 
     // Track completed tasks across steps
     let completedTasks = 0;
 
-    // Step 4: Generate core pages
-    completedTasks = await step.run('generate-core-pages', async () => {
-      let completed = completedTasks;
-      const anthropic = createAnthropicClient();
+    // Determine which steps to run based on scope
+    const shouldRunCorePages = isFullBuild || scope.type === 'core-pages';
+    const shouldRunAboutPage = isFullBuild || (scope.type === 'core-pages' && (!scope.pages || scope.pages.includes('about')));
+    const shouldRunCategories = isFullBuild || scope.type === 'categories';
+    const shouldRunServices = isFullBuild || scope.type === 'services';
+    const shouldRunServiceAreas = isFullBuild || scope.type === 'service-areas';
+    const shouldRunBrands = isFullBuild || scope.type === 'brands';
+    const shouldRunNeighborhoods = isFullBuild || scope.type === 'neighborhoods';
 
-      await updateProgress(supabase, siteId, totalTasks, completed, 'Generating core pages...');
+    // Step 4: Generate core pages (home + contact)
+    if (shouldRunCorePages) {
+      // For selective core-pages scope, filter which pages to generate
+      const corePagesToGen = scope.type === 'core-pages' && scope.pages
+        ? scope.pages.filter(p => p !== 'about') // about is handled separately
+        : ['home', 'contact'];
 
-      const coreContent = await generateCorePages(
-        anthropic,
-        site.name,
-        primaryLocation.city,
-        primaryLocation.state,
-        categoryName,
-        site.website_type,
-        contentDirectives
-      );
+      if (corePagesToGen.length > 0) {
+        completedTasks = await step.run('generate-core-pages', async () => {
+          let completed = completedTasks;
+          const anthropic = createAnthropicClient();
 
-      for (const page of coreContent) {
+          await updateProgress(supabase, siteId, totalTasks, completed, 'Generating core pages...');
+
+          const coreContent = await generateCorePages(
+            anthropic,
+            site.name,
+            primaryLocation.city,
+            primaryLocation.state,
+            categoryName,
+            site.website_type,
+            contentDirectives
+          );
+
+          // Filter to only the requested pages
+          const filteredContent = isFullBuild
+            ? coreContent
+            : coreContent.filter(p => corePagesToGen.includes(p.page_type));
+
+          for (const page of filteredContent) {
+            await supabase.from('site_pages').upsert(
+              {
+                site_id: siteId,
+                page_type: page.page_type,
+                slug: page.page_type,
+                meta_title: page.meta_title,
+                meta_description: page.meta_description,
+                h1: page.h1,
+                h2: page.h2,
+                hero_description: page.hero_description || null,
+                body_copy: page.body_copy,
+                body_copy_2: page.body_copy_2 || null,
+                is_active: true,
+              },
+              { onConflict: 'site_id,slug' }
+            );
+            completed++;
+            await updateProgress(supabase, siteId, totalTasks, completed, `Generated ${page.page_type} page`);
+            await log(`Generated ${page.page_type} page`, 'generate-core-pages');
+          }
+
+          return completed;
+        });
+      }
+    }
+
+    // Step 4b: Generate enhanced about page (separate step for richer EEAT content)
+    if (shouldRunAboutPage) {
+      completedTasks = await step.run('generate-about-page', async () => {
+        let completed = completedTasks;
+        const anthropic = createAnthropicClient();
+
+        await updateProgress(supabase, siteId, totalTasks, completed, 'Generating about page...');
+
+        const serviceNames = allServices.map((s) => s.name);
+        const settings = (site.settings || {}) as SiteSettings;
+
+        const aboutContent = await generateAboutPage(
+          anthropic,
+          site.name,
+          primaryLocation.city,
+          primaryLocation.state,
+          categoryName,
+          serviceNames,
+          settings,
+          contentDirectives
+        );
+
         await supabase.from('site_pages').upsert(
           {
             site_id: siteId,
-            page_type: page.page_type,
-            slug: page.page_type,
-            meta_title: page.meta_title,
-            meta_description: page.meta_description,
-            h1: page.h1,
-            h2: page.h2,
-            hero_description: page.hero_description || null,
-            body_copy: page.body_copy,
-            body_copy_2: page.body_copy_2 || null,
+            page_type: 'about' as const,
+            slug: 'about',
+            meta_title: aboutContent.meta_title,
+            meta_description: aboutContent.meta_description,
+            h1: aboutContent.h1,
+            h2: aboutContent.h2 || null,
+            hero_description: aboutContent.hero_description || null,
+            body_copy: aboutContent.body_copy,
+            body_copy_2: aboutContent.body_copy_2 || null,
+            sections: aboutContent.sections || null,
             is_active: true,
           },
           { onConflict: 'site_id,slug' }
         );
+
+        await log('Generated enhanced about page', 'generate-about-page');
         completed++;
-        await updateProgress(supabase, siteId, totalTasks, completed, `Generated ${page.page_type} page`);
-        await log(`Generated ${page.page_type} page`, 'generate-core-pages');
-      }
-
-      return completed;
-    });
-
-    // Step 4b: Generate enhanced about page (separate step for richer EEAT content)
-    completedTasks = await step.run('generate-about-page', async () => {
-      let completed = completedTasks;
-      const anthropic = createAnthropicClient();
-
-      await updateProgress(supabase, siteId, totalTasks, completed, 'Generating about page...');
-
-      const serviceNames = allServices.map((s) => s.name);
-      const settings = (site.settings || {}) as SiteSettings;
-
-      const aboutContent = await generateAboutPage(
-        anthropic,
-        site.name,
-        primaryLocation.city,
-        primaryLocation.state,
-        categoryName,
-        serviceNames,
-        settings,
-        contentDirectives
-      );
-
-      await supabase.from('site_pages').upsert(
-        {
-          site_id: siteId,
-          page_type: 'about' as const,
-          slug: 'about',
-          meta_title: aboutContent.meta_title,
-          meta_description: aboutContent.meta_description,
-          h1: aboutContent.h1,
-          h2: aboutContent.h2 || null,
-          hero_description: aboutContent.hero_description || null,
-          body_copy: aboutContent.body_copy,
-          body_copy_2: aboutContent.body_copy_2 || null,
-          sections: aboutContent.sections || null,
-          is_active: true,
-        },
-        { onConflict: 'site_id,slug' }
-      );
-
-      await log('Generated enhanced about page', 'generate-about-page');
-      completed++;
-      return completed;
-    });
+        return completed;
+      });
+    }
 
     // Step 5: Generate category pages (one step per category for granularity)
-    for (const category of siteCategories) {
+    const targetCategories = shouldRunCategories
+      ? (scope.type === 'categories' ? siteCategories.filter(c => scope.categoryIds.includes(c.id)) : siteCategories)
+      : [];
+    for (const category of targetCategories) {
       completedTasks = await step.run(
         `generate-category-${category.id}`,
         async () => {
@@ -497,8 +526,11 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 6: Generate service pages (batched by category, 2 at a time)
+    const targetServices = shouldRunServices
+      ? (scope.type === 'services' ? allServices.filter(s => scope.serviceIds.includes(s.id)) : allServices)
+      : [];
     const servicesBySiteCategory = new Map<string, typeof allServices>();
-    for (const service of allServices) {
+    for (const service of targetServices) {
       const key = service.site_category_id || 'uncategorized';
       if (!servicesBySiteCategory.has(key)) {
         servicesBySiteCategory.set(key, []);
@@ -576,10 +608,13 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 7: Generate service area pages (batched, 10 at a time)
-    if (allServiceAreas.length > 0) {
+    const targetServiceAreas = shouldRunServiceAreas
+      ? (scope.type === 'service-areas' ? allServiceAreas.filter(a => scope.serviceAreaIds.includes(a.id)) : allServiceAreas)
+      : [];
+    if (targetServiceAreas.length > 0) {
       const areasBatchSize = 10;
-      for (let i = 0; i < allServiceAreas.length; i += areasBatchSize) {
-        const batch = allServiceAreas.slice(i, i + areasBatchSize);
+      for (let i = 0; i < targetServiceAreas.length; i += areasBatchSize) {
+        const batch = targetServiceAreas.slice(i, i + areasBatchSize);
 
         completedTasks = await step.run(
           `generate-areas-batch-${i}`,
@@ -644,10 +679,13 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 8: Generate brand pages (batched, 5 at a time)
-    if (allBrands.length > 0) {
+    const targetBrands = shouldRunBrands
+      ? (scope.type === 'brands' ? allBrands.filter(b => scope.brandIds.includes(b.id)) : allBrands)
+      : [];
+    if (targetBrands.length > 0) {
       const brandBatchSize = 5;
-      for (let i = 0; i < allBrands.length; i += brandBatchSize) {
-        const batch = allBrands.slice(i, i + brandBatchSize);
+      for (let i = 0; i < targetBrands.length; i += brandBatchSize) {
+        const batch = targetBrands.slice(i, i + brandBatchSize);
 
         completedTasks = await step.run(
           `generate-brands-batch-${i}`,
@@ -712,7 +750,10 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 8.5: Generate neighborhood pages (batched, 5 at a time with enriched context)
-    if (allNeighborhoods.length > 0) {
+    const targetNeighborhoods = shouldRunNeighborhoods
+      ? (scope.type === 'neighborhoods' ? allNeighborhoods.filter(n => scope.neighborhoodIds.includes(n.id)) : allNeighborhoods)
+      : [];
+    if (targetNeighborhoods.length > 0) {
       // Pre-fetch real landmarks for all neighborhoods via Google Places API
       const landmarkMap = await step.run('fetch-neighborhood-landmarks', async () => {
         const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -721,7 +762,7 @@ export const generateSiteContent = inngest.createFunction(
         if (!apiKey) return map;
 
         await Promise.all(
-          allNeighborhoods.map(async (n) => {
+          targetNeighborhoods.map(async (n) => {
             if (n.latitude && n.longitude) {
               map[n.name] = await fetchNearbyLandmarks(n.latitude, n.longitude, apiKey);
             }
@@ -753,8 +794,8 @@ export const generateSiteContent = inngest.createFunction(
       const allNeighborhoodNames = allNeighborhoods.map((n) => n.name);
 
       const neighborhoodBatchSize = 5;
-      for (let i = 0; i < allNeighborhoods.length; i += neighborhoodBatchSize) {
-        const batch = allNeighborhoods.slice(i, i + neighborhoodBatchSize);
+      for (let i = 0; i < targetNeighborhoods.length; i += neighborhoodBatchSize) {
+        const batch = targetNeighborhoods.slice(i, i + neighborhoodBatchSize);
 
         completedTasks = await step.run(
           `generate-neighborhoods-batch-${i}`,
@@ -825,39 +866,41 @@ export const generateSiteContent = inngest.createFunction(
       }
     }
 
-    // Step 9: Generate FAQ hub page
-    await step.run('generate-faq-page', async () => {
-      const anthropic = createAnthropicClient();
+    // Step 9: Generate FAQ hub page (only on full builds)
+    if (isFullBuild) {
+      await step.run('generate-faq-page', async () => {
+        const anthropic = createAnthropicClient();
 
-      await updateProgress(supabase, siteId, totalTasks, completedTasks, 'Generating FAQ hub page...');
+        await updateProgress(supabase, siteId, totalTasks, completedTasks, 'Generating FAQ hub page...');
 
-      const faqContent = await generateFAQPage(
-        anthropic,
-        site.name,
-        primaryLocation.city,
-        primaryLocation.state,
-        categoryName,
-        contentDirectives
-      );
-
-      if (faqContent) {
-        await supabase.from('site_pages').upsert(
-          {
-            site_id: siteId,
-            page_type: 'faq' as const,
-            slug: 'faq',
-            meta_title: faqContent.meta_title,
-            meta_description: faqContent.meta_description,
-            h1: faqContent.h1,
-            hero_description: faqContent.hero_description,
-            is_active: true,
-          },
-          { onConflict: 'site_id,slug' }
+        const faqContent = await generateFAQPage(
+          anthropic,
+          site.name,
+          primaryLocation.city,
+          primaryLocation.state,
+          categoryName,
+          contentDirectives
         );
-      }
 
-      await log('Generated FAQ hub page', 'generate-faq-page');
-    });
+        if (faqContent) {
+          await supabase.from('site_pages').upsert(
+            {
+              site_id: siteId,
+              page_type: 'faq' as const,
+              slug: 'faq',
+              meta_title: faqContent.meta_title,
+              meta_description: faqContent.meta_description,
+              h1: faqContent.h1,
+              hero_description: faqContent.hero_description,
+              is_active: true,
+            },
+            { onConflict: 'site_id,slug' }
+          );
+        }
+
+        await log('Generated FAQ hub page', 'generate-faq-page');
+      });
+    }
 
     // Step 10: Mark complete
     await step.run('mark-complete', async () => {
@@ -870,21 +913,26 @@ export const generateSiteContent = inngest.createFunction(
             completed_tasks: completedTasks,
             current_task: 'Complete',
             started_at: new Date().toISOString(),
+            scope_type: scope.type,
           },
           status_message: null,
           status_updated_at: new Date().toISOString(),
         })
         .eq('id', siteId);
 
-      // Revalidate all cached pages so new content is immediately visible
-      await revalidateSite(siteId);
+      // Revalidate cached pages — full or selective based on scope
+      if (isFullBuild) {
+        await revalidateSite(siteId);
+      } else {
+        await revalidatePages(siteId, scope);
+      }
 
       // Log to build_logs
       await supabase.from('build_logs').insert({
         site_id: siteId,
         level: 'info',
-        message: `Content generation complete (${completedTasks}/${totalTasks} tasks)`,
-        metadata: { completedTasks, totalTasks },
+        message: `Content generation complete (${completedTasks}/${totalTasks} tasks, scope: ${scope.type})`,
+        metadata: { completedTasks, totalTasks, scope },
       });
     });
 
@@ -893,6 +941,38 @@ export const generateSiteContent = inngest.createFunction(
 );
 
 // --- Helper functions ---
+
+function calculateTotalTasks(
+  scope: GenerationScope,
+  allServices: { id: string }[],
+  allServiceAreas: { id: string }[],
+  siteCategories: { id: string }[],
+  allBrands: { id: string }[],
+  allNeighborhoods: { id: string }[]
+): number {
+  switch (scope.type) {
+    case 'full':
+      return allServices.length + allServiceAreas.length + siteCategories.length + 3 + allBrands.length + allNeighborhoods.length;
+    case 'core-pages': {
+      const pages = scope.pages || ['home', 'about', 'contact'];
+      return pages.length;
+    }
+    case 'services':
+      return scope.serviceIds.length;
+    case 'categories':
+      return scope.categoryIds.length;
+    case 'service-areas':
+      return scope.serviceAreaIds.length;
+    case 'brands':
+      return scope.brandIds.length;
+    case 'neighborhoods':
+      return scope.neighborhoodIds.length;
+    case 'reviews':
+      return 1;
+    default:
+      return 0;
+  }
+}
 
 function getCategoryName(
   category: { gbp_categories: { display_name: string } | { display_name: string }[] }

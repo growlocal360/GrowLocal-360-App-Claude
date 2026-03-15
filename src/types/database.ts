@@ -13,7 +13,19 @@ export interface SiteBuildProgress {
   completed_tasks: number;
   current_task: string;
   started_at: string;
+  scope_type?: GenerationScope['type'];
 }
+
+// Selective content regeneration scope
+export type GenerationScope =
+  | { type: 'full' }
+  | { type: 'core-pages'; pages?: ('home' | 'about' | 'contact')[] }
+  | { type: 'services'; serviceIds: string[] }
+  | { type: 'categories'; categoryIds: string[] }
+  | { type: 'service-areas'; serviceAreaIds: string[] }
+  | { type: 'brands'; brandIds: string[] }
+  | { type: 'neighborhoods'; neighborhoodIds: string[] }
+  | { type: 'reviews' };
 
 export interface Organization {
   id: string;

@@ -207,6 +207,36 @@ export interface PublicRenderData {
 }
 
 // ---------------------------------------------------------------------------
+// URL sanitization
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a raw Supabase storage URL to a clean /public/ proxy path.
+ * - Already-clean path (/public/...) → pass through
+ * - Supabase storage URL → /public/assets/{assetType}/{filename}
+ * - External URL (http) → pass through unchanged
+ * - null/undefined → null
+ */
+function sanitizeAssetUrl(
+  url: string | null | undefined,
+  assetType: 'brand' | 'site'
+): string | null {
+  if (!url) return null;
+  if (url.startsWith('/public/')) return url;
+  // Raw Supabase storage URL — extract filename
+  const supabaseMatch = url.match(
+    /\/storage\/v1\/object\/public\/[^/]+\/(?:sites\/[^/]+\/)?(.+)$/
+  );
+  if (supabaseMatch) {
+    const filename = supabaseMatch[1];
+    return `/public/assets/${assetType}/${filename}`;
+  }
+  // External URL (Google photos, CDN, etc.) — pass through
+  if (url.startsWith('http')) return url;
+  return url;
+}
+
+// ---------------------------------------------------------------------------
 // Mapper functions
 // ---------------------------------------------------------------------------
 
@@ -221,7 +251,7 @@ export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
     website_type: site.website_type,
     settings: {
       brand_color: s.brand_color || '#00d9c0',
-      logo_url: s.logo_url || null,
+      logo_url: sanitizeAssetUrl(s.logo_url, 'brand'),
       phone: s.phone || null,
       email: s.email || null,
       core_industry: s.core_industry || null,
@@ -328,7 +358,7 @@ export function toPublicBrandDetail(brand: SiteBrand): PublicRenderBrandDetail {
     faqs: brand.faqs,
     cta_heading: brand.cta_heading,
     cta_description: brand.cta_description,
-    logo_url: brand.logo_url,
+    logo_url: sanitizeAssetUrl(brand.logo_url, 'brand'),
   };
 }
 

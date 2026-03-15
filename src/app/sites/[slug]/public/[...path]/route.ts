@@ -37,26 +37,50 @@ export async function GET(
     .eq('public_path', publicPath)
     .single();
 
-  if (!asset) {
-    return new NextResponse('Not Found', { status: 404 });
+  if (asset) {
+    // Fetch the file from Supabase storage
+    const { data: fileData, error } = await adminSupabase.storage
+      .from(ASSET_BUCKET)
+      .download(asset.storage_path);
+
+    if (!error && fileData) {
+      const arrayBuffer = await fileData.arrayBuffer();
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': asset.content_type,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
   }
 
-  // Fetch the file from Supabase storage
-  const { data: fileData, error } = await adminSupabase.storage
-    .from(ASSET_BUCKET)
-    .download(asset.storage_path);
+  // Fallback: try legacy site-logos bucket for old uploads
+  if (publicPath.startsWith('assets/brand/')) {
+    const filename = publicPath.replace('assets/brand/', '');
+    const { data: legacyData } = await adminSupabase.storage
+      .from('site-logos')
+      .download(`sites/${site.id}/${filename}`);
 
-  if (error || !fileData) {
-    return new NextResponse('Not Found', { status: 404 });
+    if (legacyData) {
+      const arrayBuffer = await legacyData.arrayBuffer();
+      const ext = filename.split('.').pop()?.toLowerCase() || '';
+      const contentTypes: Record<string, string> = {
+        svg: 'image/svg+xml',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+      };
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentTypes[ext] || 'application/octet-stream',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
   }
 
-  const arrayBuffer = await fileData.arrayBuffer();
-
-  return new NextResponse(arrayBuffer, {
-    status: 200,
-    headers: {
-      'Content-Type': asset.content_type,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-  });
+  return new NextResponse('Not Found', { status: 404 });
 }

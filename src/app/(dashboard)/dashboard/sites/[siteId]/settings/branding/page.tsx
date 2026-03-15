@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+// Using <img> instead of next/image for logo preview — supports SVGs
+// and dynamic API proxy URLs without next.config image domain config
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,10 +151,14 @@ export default function BrandingSettingsPage() {
         throw new Error(data.error || 'Failed to save settings');
       }
 
-      // Update local state
+      const savedData = await response.json();
+
+      // Update local state with dashboard-resolvable URL from server
+      const dashboardLogoUrl = savedData.logoUrl || null;
       setConfig((prev) =>
-        prev ? { ...prev, brandColor, logoUrl: newLogoUrl } : null
+        prev ? { ...prev, brandColor, logoUrl: dashboardLogoUrl } : null
       );
+      setLogoPreview(dashboardLogoUrl);
       setLogoFile(null);
       setSuccess(true);
 
@@ -228,12 +233,12 @@ export default function BrandingSettingsPage() {
 
           {logoPreview ? (
             <div className="flex items-start gap-4">
-              <div className="relative w-48 h-24 bg-gray-100 rounded-lg overflow-hidden border">
-                <Image
+              <div className="relative w-48 h-24 bg-gray-100 rounded-lg overflow-hidden border flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={logoPreview}
                   alt="Logo preview"
-                  fill
-                  className="object-contain p-2"
+                  className="max-w-full max-h-full object-contain p-2"
                 />
               </div>
               <Button

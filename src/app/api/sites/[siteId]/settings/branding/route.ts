@@ -31,9 +31,21 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const settings = (site.settings || {}) as any;
 
+  // Resolve logo_url to a dashboard-accessible path
+  let dashboardLogoUrl: string | null = null;
+  if (settings.logo_url) {
+    if (settings.logo_url.startsWith('/public/assets/')) {
+      // Clean path → convert to dashboard asset proxy URL
+      dashboardLogoUrl = `/api/sites/${siteId}/${settings.logo_url.replace('/public/', '')}`;
+    } else {
+      // External/legacy URL → pass through
+      dashboardLogoUrl = settings.logo_url;
+    }
+  }
+
   return NextResponse.json({
     brandColor: settings.brand_color || null,
-    logoUrl: settings.logo_url || null,
+    logoUrl: dashboardLogoUrl,
     siteName: site.name,
   });
 }
@@ -106,9 +118,19 @@ export async function PATCH(
   // Revalidate public site pages so branding changes appear immediately
   await revalidateSite(siteId);
 
+  // Resolve logo_url to dashboard-accessible path for client preview
+  let responseLogo: string | null = null;
+  if (updatedSettings.logo_url) {
+    if (updatedSettings.logo_url.startsWith('/public/assets/')) {
+      responseLogo = `/api/sites/${siteId}/${updatedSettings.logo_url.replace('/public/', '')}`;
+    } else {
+      responseLogo = updatedSettings.logo_url;
+    }
+  }
+
   return NextResponse.json({
     success: true,
     brandColor: updatedSettings.brand_color,
-    logoUrl: updatedSettings.logo_url,
+    logoUrl: responseLogo,
   });
 }

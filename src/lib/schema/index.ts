@@ -9,6 +9,8 @@ export {
   buildWebSiteSchema,
   buildCollectionPageSchema,
   buildWebPageSchema,
+  buildPersonSchema,
+  buildAboutPageSchema,
 } from './builders';
 
 export { JsonLd } from './json-ld';
@@ -21,4 +23,5 @@ export type {
   SchemaServiceInput,
   SchemaFAQItem,
   SchemaBreadcrumbItem,
+  SchemaPersonInput,
 } from './types';

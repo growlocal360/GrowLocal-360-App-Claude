@@ -2,10 +2,11 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember, toPublicServiceListing, toPublicWorkItem, toPublicReview } from '@/lib/sites/public-render-model';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
 
 export const revalidate = 3600;
@@ -50,7 +51,11 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
     notFound();
   }
 
-  const { categories } = await getCategoriesWithServices(data.site.id);
+  const [{ categories, services }, teamProfiles, workItems] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    getTeamMembersForSite(data.site.id, data.site.organization_id),
+    getPublishedWorkItems(data.site.id, { limit: 3 }),
+  ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     name: c.gbp_category.display_name,
@@ -59,9 +64,8 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
   }));
 
   const aboutContent = data.sitePages?.find(p => p.page_type === 'about') || null;
-
-  const teamProfiles = await getTeamMembersForSite(data.site.id, data.site.organization_id);
   const teamMembers = teamProfiles.map(toPublicTeamMember);
+  const reviews = (data.googleReviews || []).map(toPublicReview);
 
   return (
     <AboutPage
@@ -71,6 +75,9 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       teamMembers={teamMembers}
       categories={navCategories}
+      services={services.map(toPublicServiceListing)}
+      workItems={workItems.map(toPublicWorkItem)}
+      reviews={reviews}
       siteSlug={slug}
     />
   );

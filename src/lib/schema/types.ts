@@ -41,3 +41,10 @@ export interface SchemaBreadcrumbItem {
   name: string;
   url: string;
 }
+
+export interface SchemaPersonInput {
+  name: string;
+  jobTitle?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+}

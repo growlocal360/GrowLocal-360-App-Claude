@@ -4,6 +4,7 @@ import type {
   SchemaServiceInput,
   SchemaFAQItem,
   SchemaBreadcrumbItem,
+  SchemaPersonInput,
 } from './types';
 
 type SchemaObject = Record<string, unknown>;
@@ -220,4 +221,77 @@ export function buildWebPageSchema(
     },
     about: buildBusinessRef(business),
   };
+}
+
+/** Person schema linked to business via worksFor */
+export function buildPersonSchema(
+  person: SchemaPersonInput,
+  business: SchemaBusinessInput
+): SchemaObject {
+  const siteUrl = getSiteUrl(business);
+  const schema: SchemaObject = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: person.name,
+    worksFor: buildBusinessRef(business),
+  };
+  if (person.jobTitle) schema.jobTitle = person.jobTitle;
+  if (person.description) schema.description = person.description;
+  if (person.imageUrl) {
+    schema.image = person.imageUrl.startsWith('/')
+      ? `${siteUrl}${person.imageUrl}`
+      : person.imageUrl;
+  }
+  return schema;
+}
+
+/** Enhanced About page schema stack: AboutPage + LocalBusiness + BreadcrumbList + Person(s) */
+export function buildAboutPageSchema(
+  business: SchemaBusinessInput,
+  location: SchemaLocationInput,
+  aboutUrl: string,
+  founder?: SchemaPersonInput | null,
+  employees?: SchemaPersonInput[]
+): SchemaObject[] {
+  const siteUrl = getSiteUrl(business);
+  const schemas: SchemaObject[] = [];
+
+  // LocalBusiness entity
+  schemas.push(buildLocalBusinessSchema(business, location));
+
+  // AboutPage
+  const aboutPage: SchemaObject = {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: `About ${business.siteName}`,
+    url: aboutUrl,
+    isPartOf: { '@id': `${siteUrl}#website` },
+    about: buildBusinessRef(business),
+  };
+  if (founder) {
+    aboutPage.mainEntity = { '@type': 'Person', name: founder.name };
+  }
+  schemas.push(aboutPage);
+
+  // BreadcrumbList
+  schemas.push(
+    buildBreadcrumbSchema([
+      { name: 'Home', url: siteUrl },
+      { name: 'About', url: aboutUrl },
+    ])
+  );
+
+  // Founder Person
+  if (founder) {
+    schemas.push(buildPersonSchema(founder, business));
+  }
+
+  // Employee Persons
+  if (employees?.length) {
+    for (const emp of employees) {
+      schemas.push(buildPersonSchema(emp, business));
+    }
+  }
+
+  return schemas;
 }

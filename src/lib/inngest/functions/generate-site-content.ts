@@ -245,7 +245,7 @@ export const generateSiteContent = inngest.createFunction(
     const categoryCount = siteCategories.length;
     const brandCount = allBrands.length;
     const neighborhoodCount = allNeighborhoods.length;
-    const corePageCount = 3;
+    const corePageCount = 3; // 2 core (home+contact) + 1 about
     const totalTasks = serviceCount + serviceAreaCount + categoryCount + corePageCount + brandCount + neighborhoodCount;
 
     // Step 2: Initialize build progress
@@ -395,6 +395,50 @@ export const generateSiteContent = inngest.createFunction(
         await log(`Generated ${page.page_type} page`, 'generate-core-pages');
       }
 
+      return completed;
+    });
+
+    // Step 4b: Generate enhanced about page (separate step for richer EEAT content)
+    completedTasks = await step.run('generate-about-page', async () => {
+      let completed = completedTasks;
+      const anthropic = createAnthropicClient();
+
+      await updateProgress(supabase, siteId, totalTasks, completed, 'Generating about page...');
+
+      const serviceNames = allServices.map((s) => s.name);
+      const settings = (site.settings || {}) as SiteSettings;
+
+      const aboutContent = await generateAboutPage(
+        anthropic,
+        site.name,
+        primaryLocation.city,
+        primaryLocation.state,
+        categoryName,
+        serviceNames,
+        settings,
+        contentDirectives
+      );
+
+      await supabase.from('site_pages').upsert(
+        {
+          site_id: siteId,
+          page_type: 'about' as const,
+          slug: 'about',
+          meta_title: aboutContent.meta_title,
+          meta_description: aboutContent.meta_description,
+          h1: aboutContent.h1,
+          h2: aboutContent.h2 || null,
+          hero_description: aboutContent.hero_description || null,
+          body_copy: aboutContent.body_copy,
+          body_copy_2: aboutContent.body_copy_2 || null,
+          sections: aboutContent.sections || null,
+          is_active: true,
+        },
+        { onConflict: 'site_id,slug' }
+      );
+
+      await log('Generated enhanced about page', 'generate-about-page');
+      completed++;
       return completed;
     });
 
@@ -905,14 +949,15 @@ Website Type: ${websiteType}
 ${homePageFocus}
 ${directives}
 
-Generate content for these core pages: home, about, contact
+Generate content for these core pages: home, contact
+
+NOTE: The about page is generated separately with enhanced EEAT content. Do NOT generate an about page here.
 
 CRITICAL FORMATTING RULES:
 - meta_title for home MUST follow this exact pattern: "${primaryCategory} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the category or city)
 - meta_description for home MUST mention the primary category, city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${primaryCategory.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"
 - h1 for home MUST include the primary category and location. Pattern: "${primaryCategory} in ${city}, ${state}" or "Your Trusted ${primaryCategory} in ${city}, ${state}" — NEVER use generic phrases like "Professional Services"
 - hero_description MUST mention specific services or capabilities, NOT generic "professional services" language
-- About page meta_title: "About ${businessName} | ${primaryCategory} in ${city}"
 - Contact page meta_title: "Contact ${businessName} | ${city}, ${state}"
 
 BANNED PHRASES (never use these):
@@ -931,11 +976,9 @@ For EACH page, provide:
 5. hero_description: 1-2 sentence hero subheading (compelling value proposition with specific services mentioned, used below the H1)
 6. body_copy: Main content block:
    - Home: 2-3 paragraphs about the business, specific services offered, and why customers trust them (300-500 words). Write naturally — mention real services, not generic platitudes.
-   - About: Company story, values, team expertise, and why choose us (300-500 words)
    - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
 7. body_copy_2: Secondary content block (used in alternating layout sections):
    - Home: 1-2 paragraphs about community commitment, certifications, or experience (150-250 words)
-   - About: Additional section about team or certifications (150-250 words)
    - Contact: empty string
 
 Use double newlines (\\n\\n) to separate paragraphs within body_copy and body_copy_2.
@@ -1600,4 +1643,141 @@ async function fetchNearbyLandmarks(
     console.error(`Failed to fetch landmarks for ${lat},${lng}:`, error);
     return [];
   }
+}
+
+// --- Enhanced About Page Generation ---
+
+async function generateAboutPage(
+  anthropic: Anthropic,
+  businessName: string,
+  city: string,
+  state: string,
+  primaryCategory: string,
+  serviceNames: string[],
+  settings: SiteSettings,
+  directives: string = ''
+) {
+  const businessDescription = settings.business_description || '';
+  const credentials = settings.credentials || '';
+  const localDetails = settings.local_details || '';
+  const targetAudience = settings.target_audience || '';
+  const serviceList = serviceNames.length > 0 ? serviceNames.join(', ') : primaryCategory;
+
+  const prompt = `You are an SEO expert generating an enhanced About page for a local service business website.
+This page must serve as the trust hub of the website, strengthening EEAT (Experience, Expertise, Authoritativeness, Trustworthiness).
+
+Business: ${businessName}
+Location: ${city}, ${state}
+Primary Category: ${primaryCategory}
+Services Offered: ${serviceList}
+${businessDescription ? `\nBusiness Description: ${businessDescription}` : ''}
+${credentials ? `\nCredentials & Certifications: ${credentials}` : ''}
+${localDetails ? `\nLocal Context: ${localDetails}` : ''}
+${targetAudience ? `\nTarget Audience: ${targetAudience}` : ''}
+${directives}
+
+Generate structured About page content. The page must feel authentic, local, and trustworthy — not like a generic SEO template.
+
+CONTENT RULES:
+- Write naturally, avoid keyword stuffing
+- Do not make unverifiable claims or invent awards/certifications
+- Prefer specificity over hype
+- If data is missing, write naturally without sounding vague
+- Tone: professional, warm, credible, local, knowledgeable
+- Never use: "Your one-stop shop", "Look no further", "Proudly serving", "Professional services", "Quality service" as standalone
+
+BANNED PHRASES:
+- "Professional services" (use the actual category name)
+- "Professional professional" or any doubled words
+- "Quality service" as a standalone phrase
+- "Your one-stop shop"
+- "Look no further"
+- "Proudly serving"
+- "We go above and beyond" (unless supported by specific context)
+
+Generate the following JSON structure:
+
+{
+  "meta_title": "About ${businessName} | ${primaryCategory} in ${city} (max 60 chars)",
+  "meta_description": "Compelling description about ${businessName} (max 155 chars)",
+  "h1": "About ${businessName} — heading that establishes trust",
+  "h2": "Supporting subheading about expertise or values",
+  "hero_description": "1-2 sentence intro establishing the business, primary category, and location",
+  "body_copy": "Condensed company story for backwards compatibility (300-400 words, use \\n\\n between paragraphs)",
+  "body_copy_2": "Additional company info for backwards compatibility (150-200 words)",
+  "sections": {
+    "founder_story": {
+      "heading": "Our Story or Meet the Founder — choose what fits",
+      "paragraphs": ["paragraph1 about how the company began, founder background, motivation (200-300 words split across 2-3 paragraphs)"]
+    },
+    "mission_values": {
+      "heading": "Our Mission or What We Believe",
+      "paragraphs": ["1-2 paragraphs about what the business stands for, quality, service, community (100-150 words)"]
+    },
+    "experience_credentials": {
+      "heading": "Experience You Can Trust or Why Experience Matters",
+      "paragraphs": ["1-2 paragraphs about expertise, training, certifications, why experience benefits customers (150-200 words)"],
+      "highlights": ["highlight1 like 'Licensed and insured'", "highlight2 like 'Ongoing professional training'", "up to 5 credential/experience highlights"]
+    },
+    "local_connection": {
+      "heading": "Serving ${city} and Surrounding Areas or Local Service You Can Count On",
+      "paragraphs": ["1-2 paragraphs about local roots, community connection, geographic service (100-150 words)"]
+    },
+    "trust_points": {
+      "heading": "Why Customers Choose ${businessName}",
+      "points": [
+        {"title": "Short trust signal title", "description": "1-2 sentence explanation of this trust factor"},
+        {"title": "Another trust signal", "description": "Explanation (4-6 total points)"}
+      ]
+    },
+    "cta": {
+      "heading": "Ready to Work With Us? or Schedule Service Today",
+      "description": "Short closing paragraph encouraging contact, mentioning ${city} and ${primaryCategory} naturally (2-3 sentences)"
+    }
+  }
+}
+
+IMPORTANT:
+- body_copy and body_copy_2 should be condensed versions of the sections content for backwards compatibility
+- Each section must be independently valuable
+- The sections.paragraphs arrays should contain individual paragraphs as separate strings
+- trust_points should have 4-6 items that are believable and consistent with available data
+- highlights in experience_credentials should only include items that are supported by the credentials/business description provided
+
+Return ONLY valid JSON.`;
+
+  const message = await withRetry((signal) =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 6144,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { signal }
+    )
+  );
+
+  const result = parseJsonResponse<{
+    meta_title: string;
+    meta_description: string;
+    h1: string;
+    h2?: string;
+    hero_description?: string;
+    body_copy: string;
+    body_copy_2?: string;
+    sections?: {
+      founder_story?: { heading: string; paragraphs: string[] };
+      mission_values?: { heading: string; paragraphs: string[] };
+      experience_credentials?: { heading: string; paragraphs: string[]; highlights?: string[] };
+      local_connection?: { heading: string; paragraphs: string[] };
+      trust_points?: { heading: string; points: { title: string; description: string }[] };
+      cta?: { heading: string; description: string };
+    };
+  }>(message);
+
+  if (!result) {
+    throw new Error('Failed to parse about page content from AI response');
+  }
+
+  return result;
 }

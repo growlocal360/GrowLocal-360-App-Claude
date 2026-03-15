@@ -28,6 +28,7 @@ import type {
   BrandValueProp,
   WorkItemWithRelations,
   WorkItemImage,
+  AboutPageSections,
 } from '@/types/database';
 import type { PublicSiteData } from './get-site';
 
@@ -161,6 +162,7 @@ export interface PublicRenderPageContent {
   body_copy: string | null;
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
+  sections: AboutPageSections | null;
 }
 
 // --- Category (for nav and page rendering) ---
@@ -215,6 +217,7 @@ export interface PublicRenderTeamMember {
   title: string | null;
   bio: string | null;
   avatar_url: string | null;
+  role: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +411,7 @@ export function toPublicPageContent(page: SitePage): PublicRenderPageContent {
     body_copy: page.body_copy,
     body_copy_2: page.body_copy_2,
     faqs: page.faqs,
+    sections: page.sections ?? null,
   };
 }
 
@@ -451,6 +455,7 @@ export function toPublicTeamMember(profile: Profile): PublicRenderTeamMember {
     title: profile.title,
     bio: profile.bio,
     avatar_url: sanitizeAvatarUrl(profile.avatar_url),
+    role: profile.role,
   };
 }
 

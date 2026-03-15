@@ -95,6 +95,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
     body_copy: serviceArea.body_copy,
     body_copy_2: null,
     faqs: null,
+    sections: null,
   };
 
   // Schema.org structured data

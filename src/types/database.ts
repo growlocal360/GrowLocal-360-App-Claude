@@ -253,6 +253,15 @@ export interface ServiceFAQ {
 
 export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area' | 'faq';
 
+export interface AboutPageSections {
+  founder_story?: { heading: string; paragraphs: string[] };
+  mission_values?: { heading: string; paragraphs: string[] };
+  experience_credentials?: { heading: string; paragraphs: string[]; highlights?: string[] };
+  local_connection?: { heading: string; paragraphs: string[] };
+  trust_points?: { heading: string; points: { title: string; description: string }[] };
+  cta?: { heading: string; description: string };
+}
+
 export interface SitePage {
   id: string;
   site_id: string;
@@ -269,6 +278,7 @@ export interface SitePage {
   hero_description: string | null;
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
+  sections: AboutPageSections | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

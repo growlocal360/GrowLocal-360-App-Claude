@@ -10,6 +10,7 @@
 
 import type {
   WebsiteType,
+  Profile,
   SiteWithRelations,
   Location,
   Service,
@@ -206,6 +207,16 @@ export interface PublicRenderData {
   sitePages: PublicRenderPageContent[];
 }
 
+// --- Team member ---
+
+export interface PublicRenderTeamMember {
+  id: string;
+  full_name: string;
+  title: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // URL sanitization
 // ---------------------------------------------------------------------------
@@ -232,6 +243,24 @@ function sanitizeAssetUrl(
     return `/public/assets/${assetType}/${filename}`;
   }
   // External URL (Google photos, CDN, etc.) — pass through
+  if (url.startsWith('http')) return url;
+  return url;
+}
+
+/**
+ * Convert an avatar Supabase URL to a clean /public/ proxy path.
+ * Avatars are stored at avatars/{profileId}/{filename} in site-assets bucket.
+ */
+function sanitizeAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('/public/')) return url;
+  // Raw Supabase storage URL — extract avatars/{profileId}/{filename}
+  const match = url.match(
+    /\/storage\/v1\/object\/public\/[^/]+\/(avatars\/.+)$/
+  );
+  if (match) {
+    return `/public/${match[1]}`;
+  }
   if (url.startsWith('http')) return url;
   return url;
 }
@@ -412,6 +441,16 @@ export function toPublicWorkItem(item: WorkItemWithRelations): PublicRenderWorkI
     brand_name: item.brand_name,
     service: item.service || null,
     location: item.location || null,
+  };
+}
+
+export function toPublicTeamMember(profile: Profile): PublicRenderTeamMember {
+  return {
+    id: profile.id,
+    full_name: profile.full_name || 'Team Member',
+    title: profile.title,
+    bio: profile.bio,
+    avatar_url: sanitizeAvatarUrl(profile.avatar_url),
   };
 }
 

@@ -32,6 +32,8 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   title: string | null;
+  show_on_site: boolean;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }

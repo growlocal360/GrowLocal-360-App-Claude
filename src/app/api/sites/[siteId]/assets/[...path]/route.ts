@@ -24,6 +24,33 @@ export async function GET(
 
   const adminSupabase = createAdminClient();
 
+  // Avatars — fetch directly from storage (not in assets table)
+  if (path[0] === 'avatars') {
+    const storagePath = path.join('/'); // avatars/{profileId}/{filename}
+    const { data: avatarData, error: avatarError } = await adminSupabase.storage
+      .from(ASSET_BUCKET)
+      .download(storagePath);
+
+    if (!avatarError && avatarData) {
+      const arrayBuffer = await avatarData.arrayBuffer();
+      const ext = storagePath.split('.').pop()?.toLowerCase() || '';
+      const contentTypes: Record<string, string> = {
+        svg: 'image/svg+xml',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+      };
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentTypes[ext] || 'application/octet-stream',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+  }
+
   // Look up the asset by site_id + public_path
   const { data: asset } = await adminSupabase
     .from('assets')

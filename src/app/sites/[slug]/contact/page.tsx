@@ -5,7 +5,8 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember } from '@/lib/sites/public-render-model';
+import { getTeamMembersForSite } from '@/lib/sites/get-team';
 
 export const revalidate = 3600;
 
@@ -59,6 +60,9 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   const contactContent = data.sitePages?.find(p => p.page_type === 'contact') || null;
 
+  const teamProfiles = await getTeamMembersForSite(data.site.id, data.site.organization_id);
+  const teamMembers = teamProfiles.map(toPublicTeamMember);
+
   return (
     <ContactPage
       site={toPublicSite(data.site)}
@@ -66,6 +70,7 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}
       services={services.map(toPublicServiceListing)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
+      teamMembers={teamMembers}
       categories={navCategories}
       siteSlug={slug}
     />

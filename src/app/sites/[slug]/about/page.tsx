@@ -5,7 +5,8 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember } from '@/lib/sites/public-render-model';
+import { getTeamMembersForSite } from '@/lib/sites/get-team';
 
 export const revalidate = 3600;
 
@@ -59,12 +60,16 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
 
   const aboutContent = data.sitePages?.find(p => p.page_type === 'about') || null;
 
+  const teamProfiles = await getTeamMembersForSite(data.site.id, data.site.organization_id);
+  const teamMembers = teamProfiles.map(toPublicTeamMember);
+
   return (
     <AboutPage
       site={toPublicSite(data.site)}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
+      teamMembers={teamMembers}
       categories={navCategories}
       siteSlug={slug}
     />

@@ -2,7 +2,7 @@
 
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing, PublicRenderTeamMember } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -16,6 +16,7 @@ import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 import { EmbeddedMapSection } from './embedded-map-section';
+import { TeamSection } from './team-section';
 
 interface ContactPageProps {
   site: PublicRenderSite;
@@ -23,12 +24,13 @@ interface ContactPageProps {
   pageContent: PublicRenderPageContent | null;
   services?: PublicRenderServiceListing[];
   serviceAreas?: PublicRenderAreaListing[];
+  teamMembers?: PublicRenderTeamMember[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
 }
 
-export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, categories, siteSlug, locationSlug }: ContactPageProps) {
+export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, teamMembers, categories, siteSlug, locationSlug }: ContactPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
@@ -112,6 +114,7 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
           </div>
         </section>
 
+        <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} services={services} />
         <EmbeddedMapSection primaryLocation={primaryLocation} />
       </main>

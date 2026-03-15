@@ -29,6 +29,33 @@ export async function GET(
     return new NextResponse('Not Found', { status: 404 });
   }
 
+  // Avatars are not in the assets table — fetch directly from storage
+  // Path: avatars/{profileId}/{filename}
+  if (publicPath.startsWith('avatars/')) {
+    const { data: avatarData, error: avatarError } = await adminSupabase.storage
+      .from(ASSET_BUCKET)
+      .download(publicPath);
+
+    if (!avatarError && avatarData) {
+      const arrayBuffer = await avatarData.arrayBuffer();
+      const ext = publicPath.split('.').pop()?.toLowerCase() || '';
+      const contentTypes: Record<string, string> = {
+        svg: 'image/svg+xml',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+      };
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentTypes[ext] || 'application/octet-stream',
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    }
+  }
+
   // Look up the asset by site_id + public_path
   const { data: asset } = await adminSupabase
     .from('assets')

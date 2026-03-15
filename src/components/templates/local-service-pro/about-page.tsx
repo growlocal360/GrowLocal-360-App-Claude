@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing, PublicRenderTeamMember } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -11,18 +11,20 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
+import { TeamSection } from './team-section';
 
 interface AboutPageProps {
   site: PublicRenderSite;
   primaryLocation: PublicRenderLocation | null;
   pageContent: PublicRenderPageContent | null;
   serviceAreas?: PublicRenderAreaListing[];
+  teamMembers?: PublicRenderTeamMember[];
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
 }
 
-export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, categories, siteSlug, locationSlug }: AboutPageProps) {
+export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, teamMembers, categories, siteSlug, locationSlug }: AboutPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
 
   const h1 = pageContent?.h1 || `About ${site.name}`;
@@ -82,6 +84,7 @@ export function AboutPage({ site, primaryLocation, pageContent, serviceAreas, ca
           </section>
         )}
 
+        <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

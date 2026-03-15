@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import {
   User,
   Upload,
@@ -15,6 +16,7 @@ import {
   Check,
   Loader2,
   Camera,
+  Globe,
 } from 'lucide-react';
 
 interface ProfileData {
@@ -24,6 +26,8 @@ interface ProfileData {
   bio: string | null;
   title: string | null;
   role: string;
+  show_on_site: boolean;
+  display_order: number;
 }
 
 export default function ProfileSettingsPage() {
@@ -41,6 +45,8 @@ export default function ProfileSettingsPage() {
   const [bio, setBio] = useState('');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [showOnSite, setShowOnSite] = useState(false);
+  const [displayOrder, setDisplayOrder] = useState(0);
 
   useEffect(() => {
     fetchProfile();
@@ -57,6 +63,8 @@ export default function ProfileSettingsPage() {
       setTitle(data.profile.title || '');
       setBio(data.profile.bio || '');
       setAvatarPreview(data.profile.avatar_url);
+      setShowOnSite(data.profile.show_on_site ?? false);
+      setDisplayOrder(data.profile.display_order ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
@@ -137,6 +145,8 @@ export default function ProfileSettingsPage() {
           full_name: fullName || null,
           title: title || null,
           bio: bio || null,
+          show_on_site: showOnSite,
+          display_order: displayOrder,
         }),
       });
 
@@ -162,6 +172,8 @@ export default function ProfileSettingsPage() {
     fullName !== (profile?.full_name || '') ||
     title !== (profile?.title || '') ||
     bio !== (profile?.bio || '') ||
+    showOnSite !== (profile?.show_on_site ?? false) ||
+    displayOrder !== (profile?.display_order ?? 0) ||
     avatarFile !== null;
 
   if (loading) {
@@ -308,6 +320,48 @@ export default function ProfileSettingsPage() {
               A short description about you. This may be displayed on your company&apos;s website.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Website Visibility */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-[#00d9c0]" />
+            <h2 className="font-semibold">Website Visibility</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="showOnSite">Show on website</Label>
+              <p className="text-xs text-gray-400 mt-1">
+                Display your profile on the About and Contact pages of your company&apos;s website
+              </p>
+            </div>
+            <Switch
+              id="showOnSite"
+              checked={showOnSite}
+              onCheckedChange={setShowOnSite}
+            />
+          </div>
+
+          {showOnSite && (
+            <div>
+              <Label htmlFor="displayOrder">Display Order</Label>
+              <Input
+                id="displayOrder"
+                type="number"
+                min={0}
+                value={displayOrder}
+                onChange={(e) => setDisplayOrder(parseInt(e.target.value) || 0)}
+                className="mt-1 w-24"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Lower numbers appear first on the page
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

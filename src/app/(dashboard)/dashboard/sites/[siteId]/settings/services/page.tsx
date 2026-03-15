@@ -258,14 +258,27 @@ export default function ServicesPage() {
     }
   };
 
+  const [addingSuggestion, setAddingSuggestion] = useState<string | null>(null);
+
   const addSuggestedService = async (suggestion: SuggestedService) => {
-    // Find matching category
-    const matchingCat = categories.find(
-      (c) => c.gbp_category.gcid === suggestion.categoryGcid
-    );
-    if (!matchingCat) return;
+    // Find matching category by exact gcid, partial gcid, or fall back to primary
+    const matchingCat =
+      categories.find((c) => c.gbp_category.gcid === suggestion.categoryGcid) ||
+      categories.find((c) =>
+        c.gbp_category.gcid.replace('gcid:', '') === suggestion.categoryGcid.replace('gcid:', '')
+      ) ||
+      categories.find((c) =>
+        c.gbp_category.display_name.toLowerCase() === suggestion.categoryName.toLowerCase()
+      ) ||
+      categories.find((c) => c.is_primary);
+
+    if (!matchingCat) {
+      setError('No category found to add service to');
+      return;
+    }
 
     try {
+      setAddingSuggestion(suggestion.name);
       const response = await fetch(`/api/sites/${siteId}/settings/services`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -283,6 +296,8 @@ export default function ServicesPage() {
       setSuggestions((prev) => prev.filter((s) => s.name !== suggestion.name));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add suggested service');
+    } finally {
+      setAddingSuggestion(null);
     }
   };
 
@@ -588,9 +603,14 @@ export default function ServicesPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => addSuggestedService(s)}
+                    disabled={addingSuggestion === s.name}
                   >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add
+                    {addingSuggestion === s.name ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <Plus className="h-3 w-3 mr-1" />
+                    )}
+                    {addingSuggestion === s.name ? 'Adding...' : 'Add'}
                   </Button>
                 </div>
               ))

@@ -11,7 +11,7 @@ interface RecentWorkSectionProps {
   locationSlug?: string;
 }
 
-export function RecentWorkSection({ workItems, brandColor, siteSlug, locationSlug }: RecentWorkSectionProps) {
+export function RecentWorkSection({ workItems, brandColor, locationSlug }: RecentWorkSectionProps) {
   if (workItems.length === 0) return null;
 
   return (
@@ -29,7 +29,7 @@ export function RecentWorkSection({ workItems, brandColor, siteSlug, locationSlu
             return (
               <Link
                 key={item.id}
-                href={`/sites/${siteSlug}${href}`}
+                href={href}
                 className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md"
               >
                 {image && (
@@ -64,7 +64,7 @@ export function RecentWorkSection({ workItems, brandColor, siteSlug, locationSlu
         </div>
         <div className="mt-8 text-center">
           <Link
-            href={`/sites/${siteSlug}${paths.workHub(locationSlug)}`}
+            href={paths.workHub(locationSlug)}
             className="inline-flex items-center gap-2 font-medium hover:underline"
             style={{ color: brandColor }}
           >

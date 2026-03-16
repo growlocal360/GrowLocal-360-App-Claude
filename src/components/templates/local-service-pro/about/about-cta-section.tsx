@@ -12,7 +12,7 @@ interface AboutCTASectionProps {
   locationSlug?: string;
 }
 
-export function AboutCTASection({ sections, brandColor, phone, siteSlug, locationSlug }: AboutCTASectionProps) {
+export function AboutCTASection({ sections, brandColor, phone, locationSlug }: AboutCTASectionProps) {
   const cta = sections?.cta;
   if (!cta) return null;
 
@@ -23,7 +23,7 @@ export function AboutCTASection({ sections, brandColor, phone, siteSlug, locatio
         <p className="mb-8 text-lg text-gray-600">{cta.description}</p>
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Link
-            href={`/sites/${siteSlug}${paths.contactPage(locationSlug)}`}
+            href={paths.contactPage(locationSlug)}
             className="inline-flex items-center gap-2 rounded-lg px-8 py-3 text-lg font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: brandColor }}
           >

@@ -18,7 +18,6 @@ export function ServicesOverviewSection({
   services,
   categories,
   brandColor,
-  siteSlug,
   locationSlug,
 }: ServicesOverviewSectionProps) {
   if (services.length === 0) return null;
@@ -49,7 +48,7 @@ export function ServicesOverviewSection({
             return (
               <Link
                 key={service.id}
-                href={`/sites/${siteSlug}${href}`}
+                href={href}
                 className="group flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div

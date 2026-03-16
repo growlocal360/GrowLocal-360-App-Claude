@@ -48,6 +48,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
   const categoryName = category.gbp_category.display_name;
 
   const navCategories: NavCategory[] = allCategories.map(c => ({
+    id: c.id,
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,

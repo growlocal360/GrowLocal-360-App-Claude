@@ -8,6 +8,7 @@ import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-
 import * as paths from '@/lib/routing/paths';
 
 export interface NavCategory {
+  id: string;
   name: string;
   slug: string;
   isPrimary: boolean;

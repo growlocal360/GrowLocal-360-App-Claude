@@ -45,6 +45,7 @@ export default async function MultiLocationAreasPageRoute({ params }: MultiLocat
   const { categories } = await getCategoriesWithServices(data.site.id);
 
   const navCategories: NavCategory[] = categories.map(c => ({
+    id: c.id,
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,

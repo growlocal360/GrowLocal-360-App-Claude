@@ -22,7 +22,7 @@ export function ServicesOverviewSection({
 }: ServicesOverviewSectionProps) {
   if (services.length === 0) return null;
 
-  // Group services by category
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
   const primaryCategory = categories.find((c) => c.isPrimary);
   const displayServices = services.slice(0, 12);
 
@@ -35,13 +35,16 @@ export function ServicesOverviewSection({
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {displayServices.map((service) => {
-            const categorySlug = primaryCategory
-              ? normalizeCategorySlug(primaryCategory.name)
+            const serviceCategory = service.site_category_id
+              ? categoryById.get(service.site_category_id)
+              : primaryCategory;
+            const categorySlug = serviceCategory
+              ? normalizeCategorySlug(serviceCategory.name)
               : '';
             const href = paths.servicePage(
               service.slug,
               categorySlug,
-              !!primaryCategory?.isPrimary,
+              !!serviceCategory?.isPrimary,
               locationSlug
             );
 

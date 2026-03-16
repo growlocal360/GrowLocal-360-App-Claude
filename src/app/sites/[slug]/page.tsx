@@ -96,12 +96,14 @@ export default async function SitePage({ params }: SitePageProps) {
   const secondaryCategories: NavCategory[] = categories
     .filter(c => !c.is_primary)
     .map(c => ({
-      name: c.gbp_category.display_name,
+      id: c.id,
+    name: c.gbp_category.display_name,
       slug: normalizeCategorySlug(c.gbp_category.display_name),
       isPrimary: false,
     }));
 
   const navCategories: NavCategory[] = categories.map(c => ({
+    id: c.id,
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,

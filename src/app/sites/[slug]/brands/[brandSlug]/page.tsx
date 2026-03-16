@@ -91,6 +91,7 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
+    id: c.id,
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),
     isPrimary: c.is_primary,

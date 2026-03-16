@@ -39,8 +39,8 @@ export function ServicesOverviewSection({
               ? normalizeCategorySlug(primaryCategory.name)
               : '';
             const href = paths.servicePage(
-              categorySlug,
               service.slug,
+              categorySlug,
               !!primaryCategory?.isPrimary,
               locationSlug
             );

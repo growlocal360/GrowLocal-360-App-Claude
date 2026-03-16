@@ -413,7 +413,7 @@ export const generateSiteContent = inngest.createFunction(
                 body_copy_2: page.body_copy_2 || null,
                 is_active: true,
               },
-              { onConflict: 'site_id,slug' }
+              { onConflict: 'site_id,page_type,slug' }
             );
             completed++;
             await updateProgress(supabase, siteId, totalTasks, completed, `Generated ${page.page_type} page`);
@@ -462,7 +462,7 @@ export const generateSiteContent = inngest.createFunction(
             sections: aboutContent.sections || null,
             is_active: true,
           },
-          { onConflict: 'site_id,slug' }
+          { onConflict: 'site_id,page_type,slug' }
         );
 
         await log('Generated enhanced about page', 'generate-about-page');
@@ -518,7 +518,7 @@ export const generateSiteContent = inngest.createFunction(
               body_copy_2: categoryContent.body_copy_2 || null,
               is_active: true,
             },
-            { onConflict: 'site_id,slug' }
+            { onConflict: 'site_id,page_type,slug' }
           );
 
           await log(`Generated ${catName} category page`, `generate-category-${category.id}`);
@@ -897,7 +897,7 @@ export const generateSiteContent = inngest.createFunction(
               hero_description: faqContent.hero_description,
               is_active: true,
             },
-            { onConflict: 'site_id,slug' }
+            { onConflict: 'site_id,page_type,slug' }
           );
         }
 

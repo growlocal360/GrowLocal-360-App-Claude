@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -47,9 +47,12 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     };
   }
 
-  // Try to get as a category (secondary categories)
+  // Try to get as a category (secondary categories only — primary category = home page)
   const categoryData = await getCategoryBySlugSingleLocation(slug, serviceOrCategory);
   if (categoryData) {
+    if (categoryData.category.is_primary) {
+      return { title: 'Redirecting...' };
+    }
     const { category, location, site, pageContent } = categoryData;
     const categoryName = category.gbp_category.display_name;
     const domain = site.custom_domain || `${slug}.${appDomain}`;
@@ -104,9 +107,12 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     );
   }
 
-  // Try to get as a category (secondary categories have their own page)
+  // Try to get as a category (secondary categories only — primary category = home page)
   const categoryData = await getCategoryBySlugSingleLocation(slug, serviceOrCategory);
   if (categoryData) {
+    if (categoryData.category.is_primary) {
+      redirect('/');
+    }
     const admin = createAdminClient();
     const [googleReviews, { data: serviceAreas }, { data: neighborhoods }] = await Promise.all([
       getGoogleReviewsForSite(categoryData.site.id),

@@ -31,6 +31,9 @@ export const generateSiteContent = inngest.createFunction(
   {
     id: 'generate-site-content',
     retries: 0,
+    concurrency: [
+      { limit: 1, key: 'event.data.siteId' },
+    ],
     onFailure: async ({ event }) => {
       const siteId = event.data.event.data.siteId;
       const errorMessage = event.data.error?.message || 'Unknown error';

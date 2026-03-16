@@ -60,6 +60,21 @@ export async function POST(
     );
   }
 
+  // Reject if a build is already in progress (prevent duplicate events)
+  if (site.build_progress) {
+    const { current_task, started_at } = site.build_progress;
+    if (current_task !== 'Complete' && current_task !== 'Failed' && started_at) {
+      const startedAtMs = new Date(started_at).getTime();
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      if (startedAtMs > fiveMinutesAgo) {
+        return NextResponse.json(
+          { error: 'A build is already in progress. Please wait for it to complete.' },
+          { status: 409 }
+        );
+      }
+    }
+  }
+
   // Calculate total tasks for this scope
   const totalTasks = calculateScopeTasks(scope);
 

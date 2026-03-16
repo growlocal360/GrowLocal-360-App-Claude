@@ -70,6 +70,9 @@ async function getNestedServiceData(
 
   if (!category) return null;
 
+  // Primary category services live at /{serviceSlug}, not /{categorySlug}/{serviceSlug}
+  if (category.is_primary) return null;
+
   // Fetch the specific service
   const { data: service } = await supabase
     .from('services')

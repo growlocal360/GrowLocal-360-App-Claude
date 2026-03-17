@@ -2,7 +2,7 @@
  * Client-side helper to call the job snap AI analysis endpoint.
  */
 
-import type { JobSnapAnalysisResult } from '@/app/api/job-snaps/analyze/route';
+import type { JobSnapAnalysisResult } from '@/lib/job-snaps/types';
 import type { LocalImage } from '@/components/job-snaps/image-preview-grid';
 import type { JobLocation } from '@/components/job-snaps/job-location-card';
 

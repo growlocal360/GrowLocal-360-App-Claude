@@ -11,7 +11,7 @@ import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 
-interface JobsPageProps {
+interface JobSnapsPageProps {
   site: PublicRenderSite;
   primaryLocation: PublicRenderLocation | null;
   serviceAreas?: PublicRenderAreaListing[];
@@ -20,7 +20,7 @@ interface JobsPageProps {
   locationSlug?: string;
 }
 
-export function JobsPage({ site, primaryLocation, serviceAreas, categories, siteSlug, locationSlug }: JobsPageProps) {
+export function JobSnapsPage({ site, primaryLocation, serviceAreas, categories, siteSlug, locationSlug }: JobSnapsPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const industry = site.settings?.core_industry || 'our industry';
 

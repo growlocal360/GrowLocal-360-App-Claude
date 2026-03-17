@@ -45,7 +45,7 @@ const mainNavItems = [
   },
   {
     title: 'Job Snaps',
-    href: '/dashboard/jobs',
+    href: '/dashboard/job-snaps',
     icon: Briefcase,
   },
   {

@@ -115,7 +115,7 @@ export default async function DashboardPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-6">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Jobs</p>
+                <p className="text-sm font-medium text-gray-500">Total Job Snaps</p>
                 <p className="text-3xl font-bold text-gray-900">{jobsCount || 0}</p>
                 <p className="text-xs text-gray-400">+12 this week</p>
               </div>

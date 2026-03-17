@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
+import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { JobsPage } from '@/components/templates/local-service-pro/jobs-page';
+import { JobSnapsPage } from '@/components/templates/local-service-pro/job-snaps-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -13,39 +13,27 @@ import {
 
 export const revalidate = 3600;
 
-export async function generateStaticParams() {
-  const slugs = await getAllSiteSlugs();
-  return slugs.map((slug) => ({ slug }));
+interface MultiLocationJobSnapsPageProps {
+  params: Promise<{ slug: string; location: string }>;
 }
 
-interface JobsPageProps {
-  params: Promise<{ slug: string }>;
-}
-
-export async function generateMetadata({ params }: JobsPageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const data = await getSiteBySlug(slug);
+export async function generateMetadata({ params }: MultiLocationJobSnapsPageProps): Promise<Metadata> {
+  const { slug, location } = await params;
+  const data = await getLocationBySlug(slug, location);
 
   if (!data) {
     return { title: 'Site Not Found' };
   }
 
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
-  const canonicalUrl = `https://${domain}/jobs`;
-
   return {
     title: `Careers at ${data.site.name} | Job Opportunities`,
     description: `Looking for a career in ${data.site.settings?.core_industry?.toLowerCase() || 'professional services'}? Join the ${data.site.name} team.`,
-    alternates: {
-      canonical: canonicalUrl,
-    },
   };
 }
 
-export default async function JobsPageRoute({ params }: JobsPageProps) {
-  const { slug } = await params;
-  const data = await getSiteBySlug(slug);
+export default async function MultiLocationJobSnapsPageRoute({ params }: MultiLocationJobSnapsPageProps) {
+  const { slug, location } = await params;
+  const data = await getLocationBySlug(slug, location);
 
   if (!data) {
     notFound();
@@ -61,12 +49,13 @@ export default async function JobsPageRoute({ params }: JobsPageProps) {
   }));
 
   return (
-    <JobsPage
+    <JobSnapsPage
       site={toPublicSite(data.site)}
-      primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
+      primaryLocation={toPublicLocation(data.location)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
+      locationSlug={location}
     />
   );
 }

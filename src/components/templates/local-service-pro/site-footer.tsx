@@ -100,8 +100,8 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                 </Link>
               </li>
               <li>
-                <Link href={paths.jobsPage(locationSlug)} className="hover:text-white">
-                  Jobs
+                <Link href={paths.jobSnapsPage(locationSlug)} className="hover:text-white">
+                  Job Snaps
                 </Link>
               </li>
               <li>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Wrench, CheckCircle, Shield, Clock, Award, ThumbsUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceDetail, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderPageContent } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceDetail, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderPageContent, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -21,6 +21,7 @@ import { TrustBar } from './trust-bar';
 import { SiteFooter } from './site-footer';
 import { TestimonialsSection } from './testimonials-section';
 import { LeadCaptureSection } from './lead-capture-section';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface ServicePageProps {
   data: {
@@ -36,9 +37,10 @@ interface ServicePageProps {
   categories?: NavCategory[];
   serviceAreas?: PublicRenderAreaListing[];
   locationSlug?: string;
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug, recentWorkItems }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || location.phone;
@@ -213,6 +215,9 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
             </div>
           </div>
         </section>
+
+        {/* Recent Work */}
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* Lead Capture Form */}
         <LeadCaptureSection

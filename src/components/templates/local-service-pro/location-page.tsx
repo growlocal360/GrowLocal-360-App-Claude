@@ -10,6 +10,7 @@ import type {
   PublicRenderLocation,
   PublicRenderNeighborhoodListing,
   PublicRenderAreaListing,
+  PublicRenderWorkItem,
 } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader } from './site-header';
 import { SiteFooter } from './site-footer';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface LocationPageProps {
   data: {
@@ -33,9 +35,10 @@ interface LocationPageProps {
   };
   siteSlug: string;
   locationSlug?: string;
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
-export function LocationPage({ data, siteSlug, locationSlug }: LocationPageProps) {
+export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: LocationPageProps) {
   const { site, location, allLocations, neighborhoods, serviceAreas } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
@@ -368,6 +371,9 @@ export function LocationPage({ data, siteSlug, locationSlug }: LocationPageProps
             </div>
           </section>
         )}
+
+        {/* Recent Work */}
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* CTA Section */}
         <section

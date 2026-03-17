@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Phone, ArrowRight, MapPin, Wrench, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandDetail, PublicRenderAreaListing, PublicRenderReview, PublicRenderBrandListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandDetail, PublicRenderAreaListing, PublicRenderReview, PublicRenderBrandListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import type { BrandValueProp, ServiceFAQ } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -19,6 +19,7 @@ import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 import { TestimonialsSection } from './testimonials-section';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface BrandService {
   id: string;
@@ -40,6 +41,7 @@ interface BrandDetailPageProps {
   googleReviews: PublicRenderReview[];
   siteSlug: string;
   locationSlug?: string;
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
 export function BrandDetailPage({
@@ -53,6 +55,7 @@ export function BrandDetailPage({
   googleReviews,
   siteSlug,
   locationSlug,
+  recentWorkItems,
 }: BrandDetailPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const city = primaryLocation?.city || '';
@@ -215,6 +218,9 @@ export function BrandDetailPage({
             </div>
           </section>
         )}
+
+        {/* Recent Work */}
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* Testimonials */}
         <TestimonialsSection

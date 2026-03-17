@@ -6,7 +6,8 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing } from '@/lib/sites/public-render-model';
+import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -83,7 +84,10 @@ export default async function SitePage({ params }: SitePageProps) {
   }
 
   // Single-location / microsite: render the full template
-  const { categories, services } = await getCategoriesWithServices(data.site.id);
+  const [{ categories, services }, recentWorkItems] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    getPublishedWorkItems(data.site.id, { limit: 3 }),
+  ]);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
 
@@ -120,6 +124,7 @@ export default async function SitePage({ params }: SitePageProps) {
           primaryCategoryName={primaryCategory?.gbp_category?.display_name}
           categories={navCategories}
           secondaryCategories={secondaryCategories}
+          recentWorkItems={recentWorkItems.map(toPublicWorkItem)}
         />
       );
   }

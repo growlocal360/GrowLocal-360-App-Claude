@@ -29,20 +29,33 @@ export async function getPublishedWorkItemsCount(siteId: string): Promise<number
 
 /**
  * Get published work items for a site, ordered by performed_at DESC.
+ * Supports optional context filters for distributing work to relevant pages.
  */
 export async function getPublishedWorkItems(
   siteId: string,
-  options?: { limit?: number; offset?: number }
+  options?: {
+    limit?: number;
+    offset?: number;
+    serviceId?: string;  // exact match on work_items.service_id
+    brandName?: string;  // case-insensitive match on work_items.brand_name
+    city?: string;       // case-insensitive match on work_items.address_city
+  }
 ): Promise<WorkItemWithRelations[]> {
   const supabase = createAdminClient();
   const limit = options?.limit ?? 12;
   const offset = options?.offset ?? 0;
 
-  const { data: items } = await supabase
+  let query = supabase
     .from('work_items')
     .select('*')
     .eq('site_id', siteId)
-    .eq('status', 'published')
+    .eq('status', 'published');
+
+  if (options?.serviceId) query = query.eq('service_id', options.serviceId);
+  if (options?.brandName) query = query.ilike('brand_name', options.brandName);
+  if (options?.city) query = query.ilike('address_city', options.city);
+
+  const { data: items } = await query
     .order('performed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);

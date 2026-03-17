@@ -9,8 +9,9 @@ import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite, toPublicLocation, toPublicBrandDetail, toPublicBrandListing,
-  toPublicAreaListing, toPublicReview,
+  toPublicAreaListing, toPublicReview, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -85,9 +86,10 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
 
   const { site, brand, primaryLocation, serviceAreas, brands } = data;
 
-  const [{ categories, services }, googleReviews] = await Promise.all([
+  const [{ categories, services }, googleReviews, workItems] = await Promise.all([
     getCategoriesWithServices(site.id),
     getGoogleReviewsForSite(site.id),
+    getPublishedWorkItems(site.id, { brandName: brand.name, limit: 6 }),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -124,6 +126,7 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
       categories={navCategories}
       googleReviews={googleReviews.map(toPublicReview)}
       siteSlug={slug}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

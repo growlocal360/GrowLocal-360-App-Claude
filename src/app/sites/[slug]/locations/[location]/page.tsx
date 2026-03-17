@@ -6,7 +6,9 @@ import {
   toPublicLocation,
   toPublicNeighborhoodListing,
   toPublicAreaListing,
+  toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -54,6 +56,11 @@ export default async function LocationRoute({ params }: LocationPageProps) {
     notFound();
   }
 
+  const workItems = await getPublishedWorkItems(data.site.id, {
+    city: data.location.city,
+    limit: 6,
+  });
+
   return (
     <LocationPage
       data={{
@@ -65,6 +72,7 @@ export default async function LocationRoute({ params }: LocationPageProps) {
       }}
       siteSlug={slug}
       locationSlug={location}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

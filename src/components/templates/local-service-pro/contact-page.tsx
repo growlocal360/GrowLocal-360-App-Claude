@@ -2,7 +2,7 @@
 
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing, PublicRenderTeamMember } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing, PublicRenderTeamMember, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -17,6 +17,7 @@ import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { TeamSection } from './team-section';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface ContactPageProps {
   site: PublicRenderSite;
@@ -28,9 +29,10 @@ interface ContactPageProps {
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
-export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, teamMembers, categories, siteSlug, locationSlug }: ContactPageProps) {
+export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, teamMembers, categories, siteSlug, locationSlug, recentWorkItems }: ContactPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
@@ -115,6 +117,7 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
         </section>
 
         <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <LeadCaptureSection siteId={site.id} brandColor={brandColor} services={services} />
         <EmbeddedMapSection primaryLocation={primaryLocation} />
       </main>

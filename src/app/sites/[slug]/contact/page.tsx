@@ -5,8 +5,9 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -50,7 +51,11 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
     notFound();
   }
 
-  const { categories, services } = await getCategoriesWithServices(data.site.id);
+  const [{ categories, services }, teamProfiles, workItems] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    getTeamMembersForSite(data.site.id, data.site.organization_id),
+    getPublishedWorkItems(data.site.id, { limit: 3 }),
+  ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -61,9 +66,6 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   const contactContent = data.sitePages?.find(p => p.page_type === 'contact') || null;
 
-  const teamProfiles = await getTeamMembersForSite(data.site.id, data.site.organization_id);
-  const teamMembers = teamProfiles.map(toPublicTeamMember);
-
   return (
     <ContactPage
       site={toPublicSite(data.site)}
@@ -71,9 +73,10 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}
       services={services.map(toPublicServiceListing)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
-      teamMembers={teamMembers}
+      teamMembers={teamProfiles.map(toPublicTeamMember)}
       categories={navCategories}
       siteSlug={slug}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

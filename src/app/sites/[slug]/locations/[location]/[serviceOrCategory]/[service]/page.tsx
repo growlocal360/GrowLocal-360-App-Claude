@@ -13,7 +13,9 @@ import {
   toPublicServiceListing,
   toPublicCategory,
   toPublicReview,
+  toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -125,9 +127,10 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
     notFound();
   }
 
-  const [googleReviews, { categories }] = await Promise.all([
+  const [googleReviews, { categories }, workItems] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
+    getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -151,6 +154,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
       googleReviews={googleReviews.map(toPublicReview)}
       categories={navCategories}
       locationSlug={location}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

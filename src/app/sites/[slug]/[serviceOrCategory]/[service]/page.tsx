@@ -8,8 +8,9 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
-  toPublicCategory, toPublicReview, toPublicAreaListing,
+  toPublicCategory, toPublicReview, toPublicAreaListing, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -141,10 +142,11 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   }
 
   const admin = createAdminClient();
-  const [googleReviews, { categories }, { data: serviceAreas }] = await Promise.all([
+  const [googleReviews, { categories }, { data: serviceAreas }, workItems] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
+    getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -168,6 +170,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       googleReviews={googleReviews.map(toPublicReview)}
       categories={navCategories}
       serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

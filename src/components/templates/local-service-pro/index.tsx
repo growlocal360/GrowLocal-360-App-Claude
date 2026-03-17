@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicRenderData, PublicRenderServiceListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderData, PublicRenderServiceListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import {
   JsonLd,
   buildLocalBusinessSchema,
@@ -19,6 +19,7 @@ import { BrandsSection } from './brands-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface LocalServiceProTemplateProps {
   data: PublicRenderData;
@@ -29,9 +30,10 @@ interface LocalServiceProTemplateProps {
   categories?: NavCategory[];
   secondaryCategories?: NavCategory[];
   locationSlug?: string;
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00d9c0';
@@ -92,6 +94,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           siteSlug={slug}
           locationSlug={locationSlug}
         />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={slug} locationSlug={locationSlug} />
         <LeadCaptureSection
           siteId={site.id}
           brandColor={brandColor}

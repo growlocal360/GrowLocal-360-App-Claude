@@ -150,7 +150,7 @@ export function AnalysisReviewPanel({
               Image Roles
             </label>
             <div className="mt-1.5 flex flex-wrap gap-2">
-              {analysis.imageRoles.map((ir) => (
+              {analysis.imageRoles.map((ir: { index: number; role: string }) => (
                 <Badge key={ir.index} variant="outline" className="text-xs capitalize">
                   Image {ir.index + 1}: {ir.role}
                 </Badge>

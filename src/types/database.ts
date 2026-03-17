@@ -398,14 +398,25 @@ export interface SiteBrand {
 export interface JobSnap {
   id: string;
   site_id: string;
-  location_id: string;
   service_id: string | null;
-  created_by: string;
-  status: JobStatus;
+  created_by: string | null;
   title: string | null;
   description: string | null;
   ai_generated_title: string | null;
   ai_generated_description: string | null;
+  service_type: string | null;
+  brand: string | null;
+  status: JobStatus;
+  location_source: 'exif' | 'device' | 'manual' | null;
+  address_full: string | null;
+  address_public: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  is_published_to_website: boolean;
+  is_published_to_gbp: boolean;
   approved_by: string | null;
   approved_at: string | null;
   deployed_at: string | null;
@@ -425,6 +436,7 @@ export interface JobSnapMedia {
   width: number | null;
   height: number | null;
   exif_data: Record<string, unknown> | null;
+  role: 'primary' | 'before' | 'after' | 'process' | 'detail' | null;
   sort_order: number;
   created_at: string;
 }
@@ -454,13 +466,11 @@ export interface SiteWithRelations extends Site {
 
 export interface LocationWithRelations extends Location {
   site?: Site;
-  job_snaps?: JobSnap[];
   neighborhoods?: Neighborhood[];
 }
 
 export interface JobSnapWithRelations extends JobSnap {
   media?: JobSnapMedia[];
-  location?: Location;
   service?: Service;
   created_by_profile?: Profile;
 }

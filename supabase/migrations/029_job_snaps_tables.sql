@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS job_snaps (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS update_job_snaps_updated_at ON job_snaps;
 CREATE TRIGGER update_job_snaps_updated_at
   BEFORE UPDATE ON job_snaps
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import {
   Plus,
   Loader2,
   Search,
+  ArrowLeft,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-snap-card';
@@ -20,8 +22,12 @@ import type { JobStatus } from '@/types/database';
 
 type StatusFilter = 'all' | JobStatus;
 
-export default function JobSnapsPage() {
+export default function SiteJobSnapsPage() {
+  const params = useParams();
+  const siteId = params.siteId as string;
+
   const [jobSnaps, setJobSnaps] = useState<JobSnapCardData[]>([]);
+  const [siteName, setSiteName] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -34,7 +40,6 @@ export default function JobSnapsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Get profile for active org
       const activeOrgId = getActiveOrgIdClient();
       const { data: allProfiles } = await supabase
         .from('profiles')
@@ -51,22 +56,17 @@ export default function JobSnapsPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load sites for the active org
-      const { data: sites } = await supabase
+      // Load the site name
+      const { data: site } = await supabase
         .from('sites')
-        .select('id, name')
-        .eq('organization_id', activeOrgId);
+        .select('name')
+        .eq('id', siteId)
+        .single();
 
-      if (!sites?.length) {
-        setJobSnaps([]);
-        setLoading(false);
-        return;
-      }
+      const currentSiteName = site?.name || '';
+      setSiteName(currentSiteName);
 
-      const siteIds = sites.map((s: { id: string }) => s.id);
-      const siteMap = new Map(sites.map((s: { id: string; name: string }) => [s.id, s.name]));
-
-      // Load job snaps with relations
+      // Load job snaps for this specific site
       const { data: snaps } = await supabase
         .from('job_snaps')
         .select(`
@@ -87,7 +87,7 @@ export default function JobSnapsPage() {
           service:services(id, name),
           media:job_snap_media(id, storage_path, sort_order)
         `)
-        .in('site_id', siteIds)
+        .eq('site_id', siteId)
         .order('created_at', { ascending: false });
 
       if (!snaps) {
@@ -96,12 +96,10 @@ export default function JobSnapsPage() {
         return;
       }
 
-      // Transform to card data
       const cardData: JobSnapCardData[] = snaps.map((snap: Record<string, unknown>) => {
         const service = snap.service as { id: string; name: string } | null;
         const media = (snap.media as { id: string; storage_path: string; sort_order: number }[]) || [];
 
-        // Get featured image URL from first media item
         let featuredImageUrl: string | null = null;
         if (media.length > 0) {
           const sorted = [...media].sort((a, b) => a.sort_order - b.sort_order);
@@ -120,7 +118,7 @@ export default function JobSnapsPage() {
           ai_generated_description: snap.ai_generated_description as string | null,
           status: snap.status as JobStatus,
           created_at: snap.created_at as string,
-          site_name: siteMap.get(snap.site_id as string) || 'Unknown Site',
+          site_name: currentSiteName,
           service_name: service?.name || null,
           brand_name: snap.brand as string | null,
           location_city: snap.city as string | null,
@@ -138,13 +136,13 @@ export default function JobSnapsPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, siteId]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId]);
 
-  // Filter logic
   const filteredSnaps = useMemo(() => {
     let result = jobSnaps;
 
@@ -154,8 +152,7 @@ export default function JobSnapsPage() {
         const title = (snap.title || snap.ai_generated_title || '').toLowerCase();
         const desc = (snap.description || snap.ai_generated_description || '').toLowerCase();
         const service = (snap.service_name || '').toLowerCase();
-        const site = snap.site_name.toLowerCase();
-        return title.includes(q) || desc.includes(q) || service.includes(q) || site.includes(q);
+        return title.includes(q) || desc.includes(q) || service.includes(q);
       });
     }
 
@@ -166,28 +163,22 @@ export default function JobSnapsPage() {
     return result;
   }, [jobSnaps, searchQuery, statusFilter]);
 
-  // Stubbed action handlers
   async function handlePushToWebsite(jobId: string) {
     setActionLoading(jobId);
-    // TODO: implement deploy to work_items
     toast.info('Push to website coming soon');
     setActionLoading(null);
   }
 
   async function handlePushToGBP(jobId: string) {
     setActionLoading(jobId);
-    // TODO: implement GBP publish
     toast.info('Push to Google Business Profile coming soon');
     setActionLoading(null);
   }
 
   async function handleRevalidate(jobId: string) {
-    const snap = jobSnaps.find((s) => s.id === jobId);
-    if (!snap) return;
     setActionLoading(jobId);
-
     try {
-      const response = await fetch(`/api/sites/${snap.site_id}/revalidate`, { method: 'POST' });
+      const response = await fetch(`/api/sites/${siteId}/revalidate`, { method: 'POST' });
       if (response.ok) {
         toast.success('Website cache revalidated');
       } else {
@@ -199,6 +190,8 @@ export default function JobSnapsPage() {
       setActionLoading(null);
     }
   }
+
+  const newJobHref = `/dashboard/job-snaps/new?siteId=${siteId}&from=${siteId}`;
 
   const statusFilters: { value: StatusFilter; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -214,18 +207,27 @@ export default function JobSnapsPage() {
       <Header title="Job Snaps" user={userData} />
 
       <div className="p-6">
-        {/* Page header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Job Snaps</h2>
-            <p className="text-gray-500">Manage and view all jobs across connected sites.</p>
-          </div>
-          <Button asChild className="bg-black hover:bg-gray-800">
-            <Link href="/dashboard/job-snaps/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Job
+        {/* Back + header */}
+        <div className="mb-6 space-y-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/dashboard/sites/${siteId}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to {siteName || 'Site'}
             </Link>
           </Button>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Job Snaps</h2>
+              <p className="text-gray-500">{siteName}</p>
+            </div>
+            <Button asChild className="bg-black hover:bg-gray-800">
+              <Link href={newJobHref}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Job
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -254,7 +256,7 @@ export default function JobSnapsPage() {
           </div>
         </div>
 
-        {/* Job Snaps List */}
+        {/* List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -271,11 +273,11 @@ export default function JobSnapsPage() {
               <p className="text-gray-500 mb-4 max-w-sm">
                 {searchQuery || statusFilter !== 'all'
                   ? 'Try adjusting your search or filters.'
-                  : 'Upload job photos, add details, and let AI generate content for your website.'}
+                  : 'Upload job photos and let AI generate content for your website.'}
               </p>
               {!searchQuery && statusFilter === 'all' && (
                 <Button asChild className="bg-black hover:bg-gray-800">
-                  <Link href="/dashboard/job-snaps/new">
+                  <Link href={newJobHref}>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Your First Job Snap
                   </Link>

@@ -2,11 +2,18 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ArrowLeft, Sparkles, Loader2, Building2 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { PhotoUpload } from '@/components/job-snaps/photo-upload';
 import { ImagePreviewGrid, type LocalImage } from '@/components/job-snaps/image-preview-grid';
@@ -19,6 +26,10 @@ import { toast } from 'sonner';
 
 export default function NewJobSnapPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const siteIdParam = searchParams.get('siteId');
+  const fromParam = searchParams.get('from');
+
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
   const [images, setImages] = useState<LocalImage[]>([]);
   const [location, setLocation] = useState<JobLocation | null>(null);
@@ -30,6 +41,8 @@ export default function NewJobSnapPage() {
 
   // Track site context for AI and save
   const [siteContext, setSiteContext] = useState<{ siteId: string; name: string; category: string } | null>(null);
+  // All sites for the org — used to show selector when no siteId param and org has 2+ sites
+  const [allSites, setAllSites] = useState<{ siteId: string; name: string; category: string }[]>([]);
 
   const reviewRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -54,7 +67,7 @@ export default function NewJobSnapPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load first site for business context (single-site orgs)
+      // Load site(s) for business context
       if (activeOrgId) {
         const { data: sites } = await supabase
           .from('sites')
@@ -66,25 +79,35 @@ export default function NewJobSnapPage() {
               gbp_category:gbp_categories(name)
             )
           `)
-          .eq('organization_id', activeOrgId)
-          .limit(1);
+          .eq('organization_id', activeOrgId);
 
-        if (sites?.[0]) {
-          const site = sites[0];
+        if (sites && sites.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const primaryCat = (site.site_categories as any[])?.find(
-            (c: { is_primary: boolean }) => c.is_primary
-          );
-          setSiteContext({
-            siteId: site.id,
-            name: site.name,
-            category: primaryCat?.gbp_category?.name || '',
+          const mapped = sites.map((s: any) => {
+            const primaryCat = (s.site_categories as { is_primary: boolean; gbp_category: { name: string } | null }[])
+              ?.find((c) => c.is_primary);
+            return { siteId: s.id as string, name: s.name as string, category: primaryCat?.gbp_category?.name || '' };
           });
+
+          setAllSites(mapped);
+
+          // If a specific siteId was passed via URL param, use it
+          if (siteIdParam) {
+            const match = mapped.find((s) => s.siteId === siteIdParam);
+            if (match) {
+              setSiteContext(match);
+            }
+          } else if (mapped.length === 1) {
+            // Single site org — auto-select
+            setSiteContext(mapped[0]);
+          }
+          // Multi-site without param: leave siteContext null; selector will appear
         }
       }
     }
     loadUser();
-  }, [supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, siteIdParam]);
 
   // Cleanup object URLs on unmount
   useEffect(() => {
@@ -399,12 +422,40 @@ export default function NewJobSnapPage() {
         {/* Back button */}
         <div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard/job-snaps">
+            <Link href={fromParam ? `/dashboard/sites/${fromParam}/job-snaps` : '/dashboard/job-snaps'}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Job Snaps
             </Link>
           </Button>
         </div>
+
+        {/* 0. Site selector — only shown when org has 2+ sites and no siteId in URL */}
+        {!siteIdParam && allSites.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-gray-400" />
+              Company
+            </label>
+            <Select
+              value={siteContext?.siteId || ''}
+              onValueChange={(value) => {
+                const site = allSites.find((s) => s.siteId === value);
+                if (site) setSiteContext(site);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a company for this job" />
+              </SelectTrigger>
+              <SelectContent>
+                {allSites.map((s) => (
+                  <SelectItem key={s.siteId} value={s.siteId}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* 1. Photo Upload */}
         <PhotoUpload
@@ -424,7 +475,7 @@ export default function NewJobSnapPage() {
         {/* 3. Analyze with AI */}
         <Button
           onClick={handleAnalyzeWithAI}
-          disabled={images.length === 0 || isAnalyzing}
+          disabled={images.length === 0 || isAnalyzing || !siteContext}
           className="w-full bg-gray-900 hover:bg-gray-800 text-white py-6 text-lg font-medium rounded-xl disabled:opacity-50"
           size="lg"
         >

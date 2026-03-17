@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
@@ -41,8 +41,9 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
     notFound();
   }
 
-  const [workItems, { categories }] = await Promise.all([
+  const [workItems, total, { categories }] = await Promise.all([
     getPublishedWorkItems(data.site.id),
+    getPublishedWorkItemsCount(data.site.id),
     getCategoriesWithServices(data.site.id),
   ]);
 
@@ -61,6 +62,8 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
       siteSlug={slug}
+      siteId={data.site.id}
+      hasMore={workItems.length < total}
     />
   );
 }

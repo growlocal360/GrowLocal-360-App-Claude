@@ -15,14 +15,28 @@ export interface WorkItemPageData {
 }
 
 /**
+ * Get the total count of published work items for a site.
+ */
+export async function getPublishedWorkItemsCount(siteId: string): Promise<number> {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('work_items')
+    .select('*', { count: 'exact', head: true })
+    .eq('site_id', siteId)
+    .eq('status', 'published');
+  return count ?? 0;
+}
+
+/**
  * Get published work items for a site, ordered by performed_at DESC.
  */
 export async function getPublishedWorkItems(
   siteId: string,
-  options?: { limit?: number }
+  options?: { limit?: number; offset?: number }
 ): Promise<WorkItemWithRelations[]> {
   const supabase = createAdminClient();
   const limit = options?.limit ?? 12;
+  const offset = options?.offset ?? 0;
 
   const { data: items } = await supabase
     .from('work_items')
@@ -31,7 +45,7 @@ export async function getPublishedWorkItems(
     .eq('status', 'published')
     .order('performed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (!items || items.length === 0) return [];
 

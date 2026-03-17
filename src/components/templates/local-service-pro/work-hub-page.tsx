@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { SiteHeader, NavCategory } from './site-header';
@@ -15,6 +16,8 @@ interface WorkHubPageProps {
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  siteId: string;
+  hasMore?: boolean;
 }
 
 function formatDate(dateStr: string): string {
@@ -68,6 +71,11 @@ function WorkItemCard({
               {item.service.name}
             </span>
           )}
+          {item.brand_name && (
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+              {item.brand_name}
+            </span>
+          )}
           {city && state && (
             <span>{city}, {state}</span>
           )}
@@ -92,8 +100,29 @@ export function WorkHubPage({
   categories,
   siteSlug,
   locationSlug,
+  siteId,
+  hasMore = false,
 }: WorkHubPageProps) {
   const brandColor = site.settings?.brand_color || '#00d9c0';
+  const [displayedItems, setDisplayedItems] = useState(workItems);
+  const [hasMoreItems, setHasMoreItems] = useState(hasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  async function loadMore() {
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/public/work?siteId=${siteId}&offset=${displayedItems.length}&limit=12`
+      );
+      const json = await res.json();
+      setDisplayedItems((prev) => [...prev, ...json.items]);
+      setHasMoreItems(json.hasMore);
+    } catch {
+      // silently fail — items already displayed
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -119,12 +148,25 @@ export function WorkHubPage({
         {/* Work Items Grid */}
         <section className="py-16">
           <div className="mx-auto max-w-7xl px-4">
-            {workItems.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {workItems.map((item) => (
-                  <WorkItemCard key={item.id} item={item} locationSlug={locationSlug} />
-                ))}
-              </div>
+            {displayedItems.length > 0 ? (
+              <>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {displayedItems.map((item) => (
+                    <WorkItemCard key={item.id} item={item} locationSlug={locationSlug} />
+                  ))}
+                </div>
+                {hasMoreItems && (
+                  <div className="mt-12 flex justify-center">
+                    <button
+                      onClick={loadMore}
+                      disabled={isLoadingMore}
+                      className="rounded-lg border border-gray-300 bg-white px-8 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
+                    >
+                      {isLoadingMore ? 'Loading…' : 'Load More Work'}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="py-12 text-center">
                 <p className="text-lg text-gray-500">

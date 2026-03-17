@@ -420,6 +420,7 @@ export interface JobSnap {
   approved_by: string | null;
   approved_at: string | null;
   deployed_at: string | null;
+  work_item_id: string | null;
   created_at: string;
   updated_at: string;
 }

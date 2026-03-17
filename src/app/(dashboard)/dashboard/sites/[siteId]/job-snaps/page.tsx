@@ -164,15 +164,55 @@ export default function SiteJobSnapsPage() {
   }, [jobSnaps, searchQuery, statusFilter]);
 
   async function handlePushToWebsite(jobId: string) {
+    const snap = jobSnaps.find((s) => s.id === jobId);
+    if (!snap) return;
     setActionLoading(jobId);
-    toast.info('Push to website coming soon');
-    setActionLoading(null);
+
+    const endpoint = snap.is_published_to_website
+      ? `/api/job-snaps/${jobId}/unpublish-website`
+      : `/api/job-snaps/${jobId}/publish-website`;
+
+    try {
+      const res = await fetch(endpoint, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Action failed');
+      } else {
+        const published = !snap.is_published_to_website;
+        setJobSnaps((prev) =>
+          prev.map((s) =>
+            s.id === jobId ? { ...s, is_published_to_website: published } : s
+          )
+        );
+        toast.success(published ? 'Published to website' : 'Unpublished from website');
+      }
+    } catch {
+      toast.error('Action failed. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handlePushToGBP(jobId: string) {
     setActionLoading(jobId);
-    toast.info('Push to Google Business Profile coming soon');
-    setActionLoading(null);
+    try {
+      const res = await fetch(`/api/job-snaps/${jobId}/publish-gbp`, { method: 'POST' });
+      const data = await res.json();
+      if (res.status === 501) {
+        toast.info('GBP posting is not yet available. Check back soon.');
+      } else if (!res.ok) {
+        toast.error(data.error || 'Failed to push to GBP');
+      } else {
+        setJobSnaps((prev) =>
+          prev.map((s) => (s.id === jobId ? { ...s, is_published_to_gbp: true } : s))
+        );
+        toast.success('Pushed to Google Business Profile');
+      }
+    } catch {
+      toast.error('Failed to push to GBP. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   async function handleRevalidate(jobId: string) {

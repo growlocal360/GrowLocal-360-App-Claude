@@ -339,7 +339,7 @@ export default function NewJobSnapPage() {
           const role = img.label && labelToRole[img.label] ? labelToRole[img.label] : undefined;
 
           // Use AI-assigned role from analysis if available
-          const aiRole = analysis?.imageRoles.find((r) => r.index === i)?.role;
+          const aiRole = analysis?.imageRoles.find((r: { index: number; role: string }) => r.index === i)?.role;
 
           return {
             base64,

@@ -272,7 +272,7 @@ export default function NewJobSnapPage() {
       if (result.imageRoles.length > 0) {
         setImages((prev) =>
           prev.map((img, idx) => {
-            const role = result.imageRoles.find((r) => r.index === idx);
+            const role = result.imageRoles.find((r: { index: number; role: string }) => r.index === idx);
             if (role) {
               // Map AI role to display label
               const labelMap: Record<string, LocalImage['label']> = {

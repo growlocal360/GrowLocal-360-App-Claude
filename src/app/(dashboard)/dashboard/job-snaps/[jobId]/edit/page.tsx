@@ -30,6 +30,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { toast } from 'sonner';
 import type { JobStatus, JobSnapWithRelations, JobSnapMedia } from '@/types/database';
@@ -456,11 +457,12 @@ export default function EditJobSnapPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="brand">Brand</Label>
-                  <Input
+                  <Label htmlFor="brand">Brand / Client</Label>
+                  <BrandCombobox
                     id="brand"
                     value={form.brand}
-                    onChange={(e) => field('brand', e.target.value)}
+                    onChange={(v) => field('brand', v)}
+                    siteId={jobSnap?.site_id ?? ''}
                     placeholder="e.g. Whirlpool"
                   />
                 </div>

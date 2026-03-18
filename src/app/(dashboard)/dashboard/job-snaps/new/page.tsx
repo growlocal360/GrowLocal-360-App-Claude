@@ -341,8 +341,8 @@ export default function NewJobSnapPage() {
     }
   }, [images, location, siteContext, isAnalyzing, analysisStale]);
 
-  // Save job snap to database
-  const handleContinueToSave = useCallback(async () => {
+  // Save job snap to database — receives the (potentially edited) analysis from the panel
+  const handleContinueToSave = useCallback(async (editedAnalysis: JobSnapAnalysisResult) => {
     if (images.length === 0) {
       toast.error('Please upload at least one image.');
       return;
@@ -378,7 +378,7 @@ export default function NewJobSnapPage() {
           const role = img.label && labelToRole[img.label] ? labelToRole[img.label] : undefined;
 
           // Use AI-assigned role from analysis if available
-          const aiRole = analysis?.imageRoles.find((r: { index: number; role: string }) => r.index === i)?.role;
+          const aiRole = editedAnalysis.imageRoles.find((r: { index: number; role: string }) => r.index === i)?.role;
 
           return {
             base64,
@@ -390,12 +390,15 @@ export default function NewJobSnapPage() {
         })
       );
 
+      // Preserve original AI values separately; user-edited values go into title/description
       const body = {
         siteId: siteContext.siteId,
+        title: editedAnalysis.title ?? undefined,
+        description: editedAnalysis.description ?? undefined,
         aiGeneratedTitle: analysis?.title ?? undefined,
         aiGeneratedDescription: analysis?.description ?? undefined,
-        serviceType: analysis?.serviceType ?? undefined,
-        brand: analysis?.brand ?? undefined,
+        serviceType: editedAnalysis.serviceType ?? undefined,
+        brand: editedAnalysis.brand ?? undefined,
         location: location
           ? {
               addressFull: location.address,
@@ -519,6 +522,7 @@ export default function NewJobSnapPage() {
             <AnalysisReviewPanel
               analysis={analysis}
               location={location}
+              siteId={siteContext?.siteId ?? ''}
               onContinue={handleContinueToSave}
               onReanalyze={handleAnalyzeWithAI}
               isLoading={isAnalyzing || isSaving}

@@ -27,6 +27,8 @@ interface SaveLocationInput {
 
 interface SaveRequest {
   siteId: string;
+  title?: string;
+  description?: string;
   aiGeneratedTitle?: string;
   aiGeneratedDescription?: string;
   serviceType?: string | null;
@@ -154,6 +156,8 @@ export async function POST(request: Request) {
       .insert({
         site_id: body.siteId,
         created_by: profile.id,
+        title: body.title ?? null,
+        description: body.description ?? null,
         ai_generated_title: body.aiGeneratedTitle ?? null,
         ai_generated_description: body.aiGeneratedDescription ?? null,
         service_type: body.serviceType ?? null,

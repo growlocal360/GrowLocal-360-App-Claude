@@ -1,12 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import {
   Sparkles,
-  Tag,
-  Wrench,
   MapPin,
   CheckCircle2,
   AlertCircle,
@@ -17,29 +19,26 @@ import type { JobLocation } from '@/components/job-snaps/job-location-card';
 interface AnalysisReviewPanelProps {
   analysis: JobSnapAnalysisResult;
   location: JobLocation | null;
-  onContinue: () => void;
+  siteId: string;
+  onContinue: (editedAnalysis: JobSnapAnalysisResult) => void;
   onReanalyze: () => void;
   isLoading?: boolean;
 }
 
 function ConfidenceBadge({ score, label }: { score: number; label: string }) {
   const pct = Math.round(score * 100);
-  let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'outline';
   let className = 'text-gray-500 border-gray-200';
 
   if (pct >= 80) {
-    variant = 'outline';
     className = 'text-green-700 border-green-200 bg-green-50';
   } else if (pct >= 50) {
-    variant = 'outline';
     className = 'text-amber-700 border-amber-200 bg-amber-50';
   } else if (pct > 0) {
-    variant = 'outline';
     className = 'text-red-600 border-red-200 bg-red-50';
   }
 
   return (
-    <Badge variant={variant} className={`text-xs ${className}`}>
+    <Badge variant="outline" className={`text-xs ${className}`}>
       {label}: {pct}%
     </Badge>
   );
@@ -48,15 +47,43 @@ function ConfidenceBadge({ score, label }: { score: number; label: string }) {
 export function AnalysisReviewPanel({
   analysis,
   location,
+  siteId,
   onContinue,
   onReanalyze,
   isLoading,
 }: AnalysisReviewPanelProps) {
+  const [edited, setEdited] = useState({
+    title: analysis.title,
+    description: analysis.description,
+    serviceType: analysis.serviceType ?? '',
+    brand: analysis.brand ?? '',
+  });
+
+  // Re-sync editable fields when analysis changes (re-analyze)
+  useEffect(() => {
+    setEdited({
+      title: analysis.title,
+      description: analysis.description,
+      serviceType: analysis.serviceType ?? '',
+      brand: analysis.brand ?? '',
+    });
+  }, [analysis]);
+
   const locationDisplay = location
     ? [location.address, location.city, location.state, location.zip]
         .filter(Boolean)
         .join(', ')
     : null;
+
+  const handleContinue = () => {
+    onContinue({
+      ...analysis,
+      title: edited.title.trim() || analysis.title,
+      description: edited.description.trim() || analysis.description,
+      serviceType: edited.serviceType.trim() || null,
+      brand: edited.brand.trim() || null,
+    });
+  };
 
   return (
     <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
@@ -65,6 +92,7 @@ export function AnalysisReviewPanel({
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-[#00d9c0]" />
           <h3 className="text-lg font-semibold text-gray-900">AI Analysis Result</h3>
+          <span className="text-xs text-gray-400 ml-1">— edit before saving</span>
         </div>
 
         {/* Title */}
@@ -72,9 +100,13 @@ export function AnalysisReviewPanel({
           <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
             Title
           </label>
-          <p className="mt-1 text-base font-semibold text-gray-900">
-            {analysis.title}
-          </p>
+          <Input
+            className="mt-1"
+            value={edited.title}
+            onChange={(e) => setEdited((prev) => ({ ...prev, title: e.target.value }))}
+            maxLength={200}
+            disabled={isLoading}
+          />
         </div>
 
         {/* Description */}
@@ -82,33 +114,41 @@ export function AnalysisReviewPanel({
           <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
             Description
           </label>
-          <p className="mt-1 text-sm leading-relaxed text-gray-700">
-            {analysis.description}
-          </p>
+          <Textarea
+            className="mt-1"
+            value={edited.description}
+            onChange={(e) => setEdited((prev) => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            maxLength={2000}
+            disabled={isLoading}
+          />
         </div>
 
-        {/* Service & Brand */}
-        <div className="flex flex-wrap gap-4">
+        {/* Service Type + Brand */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
               Service Type
             </label>
-            <div className="mt-1 flex items-center gap-1.5">
-              <Wrench className="h-4 w-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-900">
-                {analysis.serviceType || 'Not detected'}
-              </span>
-            </div>
+            <Input
+              className="mt-1"
+              value={edited.serviceType}
+              onChange={(e) => setEdited((prev) => ({ ...prev, serviceType: e.target.value }))}
+              placeholder="e.g. Appliance Removal"
+              disabled={isLoading}
+            />
           </div>
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
-              Brand
+              Brand / Client
             </label>
-            <div className="mt-1 flex items-center gap-1.5">
-              <Tag className="h-4 w-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-900">
-                {analysis.brand || 'None'}
-              </span>
+            <div className="mt-1">
+              <BrandCombobox
+                value={edited.brand}
+                onChange={(v) => setEdited((prev) => ({ ...prev, brand: v }))}
+                siteId={siteId}
+                placeholder="e.g. Whirlpool, Acme Co."
+              />
             </div>
           </div>
         </div>
@@ -162,8 +202,8 @@ export function AnalysisReviewPanel({
         {/* Actions */}
         <div className="flex gap-3 pt-2">
           <Button
-            onClick={onContinue}
-            disabled={isLoading}
+            onClick={handleContinue}
+            disabled={isLoading || !edited.title.trim()}
             className="flex-1 bg-gray-900 hover:bg-gray-800"
           >
             <CheckCircle2 className="mr-2 h-4 w-4" />

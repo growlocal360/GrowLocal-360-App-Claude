@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, X } from 'lucide-react';
 
-export type ImageLabel = 'gps_found' | 'no_gps' | 'primary' | 'before' | 'after' | null;
+export type ImageLabel = 'gps_found' | 'no_gps' | 'primary' | 'before' | 'after' | 'process' | 'detail' | null;
 
 export interface LocalImage {
   file: File;
@@ -19,6 +19,8 @@ const labelConfig: Record<string, { text: string; className: string }> = {
   primary: { text: 'Primary', className: 'text-blue-600' },
   before: { text: 'Before', className: 'text-amber-600' },
   after: { text: 'After', className: 'text-purple-600' },
+  process: { text: 'In Progress', className: 'text-blue-500' },
+  detail: { text: 'Detail', className: 'text-gray-500' },
 };
 
 interface ImagePreviewGridProps {

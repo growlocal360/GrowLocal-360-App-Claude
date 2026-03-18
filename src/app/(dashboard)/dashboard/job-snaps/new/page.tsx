@@ -38,6 +38,7 @@ export default function NewJobSnapPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [analysis, setAnalysis] = useState<JobSnapAnalysisResult | null>(null);
+  const [analysisStale, setAnalysisStale] = useState(false);
 
   // Track site context for AI and save
   const [siteContext, setSiteContext] = useState<{ siteId: string; name: string; category: string } | null>(null);
@@ -141,9 +142,10 @@ export default function NewJobSnapPage() {
 
       setImages((prev) => [...prev, ...newImages]);
 
-      // Clear previous analysis when new images are added
+      // Mark analysis as stale when photos change — don't clear it so the user
+      // can still see the previous results until they explicitly re-analyze
       if (analysis) {
-        setAnalysis(null);
+        setAnalysisStale(true);
       }
 
       // Auto-set location from first EXIF GPS
@@ -219,9 +221,9 @@ export default function NewJobSnapPage() {
         return updated;
       });
 
-      // Clear analysis when images change
+      // Mark analysis stale when a photo is removed
       if (analysis) {
-        setAnalysis(null);
+        setAnalysisStale(true);
       }
     },
     [location, analysis]
@@ -287,6 +289,7 @@ export default function NewJobSnapPage() {
 
     setIsAnalyzing(true);
     setAnalysis(null);
+    setAnalysisStale(false);
 
     try {
       const result = await analyzeJobSnap({
@@ -304,13 +307,12 @@ export default function NewJobSnapPage() {
           prev.map((img, idx) => {
             const role = result.imageRoles.find((r: { index: number; role: string }) => r.index === idx);
             if (role) {
-              // Map AI role to display label
               const labelMap: Record<string, LocalImage['label']> = {
                 primary: 'primary',
                 before: 'before',
                 after: 'after',
-                process: 'gps_found', // reuse existing label style for now
-                detail: img.gpsCoords ? 'gps_found' : 'no_gps',
+                process: 'process',
+                detail: 'detail',
               };
               return { ...img, label: labelMap[role.role] || img.label };
             }
@@ -321,16 +323,23 @@ export default function NewJobSnapPage() {
 
       toast.success('AI analysis complete');
 
-      // Scroll to review panel
+      // Scroll the main container so the analysis panel is visible
       setTimeout(() => {
-        reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+        if (!reviewRef.current) return;
+        const el = reviewRef.current;
+        const scrollParent = el.closest('main') || el.parentElement;
+        if (scrollParent) {
+          const elTop = el.getBoundingClientRect().top;
+          const parentTop = scrollParent.getBoundingClientRect().top;
+          scrollParent.scrollBy({ top: elTop - parentTop - 16, behavior: 'smooth' });
+        }
+      }, 150);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Analysis failed. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
-  }, [images, location, siteContext, isAnalyzing]);
+  }, [images, location, siteContext, isAnalyzing, analysisStale]);
 
   // Save job snap to database
   const handleContinueToSave = useCallback(async () => {
@@ -480,6 +489,11 @@ export default function NewJobSnapPage() {
         />
 
         {/* 3. Analyze with AI */}
+        {analysisStale && analysis && (
+          <p className="text-center text-xs text-amber-600">
+            Photos changed since last analysis — click Analyze to update results.
+          </p>
+        )}
         <Button
           onClick={handleAnalyzeWithAI}
           disabled={images.length === 0 || isAnalyzing || !siteContext}

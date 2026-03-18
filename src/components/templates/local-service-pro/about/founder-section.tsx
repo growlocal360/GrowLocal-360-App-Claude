@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { AboutPageSections } from '@/types/database';
 import type { PublicRenderTeamMember } from '@/lib/sites/public-render-model';
 
@@ -33,10 +34,11 @@ export function FounderSection({ sections, teamMembers, brandColor }: FounderSec
           {owner && (
             <div className="flex flex-col items-center text-center lg:col-span-1">
               {owner.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={owner.avatar_url}
                   alt={owner.full_name}
+                  width={160}
+                  height={160}
                   className="mb-4 h-40 w-40 rounded-full object-cover shadow-md"
                 />
               ) : (

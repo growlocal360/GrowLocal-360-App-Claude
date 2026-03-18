@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
@@ -169,14 +170,16 @@ export function WorkDetailPage({
                   : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
               }`}>
                 {workItem.images.map((img, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={img.url}
-                    alt={img.alt || `${workItem.title} - Image ${i + 1}`}
-                    className="w-full rounded-lg object-cover"
-                    {...(img.width && img.height ? { width: img.width, height: img.height } : {})}
-                  />
+                  <div key={i} className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-gray-100">
+                    <Image
+                      src={img.url}
+                      alt={img.alt || `${workItem.title} - Image ${i + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      priority={i === 0}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -213,13 +216,14 @@ export function WorkDetailPage({
                       href={paths.workDetail(item.slug, locationSlug)}
                       className="group block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
                     >
-                      <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                      <div className="relative aspect-4/3 w-full overflow-hidden bg-gray-100">
                         {itemImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={itemImage.url}
                             alt={itemImage.alt || item.title}
-                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-gray-400">

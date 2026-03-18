@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { PublicRenderTeamMember } from '@/lib/sites/public-render-model';
 
 interface TeamSectionProps {
@@ -38,10 +39,11 @@ export function TeamSection({
               className="flex flex-col items-center rounded-xl border border-gray-100 bg-white p-6 text-center shadow-sm"
             >
               {member.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={member.avatar_url}
                   alt={member.full_name}
+                  width={96}
+                  height={96}
                   className="mb-4 h-24 w-24 rounded-full object-cover"
                 />
               ) : (

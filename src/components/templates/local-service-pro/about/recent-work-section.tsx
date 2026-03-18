@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PublicRenderWorkItem } from '@/lib/sites/public-render-model';
@@ -53,13 +54,14 @@ export function RecentWorkSection({ workItems, locationSlug }: RecentWorkSection
                 className="group block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
               >
                 {/* Image */}
-                <div className="aspect-[4/3] w-full overflow-hidden bg-gray-100">
+                <div className="relative aspect-4/3 w-full overflow-hidden bg-gray-100">
                   {firstImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={firstImage.url}
                       alt={firstImage.alt || item.title || 'Completed work'}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      fill
+                      className="object-cover transition-transform group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-gray-400">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, X, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-render-model';
@@ -45,11 +46,13 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
         {/* Logo / Business Name */}
         <Link href={home} className="flex shrink-0 items-center gap-2">
           {site.settings?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={site.settings.logo_url}
               alt={site.name}
-              className="h-10 w-auto"
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain"
+              priority
             />
           ) : (
             <span className="text-xl font-bold text-gray-900">

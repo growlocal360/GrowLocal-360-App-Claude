@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,11 +23,13 @@ export function BrandHomepage({ site, locations }: BrandHomepageProps) {
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           {site.settings?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={site.settings.logo_url}
               alt={site.name}
-              className="h-10 w-auto"
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain"
+              priority
             />
           ) : (
             <span className="text-xl font-bold text-gray-900">{site.name}</span>

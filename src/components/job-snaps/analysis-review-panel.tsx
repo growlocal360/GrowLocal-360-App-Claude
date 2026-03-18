@@ -12,6 +12,7 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import type { JobSnapAnalysisResult } from '@/lib/job-snaps/analyze';
 import type { JobLocation } from '@/components/job-snaps/job-location-card';
@@ -206,8 +207,12 @@ export function AnalysisReviewPanel({
             disabled={isLoading || !edited.title.trim()}
             className="flex-1 bg-gray-900 hover:bg-gray-800"
           >
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Continue to Save
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+            )}
+            {isLoading ? 'Saving…' : 'Continue to Save'}
           </Button>
           <Button
             variant="outline"

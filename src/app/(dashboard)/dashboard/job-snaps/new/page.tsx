@@ -429,6 +429,7 @@ export default function NewJobSnapPage() {
       router.push(`/dashboard/job-snaps/${data.jobSnapId}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Save failed. Please try again.');
+    } finally {
       setIsSaving(false);
     }
   }, [images, location, analysis, siteContext, isSaving, router]);

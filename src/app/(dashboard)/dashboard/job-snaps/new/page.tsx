@@ -335,7 +335,7 @@ export default function NewJobSnapPage() {
         }
       }, 150);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Analysis failed. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Analysis failed. Please try again.', { duration: 6000 });
     } finally {
       setIsAnalyzing(false);
     }

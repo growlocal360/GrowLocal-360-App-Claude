@@ -44,7 +44,7 @@ export function WizardShell({ children }: WizardShellProps) {
     <div className="mx-auto max-w-3xl">
       {/* Progress Steps */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           {steps.map((step, index) => {
             const isCompleted = index < currentIndex;
             const isCurrent = index === currentIndex;
@@ -83,7 +83,7 @@ export function WizardShell({ children }: WizardShellProps) {
                 {index < steps.length - 1 && (
                   <div
                     className={cn(
-                      'mx-2 h-0.5 w-12 sm:w-20 md:w-24',
+                      'mx-1 h-0.5 flex-1 min-w-1',
                       index < currentIndex ? 'bg-[#00d9c0]' : 'bg-gray-200'
                     )}
                   />

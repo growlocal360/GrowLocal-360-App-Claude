@@ -7,6 +7,7 @@ import { WorkDetailPage } from '@/components/templates/local-service-pro/work-de
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 
 export const revalidate = 3600;
 
@@ -30,29 +31,22 @@ export async function generateMetadata({ params }: WorkDetailProps): Promise<Met
     return { title: 'Work Not Found' };
   }
 
-  const { site, workItem, service, itemLocation, primaryLocation } = data;
-  const city = workItem.address_city || itemLocation?.city || primaryLocation.city;
-  const state = workItem.address_state || itemLocation?.state || primaryLocation.state;
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
 
-  const title = workItem.meta_title || [
-    workItem.brand_name,
-    service?.name,
-    city && state ? `– ${city}, ${state}` : '',
-    `| ${site.name}`,
-  ].filter(Boolean).join(' ');
-
-  const description = workItem.meta_description ||
-    `${workItem.title} by ${site.name}${city ? ` in ${city}, ${state}` : ''}. View project details and photos.`;
-
-  const domain = site.domain || site.custom_domain || `${slug}.growlocal360.com`;
-  const canonicalUrl = `https://${domain}/work/${workSlug}`;
+  const output = toPublicJobOutput(data.workItem, { siteName: data.site.name, domain });
 
   return {
-    title,
-    description,
-    alternates: {
-      canonical: canonicalUrl,
+    title: output.metaTitle,
+    description: output.metaDescription,
+    openGraph: {
+      title: output.ogTitle,
+      description: output.ogDescription,
+      images: output.featuredImage
+        ? [{ url: output.featuredImage.url, alt: output.featuredImage.alt }]
+        : [],
     },
+    alternates: { canonical: output.canonicalUrl },
   };
 }
 

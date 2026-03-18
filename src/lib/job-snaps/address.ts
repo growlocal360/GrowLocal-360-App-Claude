@@ -79,3 +79,53 @@ export function toStorageFileName(opts: {
 
   return `${parts.join('-')}.${opts.ext.replace(/^\./, '')}`;
 }
+
+// ─── Privacy Mode ──────────────────────────────────────────────────────────────
+
+export type AddressVisibility = 'street-name-only' | 'city-state-only' | 'full';
+
+/**
+ * Resolves address visibility based on job type and optional manual override.
+ *   residential (default) → 'street-name-only'  (house number already stripped at publish time)
+ *   commercial            → 'full'               (business addresses are typically public)
+ *
+ * NOTE: work_items do not yet carry a job_type column. Pass jobType=null to
+ * get the default residential behaviour. When job_type is added to the DB,
+ * pass it here.
+ */
+export function resolveAddressVisibility(
+  jobType?: 'residential' | 'commercial' | null,
+  override?: AddressVisibility,
+): AddressVisibility {
+  if (override) return override;
+  return jobType === 'commercial' ? 'full' : 'street-name-only';
+}
+
+/**
+ * Formats a public address string respecting the given visibility level.
+ *
+ * 'street-name-only' → "Main St Tampa, FL 33601"
+ * 'city-state-only'  → "Tampa, FL"
+ * 'full'             → same as street-name-only (house number already absent from work_items)
+ *
+ * `streetName` is always the already-stripped form (no house number) stored in
+ * work_items.address_street_name. There is no public path to address_full from a work_item.
+ */
+export function formatPublicAddressWithVisibility(
+  fields: {
+    streetName: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+  },
+  visibility: AddressVisibility,
+): string {
+  const { streetName, city, state, zip } = fields;
+  if (visibility === 'city-state-only') {
+    return [city, state].filter(Boolean).join(', ');
+  }
+  // 'street-name-only' and 'full' both use streetName (house number already absent)
+  return [streetName, city && state ? `${city}, ${state}` : null, zip]
+    .filter(Boolean)
+    .join(' ');
+}

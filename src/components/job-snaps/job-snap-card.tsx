@@ -112,10 +112,12 @@ export function JobSnapCard({
 
               {/* Metadata badges */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-xs font-normal text-gray-600">
-                  <Tag className="mr-1 h-3 w-3" />
-                  {job.brand_name || 'None'}
-                </Badge>
+                {job.brand_name && (
+                  <Badge variant="outline" className="text-xs font-normal text-gray-600">
+                    <Tag className="mr-1 h-3 w-3" />
+                    {job.brand_name}
+                  </Badge>
+                )}
                 {job.service_name && (
                   <Badge variant="outline" className="text-xs font-normal text-gray-600">
                     <Wrench className="mr-1 h-3 w-3" />
@@ -157,6 +159,7 @@ export function JobSnapCard({
               className="h-8 w-8 text-gray-400 hover:text-gray-700"
               asChild
               title="View details"
+              aria-label="View details"
             >
               <Link href={`/dashboard/job-snaps/${job.id}`}>
                 <Eye className="h-4 w-4" />
@@ -168,6 +171,7 @@ export function JobSnapCard({
               className="h-8 w-8 text-gray-400 hover:text-gray-700"
               asChild
               title="Edit"
+              aria-label="Edit job snap"
             >
               <Link href={`/dashboard/job-snaps/${job.id}/edit`}>
                 <Pencil className="h-4 w-4" />
@@ -184,6 +188,7 @@ export function JobSnapCard({
               onClick={() => onPushToWebsite?.(job.id)}
               disabled={isLoading}
               title={job.is_published_to_website ? 'Published to website' : 'Push to website'}
+              aria-label={job.is_published_to_website ? 'Unpublish from website' : 'Publish to website'}
             >
               <Monitor className="h-4 w-4" />
             </Button>
@@ -198,6 +203,7 @@ export function JobSnapCard({
               onClick={() => onPushToGBP?.(job.id)}
               disabled={isLoading}
               title={job.is_published_to_gbp ? 'Published to GBP' : 'Push to Google Business Profile'}
+              aria-label={job.is_published_to_gbp ? 'Published to Google Business Profile' : 'Push to Google Business Profile'}
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -213,6 +219,7 @@ export function JobSnapCard({
               onClick={() => onRevalidate?.(job.id)}
               disabled={isLoading}
               title="Revalidate website"
+              aria-label="Revalidate website cache"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>

@@ -50,6 +50,7 @@ const EDITABLE_STATUSES: { value: JobStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
   { value: 'queued', label: 'Queued for Review' },
   { value: 'approved', label: 'Approved' },
+  { value: 'deployed', label: 'Deployed (live)' },
   { value: 'rejected', label: 'Rejected' },
 ];
 

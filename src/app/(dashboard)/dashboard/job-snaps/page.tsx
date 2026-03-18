@@ -135,6 +135,7 @@ export default function JobSnapsPage() {
       setJobSnaps(cardData);
     } catch (err) {
       console.error('Failed to load job snaps:', err);
+      toast.error('Failed to load job snaps. Please refresh.');
     } finally {
       setLoading(false);
     }

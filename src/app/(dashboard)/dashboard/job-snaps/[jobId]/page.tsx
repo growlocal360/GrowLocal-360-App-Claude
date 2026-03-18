@@ -46,6 +46,8 @@ export default function JobSnapDetailPage() {
   const [jobSnap, setJobSnap] = useState<JobSnapWithRelations | null>(null);
   const [siteName, setSiteName] = useState<string>('');
   const [siteSlug, setSiteSlug] = useState<string>('');
+  const [siteCustomDomain, setSiteCustomDomain] = useState<string | null>(null);
+  const [workItemSlug, setWorkItemSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export default function JobSnapDetailPage() {
         // Verify org access
         const { data: site } = await supabase
           .from('sites')
-          .select('name, slug, organization_id')
+          .select('name, slug, custom_domain, organization_id')
           .eq('id', snap.site_id)
           .single();
 
@@ -105,6 +107,17 @@ export default function JobSnapDetailPage() {
 
         setSiteName(site.name);
         setSiteSlug(site.slug || '');
+        setSiteCustomDomain(site.custom_domain || null);
+
+        // Fetch work item slug for the "View on website" link
+        if (snap.work_item_id) {
+          const { data: workItem } = await supabase
+            .from('work_items')
+            .select('slug')
+            .eq('id', snap.work_item_id)
+            .single();
+          setWorkItemSlug(workItem?.slug || null);
+        }
         setJobSnap(snap as unknown as JobSnapWithRelations);
       } catch (err) {
         console.error('Failed to load job snap:', err);
@@ -308,6 +321,7 @@ export default function JobSnapDetailPage() {
               onClick={handleRevalidate}
               disabled={actionLoading !== null}
               title="Revalidate website cache"
+              aria-label="Revalidate website cache"
             >
               {actionLoading === 'revalidate' ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -402,10 +416,10 @@ export default function JobSnapDetailPage() {
                   <span className="font-medium">{formatDate(jobSnap.approved_at)}</span>
                 </div>
               )}
-              {jobSnap.is_published_to_website && siteSlug && jobSnap.work_item_id && (
+              {jobSnap.is_published_to_website && workItemSlug && (
                 <div className="pt-1">
                   <a
-                    href={`https://${siteSlug}.goleadflow.com/work`}
+                    href={`https://${siteCustomDomain || `${siteSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com'}`}/work/${workItemSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-[#00d9c0] hover:underline"

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import {
@@ -12,6 +13,8 @@ import {
   Users,
   Settings,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -65,9 +68,63 @@ const shortcutItems = [
 
 export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-white">
+    <>
+      {/* ── Mobile top bar ─────────────────────────────────────── */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center border-b bg-white px-4 md:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Open menu"
+          onClick={() => setMobileOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <div className="ml-3">
+          <Image
+            src="/grow-local-360-logo-black.svg"
+            alt="GrowLocal360"
+            width={130}
+            height={22}
+            priority
+          />
+        </div>
+      </div>
+
+      {/* ── Backdrop (mobile only) ──────────────────────────────── */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar panel ──────────────────────────────────────── */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r bg-white transition-transform duration-200',
+          'md:relative md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {/* Close button (mobile only) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close menu"
+          onClick={() => setMobileOpen(false)}
+          className="absolute right-3 top-3 md:hidden"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+
       {/* Logo */}
       <div className="flex h-16 items-center px-6">
         <Image
@@ -180,5 +237,6 @@ export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

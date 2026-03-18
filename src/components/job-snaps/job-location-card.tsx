@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,10 +16,15 @@ export interface JobLocation {
   source: 'exif' | 'device' | 'manual';
 }
 
+interface Prediction {
+  placeId: string;
+  description: string;
+}
+
 interface JobLocationCardProps {
   location: JobLocation | null;
   onUseCurrentLocation: () => void;
-  onSaveManualAddress: (address: string) => void;
+  onSaveManualAddress: (location: JobLocation) => void;
   onEdit: () => void;
   isLoadingLocation: boolean;
 }
@@ -32,12 +37,145 @@ export function JobLocationCard({
   isLoadingLocation,
 }: JobLocationCardProps) {
   const [manualInput, setManualInput] = useState('');
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<JobLocation | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch autocomplete predictions as user types
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (manualInput.trim().length < 2) {
+      setPredictions([]);
+      setOpen(false);
+      return;
+    }
+
+    // Clear selected location when user keeps typing after a selection
+    if (selectedLocation) {
+      setSelectedLocation(null);
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/places/autocomplete?query=${encodeURIComponent(manualInput.trim())}`
+        );
+        const data = await res.json();
+        setPredictions(data.predictions || []);
+        setOpen((data.predictions || []).length > 0);
+      } catch {
+        setPredictions([]);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualInput]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setActiveIndex(-1);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectPrediction = async (prediction: Prediction) => {
+    setManualInput(prediction.description);
+    setOpen(false);
+    setActiveIndex(-1);
+    setIsLoadingDetails(true);
+
+    try {
+      const res = await fetch(
+        `/api/places/details?placeId=${encodeURIComponent(prediction.placeId)}`
+      );
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      const loc: JobLocation = {
+        address: data.address || prediction.description,
+        city: data.city || '',
+        state: data.state || '',
+        zip: data.zip || '',
+        lat: data.lat ?? null,
+        lng: data.lng ?? null,
+        source: 'manual',
+      };
+      setSelectedLocation(loc);
+    } catch {
+      // Fallback: save just the description text
+      setSelectedLocation({
+        address: prediction.description,
+        city: '',
+        state: '',
+        zip: '',
+        lat: null,
+        lng: null,
+        source: 'manual',
+      });
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   const handleSave = () => {
+    if (selectedLocation) {
+      onSaveManualAddress(selectedLocation);
+      setManualInput('');
+      setSelectedLocation(null);
+      return;
+    }
+
+    // Fallback: allow saving raw text if no prediction was selected
     const trimmed = manualInput.trim();
     if (!trimmed) return;
-    onSaveManualAddress(trimmed);
+    onSaveManualAddress({
+      address: trimmed,
+      city: '',
+      state: '',
+      zip: '',
+      lat: null,
+      lng: null,
+      source: 'manual',
+    });
     setManualInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (open && predictions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, predictions.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, -1));
+      } else if (e.key === 'Enter' && activeIndex >= 0) {
+        e.preventDefault();
+        selectPrediction(predictions[activeIndex]);
+        return;
+      } else if (e.key === 'Escape') {
+        setOpen(false);
+        setActiveIndex(-1);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !open) {
+      handleSave();
+    }
   };
 
   // State: Location found
@@ -126,24 +264,58 @@ export function JobLocationCard({
           </div>
         </div>
 
-        {/* Manual address input */}
+        {/* Address autocomplete input */}
         <div className="space-y-3">
           <label className="text-sm font-medium text-gray-700">Location</label>
-          <Input
-            placeholder="Enter address..."
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSave();
-            }}
-          />
+          <div ref={containerRef} className="relative">
+            <Input
+              placeholder="Start typing an address..."
+              value={manualInput}
+              onChange={(e) => {
+                setManualInput(e.target.value);
+                setActiveIndex(-1);
+              }}
+              onFocus={() => {
+                if (predictions.length > 0) setOpen(true);
+              }}
+              onKeyDown={handleKeyDown}
+              autoComplete="off"
+            />
+            {open && predictions.length > 0 && (
+              <ul className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-md max-h-48 overflow-auto">
+                {predictions.map((prediction, i) => (
+                  <li
+                    key={prediction.placeId}
+                    className={`cursor-pointer px-3 py-2 text-sm ${
+                      i === activeIndex
+                        ? 'bg-[#00d9c0]/10 text-gray-900'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectPrediction(prediction);
+                    }}
+                  >
+                    {prediction.description}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <Button
             variant="outline"
             className="w-full"
             onClick={handleSave}
-            disabled={!manualInput.trim()}
+            disabled={isLoadingDetails || (!manualInput.trim() && !selectedLocation)}
           >
-            Save Location
+            {isLoadingDetails ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Getting address details...
+              </>
+            ) : (
+              'Save Location'
+            )}
           </Button>
         </div>
       </CardContent>

@@ -255,17 +255,9 @@ export default function NewJobSnapPage() {
     }
   }, []);
 
-  // Save manual address
-  const handleSaveManualAddress = useCallback((address: string) => {
-    setLocation({
-      address,
-      city: '',
-      state: '',
-      zip: '',
-      lat: null,
-      lng: null,
-      source: 'manual',
-    });
+  // Save manual address (receives full location from autocomplete or raw text)
+  const handleSaveManualAddress = useCallback((loc: JobLocation) => {
+    setLocation(loc);
     setIsEditing(false);
     toast.success('Location saved');
   }, []);

@@ -1,26 +1,57 @@
-// GBP categories where product/equipment brands are relevant to the business
-const BRAND_APPLICABLE_GCIDS = new Set([
-  // HVAC & Climate Control
-  'gcid:hvac_contractor',
-  'gcid:air_conditioning_repair_service',
-  'gcid:air_conditioning_contractor',
-  'gcid:heating_contractor',
-  'gcid:furnace_repair_service',
-  // Appliance Repair
-  'gcid:appliance_repair_service',
-  'gcid:refrigerator_repair_service',
-  'gcid:washer_dryer_repair_service',
+// GBP categories where product/equipment brands are relevant to the business.
+// Uses regex patterns on the GCID string so new Google category variants are
+// automatically matched without any list maintenance.
+const BRAND_APPLICABLE_PATTERNS: RegExp[] = [
+  // HVAC — all variants: hvac_contractor, hvac_systems_supplier, hvac_engineer, etc.
+  /hvac/,
+  /air_condition/,        // air_conditioning_repair_service, air_conditioning_contractor, etc.
+  /heating/,              // heating_contractor, heating_equipment_supplier, etc.
+  /furnace/,
+  /mechanical_contractor/,
+
+  // Appliance repair — all variants
+  /appliance/,            // appliance_repair_service, small_appliance_repair_service
+  /refrigerator/,
+  /washer/,
+  /dryer/,
+  /dishwasher/,
+
   // Auto
-  'gcid:auto_repair_shop',
-  'gcid:brake_shop',
-  'gcid:tire_shop',
-  // Other equipment-based
-  'gcid:roofing_contractor',
-  'gcid:swimming_pool_contractor',
-  'gcid:swimming_pool_repair_service',
-  'gcid:garage_door_supplier',
-]);
+  /auto_repair/,
+  /tire_shop/,
+  /brake_shop/,
+  /auto_body/,
+
+  // Plumbing (water heaters, fixtures)
+  /\bplumber\b/,
+  /\bplumbing\b/,
+  /water_heater/,
+
+  // Electrical (panels, devices)
+  /\belectrician\b/,
+  /electrical_install/,
+
+  // Generators
+  /generator/,
+
+  // Garage door — catches both garage_door_supplier and garage_door_repair_service
+  /garage_door/,
+
+  // Roofing / pools
+  /roofing/,
+  /swimming_pool/,
+
+  // Flooring
+  /flooring/,
+  /carpet_install/,
+
+  // Kitchen / bath remodel
+  /kitchen_remodel/,
+  /bathroom_remodel/,
+];
 
 export function isBrandApplicable(categoryGcids: string[]): boolean {
-  return categoryGcids.some((gcid) => BRAND_APPLICABLE_GCIDS.has(gcid));
+  return categoryGcids.some((gcid) =>
+    BRAND_APPLICABLE_PATTERNS.some((pattern) => pattern.test(gcid))
+  );
 }

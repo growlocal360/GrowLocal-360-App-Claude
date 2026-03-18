@@ -228,7 +228,10 @@ export function StepNeighborhoods() {
 
   const getLocationName = (locationId: string) => {
     const loc = locations.find((l, i) => (l.id || `loc-${i}`) === locationId);
-    return loc ? `${loc.city}, ${loc.state}` : locationId;
+    if (!loc) return locationId;
+    const city = loc.representativeCity || loc.city;
+    const state = loc.representativeState || loc.state;
+    return `${city}, ${state}`;
   };
 
   // Calculate step number
@@ -478,7 +481,7 @@ export function StepNeighborhoods() {
                     <option value="">Select location...</option>
                     {locations.map((loc, index) => (
                       <option key={loc.id || index} value={loc.id || `loc-${index}`}>
-                        {loc.city}, {loc.state}
+                        {loc.representativeCity || loc.city}, {loc.representativeState || loc.state}
                       </option>
                     ))}
                   </select>

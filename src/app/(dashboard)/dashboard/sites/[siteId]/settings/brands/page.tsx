@@ -22,12 +22,16 @@ import {
   Check,
   Loader2,
   ArrowLeft,
+  RefreshCw,
+  Wand2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Brand {
   id: string;
   name: string;
   slug: string;
+  h1: string | null;
   is_active: boolean;
   sort_order: number;
 }
@@ -56,6 +60,9 @@ export default function BrandsPage() {
 
   // Deleting
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Per-brand content generation
+  const [generatingBrandId, setGeneratingBrandId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBrands();
@@ -186,6 +193,24 @@ export default function BrandsPage() {
     }
   };
 
+  const handleGenerateBrand = async (brandId: string) => {
+    setGeneratingBrandId(brandId);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: { type: 'brands', brandIds: [brandId] } }),
+      });
+      if (!res.ok) throw new Error('Generation failed');
+      toast.success('Brand page generation started');
+      setTimeout(() => fetchBrands(), 4000);
+    } catch {
+      toast.error('Failed to start brand page generation');
+    } finally {
+      setGeneratingBrandId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto p-6">
@@ -285,26 +310,52 @@ export default function BrandsPage() {
         </CardHeader>
         <CardContent>
           {brands.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="divide-y">
               {brands.map((brand) => (
-                <Badge
-                  key={brand.id}
-                  variant="secondary"
-                  className="text-sm px-3 py-1.5 flex items-center gap-1"
-                >
-                  {brand.name}
-                  <button
-                    onClick={() => handleDeleteBrand(brand.id)}
-                    disabled={deletingId === brand.id}
-                    className="ml-1 hover:text-red-600"
-                  >
-                    {deletingId === brand.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3 w-3" />
-                    )}
-                  </button>
-                </Badge>
+                <div key={brand.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${
+                        brand.h1 ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      title={brand.h1 ? 'Page content generated' : 'No page content yet'}
+                    />
+                    <span className="font-medium text-gray-900 truncate">{brand.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateBrand(brand.id)}
+                      disabled={generatingBrandId === brand.id}
+                      title={brand.h1 ? 'Regenerate brand page content' : 'Build brand page content'}
+                    >
+                      {generatingBrandId === brand.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : brand.h1 ? (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      ) : (
+                        <Wand2 className="h-3.5 w-3.5" />
+                      )}
+                      <span className="ml-1.5 text-xs">
+                        {brand.h1 ? 'Regenerate' : 'Build Page'}
+                      </span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteBrand(brand.id)}
+                      disabled={deletingId === brand.id}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      {deletingId === brand.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

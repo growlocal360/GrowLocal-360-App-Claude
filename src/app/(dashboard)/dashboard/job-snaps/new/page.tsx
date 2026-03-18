@@ -68,40 +68,47 @@ export default function NewJobSnapPage() {
       });
 
       // Load site(s) for business context
-      if (activeOrgId) {
-        const { data: sites } = await supabase
-          .from('sites')
-          .select(`
-            id,
-            name,
-            site_categories(
-              is_primary,
-              gbp_category:gbp_categories(name)
-            )
-          `)
-          .eq('organization_id', activeOrgId);
+      // All org IDs this user belongs to (needed for cross-org siteId lookup)
+      const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
 
-        if (sites && sites.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapped = sites.map((s: any) => {
-            const primaryCat = (s.site_categories as { is_primary: boolean; gbp_category: { name: string } | null }[])
-              ?.find((c) => c.is_primary);
-            return { siteId: s.id as string, name: s.name as string, category: primaryCat?.gbp_category?.name || '' };
-          });
+      if (orgIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapSite = (s: any) => {
+          const primaryCat = (s.site_categories as { is_primary: boolean; gbp_category: { name: string } | null }[])
+            ?.find((c) => c.is_primary);
+          return { siteId: s.id as string, name: s.name as string, category: primaryCat?.gbp_category?.name || '' };
+        };
 
-          setAllSites(mapped);
+        if (siteIdParam) {
+          // Specific site requested — verify user has access to it through any of their orgs
+          const { data: sites } = await supabase
+            .from('sites')
+            .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+            .eq('id', siteIdParam)
+            .in('organization_id', orgIds)
+            .limit(1);
 
-          // If a specific siteId was passed via URL param, use it
-          if (siteIdParam) {
-            const match = mapped.find((s) => s.siteId === siteIdParam);
-            if (match) {
-              setSiteContext(match);
-            }
-          } else if (mapped.length === 1) {
-            // Single site org — auto-select
-            setSiteContext(mapped[0]);
+          if (sites && sites.length > 0) {
+            const ctx = mapSite(sites[0]);
+            setAllSites([ctx]);
+            setSiteContext(ctx);
           }
-          // Multi-site without param: leave siteContext null; selector will appear
+        } else if (activeOrgId) {
+          // No specific site — load all sites for the active org so user can pick
+          const { data: sites } = await supabase
+            .from('sites')
+            .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+            .eq('organization_id', activeOrgId);
+
+          if (sites && sites.length > 0) {
+            const mapped = sites.map(mapSite);
+            setAllSites(mapped);
+            if (mapped.length === 1) {
+              // Single site org — auto-select
+              setSiteContext(mapped[0]);
+            }
+            // Multi-site without param: leave siteContext null; selector will appear
+          }
         }
       }
     }

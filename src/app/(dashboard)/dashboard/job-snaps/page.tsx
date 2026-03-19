@@ -51,11 +51,12 @@ export default function JobSnapsPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load sites for the active org
+      // Load sites across all user's orgs
+      const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
       const { data: sites } = await supabase
         .from('sites')
         .select('id, name')
-        .eq('organization_id', activeOrgId);
+        .in('organization_id', orgIds);
 
       if (!sites?.length) {
         setJobSnaps([]);

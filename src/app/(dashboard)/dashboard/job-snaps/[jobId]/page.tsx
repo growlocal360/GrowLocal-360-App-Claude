@@ -99,7 +99,8 @@ export default function JobSnapDetailPage() {
           .eq('id', snap.site_id)
           .single();
 
-        if (!site || site.organization_id !== activeOrgId) {
+        const userOrgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
+        if (!site || !userOrgIds.includes(site.organization_id)) {
           setNotFound(true);
           setLoading(false);
           return;

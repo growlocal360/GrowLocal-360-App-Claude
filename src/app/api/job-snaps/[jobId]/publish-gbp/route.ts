@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { GBPClient } from '@/lib/google/gbp-client';
+import { getGoogleToken } from '@/lib/google/get-google-token';
 import { toGbpPostPayload } from '@/lib/job-snaps/transforms';
 import type { JobSnapWithRelations } from '@/types/database';
 
@@ -9,7 +10,8 @@ import type { JobSnapWithRelations } from '@/types/database';
  * POST /api/job-snaps/[jobId]/publish-gbp
  *
  * Creates a Google Business Profile Local Post from a published job snap.
- * Requires the user to have an active Google session with business.manage scope.
+ * Uses persisted Google token from social_connections (with auto-refresh),
+ * falling back to session provider_token if available.
  */
 export async function POST(
   _req: Request,
@@ -23,17 +25,6 @@ export async function POST(
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // ── Get Google access token from session ─────────────────────────────────
-    const { data: { session } } = await supabase.auth.getSession();
-    const providerToken = session?.provider_token;
-
-    if (!providerToken) {
-      return NextResponse.json(
-        { error: 'Google connection expired. Please reconnect your Google account to push to GBP.' },
-        { status: 400 }
-      );
     }
 
     const adminClient = createAdminClient();
@@ -115,8 +106,17 @@ export async function POST(
 
     const payload = toGbpPostPayload(typedSnap, publicUrl, primaryImageUrl);
 
+    // ── Get Google token (session → DB → refresh) ─────────────────────────
+    const googleToken = await getGoogleToken(snap.site_id);
+    if (!googleToken) {
+      return NextResponse.json(
+        { error: 'Google connection expired. Please reconnect Google in site settings.' },
+        { status: 400 }
+      );
+    }
+
     // ── Post to GBP ─────────────────────────────────────────────────────────
-    const gbpClient = new GBPClient(providerToken);
+    const gbpClient = new GBPClient(googleToken);
     const gbpPost = await gbpClient.createLocalPost(
       location.gbp_account_id,
       location.gbp_location_id,

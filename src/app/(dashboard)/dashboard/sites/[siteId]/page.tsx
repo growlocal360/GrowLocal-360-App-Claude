@@ -41,6 +41,7 @@ import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { GBPConnectCard } from '@/components/sites/gbp-connect-card';
 
 interface SiteData {
   id: string;
@@ -735,6 +736,9 @@ export default function SiteDashboardPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Google Business Profile */}
+          <GBPConnectCard siteId={siteId} />
 
           {/* Job Snaps */}
           <Card className="hover:border-[#00d9c0]/20 transition-colors">

@@ -38,6 +38,7 @@ export async function revalidateSite(siteId: string) {
   revalidatePath(`${base}/areas`, 'page');
   revalidatePath(`${base}/faq`, 'page');
   revalidatePath(`${base}/brands`, 'page');
+  revalidatePath(`${base}/work`, 'page');
 
   // Build category slug map
   const catSlugMap = new Map<string, { slug: string; isPrimary: boolean }>();

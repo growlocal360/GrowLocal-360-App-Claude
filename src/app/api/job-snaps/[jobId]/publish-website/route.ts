@@ -166,10 +166,10 @@ export async function POST(
 
     // ── Revalidate public work pages ──────────────────────────────────────────
     const base = `/sites/${site.slug}`;
-    revalidatePath(`${base}/work`, 'page');
-    revalidatePath(`${base}/work/${workSlug}`, 'page');
+    revalidatePath(`${base}/work`);
+    revalidatePath(`${base}/work/${workSlug}`);
     // Also revalidate home page (Recent Work section)
-    revalidatePath(base, 'page');
+    revalidatePath(base, 'layout');
 
     const publicUrl = `https://${site.slug}.goleadflow.com/work/${workSlug}`;
 

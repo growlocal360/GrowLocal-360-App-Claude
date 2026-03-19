@@ -5,8 +5,9 @@ import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { ServiceAreaPage } from '@/components/templates/local-service-pro/service-area-page';
 import {
   toPublicSite, toPublicLocation, toPublicAreaDetail, toPublicAreaListing,
-  toPublicServiceListing, toPublicCategory, toPublicReview,
+  toPublicServiceListing, toPublicCategory, toPublicReview, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -59,7 +60,10 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
     notFound();
   }
 
-  const googleReviews = await getGoogleReviewsForSite(data.site.id);
+  const [googleReviews, workItems] = await Promise.all([
+    getGoogleReviewsForSite(data.site.id),
+    getPublishedWorkItems(data.site.id, { city: data.serviceArea.name, limit: 6 }),
+  ]);
 
   return (
     <ServiceAreaPage
@@ -73,6 +77,7 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
       }}
       siteSlug={slug}
       googleReviews={googleReviews.map(toPublicReview)}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

@@ -12,6 +12,7 @@ import type {
   PublicRenderCategory,
   PublicRenderReview,
   PublicRenderPageContent,
+  PublicRenderWorkItem,
 } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
@@ -32,6 +33,7 @@ import { TestimonialsSection } from './testimonials-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface ServiceAreaPageProps {
   data: {
@@ -44,10 +46,11 @@ interface ServiceAreaPageProps {
   };
   siteSlug: string;
   googleReviews?: PublicRenderReview[];
+  recentWorkItems?: PublicRenderWorkItem[];
   locationSlug?: string;
 }
 
-export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }: ServiceAreaPageProps) {
+export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, locationSlug }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -242,6 +245,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, locationSlug }:
           businessName={site.name}
           city={serviceArea.name}
         />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <LeadCaptureSection
           siteId={site.id}
           brandColor={brandColor}

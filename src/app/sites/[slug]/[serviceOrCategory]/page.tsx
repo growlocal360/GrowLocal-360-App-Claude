@@ -9,8 +9,9 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
   toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
-  toPublicPageContent,
+  toPublicPageContent, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -115,11 +116,23 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
       redirect('/');
     }
     const admin = createAdminClient();
-    const [googleReviews, { data: serviceAreas }, { data: neighborhoods }] = await Promise.all([
+
+    // Fetch work items for all services in this category
+    const categoryServiceIds = categoryData.services.map(s => s.id);
+    const [googleReviews, { data: serviceAreas }, { data: neighborhoods }, ...workItemResults] = await Promise.all([
       getGoogleReviewsForSite(categoryData.site.id),
       admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
       admin.from('neighborhoods').select('*').eq('site_id', categoryData.site.id).eq('is_active', true).order('sort_order'),
+      ...categoryServiceIds.map(sid => getPublishedWorkItems(categoryData.site.id, { serviceId: sid, limit: 6 })),
     ]);
+
+    // Dedupe and limit to 6 work items across all services
+    const seenIds = new Set<string>();
+    const categoryWorkItems = workItemResults.flat().filter(item => {
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      return true;
+    }).slice(0, 6);
 
     return (
       <CategoryPage
@@ -135,6 +148,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         googleReviews={googleReviews.map(toPublicReview)}
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
         neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
+        recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
       />
     );
   }

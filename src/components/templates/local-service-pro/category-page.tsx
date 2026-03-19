@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderNeighborhoodListing, PublicRenderPageContent } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderServiceListing, PublicRenderCategory, PublicRenderReview, PublicRenderAreaListing, PublicRenderNeighborhoodListing, PublicRenderPageContent, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -21,6 +21,7 @@ import { TestimonialsSection } from './testimonials-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface CategoryPageProps {
   data: {
@@ -35,10 +36,11 @@ interface CategoryPageProps {
   googleReviews?: PublicRenderReview[];
   serviceAreas?: PublicRenderAreaListing[];
   neighborhoods?: PublicRenderNeighborhoodListing[];
+  recentWorkItems?: PublicRenderWorkItem[];
   locationSlug?: string;
 }
 
-export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, locationSlug }: CategoryPageProps) {
+export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, recentWorkItems, locationSlug }: CategoryPageProps) {
   const { site, location, category, services, allCategories, pageContent } = data;
   const brandColor = site.settings?.brand_color || '#00d9c0';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -116,6 +118,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
           businessName={site.name}
           city={location.city}
         />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <LeadCaptureSection
           siteId={site.id}
           brandColor={brandColor}

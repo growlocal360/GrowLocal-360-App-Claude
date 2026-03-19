@@ -5,7 +5,7 @@ import { Phone, MapPin, ArrowLeft, Home, ChevronRight, Landmark, GraduationCap, 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderNeighborhoodDetail, PublicRenderNeighborhoodListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderNeighborhoodDetail, PublicRenderNeighborhoodListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -17,6 +17,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
+import { RecentWorkSection } from './about/recent-work-section';
 
 interface NeighborhoodPageSingleLocationProps {
   data: {
@@ -27,9 +28,10 @@ interface NeighborhoodPageSingleLocationProps {
   };
   siteSlug: string;
   categories?: NavCategory[];
+  recentWorkItems?: PublicRenderWorkItem[];
 }
 
-export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: NeighborhoodPageSingleLocationProps) {
+export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, recentWorkItems }: NeighborhoodPageSingleLocationProps) {
   const { site, location, neighborhood, allNeighborhoods } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
   const industry = site.settings?.core_industry || 'Professional Services';
@@ -380,6 +382,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories }: N
             )}
           </div>
         </section>
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} />
       </main>
 
       <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />

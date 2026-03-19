@@ -5,7 +5,8 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { NeighborhoodPageSingleLocation } from '@/components/templates/local-service-pro/neighborhood-page-single';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
+import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
 export const revalidate = 3600;
 
@@ -61,7 +62,10 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
-  const { categories } = await getCategoriesWithServices(data.site.id);
+  const [{ categories }, workItems] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    getPublishedWorkItems(data.site.id, { city: data.location.city, limit: 6 }),
+  ]);
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
     name: c.gbp_category.display_name,
@@ -79,6 +83,7 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
       }}
       siteSlug={slug}
       categories={navCategories}
+      recentWorkItems={workItems.map(toPublicWorkItem)}
     />
   );
 }

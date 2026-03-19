@@ -28,6 +28,7 @@ import {
   Navigation,
   Eye,
   Lock,
+  Trash2,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
@@ -206,6 +207,31 @@ export default function EditJobSnapPage() {
       if (!window.confirm('You have unsaved changes. Leave without saving?')) return;
     }
     router.push(`/dashboard/job-snaps/${jobId}`);
+  }
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this job snap? This will also remove all photos and unpublish from the website. This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/job-snaps/${jobId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Job snap deleted');
+        router.push('/dashboard/job-snaps');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete');
+      }
+    } catch {
+      toast.error('Failed to delete job snap');
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   async function handleSave() {
@@ -589,9 +615,29 @@ export default function EditJobSnapPage() {
 
           {/* ── Action bar ── */}
           <div className="flex items-center justify-between gap-3 pt-2">
-            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
-              Cancel
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving || isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDelete}
+                disabled={isSaving || isDeleting}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </div>
             <Button
               onClick={handleSave}
               disabled={isSaving || !isDirty || allMediaDeleted}

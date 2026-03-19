@@ -25,6 +25,7 @@ import {
   MonitorOff,
   ExternalLink,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { toast } from 'sonner';
@@ -200,6 +201,30 @@ export default function JobSnapDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!jobSnap) return;
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this job snap? This will also remove all photos and unpublish from the website. This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setActionLoading('delete');
+    try {
+      const res = await fetch(`/api/job-snaps/${jobId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Job snap deleted');
+        router.push('/dashboard/job-snaps');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to delete');
+      }
+    } catch {
+      toast.error('Failed to delete job snap');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-US', {
       month: 'long',
@@ -328,6 +353,21 @@ export default function JobSnapDetailPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={actionLoading !== null}
+              title="Delete job snap"
+              aria-label="Delete job snap"
+              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              {actionLoading === 'delete' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
               )}
             </Button>
           </div>

@@ -1,23 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { GBPClient } from '@/lib/google/gbp-client';
 import { toGbpPostPayload } from '@/lib/job-snaps/transforms';
 import type { JobSnapWithRelations } from '@/types/database';
 
 /**
  * POST /api/job-snaps/[jobId]/publish-gbp
  *
- * Scaffolded GBP publishing endpoint. Builds and returns the GBP Local Post
- * payload that WOULD be sent, but returns 501 because the GBP client does not
- * yet support posting (read-only).
- *
- * Returns: { error: 'GBP posting not yet implemented', payload: GbpPostPayload }
- *   with status 501.
- *
- * When the GBP client supports posting:
- *  1. Remove the 501 early-return
- *  2. Call gbpClient.createLocalPost(locationId, payload)
- *  3. Update job_snap: is_published_to_gbp = true
+ * Creates a Google Business Profile Local Post from a published job snap.
+ * Requires the user to have an active Google session with business.manage scope.
  */
 export async function POST(
   _req: Request,
@@ -31,6 +23,17 @@ export async function POST(
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // ── Get Google access token from session ─────────────────────────────────
+    const { data: { session } } = await supabase.auth.getSession();
+    const providerToken = session?.provider_token;
+
+    if (!providerToken) {
+      return NextResponse.json(
+        { error: 'Google connection expired. Please reconnect your Google account to push to GBP.' },
+        { status: 400 }
+      );
     }
 
     const adminClient = createAdminClient();
@@ -74,7 +77,22 @@ export async function POST(
       );
     }
 
-    // ── Build GBP payload (for preview / future use) ───────────────────────────
+    // ── Get GBP location IDs from the site's primary location ────────────────
+    const { data: location } = await adminClient
+      .from('locations')
+      .select('gbp_account_id, gbp_location_id')
+      .eq('site_id', snap.site_id)
+      .eq('is_primary', true)
+      .single();
+
+    if (!location?.gbp_account_id || !location?.gbp_location_id) {
+      return NextResponse.json(
+        { error: 'No Google Business Profile location linked. Connect GBP in site settings.' },
+        { status: 422 }
+      );
+    }
+
+    // ── Build GBP payload ────────────────────────────────────────────────────
     const { data: workItem } = await adminClient
       .from('work_items')
       .select('slug')
@@ -97,26 +115,29 @@ export async function POST(
 
     const payload = toGbpPostPayload(typedSnap, publicUrl, primaryImageUrl);
 
-    // ── 501: GBP client does not support posting yet ───────────────────────────
-    return NextResponse.json(
-      {
-        error: 'GBP posting is not yet implemented. The GBP client is read-only.',
-        payload,
-      },
-      { status: 501 }
+    // ── Post to GBP ─────────────────────────────────────────────────────────
+    const gbpClient = new GBPClient(providerToken);
+    const gbpPost = await gbpClient.createLocalPost(
+      location.gbp_account_id,
+      location.gbp_location_id,
+      payload
     );
 
-    // ── When GBP posting is implemented, do this instead: ─────────────────────
-    // const gbpPost = await gbpClient.createLocalPost(locationId, payload);
-    // await adminClient
-    //   .from('job_snaps')
-    //   .update({ is_published_to_gbp: true })
-    //   .eq('id', jobId);
-    // return NextResponse.json({ success: true, gbpPostName: gbpPost.name });
+    // ── Update job snap ─────────────────────────────────────────────────────
+    await adminClient
+      .from('job_snaps')
+      .update({ is_published_to_gbp: true })
+      .eq('id', jobId);
+
+    return NextResponse.json({
+      success: true,
+      gbpPostName: gbpPost.name,
+    });
   } catch (error) {
     console.error('Publish to GBP failed:', error);
+    const message = error instanceof Error ? error.message : 'Failed to push to GBP. Please try again.';
     return NextResponse.json(
-      { error: 'Failed to push to GBP. Please try again.' },
+      { error: message },
       { status: 500 }
     );
   }

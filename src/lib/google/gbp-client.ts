@@ -137,6 +137,26 @@ export class GBPClient {
     return response.json();
   }
 
+  private async post<T>(url: string, body: unknown): Promise<T> {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error?.message || `GBP API error: ${response.status}`
+      );
+    }
+
+    return response.json();
+  }
+
   // Get all accounts the user has access to
   async getAccounts(): Promise<GBPAccount[]> {
     const response = await this.fetch<GBPAccountsResponse>(
@@ -190,6 +210,22 @@ export class GBPClient {
     // accountName: "accounts/123", locationName: "locations/456"
     const url = `${this.reviewsUrl}/${accountName}/${locationName}/reviews?pageSize=${pageSize}&orderBy=updateTime desc`;
     return this.fetch<GBPReviewsResponse>(url);
+  }
+
+  // Create a Local Post on a GBP location
+  // API: POST https://mybusiness.googleapis.com/v4/{accountName}/{locationName}/localPosts
+  async createLocalPost(
+    accountName: string,
+    locationName: string,
+    payload: {
+      languageCode: string;
+      summary: string;
+      callToAction?: { actionType: string; url: string };
+      media?: { mediaFormat: string; sourceUrl: string }[];
+    }
+  ): Promise<{ name: string }> {
+    const url = `${this.reviewsUrl}/${accountName}/${locationName}/localPosts`;
+    return this.post<{ name: string }>(url, payload);
   }
 
   // Get all locations across all accounts (fetches all pages)

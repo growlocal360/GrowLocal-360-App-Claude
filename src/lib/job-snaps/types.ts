@@ -8,6 +8,7 @@ export interface JobSnapAnalysisResult {
   title: string;
   description: string;
   serviceType: string | null;
+  serviceId: string | null;
   brand: string | null;
   confidence: {
     service: number;  // 0-1

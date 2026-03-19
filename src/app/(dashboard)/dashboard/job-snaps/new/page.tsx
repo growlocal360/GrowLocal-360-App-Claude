@@ -395,6 +395,7 @@ export default function NewJobSnapPage() {
         aiGeneratedTitle: analysis?.title ?? undefined,
         aiGeneratedDescription: analysis?.description ?? undefined,
         serviceType: editedAnalysis.serviceType ?? undefined,
+        serviceId: editedAnalysis.serviceId ?? undefined,
         brand: editedAnalysis.brand ?? undefined,
         location: location
           ? {

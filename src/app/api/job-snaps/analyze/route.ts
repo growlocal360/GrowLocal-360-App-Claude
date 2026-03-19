@@ -174,7 +174,7 @@ Images are provided in order. Assign a role to each image based on what it shows
         .replace(/^```\s*/i, '')
         .replace(/\s*```$/i, '')
         .trim();
-      analysis = JSON.parse(cleaned);
+      analysis = { ...JSON.parse(cleaned), serviceId: null };
     } catch {
       console.error('Failed to parse AI response:', result);
       return NextResponse.json(

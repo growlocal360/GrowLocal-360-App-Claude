@@ -32,6 +32,7 @@ interface SaveRequest {
   aiGeneratedTitle?: string;
   aiGeneratedDescription?: string;
   serviceType?: string | null;
+  serviceId?: string | null;
   brand?: string | null;
   location?: SaveLocationInput | null;
   images: SaveImageInput[];
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
         ai_generated_title: body.aiGeneratedTitle ?? null,
         ai_generated_description: body.aiGeneratedDescription ?? null,
         service_type: body.serviceType ?? null,
+        service_id: body.serviceId ?? null,
         brand: body.brand ?? null,
         status: 'draft',
         location_source: loc?.source ?? null,

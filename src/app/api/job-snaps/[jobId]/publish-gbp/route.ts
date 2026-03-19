@@ -117,9 +117,17 @@ export async function POST(
 
     // ── Post to GBP ─────────────────────────────────────────────────────────
     const gbpClient = new GBPClient(googleToken);
+    // Ensure account/location IDs have the correct prefix format
+    const accountName = location.gbp_account_id.startsWith('accounts/')
+      ? location.gbp_account_id
+      : `accounts/${location.gbp_account_id}`;
+    const locationName = location.gbp_location_id.startsWith('locations/')
+      ? location.gbp_location_id
+      : `locations/${location.gbp_location_id}`;
+
     const gbpPost = await gbpClient.createLocalPost(
-      location.gbp_account_id,
-      location.gbp_location_id,
+      accountName,
+      locationName,
       payload
     );
 

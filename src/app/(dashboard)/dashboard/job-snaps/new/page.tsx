@@ -22,6 +22,7 @@ import { AnalysisReviewPanel } from '@/components/job-snaps/analysis-review-pane
 import { extractExifGps } from '@/lib/job-snaps/exif';
 import { getDevicePosition, reverseGeocode } from '@/lib/job-snaps/geolocation';
 import { analyzeJobSnap, type JobSnapAnalysisResult } from '@/lib/job-snaps/analyze';
+import { resizeAndEncode } from '@/lib/job-snaps/image-utils';
 import { toast } from 'sonner';
 
 export default function NewJobSnapPage() {
@@ -348,18 +349,10 @@ export default function NewJobSnapPage() {
     setIsSaving(true);
 
     try {
-      // Convert File objects to base64
+      // Resize and compress images before sending (avoids 413 Content Too Large)
       const imagePayload = await Promise.all(
         images.map(async (img, i) => {
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const result = reader.result as string;
-              resolve(result.split(',')[1]); // strip data URL prefix
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(img.file);
-          });
+          const { base64, mimeType } = await resizeAndEncode(img.file);
 
           // Map LocalImage label to role
           const labelToRole: Record<string, 'primary' | 'before' | 'after' | 'process' | 'detail'> = {
@@ -374,7 +367,7 @@ export default function NewJobSnapPage() {
 
           return {
             base64,
-            mimeType: img.file.type as 'image/jpeg' | 'image/png' | 'image/webp',
+            mimeType,
             fileName: img.file.name,
             role: aiRole ?? role,
             sortOrder: i,

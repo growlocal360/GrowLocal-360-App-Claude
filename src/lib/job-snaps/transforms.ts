@@ -124,6 +124,7 @@ export function jobSnapToWorkItemPayload(
  * This interface defines what WILL be sent once the client supports posting.
  */
 export interface GbpPostPayload {
+  topicType: 'STANDARD';
   languageCode: 'en-US';
   summary: string;
   callToAction?: {
@@ -175,6 +176,7 @@ export function toGbpPostPayload(
   primaryImageUrl?: string
 ): GbpPostPayload {
   const payload: GbpPostPayload = {
+    topicType: 'STANDARD',
     languageCode: 'en-US',
     summary: toGbpPostSummary(snap),
     callToAction: {

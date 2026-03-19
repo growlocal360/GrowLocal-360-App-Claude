@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
 const MAX_IMAGES = 4;
 
 interface PhotoUploadProps {
@@ -34,7 +34,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
       const valid = files.filter((f) => ACCEPTED_TYPES.includes(f.type));
       const invalid = files.length - valid.length;
       if (invalid > 0) {
-        toast.error(`${invalid} file${invalid > 1 ? 's' : ''} rejected. Only JPG, PNG, and WEBP are accepted.`);
+        toast.error(`${invalid} file${invalid > 1 ? 's' : ''} rejected. Only JPG, PNG, WEBP, and SVG are accepted.`);
       }
 
       if (valid.length === 0) return;
@@ -154,7 +154,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
               Browse Files
             </Button>
             <p className="mt-3 text-xs text-gray-400">
-              Supports: JPG, PNG, WEBP (max {remaining} more)
+              Supports: JPG, PNG, WEBP, SVG (max {remaining} more)
             </p>
           </div>
         )}
@@ -163,7 +163,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml"
           multiple
           onChange={handleFileChange}
           className="hidden"
@@ -171,7 +171,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
         <input
           ref={cameraInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml"
           capture="environment"
           onChange={handleFileChange}
           className="hidden"

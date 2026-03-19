@@ -18,7 +18,7 @@ export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 interface AnalyzeImageInput {
   base64: string;
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/svg+xml';
   fileName: string;
 }
 

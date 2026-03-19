@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 interface SaveImageInput {
   base64: string;
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/svg+xml';
   fileName: string;
   role?: 'primary' | 'before' | 'after' | 'process' | 'detail';
   sortOrder: number;
@@ -42,6 +42,7 @@ function mimeToExt(mimeType: string): string {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
+    'image/svg+xml': 'svg',
   };
   return map[mimeType] ?? 'jpg';
 }

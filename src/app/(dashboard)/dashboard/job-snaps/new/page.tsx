@@ -350,9 +350,21 @@ export default function NewJobSnapPage() {
 
     try {
       // Resize and compress images before sending (avoids 413 Content Too Large)
+      // SVGs are passed through as-is (vector format, can't be rasterized via canvas)
       const imagePayload = await Promise.all(
         images.map(async (img, i) => {
-          const { base64, mimeType } = await resizeAndEncode(img.file);
+          let base64: string;
+          let mimeType: string;
+
+          if (img.file.type === 'image/svg+xml') {
+            const text = await img.file.text();
+            base64 = btoa(text);
+            mimeType = 'image/svg+xml';
+          } else {
+            const encoded = await resizeAndEncode(img.file);
+            base64 = encoded.base64;
+            mimeType = encoded.mimeType;
+          }
 
           // Map LocalImage label to role
           const labelToRole: Record<string, 'primary' | 'before' | 'after' | 'process' | 'detail'> = {

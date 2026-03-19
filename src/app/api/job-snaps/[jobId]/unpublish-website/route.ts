@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getActiveOrgId } from '@/lib/auth/active-org';
 
 /**
  * POST /api/job-snaps/[jobId]/unpublish-website
@@ -27,12 +26,14 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const activeOrgId = getActiveOrgId();
-    if (!activeOrgId) {
-      return NextResponse.json({ error: 'No active organization' }, { status: 400 });
-    }
-
     const adminClient = createAdminClient();
+
+    // ── Get user's org memberships ────────────────────────────────────────────
+    const { data: profiles } = await adminClient
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user.id);
+    const userOrgIds = (profiles || []).map((p: { organization_id: string }) => p.organization_id);
 
     // ── Load job snap ─────────────────────────────────────────────────────────
     const { data: snap, error: snapError } = await adminClient
@@ -52,7 +53,7 @@ export async function POST(
       .eq('id', snap.site_id)
       .single();
 
-    if (!site || site.organization_id !== activeOrgId) {
+    if (!site || !userOrgIds.includes(site.organization_id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -6,6 +6,76 @@ import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
 import type { SiteSettings, GenerationScope } from '@/types/database';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * Retrieves a Google token from social_connections, refreshing if expired.
+ * Used inside Inngest where there's no user session / cookie context.
+ */
+async function getStoredGoogleToken(
+  supabase: SupabaseClient,
+  siteId: string
+): Promise<string | null> {
+  const { data: connection } = await supabase
+    .from('social_connections')
+    .select('access_token, refresh_token, token_expires_at')
+    .eq('site_id', siteId)
+    .eq('platform', 'google_business')
+    .eq('is_active', true)
+    .single();
+
+  if (!connection) return null;
+
+  // Check if stored token is still valid (with 5-minute buffer)
+  if (connection.token_expires_at) {
+    const expiresAt = new Date(connection.token_expires_at).getTime();
+    const bufferMs = 5 * 60 * 1000;
+    if (expiresAt - bufferMs > Date.now()) {
+      return connection.access_token;
+    }
+  }
+
+  // Token expired — try to refresh
+  if (connection.refresh_token) {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || !clientSecret) return null;
+
+    try {
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: connection.refresh_token,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (!res.ok) return null;
+
+      const { access_token, expires_in } = await res.json();
+
+      // Update stored token
+      await supabase
+        .from('social_connections')
+        .update({
+          access_token,
+          token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('site_id', siteId)
+        .eq('platform', 'google_business');
+
+      return access_token;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
 
 // Types
 
@@ -299,15 +369,24 @@ export const generateSiteContent = inngest.createFunction(
     if (isFullBuild || scope.type === 'reviews') {
     await step.run('fetch-google-reviews', async () => {
       if (
-        !googleAccessToken ||
         !primaryLocation.gbp_account_id ||
         !primaryLocation.gbp_location_id
       ) {
-        return { skipped: true };
+        return { skipped: true, reason: 'No GBP location linked' };
+      }
+
+      // Resolve token: use passed token, fall back to stored token with auto-refresh
+      let token = googleAccessToken;
+      if (!token) {
+        token = await getStoredGoogleToken(supabase, siteId);
+      }
+      if (!token) {
+        await log('No Google token available — connect or reconnect GBP', 'fetch-google-reviews', 'warn');
+        return { skipped: true, reason: 'No Google token' };
       }
 
       try {
-        const gbpClient = new GBPClient(googleAccessToken);
+        const gbpClient = new GBPClient(token);
         const reviewsResponse = await gbpClient.getReviews(
           primaryLocation.gbp_account_id,
           primaryLocation.gbp_location_id

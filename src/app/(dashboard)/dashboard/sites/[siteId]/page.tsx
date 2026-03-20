@@ -42,6 +42,7 @@ import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { GBPConnectCard } from '@/components/sites/gbp-connect-card';
+import { ReputationCard } from '@/components/sites/reputation-card';
 
 interface SiteData {
   id: string;
@@ -739,6 +740,9 @@ export default function SiteDashboardPage() {
 
           {/* Google Business Profile */}
           <GBPConnectCard siteId={siteId} />
+
+          {/* Reputation */}
+          <ReputationCard siteId={siteId} />
 
           {/* Job Snaps */}
           <Card className="hover:border-[#00d9c0]/20 transition-colors">

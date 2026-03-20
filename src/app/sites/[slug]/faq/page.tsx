@@ -40,6 +40,17 @@ export async function generateMetadata({ params }: FAQPageProps): Promise<Metada
     alternates: {
       canonical: canonicalUrl,
     },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large' as const,
+        'max-snippet': -1,
+        'max-video-preview': -1,
+      },
+    },
   };
 }
 

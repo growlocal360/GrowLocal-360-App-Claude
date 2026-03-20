@@ -46,8 +46,13 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
   // Schema.org structured data
   const businessInput = primaryLocation ? toBusinessInput(site, primaryLocation) : null;
   const locationInput = primaryLocation ? toLocationInput(primaryLocation) : null;
+  const schemaReviews = (reviews || [])
+    .filter(r => r.comment)
+    .map(r => ({ authorName: r.author_name, text: r.comment, rating: r.rating }));
   const localBusinessSchema = businessInput && locationInput
-    ? buildLocalBusinessSchema(businessInput, locationInput)
+    ? buildLocalBusinessSchema(businessInput, locationInput, {
+        reviews: schemaReviews.length > 0 ? schemaReviews : undefined,
+      })
     : null;
   const webSiteSchema = businessInput ? buildWebSiteSchema(businessInput) : null;
 

@@ -9,6 +9,7 @@ import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
   buildWebPageSchema,
+  buildFAQPageSchema,
   getSiteUrl,
   toBusinessInput,
 } from '@/lib/schema';
@@ -45,7 +46,7 @@ export function FAQHubPage({
   const h1 = pageContent?.h1 || `Frequently Asked Questions${city ? ` — ${site.name} in ${city}` : ''}`;
   const heroDescription = pageContent?.hero_description || `Find answers to common questions about our services${city ? ` in ${city} and surrounding areas` : ''}.`;
 
-  // Schema.org — WebPage (NOT FAQPage, since this is a question index)
+  // Schema.org — WebPage + FAQPage
   const businessInput = toBusinessInput(site, primaryLocation);
   const siteUrl = getSiteUrl(businessInput);
   const webPageSchema = buildWebPageSchema(
@@ -55,10 +56,13 @@ export function FAQHubPage({
     'WebPage',
     businessInput
   );
+  const faqSchema = buildFAQPageSchema(
+    faqItems.map(item => ({ question: item.question, answer: item.teaserAnswer }))
+  );
 
   return (
     <div className="min-h-screen bg-white">
-      <JsonLd data={[webPageSchema]} />
+      <JsonLd data={[webPageSchema, faqSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}

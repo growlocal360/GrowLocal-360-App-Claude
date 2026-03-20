@@ -24,4 +24,5 @@ export type {
   SchemaFAQItem,
   SchemaBreadcrumbItem,
   SchemaPersonInput,
+  SchemaReviewInput,
 } from './types';

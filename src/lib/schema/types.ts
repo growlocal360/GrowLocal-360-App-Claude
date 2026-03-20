@@ -48,3 +48,9 @@ export interface SchemaPersonInput {
   description?: string | null;
   imageUrl?: string | null;
 }
+
+export interface SchemaReviewInput {
+  authorName: string | null;
+  text: string | null;
+  rating: number;
+}

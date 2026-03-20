@@ -5,6 +5,7 @@ import { getSiteBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
@@ -67,13 +68,17 @@ export async function generateMetadata({ params }: BrandDetailPageProps): Promis
   const domain = site.custom_domain || `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/brands/${brandSlug}`;
 
-  return {
-    title: brand.meta_title || `${brand.name} ${industry} ${city} ${state} | ${site.name}`.trim(),
-    description: brand.meta_description || `Professional ${brand.name} ${industry.toLowerCase()} services in ${city}, ${state} and surrounding areas. ${site.name} is your trusted local ${brand.name} service provider.`,
+  const title = brand.meta_title || `${brand.name} ${industry} ${city} ${state} | ${site.name}`.trim();
+  const description = brand.meta_description || `Professional ${brand.name} ${industry.toLowerCase()} services in ${city}, ${state} and surrounding areas. ${site.name} is your trusted local ${brand.name} service provider.`;
+  const ogImage = getSiteOgImage(site.settings);
+
+  return withOpenGraph({
+    title,
+    description,
     alternates: {
       canonical: canonicalUrl,
     },
-  };
+  }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
 }
 
 export default async function BrandDetailPageRoute({ params }: BrandDetailPageProps) {

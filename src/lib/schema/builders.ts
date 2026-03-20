@@ -5,6 +5,7 @@ import type {
   SchemaFAQItem,
   SchemaBreadcrumbItem,
   SchemaPersonInput,
+  SchemaReviewInput,
 } from './types';
 
 type SchemaObject = Record<string, unknown>;
@@ -47,6 +48,7 @@ export function buildLocalBusinessSchema(
   options?: {
     areaServed?: SchemaObject | SchemaObject[];
     businessType?: string;
+    reviews?: SchemaReviewInput[];
   }
 ): SchemaObject {
   const siteUrl = getSiteUrl(business);
@@ -98,6 +100,26 @@ export function buildLocalBusinessSchema(
   );
   if (rating) {
     schema.aggregateRating = rating;
+  }
+
+  // Individual Review entries (Google Reviews)
+  if (options?.reviews && options.reviews.length > 0) {
+    schema.review = options.reviews
+      .filter(r => r.text)
+      .map(r => ({
+        '@type': 'Review',
+        reviewRating: {
+          '@type': 'Rating',
+          ratingValue: r.rating,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        author: {
+          '@type': 'Person',
+          name: r.authorName || 'Customer',
+        },
+        reviewBody: r.text,
+      }));
   }
 
   return schema;

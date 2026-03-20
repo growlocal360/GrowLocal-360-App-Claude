@@ -22,6 +22,19 @@ export async function GET(
       '',
       `Sitemap: https://${domain}/sitemap.xml`,
       '',
+      '# LLM crawlers',
+      'User-agent: GPTBot',
+      'Allow: /',
+      '',
+      'User-agent: Claude-Web',
+      'Allow: /',
+      '',
+      'User-agent: Anthropic-AI',
+      'Allow: /',
+      '',
+      'User-agent: Google-Extended',
+      'Allow: /',
+      '',
     ].join('\n');
   }
 

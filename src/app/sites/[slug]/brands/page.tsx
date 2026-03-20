@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { BrandsListingPage } from '@/components/templates/local-service-pro/brands-listing-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicBrandListing, toPublicAreaListing } from '@/lib/sites/public-render-model';
@@ -34,13 +35,17 @@ export async function generateMetadata({ params }: BrandsPageProps): Promise<Met
   const domain = site.custom_domain || `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/brands`;
 
-  return {
-    title: `${industry ? `${industry} ` : ''}Brands We Service${city ? ` in ${city}` : ''} | ${site.name}`,
-    description: `${site.name} services all major${industry ? ` ${industry.toLowerCase()}` : ''} brands${city ? ` in ${city} and surrounding areas` : ''}. See the full list of brands we work with.`,
+  const title = `${industry ? `${industry} ` : ''}Brands We Service${city ? ` in ${city}` : ''} | ${site.name}`;
+  const description = `${site.name} services all major${industry ? ` ${industry.toLowerCase()}` : ''} brands${city ? ` in ${city} and surrounding areas` : ''}. See the full list of brands we work with.`;
+  const ogImage = getSiteOgImage(site.settings);
+
+  return withOpenGraph({
+    title,
+    description,
     alternates: {
       canonical: canonicalUrl,
     },
-  };
+  }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
 }
 
 export default async function BrandsPageRoute({ params }: BrandsPageProps) {

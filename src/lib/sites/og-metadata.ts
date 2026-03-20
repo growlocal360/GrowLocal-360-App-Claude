@@ -20,12 +20,24 @@ export function withOpenGraph(
 
   return {
     ...base,
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large' as const,
+        'max-snippet': -1,
+        'max-video-preview': -1,
+      },
+    },
     openGraph: {
       title,
       description,
       url: options.url,
       siteName: options.siteName,
       type: options.type || 'website',
+      locale: 'en_US',
       ...(ogImage ? { images: [{ url: ogImage }] } : {}),
     },
     twitter: {

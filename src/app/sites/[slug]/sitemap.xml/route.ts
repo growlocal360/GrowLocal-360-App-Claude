@@ -4,11 +4,17 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
+interface SitemapImage {
+  url: string;
+  title?: string;
+}
+
 interface SitemapEntry {
   url: string;
   lastmod?: string;
   changefreq?: string;
   priority?: number;
+  images?: SitemapImage[];
 }
 
 export async function GET(
@@ -84,23 +90,41 @@ export async function GET(
     }
   }
 
-  // Published work items
+  // Published work items (with image sitemap entries)
   const workItems = await getPublishedWorkItems(site.id, { limit: 100 });
   for (const item of workItems) {
     const itemDate = new Date(item.updated_at || item.created_at).toISOString().split('T')[0];
-    entries.push({ url: `${baseUrl}/work/${item.slug}`, lastmod: itemDate, changefreq: 'monthly', priority: 0.7 });
+    const images: SitemapImage[] = (item.images || [])
+      .filter((img: { url: string; alt?: string }) => img.url)
+      .map((img: { url: string; alt?: string }) => ({
+        url: img.url,
+        title: img.alt || item.title,
+      }));
+    entries.push({
+      url: `${baseUrl}/work/${item.slug}`,
+      lastmod: itemDate,
+      changefreq: 'monthly',
+      priority: 0.7,
+      images: images.length > 0 ? images : undefined,
+    });
   }
 
   // Build XML
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     ...entries.map(e => [
       '  <url>',
       `    <loc>${escapeXml(e.url)}</loc>`,
       e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>` : '',
       e.changefreq ? `    <changefreq>${e.changefreq}</changefreq>` : '',
       e.priority !== undefined ? `    <priority>${e.priority}</priority>` : '',
+      ...(e.images || []).map(img => [
+        '    <image:image>',
+        `      <image:loc>${escapeXml(img.url)}</image:loc>`,
+        img.title ? `      <image:title>${escapeXml(img.title)}</image:title>` : '',
+        '    </image:image>',
+      ].filter(Boolean).join('\n')),
       '  </url>',
     ].filter(Boolean).join('\n')),
     '</urlset>',

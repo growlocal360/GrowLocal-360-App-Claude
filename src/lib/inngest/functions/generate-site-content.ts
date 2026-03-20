@@ -387,9 +387,17 @@ export const generateSiteContent = inngest.createFunction(
 
       try {
         const gbpClient = new GBPClient(token);
+        // Ensure account/location IDs have the correct prefix format
+        const accountName = primaryLocation.gbp_account_id.startsWith('accounts/')
+          ? primaryLocation.gbp_account_id
+          : `accounts/${primaryLocation.gbp_account_id}`;
+        const locationName = primaryLocation.gbp_location_id.startsWith('locations/')
+          ? primaryLocation.gbp_location_id
+          : `locations/${primaryLocation.gbp_location_id}`;
+
         const reviewsResponse = await gbpClient.getReviews(
-          primaryLocation.gbp_account_id,
-          primaryLocation.gbp_location_id
+          accountName,
+          locationName
         );
 
         if (reviewsResponse.reviews?.length) {
@@ -429,9 +437,10 @@ export const generateSiteContent = inngest.createFunction(
         await log(`Fetched ${reviewsResponse.reviews?.length || 0} Google Reviews`, 'fetch-google-reviews');
         return { reviewCount: reviewsResponse.reviews?.length || 0 };
       } catch (error) {
-        console.error('Failed to fetch Google Reviews (non-fatal):', error);
-        await log('Failed to fetch Google Reviews (non-fatal)', 'fetch-google-reviews', 'warn');
-        return { error: 'Failed to fetch reviews' };
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('Failed to fetch Google Reviews (non-fatal):', errMsg);
+        await log(`Failed to fetch Google Reviews: ${errMsg}`, 'fetch-google-reviews', 'warn');
+        return { error: 'Failed to fetch reviews', detail: errMsg };
       }
     });
     } // end reviews scope check

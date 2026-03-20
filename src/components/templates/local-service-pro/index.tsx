@@ -1,6 +1,7 @@
 'use client';
 
 import type { PublicRenderData, PublicRenderServiceListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
   buildLocalBusinessSchema,
@@ -110,6 +111,8 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           reviews={reviews}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
+          reviewsHref={paths.reviewsIndex(locationSlug)}
+          brandColor={brandColor}
         />
         {(serviceAreas.length > 0 || neighborhoods.length > 0) && (
           <ServiceAreasSection

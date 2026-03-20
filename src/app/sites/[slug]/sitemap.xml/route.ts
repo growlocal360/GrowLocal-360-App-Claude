@@ -44,6 +44,7 @@ export async function GET(
     { url: `${baseUrl}/about`, lastmod, changefreq: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/contact`, lastmod, changefreq: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/faq`, lastmod, changefreq: 'monthly', priority: 0.5 },
+    { url: `${baseUrl}/reviews`, lastmod, changefreq: 'weekly', priority: 0.7 },
     { url: `${baseUrl}/services`, lastmod, changefreq: 'weekly', priority: 0.8 },
     { url: `${baseUrl}/work`, lastmod, changefreq: 'weekly', priority: 0.8 },
   );

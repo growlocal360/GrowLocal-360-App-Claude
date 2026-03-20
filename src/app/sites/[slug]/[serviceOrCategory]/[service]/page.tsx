@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { matchReviewsToService } from '@/lib/sites/match-reviews';
 import { getCategoriesWithServices, getAllNestedServiceParams } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
@@ -142,8 +143,8 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   }
 
   const admin = createAdminClient();
-  const [googleReviews, { categories }, { data: serviceAreas }, workItems] = await Promise.all([
-    getGoogleReviewsForSite(data.site.id),
+  const [allReviews, { categories }, { data: serviceAreas }, workItems] = await Promise.all([
+    getAllGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
     getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
@@ -156,6 +157,11 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
     isPrimary: c.is_primary,
   }));
 
+  // Smart match: show reviews mentioning this service, fall back to all
+  const publicReviews = allReviews.map(toPublicReview);
+  const matched = matchReviewsToService(publicReviews, data.service.name);
+  const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
+
   return (
     <ServicePage
       data={{
@@ -167,7 +173,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       }}
       siteSlug={slug}
       isPrimaryCategory={false}
-      googleReviews={googleReviews.map(toPublicReview)}
+      googleReviews={displayReviews}
       categories={navCategories}
       serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       recentWorkItems={workItems.map(toPublicWorkItem)}

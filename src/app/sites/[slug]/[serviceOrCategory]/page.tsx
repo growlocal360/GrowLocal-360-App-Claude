@@ -2,7 +2,8 @@ import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
 import { ServicePage } from '@/components/templates/local-service-pro/service-page';
 import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -81,8 +82,8 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
     const admin = createAdminClient();
-    const [googleReviews, { categories }, { data: serviceAreas }] = await Promise.all([
-      getGoogleReviewsForSite(serviceData.site.id),
+    const [allReviews, { categories }, { data: serviceAreas }] = await Promise.all([
+      getAllGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
       admin.from('service_areas').select('*').eq('site_id', serviceData.site.id).order('sort_order'),
     ]);
@@ -93,6 +94,11 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
       slug: normalizeCategorySlug(c.gbp_category.display_name),
       isPrimary: c.is_primary,
     }));
+
+    // Smart match: show reviews mentioning this service, fall back to all
+    const publicReviews = allReviews.map(toPublicReview);
+    const matched = matchReviewsToService(publicReviews, serviceData.service.name);
+    const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
 
     return (
       <ServicePage
@@ -105,7 +111,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         }}
         siteSlug={slug}
         isPrimaryCategory={isPrimaryCategory}
-        googleReviews={googleReviews.map(toPublicReview)}
+        googleReviews={displayReviews}
         categories={navCategories}
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       />
@@ -122,8 +128,8 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     // Fetch work items for all services in this category
     const categoryServiceIds = categoryData.services.map(s => s.id);
-    const [googleReviews, { data: serviceAreas }, { data: neighborhoods }, ...workItemResults] = await Promise.all([
-      getGoogleReviewsForSite(categoryData.site.id),
+    const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, ...workItemResults] = await Promise.all([
+      getAllGoogleReviewsForSite(categoryData.site.id),
       admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
       admin.from('neighborhoods').select('*').eq('site_id', categoryData.site.id).eq('is_active', true).order('sort_order'),
       ...categoryServiceIds.map(sid => getPublishedWorkItems(categoryData.site.id, { serviceId: sid, limit: 6 })),
@@ -137,6 +143,13 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
       return true;
     }).slice(0, 6);
 
+    // Smart match: show reviews mentioning this category or its services
+    const categoryName = categoryData.category.gbp_category.display_name;
+    const serviceNames = categoryData.services.map(s => s.name);
+    const publicCatReviews = allCategoryReviews.map(toPublicReview);
+    const matchedCatReviews = matchReviewsToCategory(publicCatReviews, categoryName, serviceNames);
+    const displayCatReviews = matchedCatReviews.length > 0 ? matchedCatReviews : publicCatReviews.slice(0, 10);
+
     return (
       <CategoryPage
         data={{
@@ -148,7 +161,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
           pageContent: categoryData.pageContent ? toPublicPageContent(categoryData.pageContent) : null,
         }}
         siteSlug={slug}
-        googleReviews={googleReviews.map(toPublicReview)}
+        googleReviews={displayCatReviews}
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
         neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
         recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}

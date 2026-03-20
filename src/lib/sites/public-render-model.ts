@@ -151,6 +151,9 @@ export interface PublicRenderReview {
   comment: string | null;
   rating: number;
   author_photo_url: string | null;
+  review_date: string | null;
+  review_reply: string | null;
+  reply_date: string | null;
 }
 
 // --- Page Content ---
@@ -400,6 +403,9 @@ export function toPublicReview(review: GoogleReview): PublicRenderReview {
     comment: review.comment,
     rating: review.rating,
     author_photo_url: review.author_photo_url,
+    review_date: review.review_date,
+    review_reply: review.review_reply,
+    reply_date: review.reply_date,
   };
 }
 

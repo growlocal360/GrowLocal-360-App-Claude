@@ -3,7 +3,8 @@ import { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
-import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
+import { matchReviewsToBrand } from '@/lib/sites/match-reviews';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-detail-page';
@@ -91,11 +92,16 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
 
   const { site, brand, primaryLocation, serviceAreas, brands } = data;
 
-  const [{ categories, services }, googleReviews, workItems] = await Promise.all([
+  const [{ categories, services }, allReviews, workItems] = await Promise.all([
     getCategoriesWithServices(site.id),
-    getGoogleReviewsForSite(site.id),
+    getAllGoogleReviewsForSite(site.id),
     getPublishedWorkItems(site.id, { brandName: brand.name, limit: 6 }),
   ]);
+
+  // Smart match: show reviews mentioning this brand, fall back to all
+  const publicReviews = allReviews.map(toPublicReview);
+  const matchedBrandReviews = matchReviewsToBrand(publicReviews, brand.name);
+  const displayBrandReviews = matchedBrandReviews.length > 0 ? matchedBrandReviews : publicReviews.slice(0, 10);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -129,7 +135,7 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
       serviceAreas={serviceAreas.map(toPublicAreaListing)}
       brands={brands.map(toPublicBrandListing)}
       categories={navCategories}
-      googleReviews={googleReviews.map(toPublicReview)}
+      googleReviews={displayBrandReviews}
       siteSlug={slug}
       recentWorkItems={workItems.map(toPublicWorkItem)}
     />

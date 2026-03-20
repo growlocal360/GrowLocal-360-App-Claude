@@ -110,6 +110,11 @@ export function faqPage(locationSlug?: string): string {
   return `${base(locationSlug)}/faq`;
 }
 
+/** /reviews or /{locationSlug}/reviews */
+export function reviewsIndex(locationSlug?: string): string {
+  return `${base(locationSlug)}/reviews`;
+}
+
 /** /brands or /{locationSlug}/brands */
 export function brandsIndex(locationSlug?: string): string {
   return `${base(locationSlug)}/brands`;

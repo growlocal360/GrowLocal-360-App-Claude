@@ -39,6 +39,7 @@ export async function revalidateSite(siteId: string) {
   revalidatePath(`${base}/faq`, 'page');
   revalidatePath(`${base}/brands`, 'page');
   revalidatePath(`${base}/work`, 'page');
+  revalidatePath(`${base}/reviews`, 'page');
 
   // Build category slug map
   const catSlugMap = new Map<string, { slug: string; isPrimary: boolean }>();
@@ -199,9 +200,10 @@ export async function revalidatePages(siteId: string, scope: GenerationScope) {
     }
 
     case 'reviews':
-      // Reviews affect home page (trust bar) and about page (review highlights)
+      // Reviews affect home page (trust bar), about page, and reviews page
       revalidatePath(base, 'page');
       revalidatePath(`${base}/about`, 'page');
+      revalidatePath(`${base}/reviews`, 'page');
       break;
   }
 }

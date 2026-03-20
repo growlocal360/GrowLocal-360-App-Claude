@@ -1,6 +1,7 @@
 'use client';
 
-import { Star, Quote } from 'lucide-react';
+import Link from 'next/link';
+import { Star, Quote, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PublicRenderReview } from '@/lib/sites/public-render-model';
 
@@ -10,6 +11,8 @@ interface TestimonialsSectionProps {
   reviews?: PublicRenderReview[];
   averageRating?: number;
   totalReviewCount?: number;
+  reviewsHref?: string;
+  brandColor?: string;
 }
 
 // Placeholder testimonials — used when no Google Reviews are available
@@ -37,6 +40,8 @@ export function TestimonialsSection({
   reviews,
   averageRating,
   totalReviewCount,
+  reviewsHref,
+  brandColor,
 }: TestimonialsSectionProps) {
   const hasRealReviews = reviews && reviews.length > 0;
 
@@ -110,9 +115,21 @@ export function TestimonialsSection({
         </div>
 
         {hasRealReviews && (
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Reviews from Google Business Profile
-          </p>
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-400">
+              Reviews from Google Business Profile
+            </p>
+            {reviewsHref && (
+              <Link
+                href={reviewsHref}
+                className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
+                style={{ color: brandColor || '#00d9c0' }}
+              >
+                See all reviews
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
         )}
       </div>
     </section>

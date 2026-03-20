@@ -4,6 +4,7 @@ import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
@@ -27,10 +28,18 @@ export async function generateMetadata({ params }: WorkHubProps): Promise<Metada
     return { title: 'Site Not Found' };
   }
 
-  return {
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
+  const canonicalUrl = `https://${domain}/work`;
+  const ogImage = getSiteOgImage(data.site.settings);
+
+  return withOpenGraph({
     title: `Recent Work | ${data.site.name}`,
     description: `See examples of recent projects completed by ${data.site.name}. Browse our work and request a free estimate.`,
-  };
+    alternates: {
+      canonical: canonicalUrl,
+    },
+  }, { url: canonicalUrl, siteName: data.site.name, logoUrl: ogImage });
 }
 
 export default async function WorkHubRoute({ params }: WorkHubProps) {

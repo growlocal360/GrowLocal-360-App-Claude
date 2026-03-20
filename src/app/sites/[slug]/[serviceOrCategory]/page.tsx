@@ -12,6 +12,7 @@ import {
   toPublicPageContent, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
 export const revalidate = 3600;
 
@@ -38,14 +39,15 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     const { service, location, site } = serviceData;
     const domain = site.custom_domain || `${slug}.${appDomain}`;
     const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
-    return {
+    const ogImage = getSiteOgImage(site.settings);
+    return withOpenGraph({
       title: service.meta_title || `${service.name} in ${location.city}, ${location.state} | ${site.name}`,
       description: service.meta_description || service.description ||
         `Professional ${service.name.toLowerCase()} services in ${location.city}. Contact ${site.name} for fast, reliable service.`,
       alternates: {
         canonical: canonicalUrl,
       },
-    };
+    }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
   }
 
   // Try to get as a category (secondary categories only — primary category = home page)
@@ -58,13 +60,14 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     const categoryName = category.gbp_category.display_name;
     const domain = site.custom_domain || `${slug}.${appDomain}`;
     const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
-    return {
+    const ogImage = getSiteOgImage(site.settings);
+    return withOpenGraph({
       title: pageContent?.meta_title || `${categoryName} in ${location.city}, ${location.state} | ${site.name}`,
       description: pageContent?.meta_description || `Professional ${categoryName.toLowerCase()} services in ${location.city}. ${site.name} provides expert service with upfront pricing.`,
       alternates: {
         canonical: canonicalUrl,
       },
-    };
+    }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
   }
 
   return { title: 'Page Not Found' };

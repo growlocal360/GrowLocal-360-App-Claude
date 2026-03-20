@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem } from '@/lib/sites/public-render-model';
@@ -34,13 +35,15 @@ export async function generateMetadata({ params }: ContactPageProps): Promise<Me
   const domain = data.site.custom_domain || `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/contact`;
 
-  return {
+  const ogImage = getSiteOgImage(data.site.settings);
+
+  return withOpenGraph({
     title: contactPage?.meta_title || `Contact ${data.site.name}`,
     description: contactPage?.meta_description || `Get in touch with ${data.site.name}. Call us or fill out our form for a free estimate.`,
     alternates: {
       canonical: canonicalUrl,
     },
-  };
+  }, { url: canonicalUrl, siteName: data.site.name, logoUrl: ogImage });
 }
 
 export default async function ContactPageRoute({ params }: ContactPageProps) {

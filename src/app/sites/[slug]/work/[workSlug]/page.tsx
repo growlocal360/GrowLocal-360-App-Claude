@@ -8,6 +8,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import { createAdminClient } from '@/lib/supabase/admin';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
 import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
 export const revalidate = 3600;
 
@@ -35,19 +36,13 @@ export async function generateMetadata({ params }: WorkDetailProps): Promise<Met
   const domain = data.site.custom_domain || `${slug}.${appDomain}`;
 
   const output = toPublicJobOutput(data.workItem, { siteName: data.site.name, domain });
+  const ogImage = getSiteOgImage(data.site.settings, output.featuredImage?.url);
 
-  return {
+  return withOpenGraph({
     title: output.metaTitle,
     description: output.metaDescription,
-    openGraph: {
-      title: output.ogTitle,
-      description: output.ogDescription,
-      images: output.featuredImage
-        ? [{ url: output.featuredImage.url, alt: output.featuredImage.alt }]
-        : [],
-    },
     alternates: { canonical: output.canonicalUrl },
-  };
+  }, { url: output.canonicalUrl, siteName: data.site.name, imageUrl: output.featuredImage?.url, logoUrl: ogImage });
 }
 
 export default async function WorkDetailRoute({ params }: WorkDetailProps) {

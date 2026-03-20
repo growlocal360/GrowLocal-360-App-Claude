@@ -8,6 +8,7 @@ import {
   toPublicServiceListing, toPublicCategory, toPublicReview, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
 export const revalidate = 3600;
 
@@ -43,13 +44,15 @@ export async function generateMetadata({ params }: ServiceAreaPageProps): Promis
   const domain = site.custom_domain || `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/areas/${areaSlug}`;
 
-  return {
+  const ogImage = getSiteOgImage(site.settings);
+
+  return withOpenGraph({
     title,
     description,
     alternates: {
       canonical: canonicalUrl,
     },
-  };
+  }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
 }
 
 export default async function ServiceAreaPageRoute({ params }: ServiceAreaPageProps) {

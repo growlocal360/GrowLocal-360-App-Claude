@@ -4,6 +4,7 @@ import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember, toPublicServiceListing, toPublicWorkItem, toPublicReview } from '@/lib/sites/public-render-model';
@@ -34,13 +35,15 @@ export async function generateMetadata({ params }: AboutPageProps): Promise<Meta
   const domain = data.site.custom_domain || `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/about`;
 
-  return {
+  const ogImage = getSiteOgImage(data.site.settings);
+
+  return withOpenGraph({
     title: aboutPage?.meta_title || `About ${data.site.name}`,
     description: aboutPage?.meta_description || `Learn more about ${data.site.name} and our commitment to quality service.`,
     alternates: {
       canonical: canonicalUrl,
     },
-  };
+  }, { url: canonicalUrl, siteName: data.site.name, logoUrl: ogImage });
 }
 
 export default async function AboutPageRoute({ params }: AboutPageProps) {

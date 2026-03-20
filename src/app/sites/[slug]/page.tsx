@@ -8,6 +8,7 @@ import { BrandHomepage } from '@/components/templates/local-service-pro/brand-ho
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
 export const revalidate = 3600;
 
@@ -36,12 +37,15 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
   // Use generated home page metadata if available
   const homePage = sitePages?.find(p => p.page_type === 'home');
 
+  const ogImage = getSiteOgImage(site.settings);
+  const ogOptions = { url: canonicalUrl, siteName: site.name, logoUrl: ogImage };
+
   if (homePage?.meta_title) {
-    return {
+    return withOpenGraph({
       title: homePage.meta_title,
       description: homePage.meta_description || `${site.name} - Professional services. Contact us today for a free quote.`,
       alternates: { canonical: canonicalUrl },
-    };
+    }, ogOptions);
   }
 
   // Fallback: use primary category from DB for better SEO
@@ -52,7 +56,7 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
     ? `${primaryLocation.city}, ${primaryLocation.state}`
     : '';
 
-  return {
+  return withOpenGraph({
     title: categoryName && locationText
       ? `${categoryName} in ${locationText} | ${site.name}`
       : `${site.name}${locationText ? ` | ${locationText}` : ''}`,
@@ -60,7 +64,7 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
       ? `${site.name} - ${categoryName}${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`
       : `${site.name} - Professional services${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`,
     alternates: { canonical: canonicalUrl },
-  };
+  }, ogOptions);
 }
 
 export default async function SitePage({ params }: SitePageProps) {

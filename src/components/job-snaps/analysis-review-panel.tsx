@@ -209,11 +209,11 @@ export function AnalysisReviewPanel({
     .find(s => s.id === selectedServiceId)?.name;
 
   return (
-    <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+    <Card className="border-[#00ef99]/30 bg-[#00ef99]/5">
       <CardContent className="py-6 space-y-5">
         {/* Header */}
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-[#00d9c0]" />
+          <Sparkles className="h-5 w-5 text-[#00ef99]" />
           <h3 className="text-lg font-semibold text-gray-900">AI Analysis Result</h3>
           <span className="text-xs text-gray-400 ml-1">— edit before saving</span>
         </div>
@@ -298,7 +298,7 @@ export function AnalysisReviewPanel({
                       onClick={() => toggleCategory(cat.id)}
                       className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                         hasSelectedChild
-                          ? 'bg-[#00d9c0]/5 text-gray-900'
+                          ? 'bg-[#00ef99]/5 text-gray-900'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -330,14 +330,14 @@ export function AnalysisReviewPanel({
                               onClick={() => selectService(svc.id)}
                               className={`flex w-full items-center gap-2 px-3 py-2 pl-9 text-left text-sm transition-colors ${
                                 isSelected
-                                  ? 'bg-[#00d9c0]/10 text-gray-900 font-medium'
+                                  ? 'bg-[#00ef99]/10 text-gray-900 font-medium'
                                   : 'text-gray-600 hover:bg-gray-100'
                               }`}
                             >
                               <div
                                 className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center ${
                                   isSelected
-                                    ? 'border-[#00d9c0] bg-[#00d9c0]'
+                                    ? 'border-[#00ef99] bg-[#00ef99]'
                                     : 'border-gray-300'
                                 }`}
                               >
@@ -356,7 +356,7 @@ export function AnalysisReviewPanel({
               })}
             </div>
             {selectedServiceName && (
-              <p className="mt-1.5 text-xs text-[#00d9c0]">
+              <p className="mt-1.5 text-xs text-[#00ef99]">
                 Will appear on: <span className="font-medium">{selectedServiceName}</span> service page + its category page
               </p>
             )}
@@ -370,7 +370,7 @@ export function AnalysisReviewPanel({
               Location
             </label>
             <div className="mt-1 flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-[#00d9c0]" />
+              <MapPin className="h-4 w-4 text-[#00ef99]" />
               <span className="text-sm text-gray-700">{locationDisplay}</span>
               {location && (
                 <Badge variant="outline" className="ml-1 text-xs text-gray-500">

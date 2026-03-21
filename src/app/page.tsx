@@ -35,12 +35,12 @@ export default function Home() {
       {/* Hero Section */}
       <main className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="text-center">
-          <span className="inline-block rounded-full bg-[#00d9c0]/10 px-4 py-1.5 text-sm font-medium text-[#00d9c0]">
+          <span className="inline-block rounded-full bg-[#00ef99]/10 px-4 py-1.5 text-sm font-medium text-[#00ef99]">
             GBP-First Website Architecture
           </span>
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
             Build websites that
-            <span className="block text-[#00d9c0]">rank locally</span>
+            <span className="block text-[#00ef99]">rank locally</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
             Create SEO-optimized website structures based on your Google Business Profile
@@ -162,8 +162,8 @@ function FeatureCard({
 }) {
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#00d9c0]/10">
-        <Icon className="h-6 w-6 text-[#00d9c0]" />
+      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#00ef99]/10">
+        <Icon className="h-6 w-6 text-[#00ef99]" />
       </div>
       <h3 className="mt-4 font-semibold text-gray-900">{title}</h3>
       <p className="mt-2 text-sm text-gray-600">{description}</p>
@@ -186,7 +186,7 @@ function WebsiteTypeCard({
     <div
       className={`rounded-xl border-2 p-6 transition-all ${
         highlighted
-          ? 'border-[#00d9c0] bg-[#00d9c0]/5 shadow-lg'
+          ? 'border-[#00ef99] bg-[#00ef99]/5 shadow-lg'
           : 'border-gray-200 bg-white hover:border-gray-300'
       }`}
     >
@@ -200,7 +200,7 @@ function WebsiteTypeCard({
       <ul className="mt-4 space-y-2">
         {features.map((feature, index) => (
           <li key={index} className="flex items-center gap-2 text-sm text-gray-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-[#00ef99]" />
             {feature}
           </li>
         ))}

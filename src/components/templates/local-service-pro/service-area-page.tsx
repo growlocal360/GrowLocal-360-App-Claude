@@ -52,7 +52,7 @@ interface ServiceAreaPageProps {
 
 export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, locationSlug }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const industry = site.settings?.core_industry || 'Professional Services';

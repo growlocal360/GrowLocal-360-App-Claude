@@ -46,7 +46,7 @@ export function WorkDetailPage({
   siteSlug,
   locationSlug,
 }: WorkDetailPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation.phone;
 
   // Build H1: {Brand?} {Service Name} in {City}, {State}

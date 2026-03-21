@@ -155,7 +155,7 @@ export function StepBrands() {
           <p className="mt-1 text-gray-500">Finding popular brands for your industry...</p>
         </div>
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00d9c0]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00ef99]" />
           <p className="text-sm text-gray-500">This may take a few seconds</p>
         </div>
       </div>
@@ -175,9 +175,9 @@ export function StepBrands() {
       </div>
 
       {/* Info Card */}
-      <Card className="border-[#00d9c0]/20 bg-[#00d9c0]/5">
+      <Card className="border-[#00ef99]/20 bg-[#00ef99]/5">
         <CardContent className="flex gap-3 p-4">
-          <Tag className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00d9c0]" />
+          <Tag className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00ef99]" />
           <div>
             <p className="font-medium text-gray-900">Why Brands Matter</p>
             <p className="text-sm text-gray-600">
@@ -260,14 +260,14 @@ export function StepBrands() {
               onClick={() => toggleBrand(brand.id)}
               className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                 brand.isSelected
-                  ? 'border-[#00d9c0] bg-[#00d9c0]/10 text-[#00d9c0]'
+                  ? 'border-[#00ef99] bg-[#00ef99]/10 text-[#00ef99]'
                   : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
               }`}
             >
               <span
                 className={`flex h-4 w-4 items-center justify-center rounded-full border ${
                   brand.isSelected
-                    ? 'border-[#00d9c0] bg-[#00d9c0] text-white'
+                    ? 'border-[#00ef99] bg-[#00ef99] text-white'
                     : 'border-gray-300'
                 }`}
               >

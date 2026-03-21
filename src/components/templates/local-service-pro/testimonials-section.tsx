@@ -123,7 +123,7 @@ export function TestimonialsSection({
               <Link
                 href={reviewsHref}
                 className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
-                style={{ color: brandColor || '#00d9c0' }}
+                style={{ color: brandColor || '#00ef99' }}
               >
                 See all reviews
                 <ArrowRight className="h-3 w-3" />

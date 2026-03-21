@@ -84,7 +84,7 @@ export function OrgSwitcher({ orgs, activeOrgId }: OrgSwitcherProps) {
             className="flex items-center gap-2"
           >
             {org.orgId === activeOrgId && (
-              <Check className="h-4 w-4 shrink-0 text-[#00d9c0]" />
+              <Check className="h-4 w-4 shrink-0 text-[#00ef99]" />
             )}
             {org.orgId !== activeOrgId && (
               <span className="h-4 w-4 shrink-0" />

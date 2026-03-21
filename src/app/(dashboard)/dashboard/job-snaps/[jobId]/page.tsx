@@ -311,7 +311,7 @@ export default function JobSnapDetailPage() {
               variant="outline"
               onClick={handlePublishToWebsite}
               disabled={actionLoading !== null}
-              className={jobSnap.is_published_to_website ? 'border-[#00d9c0] text-[#00d9c0] hover:text-[#00d9c0]' : ''}
+              className={jobSnap.is_published_to_website ? 'border-[#00ef99] text-[#00ef99] hover:text-[#00ef99]' : ''}
             >
               {actionLoading === 'website' ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -326,7 +326,7 @@ export default function JobSnapDetailPage() {
               variant="outline"
               onClick={handlePushToGBP}
               disabled={actionLoading !== null || !jobSnap.is_published_to_website}
-              className={jobSnap.is_published_to_gbp ? 'border-[#00d9c0] text-[#00d9c0] hover:text-[#00d9c0]' : ''}
+              className={jobSnap.is_published_to_gbp ? 'border-[#00ef99] text-[#00ef99] hover:text-[#00ef99]' : ''}
               title={!jobSnap.is_published_to_website ? 'Publish to website first' : ''}
             >
               {actionLoading === 'gbp' ? (
@@ -463,7 +463,7 @@ export default function JobSnapDetailPage() {
                     href={`https://${siteCustomDomain || `${siteSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com'}`}/work/${workItemSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#00d9c0] hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-[#00ef99] hover:underline"
                   >
                     <ExternalLink className="h-3 w-3" />
                     View on website

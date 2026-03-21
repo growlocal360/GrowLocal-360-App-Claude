@@ -14,7 +14,7 @@ interface ServiceAreasSectionProps {
 }
 
 export function ServiceAreasSection({ site, serviceAreas, neighborhoods, locationSlug }: ServiceAreasSectionProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
 
   // Combine neighborhoods and service areas for display
   const allAreas = [

@@ -189,7 +189,7 @@ export default function ContentSettingsPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 flex-shrink-0" />
           <p>Content settings saved successfully!</p>
         </div>
@@ -199,7 +199,7 @@ export default function ContentSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-[#00d9c0]" />
+            <MessageSquare className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Voice & Tone</h2>
           </div>
         </CardHeader>
@@ -218,7 +218,7 @@ export default function ContentSettingsPage() {
                     disabled={isDisabled}
                     className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium border transition-colors ${
                       isSelected
-                        ? 'bg-[#00d9c0]/10 border-[#00d9c0] text-[#00d9c0]'
+                        ? 'bg-[#00ef99]/10 border-[#00ef99] text-[#00ef99]'
                         : isDisabled
                           ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
@@ -284,7 +284,7 @@ export default function ContentSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-[#00d9c0]" />
+            <Users className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Target Audience</h2>
           </div>
         </CardHeader>
@@ -310,7 +310,7 @@ export default function ContentSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#00d9c0]" />
+            <FileText className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Reference Material</h2>
           </div>
         </CardHeader>
@@ -351,7 +351,7 @@ export default function ContentSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <ListChecks className="h-5 w-5 text-[#00d9c0]" />
+            <ListChecks className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Specific Requests</h2>
           </div>
         </CardHeader>

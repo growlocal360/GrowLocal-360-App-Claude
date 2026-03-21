@@ -27,7 +27,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const phone = site.settings?.phone || primaryLocation?.phone;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
 
   const home = paths.locationHome(locationSlug);
   const navLinks = [

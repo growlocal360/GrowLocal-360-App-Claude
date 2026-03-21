@@ -60,8 +60,8 @@ export function SiteStatusBadge({ status, progress, showLabel = true }: SiteStat
       }
       return (
         <div className="flex items-center gap-1.5">
-          <Circle className="h-2.5 w-2.5 fill-[#00d9c0] stroke-none" />
-          {showLabel && <span className="text-xs text-[#00d9c0]">Active</span>}
+          <Circle className="h-2.5 w-2.5 fill-[#00ef99] stroke-none" />
+          {showLabel && <span className="text-xs text-[#00ef99]">Active</span>}
         </div>
       );
 

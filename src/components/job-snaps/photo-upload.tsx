@@ -110,7 +110,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={remaining <= 0}
-              className="flex h-28 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#00d9c0] bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex h-28 w-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[#00ef99] bg-white text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ImageIcon className="h-8 w-8 text-gray-400" />
               <span className="text-sm font-medium">Photos</span>
@@ -133,7 +133,7 @@ export function PhotoUpload({ currentCount, onAdd }: PhotoUploadProps) {
             onDrop={handleDrop}
             className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-10 transition-colors ${
               isDragging
-                ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                ? 'border-[#00ef99] bg-[#00ef99]/5'
                 : remaining <= 0
                   ? 'border-gray-200 bg-gray-50 opacity-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'

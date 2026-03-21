@@ -175,8 +175,8 @@ export function StepCategories() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
-            <Sparkles className="h-8 w-8 text-[#00d9c0]" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00ef99]/10">
+            <Sparkles className="h-8 w-8 text-[#00ef99]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Analyzing your business...</p>
           <p className="text-gray-500">Finding the best GBP categories for &quot;{coreIndustry}&quot;</p>
@@ -218,11 +218,11 @@ export function StepCategories() {
                     onClick={() => toggleLocationExpanded(locIndex)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`rounded-full p-1.5 ${location.isPrimary ? 'bg-[#00d9c0]/10' : 'bg-gray-100'}`}>
+                      <div className={`rounded-full p-1.5 ${location.isPrimary ? 'bg-[#00ef99]/10' : 'bg-gray-100'}`}>
                         {isSAB ? (
-                          <Globe2 className={`h-4 w-4 ${location.isPrimary ? 'text-[#00d9c0]' : 'text-gray-500'}`} />
+                          <Globe2 className={`h-4 w-4 ${location.isPrimary ? 'text-[#00ef99]' : 'text-gray-500'}`} />
                         ) : (
-                          <MapPin className={`h-4 w-4 ${location.isPrimary ? 'text-[#00d9c0]' : 'text-gray-500'}`} />
+                          <MapPin className={`h-4 w-4 ${location.isPrimary ? 'text-[#00ef99]' : 'text-gray-500'}`} />
                         )}
                       </div>
                       <div>
@@ -234,7 +234,7 @@ export function StepCategories() {
                         </p>
                       </div>
                       {location.isPrimary && (
-                        <Badge variant="outline" className="text-xs text-[#00d9c0] border-[#00d9c0]/30">
+                        <Badge variant="outline" className="text-xs text-[#00ef99] border-[#00ef99]/30">
                           Primary
                         </Badge>
                       )}
@@ -262,7 +262,7 @@ export function StepCategories() {
                           </p>
                           <button
                             type="button"
-                            className="text-xs text-[#00d9c0] hover:underline"
+                            className="text-xs text-[#00ef99] hover:underline"
                             onClick={() => {
                               setChangingPrimaryFor(isChangingPrimary ? null : locIndex);
                               setPrimarySearchQuery('');
@@ -296,13 +296,13 @@ export function StepCategories() {
                                   type="button"
                                   className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-gray-50 ${
                                     location.gbpPrimaryCategory?.gcid === cat.gcid
-                                      ? 'bg-[#00d9c0]/5 font-medium text-[#00d9c0]'
+                                      ? 'bg-[#00ef99]/5 font-medium text-[#00ef99]'
                                       : 'text-gray-700'
                                   }`}
                                   onClick={() => handleLocationPrimaryChange(locIndex, cat)}
                                 >
                                   {location.gbpPrimaryCategory?.gcid === cat.gcid && (
-                                    <Check className="h-3.5 w-3.5 text-[#00d9c0]" />
+                                    <Check className="h-3.5 w-3.5 text-[#00ef99]" />
                                   )}
                                   {cat.displayName}
                                 </button>
@@ -353,7 +353,7 @@ export function StepCategories() {
                   key={cat.gcid}
                   className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${
                     cat.isPrimary
-                      ? 'bg-[#00d9c0] text-white'
+                      ? 'bg-[#00ef99] text-white'
                       : 'bg-gray-200 text-gray-700'
                   }`}
                 >
@@ -379,11 +379,11 @@ export function StepCategories() {
         <>
           {suggestedPrimary.length > 0 && !showSearch ? (
             <>
-              <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
-                <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
+              <div className="flex items-start gap-3 rounded-lg bg-[#00ef99]/5 p-4">
+                <Sparkles className="mt-0.5 h-5 w-5 text-[#00ef99]" />
                 <div>
                   <p className="font-medium text-gray-900">AI-Powered Recommendation</p>
-                  <p className="text-sm text-[#00d9c0]">
+                  <p className="text-sm text-[#00ef99]">
                     Categories are matched based on Google&apos;s official GBP taxonomy and your industry keywords.
                   </p>
                 </div>
@@ -404,7 +404,7 @@ export function StepCategories() {
                       key={category.gcid}
                       className={`cursor-pointer transition-all ${
                         primaryCategory?.gcid === category.gcid
-                          ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-2 ring-[#00d9c0]/20'
+                          ? 'border-[#00ef99] bg-[#00ef99]/5 ring-2 ring-[#00ef99]/20'
                           : 'hover:border-gray-300'
                       }`}
                       onClick={() => handlePrimarySelect(category)}
@@ -414,7 +414,7 @@ export function StepCategories() {
                           <div
                             className={`flex h-6 w-6 items-center justify-center rounded-full ${
                               primaryCategory?.gcid === category.gcid
-                                ? 'bg-[#00d9c0] text-white'
+                                ? 'bg-[#00ef99] text-white'
                                 : 'border-2 border-gray-300'
                             }`}
                           >
@@ -425,12 +425,12 @@ export function StepCategories() {
                           <div>
                             <p className="font-medium text-gray-900">{category.displayName}</p>
                             {index === 0 && (
-                              <span className="text-xs text-[#00d9c0]">Best Match</span>
+                              <span className="text-xs text-[#00ef99]">Best Match</span>
                             )}
                           </div>
                         </div>
                         {index === 0 && (
-                          <Badge className="bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/10">
+                          <Badge className="bg-[#00ef99]/10 text-[#00ef99] hover:bg-[#00ef99]/10">
                             <Sparkles className="mr-1 h-3 w-3" />
                             Recommended
                           </Badge>
@@ -443,7 +443,7 @@ export function StepCategories() {
                 <button
                   type="button"
                   onClick={() => setShowSearch(true)}
-                  className="text-sm text-[#00d9c0] hover:text-[#00d9c0] hover:underline"
+                  className="text-sm text-[#00ef99] hover:text-[#00ef99] hover:underline"
                 >
                   Can&apos;t find your category? Search all categories &rarr;
                 </button>
@@ -492,8 +492,8 @@ export function StepCategories() {
                 </div>
 
                 {primaryCategory && (
-                  <div className="rounded-lg bg-[#00d9c0]/5 p-3">
-                    <p className="text-sm text-[#00d9c0]">
+                  <div className="rounded-lg bg-[#00ef99]/5 p-3">
+                    <p className="text-sm text-[#00ef99]">
                       <span className="font-medium">Selected:</span> {primaryCategory.displayName}
                     </p>
                   </div>
@@ -505,7 +505,7 @@ export function StepCategories() {
                       key={category.gcid}
                       className={`cursor-pointer transition-all ${
                         primaryCategory?.gcid === category.gcid
-                          ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-2 ring-[#00d9c0]/20'
+                          ? 'border-[#00ef99] bg-[#00ef99]/5 ring-2 ring-[#00ef99]/20'
                           : 'hover:border-gray-300'
                       }`}
                       onClick={() => handlePrimarySelect(category)}
@@ -515,7 +515,7 @@ export function StepCategories() {
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-full ${
                               primaryCategory?.gcid === category.gcid
-                                ? 'bg-[#00d9c0] text-white'
+                                ? 'bg-[#00ef99] text-white'
                                 : 'border-2 border-gray-300'
                             }`}
                           >
@@ -568,7 +568,7 @@ export function StepCategories() {
                       isPrimary
                         ? 'cursor-not-allowed opacity-50'
                         : isSelected
-                        ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                        ? 'border-[#00ef99] bg-[#00ef99]/5'
                         : 'hover:border-gray-300'
                     }`}
                     onClick={() => !isPrimary && handleSecondaryToggle(category)}
@@ -578,7 +578,7 @@ export function StepCategories() {
                         <div
                           className={`flex h-5 w-5 items-center justify-center rounded ${
                             isSelected
-                              ? 'bg-[#00d9c0] text-white'
+                              ? 'bg-[#00ef99] text-white'
                               : 'border-2 border-gray-300'
                           }`}
                         >

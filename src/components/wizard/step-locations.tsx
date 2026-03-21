@@ -51,7 +51,7 @@ export function StepLocations() {
         {locations.map((location, index) => (
           <Card
             key={location.gbpLocationId || index}
-            className={location.isPrimary ? 'border-[#00d9c0]/30' : ''}
+            className={location.isPrimary ? 'border-[#00ef99]/30' : ''}
           >
             <CardContent className="p-4 space-y-3">
               {/* Header row */}
@@ -59,19 +59,19 @@ export function StepLocations() {
                 <div className="flex items-start gap-3">
                   <div
                     className={`rounded-full p-2 ${
-                      location.isPrimary ? 'bg-[#00d9c0]/10' : 'bg-gray-100'
+                      location.isPrimary ? 'bg-[#00ef99]/10' : 'bg-gray-100'
                     }`}
                   >
                     {isSAB(location) ? (
                       <Globe2
                         className={`h-4 w-4 ${
-                          location.isPrimary ? 'text-[#00d9c0]' : 'text-gray-500'
+                          location.isPrimary ? 'text-[#00ef99]' : 'text-gray-500'
                         }`}
                       />
                     ) : (
                       <MapPin
                         className={`h-4 w-4 ${
-                          location.isPrimary ? 'text-[#00d9c0]' : 'text-gray-500'
+                          location.isPrimary ? 'text-[#00ef99]' : 'text-gray-500'
                         }`}
                       />
                     )}
@@ -101,7 +101,7 @@ export function StepLocations() {
                     </span>
                   )}
                   {location.isPrimary ? (
-                    <span className="rounded bg-[#00d9c0]/10 px-2 py-0.5 text-xs font-medium text-[#00d9c0]">
+                    <span className="rounded bg-[#00ef99]/10 px-2 py-0.5 text-xs font-medium text-[#00ef99]">
                       <Star className="mr-1 inline h-3 w-3" />
                       Primary
                     </span>

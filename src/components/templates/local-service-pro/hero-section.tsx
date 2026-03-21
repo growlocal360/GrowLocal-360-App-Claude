@@ -30,7 +30,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount, primaryCategoryName }: HeroSectionProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const category = primaryCategoryName || site.settings?.core_industry || 'Professional Services';

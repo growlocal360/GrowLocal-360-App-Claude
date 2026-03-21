@@ -249,8 +249,8 @@ export function StepNeighborhoods() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
-            <Building2 className="h-8 w-8 text-[#00d9c0]" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00ef99]/10">
+            <Building2 className="h-8 w-8 text-[#00ef99]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Finding neighborhoods...</p>
           <p className="text-gray-500">Discovering areas within your service cities</p>
@@ -272,11 +272,11 @@ export function StepNeighborhoods() {
       </div>
 
       {/* SEO Explanation */}
-      <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
-        <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
+      <div className="flex items-start gap-3 rounded-lg bg-[#00ef99]/5 p-4">
+        <Sparkles className="mt-0.5 h-5 w-5 text-[#00ef99]" />
         <div>
           <p className="font-medium text-gray-900">Why Neighborhoods Matter</p>
-          <p className="text-sm text-[#00d9c0]">
+          <p className="text-sm text-[#00ef99]">
             Neighborhood pages build geographic relevance for your GBP landing pages. When someone searches
             &quot;plumber in Siesta Key&quot;, having a dedicated page helps you rank AND builds authority for
             your Sarasota location page.
@@ -299,7 +299,7 @@ export function StepNeighborhoods() {
                   <Badge
                     key={n.id}
                     variant="secondary"
-                    className="flex items-center gap-1 bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/20"
+                    className="flex items-center gap-1 bg-[#00ef99]/10 text-[#00ef99] hover:bg-[#00ef99]/20"
                   >
                     {n.name}
                     {n.isCustom && (
@@ -307,7 +307,7 @@ export function StepNeighborhoods() {
                     )}
                     <button
                       onClick={() => removeNeighborhood(n.id)}
-                      className="ml-1 rounded-full p-0.5 hover:bg-[#00d9c0]/30"
+                      className="ml-1 rounded-full p-0.5 hover:bg-[#00ef99]/30"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -390,7 +390,7 @@ export function StepNeighborhoods() {
                   key={neighborhood.id}
                   className={`cursor-pointer transition-all ${
                     selected
-                      ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                      ? 'border-[#00ef99] bg-[#00ef99]/5'
                       : 'hover:border-gray-300'
                   }`}
                   onClick={() => handleToggleNeighborhood(neighborhood)}
@@ -400,7 +400,7 @@ export function StepNeighborhoods() {
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded ${
                           selected
-                            ? 'bg-[#00d9c0] text-white'
+                            ? 'bg-[#00ef99] text-white'
                             : 'border-2 border-gray-300'
                         }`}
                       >

@@ -353,7 +353,7 @@ export default function SitesPage() {
         ) : (
           <div className="space-y-4">
             {filteredSites.map((site) => (
-              <Card key={site.id} className="hover:border-[#00d9c0]/20 transition-colors">
+              <Card key={site.id} className="hover:border-[#00ef99]/20 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     {/* Site Info */}

@@ -10,7 +10,7 @@ interface LeadCaptureSectionProps {
   services?: PublicRenderServiceListing[];
 }
 
-export function LeadCaptureSection({ siteId, brandColor = '#00d9c0', services }: LeadCaptureSectionProps) {
+export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }: LeadCaptureSectionProps) {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',

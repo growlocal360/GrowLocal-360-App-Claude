@@ -215,7 +215,7 @@ export function StepServices() {
           <p className="mt-1 text-gray-500">Generating SEO-optimized services for your categories...</p>
         </div>
         <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00d9c0]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#00ef99]" />
           <p className="text-sm text-gray-500">This may take a few seconds</p>
         </div>
       </div>
@@ -235,9 +235,9 @@ export function StepServices() {
       </div>
 
       {/* Info Card */}
-      <Card className="border-[#00d9c0]/20 bg-[#00d9c0]/5">
+      <Card className="border-[#00ef99]/20 bg-[#00ef99]/5">
         <CardContent className="flex gap-3 p-4">
-          <Wrench className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00d9c0]" />
+          <Wrench className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00ef99]" />
           <div>
             <p className="font-medium text-gray-900">Why Services Matter</p>
             <p className="text-sm text-gray-600">
@@ -287,7 +287,7 @@ export function StepServices() {
                 <Label htmlFor="custom-service-description">Description <span className="text-gray-400 font-normal">(optional)</span></Label>
                 <textarea
                   id="custom-service-description"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-[#00d9c0] focus:outline-none focus:ring-1 focus:ring-[#00d9c0]"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-[#00ef99] focus:outline-none focus:ring-1 focus:ring-[#00ef99]"
                   rows={2}
                   placeholder="Brief description of this service for SEO..."
                   value={customServiceDescription}
@@ -349,7 +349,7 @@ export function StepServices() {
               <div className="mb-3 flex items-center gap-2">
                 <h3 className="font-semibold text-gray-900">{categoryName}</h3>
                 {isPrimary && (
-                  <Badge variant="secondary" className="bg-[#00d9c0]/10 text-[#00d9c0]">
+                  <Badge variant="secondary" className="bg-[#00ef99]/10 text-[#00ef99]">
                     Primary
                   </Badge>
                 )}
@@ -360,7 +360,7 @@ export function StepServices() {
                     key={service.id}
                     className={`cursor-pointer transition-all ${
                       service.isSelected
-                        ? 'border-[#00d9c0] bg-[#00d9c0]/5 ring-1 ring-[#00d9c0]'
+                        ? 'border-[#00ef99] bg-[#00ef99]/5 ring-1 ring-[#00ef99]'
                         : 'hover:border-gray-300'
                     }`}
                     onClick={() => toggleService(service.id)}
@@ -424,7 +424,7 @@ export function StepServices() {
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
                               service.isSelected
-                                ? 'border-[#00d9c0] bg-[#00d9c0] text-white'
+                                ? 'border-[#00ef99] bg-[#00ef99] text-white'
                                 : 'border-gray-300'
                             }`}
                           >

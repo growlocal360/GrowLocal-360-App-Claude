@@ -291,7 +291,7 @@ export default function SearchPerformancePage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 shrink-0" />
           <p>{success}</p>
         </div>
@@ -301,7 +301,7 @@ export default function SearchPerformancePage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-[#00d9c0]" />
+            <Search className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Google Search Console Property</h2>
           </div>
         </CardHeader>
@@ -366,7 +366,7 @@ export default function SearchPerformancePage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 text-[#00d9c0]" />
+                <RefreshCw className="h-5 w-5 text-[#00ef99]" />
                 <h2 className="font-semibold">Data Sync</h2>
               </div>
               <Button
@@ -403,7 +403,7 @@ export default function SearchPerformancePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-[#00d9c0]" />
+              <TrendingUp className="h-5 w-5 text-[#00ef99]" />
               <h2 className="font-semibold">Top Search Queries</h2>
               <Badge variant="secondary">
                 {aggregatedQueries.length} queries

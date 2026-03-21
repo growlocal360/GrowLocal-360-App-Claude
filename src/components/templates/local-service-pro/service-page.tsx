@@ -42,7 +42,7 @@ interface ServicePageProps {
 
 export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug, recentWorkItems }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || location.phone;
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;

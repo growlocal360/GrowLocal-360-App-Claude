@@ -33,7 +33,7 @@ interface ContactPageProps {
 }
 
 export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, teamMembers, categories, siteSlug, locationSlug, recentWorkItems }: ContactPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
 

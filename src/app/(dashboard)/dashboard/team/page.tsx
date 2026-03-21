@@ -189,7 +189,7 @@ export default function TeamPage() {
           {canManageTeam && (
             <Button
               onClick={() => setShowInviteDialog(true)}
-              style={{ backgroundColor: '#00d9c0' }}
+              style={{ backgroundColor: '#00ef99' }}
               className="hover:opacity-90"
             >
               <UserPlus className="mr-2 h-4 w-4" />

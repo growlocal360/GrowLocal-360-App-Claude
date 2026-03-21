@@ -40,7 +40,7 @@ export function FAQHubPage({
   siteSlug,
   locationSlug,
 }: FAQHubPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
 
   const h1 = pageContent?.h1 || `Frequently Asked Questions${city ? ` — ${site.name} in ${city}` : ''}`;

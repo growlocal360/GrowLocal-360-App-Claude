@@ -306,7 +306,7 @@ function PaymentSuccessContent() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00d9c0]" />
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00ef99]" />
             <h1 className="mt-4 text-xl font-semibold text-gray-900">
               Verifying Payment...
             </h1>
@@ -374,8 +374,8 @@ function PaymentSuccessContent() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <Card className="w-full max-w-lg">
           <CardContent className="p-8 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#00d9c0]/10">
-              <CheckCircle2 className="h-10 w-10 text-[#00d9c0]" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#00ef99]/10">
+              <CheckCircle2 className="h-10 w-10 text-[#00ef99]" />
             </div>
             <h1 className="mt-6 text-xl font-semibold text-gray-900">
               Your Website is Ready!
@@ -388,7 +388,7 @@ function PaymentSuccessContent() {
             </div>
 
             {hasOnboardingData && !onboardingComplete && (
-              <div className="mt-6 rounded-lg border border-[#00d9c0]/30 bg-[#00d9c0]/5 p-4">
+              <div className="mt-6 rounded-lg border border-[#00ef99]/30 bg-[#00ef99]/5 p-4">
                 <p className="text-sm text-gray-700">
                   Your business details have been saved. Regenerate your site to update the content with your personalized voice and details.
                 </p>
@@ -397,7 +397,7 @@ function PaymentSuccessContent() {
                     await saveOnboardingData();
                     router.push(`/dashboard/sites/${siteData.id}`);
                   }}
-                  className="mt-3 w-full bg-[#00d9c0] text-white hover:bg-[#00c4ad]"
+                  className="mt-3 w-full bg-[#00ef99] text-white hover:bg-[#00c4ad]"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Go to Dashboard & Regenerate
@@ -430,8 +430,8 @@ function PaymentSuccessContent() {
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="relative h-12 w-12 shrink-0">
-                <div className="absolute inset-0 animate-ping rounded-full bg-[#00d9c0]/10" />
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#00d9c0]">
+                <div className="absolute inset-0 animate-ping rounded-full bg-[#00ef99]/10" />
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#00ef99]">
                   <Sparkles className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -443,7 +443,7 @@ function PaymentSuccessContent() {
                   {progressMessage}
                 </p>
               </div>
-              <span className="text-lg font-bold text-[#00d9c0]">{progress}%</span>
+              <span className="text-lg font-bold text-[#00ef99]">{progress}%</span>
             </div>
             <Progress value={progress} className="mt-4 h-2" />
             <p className="mt-2 text-xs text-gray-400">
@@ -493,9 +493,9 @@ function PaymentSuccessContent() {
                       onClick={() => { if (isDone) setOnboardingStep(i); }}
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                         isActive
-                          ? 'bg-[#00d9c0] text-white'
+                          ? 'bg-[#00ef99] text-white'
                           : isDone
-                          ? 'cursor-pointer bg-[#00d9c0]/10 text-[#00d9c0]'
+                          ? 'cursor-pointer bg-[#00ef99]/10 text-[#00ef99]'
                           : 'bg-gray-100 text-gray-400'
                       }`}
                     >
@@ -588,7 +588,7 @@ function PaymentSuccessContent() {
                           variant={toneValues.includes(tone) ? 'default' : 'outline'}
                           className={`cursor-pointer px-3 py-1.5 text-sm transition-colors ${
                             toneValues.includes(tone)
-                              ? 'bg-[#00d9c0] text-white hover:bg-[#00c4ad]'
+                              ? 'bg-[#00ef99] text-white hover:bg-[#00c4ad]'
                               : 'hover:bg-gray-100'
                           }`}
                           onClick={() => toggleTone(tone)}
@@ -663,7 +663,7 @@ function PaymentSuccessContent() {
                   <Button
                     onClick={handleNext}
                     disabled={saving}
-                    className="bg-[#00d9c0] text-white hover:bg-[#00c4ad]"
+                    className="bg-[#00ef99] text-white hover:bg-[#00c4ad]"
                   >
                     {onboardingStep === ONBOARDING_STEPS.length - 1 ? (
                       <>
@@ -693,10 +693,10 @@ function PaymentSuccessContent() {
           </Card>
         ) : (
           /* Onboarding completed summary */
-          <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+          <Card className="border-[#00ef99]/30 bg-[#00ef99]/5">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-6 w-6 text-[#00d9c0]" />
+                <CheckCircle2 className="h-6 w-6 text-[#00ef99]" />
                 <div>
                   <h3 className="font-semibold text-gray-900">Business details saved!</h3>
                   <p className="text-sm text-gray-600">
@@ -709,7 +709,7 @@ function PaymentSuccessContent() {
               {status === 'success' && siteData && (
                 <Button
                   asChild
-                  className="mt-4 w-full bg-[#00d9c0] text-white hover:bg-[#00c4ad]"
+                  className="mt-4 w-full bg-[#00ef99] text-white hover:bg-[#00c4ad]"
                 >
                   <Link href={`/dashboard/sites/${siteData.id}`}>
                     Go to Site Dashboard
@@ -740,7 +740,7 @@ function LoadingFallback() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardContent className="p-8 text-center">
-          <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00d9c0]" />
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#00ef99]" />
           <h1 className="mt-4 text-xl font-semibold text-gray-900">
             Loading...
           </h1>

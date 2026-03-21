@@ -37,7 +37,7 @@ interface LocalServiceProTemplateProps {
 export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
 

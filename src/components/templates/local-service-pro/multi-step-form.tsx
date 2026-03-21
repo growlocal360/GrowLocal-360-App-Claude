@@ -11,7 +11,7 @@ interface MultiStepFormProps {
   services?: PublicRenderServiceListing[];
 }
 
-export function MultiStepForm({ siteId, brandColor = '#00d9c0', services }: MultiStepFormProps) {
+export function MultiStepForm({ siteId, brandColor = '#00ef99', services }: MultiStepFormProps) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

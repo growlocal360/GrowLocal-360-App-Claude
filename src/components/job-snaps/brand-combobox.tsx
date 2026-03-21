@@ -91,7 +91,7 @@ export function BrandCombobox({
               key={brand}
               className={`cursor-pointer px-3 py-2 text-sm ${
                 i === activeIndex
-                  ? 'bg-[#00d9c0]/10 text-gray-900'
+                  ? 'bg-[#00ef99]/10 text-gray-900'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
               onMouseDown={(e) => {

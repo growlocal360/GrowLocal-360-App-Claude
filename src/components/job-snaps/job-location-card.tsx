@@ -190,13 +190,13 @@ export function JobLocationCard({
         <CardContent className="py-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#00d9c0]" />
+              <MapPin className="h-5 w-5 text-[#00ef99]" />
               <h3 className="text-lg font-semibold text-gray-900">Job Location</h3>
             </div>
             <button
               type="button"
               onClick={onEdit}
-              className="text-sm font-medium text-[#00d9c0] hover:underline"
+              className="text-sm font-medium text-[#00ef99] hover:underline"
             >
               Edit
             </button>
@@ -213,7 +213,7 @@ export function JobLocationCard({
               </p>
             )}
             {gpsDisplay && (
-              <p className="text-sm font-medium text-[#00d9c0]">{gpsDisplay}</p>
+              <p className="text-sm font-medium text-[#00ef99]">{gpsDisplay}</p>
             )}
           </div>
         </CardContent>
@@ -226,7 +226,7 @@ export function JobLocationCard({
     <Card>
       <CardContent className="py-6">
         <div className="flex items-center gap-2 mb-3">
-          <MapPin className="h-5 w-5 text-[#00d9c0]" />
+          <MapPin className="h-5 w-5 text-[#00ef99]" />
           <h3 className="text-lg font-semibold text-gray-900">Job Location</h3>
         </div>
 
@@ -288,7 +288,7 @@ export function JobLocationCard({
                     key={prediction.placeId}
                     className={`cursor-pointer px-3 py-2 text-sm ${
                       i === activeIndex
-                        ? 'bg-[#00d9c0]/10 text-gray-900'
+                        ? 'bg-[#00ef99]/10 text-gray-900'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                     onMouseDown={(e) => {

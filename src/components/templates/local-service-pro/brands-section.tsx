@@ -17,7 +17,7 @@ interface BrandsSectionProps {
 export function BrandsSection({ site, primaryLocation, brands, siteSlug, locationSlug }: BrandsSectionProps) {
   if (brands.length === 0) return null;
 
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
   const primaryCategory = site.settings?.core_industry || '';
 

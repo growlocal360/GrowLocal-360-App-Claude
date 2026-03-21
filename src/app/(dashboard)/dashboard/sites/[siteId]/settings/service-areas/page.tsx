@@ -438,7 +438,7 @@ export default function ServiceAreasPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 shrink-0" />
           <p>Saved successfully!</p>
         </div>
@@ -449,7 +449,7 @@ export default function ServiceAreasPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Map className="h-5 w-5 text-[#00d9c0]" />
+              <Map className="h-5 w-5 text-[#00ef99]" />
               <h2 className="font-semibold">Service Areas</h2>
               <Badge variant="secondary">
                 {areas.length} area{areas.length !== 1 ? 's' : ''}
@@ -539,7 +539,7 @@ export default function ServiceAreasPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#00d9c0]" />
+              <MapPin className="h-5 w-5 text-[#00ef99]" />
               <h2 className="font-semibold">Neighborhoods</h2>
               <Badge variant="secondary">
                 {neighborhoods.length} neighborhood{neighborhoods.length !== 1 ? 's' : ''}

@@ -8,7 +8,7 @@ interface TrustBarProps {
   totalReviewCount?: number;
 }
 
-export function TrustBar({ brandColor = '#00d9c0', averageRating, totalReviewCount }: TrustBarProps) {
+export function TrustBar({ brandColor = '#00ef99', averageRating, totalReviewCount }: TrustBarProps) {
   const displayRating = averageRating || 5.0;
   const ratingLabel = averageRating
     ? `${averageRating.toFixed(1)} Rating (${totalReviewCount || 0} Reviews)`

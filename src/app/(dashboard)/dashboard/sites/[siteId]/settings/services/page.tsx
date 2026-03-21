@@ -386,7 +386,7 @@ export default function ServicesPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 shrink-0" />
           <p>Service added successfully!</p>
         </div>
@@ -414,7 +414,7 @@ export default function ServicesPage() {
                   )}
                   <h2 className="font-semibold">{cat.gbp_category.display_name}</h2>
                   {cat.is_primary && (
-                    <Badge variant="default" className="bg-[#00d9c0] text-white text-xs">
+                    <Badge variant="default" className="bg-[#00ef99] text-white text-xs">
                       Primary
                     </Badge>
                   )}

@@ -27,7 +27,7 @@ interface ServiceAreasListingPageProps {
 }
 
 export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug }: ServiceAreasListingPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 

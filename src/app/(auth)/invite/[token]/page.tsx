@@ -111,7 +111,7 @@ export default function InviteAcceptPage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-[#00d9c0]" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-[#00ef99]" />
             <h2 className="mt-4 text-lg font-semibold text-gray-900">Welcome to the team!</h2>
             <p className="mt-2 text-sm text-gray-500">Redirecting to your dashboard...</p>
           </CardContent>
@@ -124,8 +124,8 @@ export default function InviteAcceptPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#00d9c0]/10">
-            <Users className="h-7 w-7 text-[#00d9c0]" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#00ef99]/10">
+            <Users className="h-7 w-7 text-[#00ef99]" />
           </div>
           <CardTitle>Team Invitation</CardTitle>
         </CardHeader>
@@ -152,7 +152,7 @@ export default function InviteAcceptPage() {
               onClick={handleAccept}
               disabled={accepting}
               className="w-full hover:opacity-90"
-              style={{ backgroundColor: '#00d9c0' }}
+              style={{ backgroundColor: '#00ef99' }}
             >
               {accepting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -164,7 +164,7 @@ export default function InviteAcceptPage() {
               <p className="text-sm text-gray-500 text-center">
                 Sign in or create an account to accept this invitation.
               </p>
-              <Button asChild className="w-full" style={{ backgroundColor: '#00d9c0' }}>
+              <Button asChild className="w-full" style={{ backgroundColor: '#00ef99' }}>
                 <Link href={`/login?redirect=/invite/${token}`}>
                   Sign In
                 </Link>

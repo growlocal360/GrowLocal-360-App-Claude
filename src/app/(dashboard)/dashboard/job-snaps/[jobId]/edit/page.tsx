@@ -581,7 +581,7 @@ export default function EditJobSnapPage() {
 
               {/* Public address preview */}
               {publicAddressPreview && (
-                <div className="rounded-md border border-[#00d9c0]/30 bg-[#00d9c0]/5 px-4 py-3 space-y-1">
+                <div className="rounded-md border border-[#00ef99]/30 bg-[#00ef99]/5 px-4 py-3 space-y-1">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                     <Eye className="h-3 w-3" />
                     Public-facing address (house number removed)

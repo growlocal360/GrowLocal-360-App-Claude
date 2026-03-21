@@ -204,10 +204,10 @@ export default function DomainSettingsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-[#00d9c0]" />
+              <Globe className="h-5 w-5 text-[#00ef99]" />
               <h2 className="font-semibold">Subdomain</h2>
             </div>
-            <Badge className="bg-[#00d9c0]/10 text-[#00d9c0]">Active</Badge>
+            <Badge className="bg-[#00ef99]/10 text-[#00ef99]">Active</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -254,7 +254,7 @@ export default function DomainSettingsPage() {
               <Badge
                 className={
                   config.customDomainVerified
-                    ? 'bg-[#00d9c0]/10 text-[#00d9c0]'
+                    ? 'bg-[#00ef99]/10 text-[#00ef99]'
                     : 'bg-yellow-100 text-yellow-700'
                 }
               >
@@ -280,7 +280,7 @@ export default function DomainSettingsPage() {
                   {isVerifying ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : config.customDomainVerified ? (
-                    <Check className="h-4 w-4 text-[#00d9c0]" />
+                    <Check className="h-4 w-4 text-[#00ef99]" />
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
@@ -300,7 +300,7 @@ export default function DomainSettingsPage() {
                 <p
                   className={`text-sm ${
                     config.customDomainVerified
-                      ? 'text-[#00d9c0]'
+                      ? 'text-[#00ef99]'
                       : 'text-yellow-600'
                   }`}
                 >

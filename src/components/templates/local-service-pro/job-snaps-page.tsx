@@ -21,7 +21,7 @@ interface JobSnapsPageProps {
 }
 
 export function JobSnapsPage({ site, primaryLocation, serviceAreas, categories, siteSlug, locationSlug }: JobSnapsPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const industry = site.settings?.core_industry || 'our industry';
 
   return (

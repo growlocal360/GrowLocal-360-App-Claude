@@ -105,7 +105,7 @@ export function WorkHubPage({
   siteId,
   hasMore = false,
 }: WorkHubPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const [displayedItems, setDisplayedItems] = useState(workItems);
   const [hasMoreItems, setHasMoreItems] = useState(hasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

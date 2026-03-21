@@ -131,7 +131,7 @@ export default function BusinessInfoPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 flex-shrink-0" />
           <p>Business info saved successfully!</p>
         </div>
@@ -140,7 +140,7 @@ export default function BusinessInfoPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-[#00d9c0]" />
+            <Building2 className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Business Details</h2>
           </div>
         </CardHeader>

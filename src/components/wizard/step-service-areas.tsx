@@ -281,8 +281,8 @@ export function StepServiceAreas() {
         </div>
 
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00d9c0]/10">
-            <MapPin className="h-8 w-8 text-[#00d9c0]" />
+          <div className="mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#00ef99]/10">
+            <MapPin className="h-8 w-8 text-[#00ef99]" />
           </div>
           <p className="text-lg font-medium text-gray-900">Finding nearby cities...</p>
           <p className="text-gray-500">Analyzing your service locations</p>
@@ -318,11 +318,11 @@ export function StepServiceAreas() {
       )}
 
       {/* AI Recommendation Banner */}
-      <div className="flex items-start gap-3 rounded-lg bg-[#00d9c0]/5 p-4">
-        <Sparkles className="mt-0.5 h-5 w-5 text-[#00d9c0]" />
+      <div className="flex items-start gap-3 rounded-lg bg-[#00ef99]/5 p-4">
+        <Sparkles className="mt-0.5 h-5 w-5 text-[#00ef99]" />
         <div>
           <p className="font-medium text-gray-900">Additional Suggestions</p>
-          <p className="text-sm text-[#00d9c0]">
+          <p className="text-sm text-[#00ef99]">
             We found more cities near your GBP locations. Your physical locations are automatically excluded.
           </p>
         </div>
@@ -367,7 +367,7 @@ export function StepServiceAreas() {
                   className={`flex items-center gap-1 ${
                     isFromGBP
                       ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                      : 'bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/20'
+                      : 'bg-[#00ef99]/10 text-[#00ef99] hover:bg-[#00ef99]/20'
                   }`}
                 >
                   {area.name}
@@ -381,7 +381,7 @@ export function StepServiceAreas() {
                   <button
                     onClick={() => removeServiceArea(area.id)}
                     className={`ml-1 rounded-full p-0.5 ${
-                      isFromGBP ? 'hover:bg-blue-300' : 'hover:bg-[#00d9c0]/30'
+                      isFromGBP ? 'hover:bg-blue-300' : 'hover:bg-[#00ef99]/30'
                     }`}
                   >
                     <X className="h-3 w-3" />
@@ -435,7 +435,7 @@ export function StepServiceAreas() {
                       key={city.id}
                       className={`cursor-pointer transition-all ${
                         selected
-                          ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                          ? 'border-[#00ef99] bg-[#00ef99]/5'
                           : 'hover:border-gray-300'
                       }`}
                       onClick={() => handleToggleCity(city)}
@@ -445,7 +445,7 @@ export function StepServiceAreas() {
                           <div
                             className={`flex h-5 w-5 items-center justify-center rounded ${
                               selected
-                                ? 'bg-[#00d9c0] text-white'
+                                ? 'bg-[#00ef99] text-white'
                                 : 'border-2 border-gray-300'
                             }`}
                           >
@@ -480,7 +480,7 @@ export function StepServiceAreas() {
                   key={city.id}
                   className={`cursor-pointer transition-all ${
                     selected
-                      ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                      ? 'border-[#00ef99] bg-[#00ef99]/5'
                       : 'hover:border-gray-300'
                   }`}
                   onClick={() => handleToggleCity(city)}
@@ -490,7 +490,7 @@ export function StepServiceAreas() {
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded ${
                           selected
-                            ? 'bg-[#00d9c0] text-white'
+                            ? 'bg-[#00ef99] text-white'
                             : 'border-2 border-gray-300'
                         }`}
                       >

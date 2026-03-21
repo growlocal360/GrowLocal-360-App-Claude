@@ -117,7 +117,7 @@ function LoginForm() {
                 <Label htmlFor="password">Password</Label>
                 <Link
                   href="/forgot-password"
-                  className="text-xs text-[#00d9c0] hover:underline"
+                  className="text-xs text-[#00ef99] hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -178,7 +178,7 @@ function LoginForm() {
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link href={`/signup${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`} className="font-medium text-[#00d9c0] hover:underline">
+            <Link href={`/signup${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`} className="font-medium text-[#00ef99] hover:underline">
               Sign up
             </Link>
           </p>

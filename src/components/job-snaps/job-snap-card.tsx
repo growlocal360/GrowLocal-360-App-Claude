@@ -73,7 +73,7 @@ export function JobSnapCard({
   const locationDisplay = [job.location_city, job.location_state].filter(Boolean).join(', ');
 
   return (
-    <Card className="overflow-hidden transition-colors hover:border-[#00d9c0]/20">
+    <Card className="overflow-hidden transition-colors hover:border-[#00ef99]/20">
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
           {/* Thumbnail */}
@@ -182,7 +182,7 @@ export function JobSnapCard({
               size="icon"
               className={`h-8 w-8 ${
                 job.is_published_to_website
-                  ? 'text-[#00d9c0]'
+                  ? 'text-[#00ef99]'
                   : 'text-gray-400 hover:text-gray-700'
               }`}
               onClick={() => onPushToWebsite?.(job.id)}
@@ -197,7 +197,7 @@ export function JobSnapCard({
               size="icon"
               className={`h-8 w-8 ${
                 job.is_published_to_gbp
-                  ? 'text-[#00d9c0]'
+                  ? 'text-[#00ef99]'
                   : 'text-gray-400 hover:text-gray-700'
               }`}
               onClick={() => onPushToGBP?.(job.id)}

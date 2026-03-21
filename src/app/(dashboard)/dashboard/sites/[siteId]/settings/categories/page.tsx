@@ -203,7 +203,7 @@ export default function CategoriesPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 flex-shrink-0" />
           <p>Categories saved successfully!</p>
         </div>
@@ -213,7 +213,7 @@ export default function CategoriesPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-[#00d9c0]" />
+            <Star className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Primary Category</h2>
           </div>
         </CardHeader>
@@ -221,7 +221,7 @@ export default function CategoriesPage() {
           {primaryCategory ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-[#00d9c0] text-white text-sm px-3 py-1">
+                <Badge variant="default" className="bg-[#00ef99] text-white text-sm px-3 py-1">
                   {primaryCategory.gbp_category.display_name}
                 </Badge>
               </div>
@@ -246,7 +246,7 @@ export default function CategoriesPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-[#00d9c0]" />
+              <Tag className="h-5 w-5 text-[#00ef99]" />
               <h2 className="font-semibold">Secondary Categories</h2>
             </div>
             <Button

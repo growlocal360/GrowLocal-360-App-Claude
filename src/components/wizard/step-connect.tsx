@@ -360,7 +360,7 @@ export function StepConnect() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-lg bg-[#00d9c0]/5 p-3 text-sm text-[#00d9c0]">
+        <div className="flex items-center gap-2 rounded-lg bg-[#00ef99]/5 p-3 text-sm text-[#00ef99]">
           <CheckCircle2 className="h-5 w-5" />
           <span>Connected to Google Business Profile</span>
         </div>
@@ -401,7 +401,7 @@ export function StepConnect() {
                 key={locationId}
                 className={`cursor-pointer transition-all ${
                   isSelected
-                    ? 'border-[#00d9c0] bg-[#00d9c0]/5'
+                    ? 'border-[#00ef99] bg-[#00ef99]/5'
                     : 'hover:border-gray-300'
                 }`}
                 onClick={() => toggleLocation(locationId)}
@@ -462,7 +462,7 @@ export function StepConnect() {
                     </p>
                   </div>
                   {gscSynced && (
-                    <Badge variant="secondary" className="bg-[#00d9c0]/10 text-[#00d9c0] text-xs">
+                    <Badge variant="secondary" className="bg-[#00ef99]/10 text-[#00ef99] text-xs">
                       {gscQueryCount} queries synced
                     </Badge>
                   )}
@@ -517,14 +517,14 @@ export function StepConnect() {
                           {gscSyncing ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : gscSynced ? (
-                            <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+                            <CheckCircle2 className="h-4 w-4 text-[#00ef99]" />
                           ) : (
                             'Sync Data'
                           )}
                         </Button>
                       </div>
                       {gscSynced && (
-                        <div className="flex items-center gap-2 text-xs text-[#00d9c0]">
+                        <div className="flex items-center gap-2 text-xs text-[#00ef99]">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Search data will be used to optimize your site content
                         </div>
@@ -630,14 +630,14 @@ export function StepConnect() {
                       {gscSyncing ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : gscSynced ? (
-                        <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+                        <CheckCircle2 className="h-4 w-4 text-[#00ef99]" />
                       ) : (
                         'Sync Data'
                       )}
                     </Button>
                   </div>
                   {gscSynced && (
-                    <div className="flex items-center gap-2 text-xs text-[#00d9c0]">
+                    <div className="flex items-center gap-2 text-xs text-[#00ef99]">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       {gscQueryCount} queries synced — this data will enhance your site content
                     </div>
@@ -699,8 +699,8 @@ export function StepConnect() {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Google Connect Option */}
         <Card
-          className={`cursor-pointer transition-all hover:border-[#00d9c0]/30 hover:shadow-md ${
-            connectionType === 'google' ? 'border-[#00d9c0] ring-2 ring-[#00d9c0]/20' : ''
+          className={`cursor-pointer transition-all hover:border-[#00ef99]/30 hover:shadow-md ${
+            connectionType === 'google' ? 'border-[#00ef99] ring-2 ring-[#00ef99]/20' : ''
           }`}
           onClick={handleGoogleConnect}
         >
@@ -752,8 +752,8 @@ export function StepConnect() {
 
         {/* Manual Entry Option */}
         <Card
-          className={`cursor-pointer transition-all hover:border-[#00d9c0]/30 hover:shadow-md ${
-            connectionType === 'manual' ? 'border-[#00d9c0] ring-2 ring-[#00d9c0]/20' : ''
+          className={`cursor-pointer transition-all hover:border-[#00ef99]/30 hover:shadow-md ${
+            connectionType === 'manual' ? 'border-[#00ef99] ring-2 ring-[#00ef99]/20' : ''
           }`}
           onClick={handleManualEntry}
         >

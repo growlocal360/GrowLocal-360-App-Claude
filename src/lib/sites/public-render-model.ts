@@ -285,7 +285,7 @@ export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
     custom_domain: site.custom_domain,
     website_type: site.website_type,
     settings: {
-      brand_color: s.brand_color || '#00d9c0',
+      brand_color: s.brand_color || '#00ef99',
       logo_url: sanitizeAssetUrl(s.logo_url, 'brand'),
       phone: s.phone || null,
       email: s.email || null,

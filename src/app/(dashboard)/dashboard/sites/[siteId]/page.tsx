@@ -398,10 +398,10 @@ export default function SiteDashboardPage() {
 
         {/* Regeneration Progress (active sites) */}
         {(regenerating || isActivelyRegenerating) && site.status === 'active' && site.build_progress && (
-          <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+          <Card className="border-[#00ef99]/30 bg-[#00ef99]/5">
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">
-                <Loader2 className="h-4 w-4 animate-spin text-[#00d9c0]" />
+                <Loader2 className="h-4 w-4 animate-spin text-[#00ef99]" />
                 <p className="text-sm font-medium text-gray-700">
                   Regenerating content...
                 </p>
@@ -428,10 +428,10 @@ export default function SiteDashboardPage() {
 
         {/* Onboarding Completed Banner */}
         {site.status === 'active' && site.settings?.onboarding_completed && !regenerating && !isActivelyRegenerating && (
-          <Card className="border-[#00d9c0]/30 bg-[#00d9c0]/5">
+          <Card className="border-[#00ef99]/30 bg-[#00ef99]/5">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-[#00d9c0] mt-0.5 shrink-0" />
+                <Sparkles className="h-5 w-5 text-[#00ef99] mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">
                     Your business details are saved!
@@ -443,7 +443,7 @@ export default function SiteDashboardPage() {
                 <Button
                   size="sm"
                   className="shrink-0 hover:opacity-90"
-                  style={{ backgroundColor: '#00d9c0' }}
+                  style={{ backgroundColor: '#00ef99' }}
                   onClick={handleRegenerate}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
@@ -457,7 +457,7 @@ export default function SiteDashboardPage() {
         {/* Settings Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Branding */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div
@@ -487,7 +487,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Domain */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -516,7 +516,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Locations */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
@@ -539,7 +539,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Leads */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
@@ -564,7 +564,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Business Info */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
@@ -589,7 +589,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Content Settings */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
@@ -614,7 +614,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Local Details */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
@@ -639,7 +639,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Categories */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
@@ -664,7 +664,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Services */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
@@ -689,7 +689,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Service Areas */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
@@ -714,7 +714,7 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Search Performance */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
@@ -745,7 +745,7 @@ export default function SiteDashboardPage() {
           <ReputationCard siteId={siteId} />
 
           {/* Job Snaps */}
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center">
@@ -776,7 +776,7 @@ export default function SiteDashboardPage() {
                 .map((c) => c.gbp_category?.gcid)
                 .filter((g): g is string => !!g)
             )) && (
-          <Card className="hover:border-[#00d9c0]/20 transition-colors">
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">

@@ -103,7 +103,7 @@ export function ReputationCard({ siteId }: ReputationCardProps) {
 
   if (loading) {
     return (
-      <Card className="hover:border-[#00d9c0]/20 transition-colors">
+      <Card className="hover:border-[#00ef99]/20 transition-colors">
         <CardHeader>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
@@ -120,7 +120,7 @@ export function ReputationCard({ siteId }: ReputationCardProps) {
   }
 
   return (
-    <Card className="hover:border-[#00d9c0]/20 transition-colors">
+    <Card className="hover:border-[#00ef99]/20 transition-colors">
       <CardHeader>
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">

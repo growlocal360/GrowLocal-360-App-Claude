@@ -225,7 +225,7 @@ export function InviteMemberDialog({ open, onOpenChange, callerRole, onInviteSen
               <Button
                 onClick={handleSubmit}
                 disabled={sending}
-                style={{ backgroundColor: '#00d9c0' }}
+                style={{ backgroundColor: '#00ef99' }}
                 className="hover:opacity-90"
               >
                 {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

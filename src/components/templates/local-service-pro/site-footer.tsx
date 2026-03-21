@@ -16,7 +16,7 @@ interface SiteFooterProps {
 export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, locationSlug }: SiteFooterProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const currentYear = new Date().getFullYear();
   const slug = siteSlug || site.slug;
 

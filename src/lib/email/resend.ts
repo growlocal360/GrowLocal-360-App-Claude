@@ -35,7 +35,7 @@ export async function sendInviteEmail({
           <strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> as ${role === 'admin' ? 'an' : 'a'} <strong>${role}</strong> on GrowLocal 360.
         </p>
         <div style="margin: 32px 0;">
-          <a href="${inviteUrl}" style="display: inline-block; background-color: #00d9c0; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${inviteUrl}" style="display: inline-block; background-color: #00ef99; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Accept Invitation
           </a>
         </div>

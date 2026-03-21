@@ -42,7 +42,7 @@ interface CategoryPageProps {
 
 export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, recentWorkItems, locationSlug }: CategoryPageProps) {
   const { site, location, category, services, allCategories, pageContent } = data;
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categorySlug = normalizeCategorySlug(category.gbp_category.display_name);

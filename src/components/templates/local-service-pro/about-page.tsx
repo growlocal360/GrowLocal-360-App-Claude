@@ -59,7 +59,7 @@ export function AboutPage({
   siteSlug,
   locationSlug,
 }: AboutPageProps) {
-  const brandColor = site.settings?.brand_color || '#00d9c0';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const h1 = pageContent?.h1 || `About ${site.name}`;

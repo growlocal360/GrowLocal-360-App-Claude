@@ -204,7 +204,7 @@ export default function ProfileSettingsPage() {
       )}
 
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-[#00d9c0]/5 border border-[#00d9c0]/20 rounded-lg text-[#00d9c0]">
+        <div className="flex items-center gap-2 p-4 bg-[#00ef99]/5 border border-[#00ef99]/20 rounded-lg text-[#00ef99]">
           <Check className="h-5 w-5 flex-shrink-0" />
           <p>Profile saved successfully!</p>
         </div>
@@ -214,7 +214,7 @@ export default function ProfileSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-[#00d9c0]" />
+            <Camera className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Profile Picture</h2>
           </div>
         </CardHeader>
@@ -231,7 +231,7 @@ export default function ProfileSettingsPage() {
               </Avatar>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-[#00d9c0] text-white flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
+                className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-[#00ef99] text-white flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
               >
                 <Camera className="h-4 w-4" />
               </button>
@@ -276,7 +276,7 @@ export default function ProfileSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-[#00d9c0]" />
+            <User className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Personal Information</h2>
           </div>
         </CardHeader>
@@ -327,7 +327,7 @@ export default function ProfileSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-[#00d9c0]" />
+            <Globe className="h-5 w-5 text-[#00ef99]" />
             <h2 className="font-semibold">Website Visibility</h2>
           </div>
         </CardHeader>

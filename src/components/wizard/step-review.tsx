@@ -708,7 +708,7 @@ export function StepReview() {
                       </Badge>
                     )}
                     {location.isPrimary && (
-                      <Badge variant="outline" className="text-[#00d9c0]">
+                      <Badge variant="outline" className="text-[#00ef99]">
                         Primary
                       </Badge>
                     )}
@@ -764,7 +764,7 @@ export function StepReview() {
                 : 'Primary Category'}
             </p>
             {primaryCategory && (
-              <Badge className="bg-[#00d9c0]/10 text-[#00d9c0] hover:bg-[#00d9c0]/10">
+              <Badge className="bg-[#00ef99]/10 text-[#00ef99] hover:bg-[#00ef99]/10">
                 <Sparkles className="mr-1 h-3 w-3" />
                 {primaryCategory.displayName}
               </Badge>
@@ -902,7 +902,7 @@ export function StepReview() {
         <Card className="border-blue-100 bg-blue-50/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+              <CheckCircle2 className="h-4 w-4 text-[#00ef99]" />
               <p className="text-sm font-medium text-gray-900">
                 Google Search Console Connected
               </p>
@@ -972,27 +972,27 @@ export function StepReview() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-[#00d9c0]/20 bg-[#00d9c0]/5">
+        <Card className="border-[#00ef99]/20 bg-[#00ef99]/5">
           <CardContent className="p-4">
             <h4 className="mb-3 flex items-center gap-2 font-semibold text-gray-900">
               <CheckCircle2 className="h-5 w-5" />
               What happens next
             </h4>
-            <ul className="space-y-2 text-sm text-[#00d9c0]">
+            <ul className="space-y-2 text-sm text-[#00ef99]">
               <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00ef99]" />
                 We&apos;ll generate your GBP-first website structure based on your categories
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00ef99]" />
                 AI will create SEO-optimized content for all service and category pages
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00ef99]" />
                 Service pages will include meta titles, descriptions, and FAQs
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00d9c0]" />
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[#00ef99]" />
                 You can start adding Job Snaps to showcase your work
               </li>
             </ul>
@@ -1075,7 +1075,7 @@ function CreationStepItem({
   return (
     <div className="flex items-center gap-3">
       {status === 'complete' && (
-        <CheckCircle2 className="h-4 w-4 text-[#00d9c0]" />
+        <CheckCircle2 className="h-4 w-4 text-[#00ef99]" />
       )}
       {status === 'active' && (
         <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
@@ -1086,7 +1086,7 @@ function CreationStepItem({
       <span
         className={
           status === 'complete'
-            ? 'text-[#00d9c0]'
+            ? 'text-[#00ef99]'
             : status === 'active'
               ? 'font-medium text-blue-900'
               : 'text-gray-500'

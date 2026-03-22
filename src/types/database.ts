@@ -70,6 +70,27 @@ export interface ProfileSiteAssignment {
   created_at: string;
 }
 
+export interface StaffMember {
+  id: string;
+  organization_id: string;
+  full_name: string;
+  title: string | null;
+  email: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  show_on_site: boolean;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffSiteAssignment {
+  id: string;
+  staff_member_id: string;
+  site_id: string;
+}
+
 export interface Site {
   id: string;
   organization_id: string;

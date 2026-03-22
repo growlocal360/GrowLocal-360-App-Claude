@@ -31,6 +31,7 @@ import type {
   AboutPageSections,
 } from '@/types/database';
 import type { PublicSiteData } from './get-site';
+import type { PublicTeamSource } from './get-team';
 
 // ---------------------------------------------------------------------------
 // Public render types
@@ -454,14 +455,26 @@ export function toPublicWorkItem(item: WorkItemWithRelations): PublicRenderWorkI
   };
 }
 
-export function toPublicTeamMember(profile: Profile): PublicRenderTeamMember {
+export function toPublicTeamMember(source: PublicTeamSource): PublicRenderTeamMember {
+  if ('_isStaff' in source) {
+    // StaffMember (no auth)
+    return {
+      id: source.id,
+      full_name: source.full_name,
+      title: source.title,
+      bio: source.bio,
+      avatar_url: sanitizeAvatarUrl(source.avatar_url),
+      role: 'staff',
+    };
+  }
+  // Profile (auth user)
   return {
-    id: profile.id,
-    full_name: profile.full_name || 'Team Member',
-    title: profile.title,
-    bio: profile.bio,
-    avatar_url: sanitizeAvatarUrl(profile.avatar_url),
-    role: profile.role,
+    id: source.id,
+    full_name: source.full_name || 'Team Member',
+    title: source.title,
+    bio: source.bio,
+    avatar_url: sanitizeAvatarUrl(source.avatar_url),
+    role: source.role,
   };
 }
 

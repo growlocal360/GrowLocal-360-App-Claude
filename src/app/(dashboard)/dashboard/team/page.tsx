@@ -31,9 +31,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, UserCheck } from 'lucide-react';
+import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, UserCheck, Pencil } from 'lucide-react';
 import { InviteMemberDialog } from '@/components/team/invite-member-dialog';
 import { AddStaffDialog } from '@/components/team/add-staff-dialog';
+import { EditStaffDialog } from '@/components/team/edit-staff-dialog';
 import type { UserRole } from '@/types/database';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
@@ -96,6 +97,7 @@ export default function TeamPage() {
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [userData, setUserData] = useState({
     name: 'User',
     email: '',
@@ -482,6 +484,10 @@ export default function TeamPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingStaff(staff)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Member
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-red-600"
                             onClick={() => setRemovingStaffId(staff.id)}
@@ -557,6 +563,14 @@ export default function TeamPage() {
         open={showAddStaffDialog}
         onOpenChange={setShowAddStaffDialog}
         onStaffAdded={fetchTeamData}
+      />
+
+      {/* Edit Staff Dialog */}
+      <EditStaffDialog
+        open={!!editingStaff}
+        onOpenChange={(open) => !open && setEditingStaff(null)}
+        staff={editingStaff}
+        onStaffUpdated={fetchTeamData}
       />
 
       {/* Remove Member Confirmation */}

@@ -69,7 +69,7 @@ export async function GET() {
   return NextResponse.json({ members, callerRole: caller.role });
 }
 
-// PATCH - Update a member's role
+// PATCH - Update a member's role or profile fields
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
   const caller = await getCallerProfile(supabase, await getActiveOrgId());
@@ -78,25 +78,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Only owner can change roles
   if (!hasRole(caller, 'owner')) {
-    return NextResponse.json({ error: 'Only the account owner can change roles' }, { status: 403 });
+    return NextResponse.json({ error: 'Only the account owner can edit members' }, { status: 403 });
   }
 
-  const { profileId, role } = await request.json();
+  const { profileId, role, fullName, title, bio, avatarUrl } = await request.json();
 
-  if (!profileId || !role) {
-    return NextResponse.json({ error: 'Missing profileId or role' }, { status: 400 });
-  }
-
-  // Cannot set someone as owner
-  if (role === 'owner') {
-    return NextResponse.json({ error: 'Cannot assign owner role' }, { status: 400 });
-  }
-
-  // Cannot change own role
-  if (profileId === caller.id) {
-    return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
+  if (!profileId) {
+    return NextResponse.json({ error: 'Missing profileId' }, { status: 400 });
   }
 
   const adminSupabase = createAdminClient();
@@ -113,18 +102,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Member not found' }, { status: 404 });
   }
 
-  // Cannot change another owner's role
-  if (target.role === 'owner') {
-    return NextResponse.json({ error: 'Cannot change owner role' }, { status: 400 });
+  // Build update object
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  // Role change (only for non-owners, can't self-assign owner)
+  if (role !== undefined) {
+    if (role === 'owner') {
+      return NextResponse.json({ error: 'Cannot assign owner role' }, { status: 400 });
+    }
+    if (profileId === caller.id) {
+      return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
+    }
+    if (target.role === 'owner') {
+      return NextResponse.json({ error: 'Cannot change owner role' }, { status: 400 });
+    }
+    updates.role = role;
   }
+
+  // Profile field updates
+  if (fullName !== undefined) updates.full_name = fullName.trim();
+  if (title !== undefined) updates.title = title?.trim() || null;
+  if (bio !== undefined) updates.bio = bio?.trim() || null;
+  if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
 
   const { error } = await adminSupabase
     .from('profiles')
-    .update({ role })
+    .update(updates)
     .eq('id', profileId);
 
   if (error) {
-    return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

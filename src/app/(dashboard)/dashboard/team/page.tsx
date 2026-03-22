@@ -35,6 +35,7 @@ import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, Us
 import { InviteMemberDialog } from '@/components/team/invite-member-dialog';
 import { AddStaffDialog } from '@/components/team/add-staff-dialog';
 import { EditStaffDialog } from '@/components/team/edit-staff-dialog';
+import { EditMemberDialog } from '@/components/team/edit-member-dialog';
 import type { UserRole } from '@/types/database';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
@@ -98,6 +99,7 @@ export default function TeamPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removingStaffId, setRemovingStaffId] = useState<string | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [userData, setUserData] = useState({
     name: 'User',
     email: '',
@@ -387,6 +389,10 @@ export default function TeamPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditingMember(member)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Member
+                          </DropdownMenuItem>
                           {member.role === 'user' && (
                             <DropdownMenuItem onClick={() => handleChangeRole(member.id, 'admin')}>
                               <Shield className="mr-2 h-4 w-4" />
@@ -571,6 +577,14 @@ export default function TeamPage() {
         onOpenChange={(open) => !open && setEditingStaff(null)}
         staff={editingStaff}
         onStaffUpdated={fetchTeamData}
+      />
+
+      {/* Edit Member Dialog */}
+      <EditMemberDialog
+        open={!!editingMember}
+        onOpenChange={(open) => !open && setEditingMember(null)}
+        member={editingMember}
+        onMemberUpdated={fetchTeamData}
       />
 
       {/* Remove Member Confirmation */}

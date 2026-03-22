@@ -118,7 +118,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!hasRole(caller, 'admin')) {
+  if (!hasRole(caller, 'owner', 'admin')) {
     return NextResponse.json({ error: 'Only owners and admins can edit staff' }, { status: 403 });
   }
 
@@ -184,7 +184,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!hasRole(caller, 'admin')) {
+  if (!hasRole(caller, 'owner', 'admin')) {
     return NextResponse.json({ error: 'Only owners and admins can remove staff' }, { status: 403 });
   }
 

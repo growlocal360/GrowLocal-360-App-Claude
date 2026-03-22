@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!hasRole(caller, 'admin')) {
+  if (!hasRole(caller, 'owner', 'admin')) {
     return NextResponse.json({ error: 'Only owners and admins can add staff' }, { status: 403 });
   }
 

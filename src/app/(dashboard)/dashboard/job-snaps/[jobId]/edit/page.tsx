@@ -29,7 +29,9 @@ import {
   Eye,
   Lock,
   Trash2,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import { toPublicAddress } from '@/lib/job-snaps/address';
@@ -80,6 +82,8 @@ export default function EditJobSnapPage() {
   });
   const [originalForm, setOriginalForm] = useState<FormState | null>(null);
   const [mediaToDelete, setMediaToDelete] = useState<string[]>([]);
+  const [isBeforeAfter, setIsBeforeAfter] = useState(false);
+  const [mediaRoles, setMediaRoles] = useState<Record<string, { role: string; pairGroup: number | null }>>({});
 
   const supabase = createClient();
 
@@ -144,6 +148,16 @@ export default function EditJobSnapPage() {
         };
         setForm(initialForm);
         setOriginalForm(initialForm);
+        setIsBeforeAfter(typedSnap.is_before_after || false);
+
+        // Initialize media roles from existing data
+        const roles: Record<string, { role: string; pairGroup: number | null }> = {};
+        for (const m of typedSnap.media || []) {
+          if (m.role) {
+            roles[m.id] = { role: m.role, pairGroup: m.pair_group ?? null };
+          }
+        }
+        setMediaRoles(roles);
       } catch (err) {
         console.error('Failed to load job snap:', err);
         setNotFound(true);
@@ -158,10 +172,12 @@ export default function EditJobSnapPage() {
   const isDirty = useMemo(() => {
     if (!originalForm) return false;
     if (mediaToDelete.length > 0) return true;
+    if (isBeforeAfter !== (jobSnap?.is_before_after || false)) return true;
+    if (Object.keys(mediaRoles).length > 0) return true;
     return (Object.keys(form) as (keyof FormState)[]).some(
       (key) => form[key] !== originalForm[key]
     );
-  }, [form, originalForm, mediaToDelete]);
+  }, [form, originalForm, mediaToDelete, isBeforeAfter, jobSnap, mediaRoles]);
 
   // Unsaved changes warning on browser close/refresh
   useEffect(() => {
@@ -273,10 +289,19 @@ export default function EditJobSnapPage() {
           city: form.city.trim() || null,
           state: form.state.trim() || null,
           zip: form.zip.trim() || null,
+          is_before_after: isBeforeAfter,
         })
         .eq('id', jobId);
 
       if (error) throw error;
+
+      // 4. Update media roles/pair_groups if changed
+      for (const [mediaId, { role, pairGroup }] of Object.entries(mediaRoles)) {
+        await supabase
+          .from('job_snap_media')
+          .update({ role, pair_group: pairGroup })
+          .eq('id', mediaId);
+      }
 
       toast.success('Changes saved');
       router.push(`/dashboard/job-snaps/${jobId}`);
@@ -354,8 +379,39 @@ export default function EditJobSnapPage() {
           {/* ── Section 1: Photos ── */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Photos</CardTitle>
-              <CardDescription>Remove unwanted photos. Role assignments are shown below each image.</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Photos</CardTitle>
+                  <CardDescription>Remove unwanted photos. Assign roles using the dropdowns below each image.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="ba-toggle" className="text-sm text-gray-600 flex items-center gap-1.5">
+                    <ArrowLeftRight className="h-4 w-4" />
+                    Before & After
+                  </Label>
+                  <Switch
+                    id="ba-toggle"
+                    checked={isBeforeAfter}
+                    onCheckedChange={(checked) => {
+                      setIsBeforeAfter(checked);
+                      if (checked) {
+                        // Auto-assign pairs: pair photos in order (1st=before, 2nd=after, 3rd=before, etc.)
+                        const remaining = currentMedia.filter((m: JobSnapMedia) => !mediaToDelete.includes(m.id));
+                        const newRoles: Record<string, { role: string; pairGroup: number | null }> = {};
+                        remaining.forEach((m: JobSnapMedia, i: number) => {
+                          const pairGroup = Math.floor(i / 2) + 1;
+                          const role = i % 2 === 0 ? 'before' : 'after';
+                          newRoles[m.id] = { role, pairGroup };
+                        });
+                        setMediaRoles(newRoles);
+                      } else {
+                        // Clear all pair assignments
+                        setMediaRoles({});
+                      }
+                    }}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {currentMedia.length === 0 ? (
@@ -367,57 +423,117 @@ export default function EditJobSnapPage() {
                       At least one photo is required. Restore a photo or cancel.
                     </p>
                   )}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {currentMedia.map((m: JobSnapMedia) => {
-                      const { data: urlData } = supabase.storage
-                        .from('job-snap-media')
-                        .getPublicUrl(m.storage_path);
-                      const isMarked = mediaToDelete.includes(m.id);
+                  {isBeforeAfter ? (
+                    // ── Before & After pair layout ──
+                    <div className="space-y-4">
+                      {(() => {
+                        const remaining = currentMedia.filter((m: JobSnapMedia) => !mediaToDelete.includes(m.id));
+                        const pairs: [JobSnapMedia | null, JobSnapMedia | null][] = [];
+                        for (let i = 0; i < remaining.length; i += 2) {
+                          pairs.push([remaining[i] || null, remaining[i + 1] || null]);
+                        }
+                        if (pairs.length === 0) pairs.push([null, null]);
 
-                      return (
-                        <div key={m.id} className="relative">
-                          <div
-                            className={`relative aspect-square overflow-hidden rounded-lg bg-gray-100 ${
-                              isMarked ? 'ring-2 ring-red-400' : ''
-                            }`}
-                          >
-                            <Image
-                              src={urlData.publicUrl}
-                              alt={m.alt_text || m.file_name}
-                              fill
-                              className={`object-cover transition-opacity ${isMarked ? 'opacity-40' : ''}`}
-                              sizes="(max-width: 640px) 50vw, 33vw"
-                            />
-                            {isMarked && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-xs font-semibold text-red-600 bg-white/80 rounded px-2 py-0.5">
-                                  Will be deleted
-                                </span>
-                              </div>
-                            )}
-                            {/* Delete / Restore toggle */}
-                            <button
-                              type="button"
-                              onClick={() => toggleMediaDelete(m.id)}
-                              className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow transition-colors ${
-                                isMarked
-                                  ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  : 'bg-red-500 text-white hover:bg-red-600'
-                              }`}
-                              title={isMarked ? 'Undo delete' : 'Delete photo'}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                        return pairs.map((pair, pairIdx) => (
+                          <div key={pairIdx} className="rounded-lg border p-3">
+                            <p className="text-xs font-semibold text-gray-500 mb-2">Pair {pairIdx + 1}</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              {pair.map((m, slotIdx) => {
+                                if (!m) {
+                                  return (
+                                    <div key={`empty-${slotIdx}`} className="relative aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+                                      <span className="text-xs text-gray-400">{slotIdx === 0 ? 'Before' : 'After'}</span>
+                                    </div>
+                                  );
+                                }
+                                const { data: urlData } = supabase.storage
+                                  .from('job-snap-media')
+                                  .getPublicUrl(m.storage_path);
+                                const roleInfo = mediaRoles[m.id] || { role: m.role || (slotIdx === 0 ? 'before' : 'after'), pairGroup: pairIdx + 1 };
+
+                                return (
+                                  <div key={m.id} className="relative">
+                                    <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
+                                      <Image
+                                        src={urlData.publicUrl}
+                                        alt={m.alt_text || m.file_name}
+                                        fill
+                                        className="object-cover"
+                                        sizes="(max-width: 640px) 50vw, 33vw"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleMediaDelete(m.id)}
+                                        className="absolute top-1.5 right-1.5 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
+                                        title="Delete photo"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    <Badge variant="outline" className="mt-1 w-full justify-center text-xs capitalize">
+                                      {roleInfo.role}
+                                    </Badge>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                          {m.role && (
-                            <span className="mt-1 block text-center text-xs capitalize text-gray-500">
-                              {m.role}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                        ));
+                      })()}
+                    </div>
+                  ) : (
+                    // ── Standard photo grid ──
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {currentMedia.map((m: JobSnapMedia) => {
+                        const { data: urlData } = supabase.storage
+                          .from('job-snap-media')
+                          .getPublicUrl(m.storage_path);
+                        const isMarked = mediaToDelete.includes(m.id);
+
+                        return (
+                          <div key={m.id} className="relative">
+                            <div
+                              className={`relative aspect-square overflow-hidden rounded-lg bg-gray-100 ${
+                                isMarked ? 'ring-2 ring-red-400' : ''
+                              }`}
+                            >
+                              <Image
+                                src={urlData.publicUrl}
+                                alt={m.alt_text || m.file_name}
+                                fill
+                                className={`object-cover transition-opacity ${isMarked ? 'opacity-40' : ''}`}
+                                sizes="(max-width: 640px) 50vw, 33vw"
+                              />
+                              {isMarked && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-xs font-semibold text-red-600 bg-white/80 rounded px-2 py-0.5">
+                                    Will be deleted
+                                  </span>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => toggleMediaDelete(m.id)}
+                                className={`absolute top-1.5 right-1.5 rounded-full p-1 shadow transition-colors ${
+                                  isMarked
+                                    ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    : 'bg-red-500 text-white hover:bg-red-600'
+                                }`}
+                                title={isMarked ? 'Undo delete' : 'Delete photo'}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                            {m.role && (
+                              <span className="mt-1 block text-center text-xs capitalize text-gray-500">
+                                {m.role}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   <p className="text-xs text-gray-400">
                     To add new photos, re-run AI analysis from the New Job page.
                   </p>

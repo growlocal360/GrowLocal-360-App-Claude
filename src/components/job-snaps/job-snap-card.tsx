@@ -41,6 +41,8 @@ export interface JobSnapCardData {
   // Publish flags
   is_published_to_website: boolean;
   is_published_to_gbp: boolean;
+  // Before & After
+  is_before_after?: boolean;
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
@@ -92,13 +94,18 @@ export function JobSnapCard({
               </div>
             )}
             {/* Status badge overlay */}
-            <div className="absolute left-3 top-3">
+            <div className="absolute left-3 top-3 flex gap-1.5">
               <Badge
                 variant="outline"
                 className={`${status.className} text-xs font-medium shadow-sm`}
               >
                 {status.label}
               </Badge>
+              {job.is_before_after && (
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs font-medium shadow-sm">
+                  B/A
+                </Badge>
+              )}
             </div>
           </div>
 

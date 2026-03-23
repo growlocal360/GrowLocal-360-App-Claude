@@ -88,6 +88,8 @@ export async function POST(
         alt: m.alt_text || `${title} — photo ${i + 1}`,
         width: m.width ?? undefined,
         height: m.height ?? undefined,
+        role: m.role ?? undefined,
+        pairGroup: m.pair_group ?? undefined,
       };
     });
 

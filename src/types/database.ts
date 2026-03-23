@@ -357,6 +357,8 @@ export interface WorkItemImage {
   alt: string;
   width?: number;
   height?: number;
+  role?: 'primary' | 'before' | 'after' | 'process' | 'detail';
+  pairGroup?: number;
 }
 
 export interface WorkItem {
@@ -442,6 +444,7 @@ export interface JobSnap {
   approved_at: string | null;
   deployed_at: string | null;
   work_item_id: string | null;
+  is_before_after: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -459,6 +462,7 @@ export interface JobSnapMedia {
   height: number | null;
   exif_data: Record<string, unknown> | null;
   role: 'primary' | 'before' | 'after' | 'process' | 'detail' | null;
+  pair_group: number | null;
   sort_order: number;
   created_at: string;
 }

@@ -95,12 +95,16 @@ export async function POST(
       : `https://${site.slug}.goleadflow.com/work`;
 
     // Get primary image URL for GBP post
+    // For before/after snaps, prefer the 'after' image (shows the result)
     const sortedMedia = (typedSnap.media || []).sort((a, b) => a.sort_order - b.sort_order);
+    const afterImage = sortedMedia.find(m => m.role === 'after');
+    const primaryImage = sortedMedia.find(m => m.role === 'primary');
+    const bestImage = afterImage || primaryImage || sortedMedia[0];
     let primaryImageUrl: string | undefined;
-    if (sortedMedia.length > 0) {
+    if (bestImage) {
       const { data: urlData } = adminClient.storage
         .from('job-snap-media')
-        .getPublicUrl(sortedMedia[0].storage_path);
+        .getPublicUrl(bestImage.storage_path);
       primaryImageUrl = urlData.publicUrl;
     }
 

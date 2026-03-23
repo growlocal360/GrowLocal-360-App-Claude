@@ -51,6 +51,8 @@ export interface PublicJobImage {
   alt: string;
   width?: number;
   height?: number;
+  role?: 'primary' | 'before' | 'after' | 'process' | 'detail';
+  pairGroup?: number;
 }
 
 export interface PublicJobOutput {
@@ -191,6 +193,8 @@ export function toPublicJobOutput(
     alt: buildWorkItemImageAlt(item, img.alt),
     width: img.width,
     height: img.height,
+    role: img.role,
+    pairGroup: img.pairGroup,
   }));
   const featuredImage = images[0] ?? null;
 

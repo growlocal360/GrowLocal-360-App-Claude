@@ -6,6 +6,7 @@ import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, P
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { LeadCaptureSection } from './lead-capture-section';
+import { BeforeAfterSlider } from './before-after-slider';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -159,32 +160,70 @@ export function WorkDetailPage({
         </section>
 
         {/* Image Gallery */}
-        {workItem.images.length > 0 && (
-          <section className="pb-12">
-            <div className="mx-auto max-w-4xl px-4">
-              <div className={`grid gap-4 ${
-                workItem.images.length === 1
-                  ? 'grid-cols-1'
-                  : workItem.images.length === 2
-                  ? 'grid-cols-1 sm:grid-cols-2'
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-              }`}>
-                {workItem.images.map((img, i) => (
-                  <div key={i} className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-gray-100">
-                    <Image
-                      src={img.url}
-                      alt={img.alt || `${workItem.title} - Image ${i + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      priority={i === 0}
-                    />
+        {workItem.images.length > 0 && (() => {
+          // Detect before/after pairs
+          const pairs = new Map<number, { before?: typeof workItem.images[0]; after?: typeof workItem.images[0] }>();
+          const standardImages: typeof workItem.images = [];
+
+          for (const img of workItem.images) {
+            if (img.pairGroup && (img.role === 'before' || img.role === 'after')) {
+              const pair = pairs.get(img.pairGroup) || {};
+              pair[img.role] = img;
+              pairs.set(img.pairGroup, pair);
+            } else {
+              standardImages.push(img);
+            }
+          }
+
+          const completePairs = Array.from(pairs.entries())
+            .filter(([, p]) => p.before && p.after)
+            .sort(([a], [b]) => a - b);
+
+          return (
+            <section className="pb-12">
+              <div className="mx-auto max-w-4xl px-4 space-y-6">
+                {/* Before/After sliders */}
+                {completePairs.length > 0 && (
+                  <div className={`grid gap-6 ${completePairs.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                    {completePairs.map(([group, pair]) => (
+                      <BeforeAfterSlider
+                        key={group}
+                        beforeSrc={pair.before!.url}
+                        afterSrc={pair.after!.url}
+                        beforeAlt={pair.before!.alt || `Before — ${workItem.title}`}
+                        afterAlt={pair.after!.alt || `After — ${workItem.title}`}
+                      />
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {/* Standard images */}
+                {standardImages.length > 0 && (
+                  <div className={`grid gap-4 ${
+                    standardImages.length === 1
+                      ? 'grid-cols-1'
+                      : standardImages.length === 2
+                      ? 'grid-cols-1 sm:grid-cols-2'
+                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                  }`}>
+                    {standardImages.map((img, i) => (
+                      <div key={i} className="relative aspect-4/3 w-full overflow-hidden rounded-lg bg-gray-100">
+                        <Image
+                          src={img.url}
+                          alt={img.alt || `${workItem.title} - Image ${i + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          priority={i === 0}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
         {/* Description */}
         {workItem.description && (

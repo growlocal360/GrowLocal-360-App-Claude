@@ -34,6 +34,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
+import { ServiceCombobox } from '@/components/job-snaps/service-combobox';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { toast } from 'sonner';
 import type { JobStatus, JobSnapWithRelations, JobSnapMedia } from '@/types/database';
@@ -42,6 +43,7 @@ interface FormState {
   title: string;
   description: string;
   serviceType: string;
+  serviceId: string | null;
   brand: string;
   status: JobStatus;
   addressFull: string;
@@ -73,6 +75,7 @@ export default function EditJobSnapPage() {
     title: '',
     description: '',
     serviceType: '',
+    serviceId: null,
     brand: '',
     status: 'draft',
     addressFull: '',
@@ -139,6 +142,7 @@ export default function EditJobSnapPage() {
           title: typedSnap.title || '',
           description: typedSnap.description || '',
           serviceType: typedSnap.service_type || '',
+          serviceId: typedSnap.service_id || null,
           brand: typedSnap.brand || '',
           status: typedSnap.status,
           addressFull: typedSnap.address_full || '',
@@ -282,6 +286,7 @@ export default function EditJobSnapPage() {
           title: form.title.trim() || null,
           description: form.description.trim() || null,
           service_type: form.serviceType.trim() || null,
+          service_id: form.serviceId || null,
           brand: form.brand.trim() || null,
           status: form.status,
           address_full: form.addressFull.trim() || null,
@@ -592,11 +597,18 @@ export default function EditJobSnapPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="serviceType">Service Type</Label>
-                  <Input
+                  <ServiceCombobox
                     id="serviceType"
-                    value={form.serviceType}
-                    onChange={(e) => field('serviceType', e.target.value)}
-                    placeholder="e.g. Appliance Removal"
+                    value={form.serviceId}
+                    onChange={(serviceId, serviceName) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        serviceId,
+                        serviceType: serviceName,
+                      }));
+                    }}
+                    siteId={jobSnap?.site_id ?? ''}
+                    placeholder="Select a service…"
                   />
                 </div>
                 <div className="space-y-1.5">

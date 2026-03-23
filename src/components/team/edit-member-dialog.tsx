@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, Camera } from 'lucide-react';
 
@@ -23,6 +25,7 @@ interface MemberData {
   avatar_url: string | null;
   email: string;
   role: string;
+  site_assignments: { site_id: string; site_name: string }[];
 }
 
 interface EditMemberDialogProps {
@@ -32,15 +35,24 @@ interface EditMemberDialogProps {
   onMemberUpdated: () => void;
 }
 
+interface OrgSite {
+  id: string;
+  name: string;
+}
+
 export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }: EditMemberDialogProps) {
   const [fullName, setFullName] = useState('');
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
+  const [sites, setSites] = useState<OrgSite[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const supabase = createClient();
 
   useEffect(() => {
     if (!open || !member) return;
@@ -49,8 +61,33 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
     setTitle(member.title || '');
     setBio(member.bio || '');
     setAvatarPreview(member.avatar_url);
+    setSelectedSiteIds(member.site_assignments.map(a => a.site_id));
     setError('');
-  }, [open, member]);
+
+    async function fetchSites() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile) return;
+
+      const { data: sitesData } = await supabase
+        .from('sites')
+        .select('id, name')
+        .eq('organization_id', profile.organization_id)
+        .eq('is_active', true)
+        .order('name');
+
+      setSites(sitesData || []);
+    }
+
+    fetchSites();
+  }, [open, member, supabase]);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,7 +118,8 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
     setSaving(true);
     setError('');
 
-    const res = await fetch('/api/team', {
+    // Update profile fields
+    const profileRes = await fetch('/api/team', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -92,9 +130,23 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
       }),
     });
 
-    if (!res.ok) {
-      const data = await res.json();
+    if (!profileRes.ok) {
+      const data = await profileRes.json();
       setError(data.error || 'Failed to update member');
+      setSaving(false);
+      return;
+    }
+
+    // Update site assignments
+    const sitesRes = await fetch(`/api/team/members/${member.id}/sites`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteIds: selectedSiteIds }),
+    });
+
+    if (!sitesRes.ok) {
+      const data = await sitesRes.json();
+      setError(data.error || 'Failed to update site assignments');
       setSaving(false);
       return;
     }
@@ -102,6 +154,14 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
     setSaving(false);
     onMemberUpdated();
     onOpenChange(false);
+  };
+
+  const toggleSite = (siteId: string) => {
+    setSelectedSiteIds((prev) =>
+      prev.includes(siteId)
+        ? prev.filter((id) => id !== siteId)
+        : [...prev, siteId]
+    );
   };
 
   const displayName = fullName || member?.email || '?';
@@ -112,7 +172,7 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
         <DialogHeader>
           <DialogTitle>Edit Team Member</DialogTitle>
           <DialogDescription>
-            Update this member&apos;s profile details and photo.
+            Update this member&apos;s profile, photo, and site access.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,6 +242,37 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
           </div>
 
           <p className="text-xs text-gray-400">Email: {member?.email}</p>
+
+          {member?.role !== 'owner' && (
+            <div className="space-y-2">
+              <Label>Site Access</Label>
+              {sites.length > 0 ? (
+                <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+                  {sites.map((site) => (
+                    <div key={site.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-member-site-${site.id}`}
+                        checked={selectedSiteIds.includes(site.id)}
+                        onCheckedChange={() => toggleSite(site.id)}
+                      />
+                      <label htmlFor={`edit-member-site-${site.id}`} className="text-sm text-gray-700">
+                        {site.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No sites available</p>
+              )}
+              <p className="text-xs text-gray-400">
+                {selectedSiteIds.length === 0 && member?.role === 'admin'
+                  ? 'No sites selected = access to all sites'
+                  : selectedSiteIds.length === 0
+                    ? 'No sites selected = no access'
+                    : `${selectedSiteIds.length} site${selectedSiteIds.length !== 1 ? 's' : ''} selected`}
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>

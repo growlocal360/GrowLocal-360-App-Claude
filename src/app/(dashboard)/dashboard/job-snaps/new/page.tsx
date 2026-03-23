@@ -447,32 +447,43 @@ export default function NewJobSnapPage() {
           </Button>
         </div>
 
-        {/* 0. Site selector — only shown when org has 2+ sites and no siteId in URL */}
-        {!siteIdParam && allSites.length > 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-gray-400" />
-              Company
-            </label>
-            <Select
-              value={siteContext?.siteId || ''}
-              onValueChange={(value) => {
-                const site = allSites.find((s) => s.siteId === value);
-                if (site) setSiteContext(site);
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a company for this job" />
-              </SelectTrigger>
-              <SelectContent>
-                {allSites.map((s) => (
-                  <SelectItem key={s.siteId} value={s.siteId}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* 0. Site selector — shown when no siteId in URL */}
+        {!siteIdParam && (
+          <Card className={!siteContext ? 'border-amber-300 bg-amber-50' : ''}>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-gray-400" />
+                  Company *
+                </label>
+                {allSites.length > 0 ? (
+                  <Select
+                    value={siteContext?.siteId || ''}
+                    onValueChange={(value) => {
+                      const site = allSites.find((s) => s.siteId === value);
+                      if (site) setSiteContext(site);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a company for this job" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allSites.map((s) => (
+                        <SelectItem key={s.siteId} value={s.siteId}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-gray-400">Loading companies...</p>
+                )}
+                {!siteContext && allSites.length > 0 && (
+                  <p className="text-xs text-amber-600">Select a company before analyzing photos</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* 1. Photo Upload */}

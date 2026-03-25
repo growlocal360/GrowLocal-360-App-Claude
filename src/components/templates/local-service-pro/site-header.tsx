@@ -36,7 +36,6 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
     { label: 'Work', href: paths.workHub(locationSlug) },
     { label: 'FAQ', href: paths.faqPage(locationSlug) },
     { label: 'About', href: paths.aboutPage(locationSlug) },
-    { label: 'Job Snaps', href: paths.jobSnapsPage(locationSlug) },
     { label: 'Contact', href: paths.contactPage(locationSlug) },
   ];
 

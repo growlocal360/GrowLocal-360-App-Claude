@@ -39,10 +39,10 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
   const heroDescription = pageContent?.hero_description ||
     `${site.name} provides expert ${category.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
 
-  // Find hero image from generated images
+  // Find hero image — prefer prompt_index 0, fall back to first available
   const heroImage = pageContent?.generated_images?.find(
     (img) => img.prompt_index === 0
-  );
+  ) || pageContent?.generated_images?.[0] || null;
 
   return (
     <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white lg:py-20">

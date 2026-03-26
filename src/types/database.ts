@@ -191,6 +191,8 @@ export interface Location {
   gbp_place_id: string | null;
   gbp_account_id: string | null;
   gbp_location_id: string | null;
+  representative_city: string | null;
+  representative_state: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -17,6 +17,8 @@ export interface WizardLocation {
   gbpAccountId?: string;
   latitude?: number;
   longitude?: number;
+  representativeCity?: string;
+  representativeState?: string;
 }
 
 export interface WizardCategory {
@@ -67,6 +69,10 @@ export interface WizardGSCQueryData {
   dateRangeEnd: string;
 }
 
+export interface WizardBrand {
+  name: string;
+}
+
 export interface WizardSiteData {
   businessName: string;
   coreIndustry: string;
@@ -77,6 +83,7 @@ export interface WizardSiteData {
   services: WizardService[];
   serviceAreas: WizardServiceArea[];
   neighborhoods: WizardNeighborhood[];
+  brands?: WizardBrand[];
   // GSC data (optional — synced during wizard if user has Search Console)
   gscPropertyUrl?: string;
   gscQueries?: WizardGSCQueryData[];
@@ -115,6 +122,7 @@ export async function createSiteFromWizardData(
     services,
     serviceAreas,
     neighborhoods,
+    brands,
   } = data;
 
   // Generate a globally unique slug from business name
@@ -209,7 +217,9 @@ export async function createSiteFromWizardData(
 
   // Create locations
   for (const location of locations) {
-    const locationSlug = location.city
+    // For SABs, use representative city for slug and content if provided
+    const effectiveCity = location.representativeCity || location.city;
+    const locationSlug = effectiveCity
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-');
 
@@ -218,8 +228,8 @@ export async function createSiteFromWizardData(
       name: location.name,
       slug: locationSlug,
       address_line1: location.address,
-      city: location.city,
-      state: location.state,
+      city: effectiveCity,
+      state: location.representativeState || location.state,
       zip_code: location.zipCode,
       phone: location.phone,
       is_primary: location.isPrimary,
@@ -228,6 +238,8 @@ export async function createSiteFromWizardData(
       gbp_account_id: location.gbpAccountId,
       latitude: location.latitude,
       longitude: location.longitude,
+      representative_city: location.representativeCity || null,
+      representative_state: location.representativeState || null,
     });
   }
 
@@ -398,6 +410,31 @@ export async function createSiteFromWizardData(
 
     if (serviceError) {
       console.error('Error creating service:', serviceError);
+    }
+  }
+
+  // Create brands
+  if (brands && brands.length > 0) {
+    for (let i = 0; i < brands.length; i++) {
+      const brand = brands[i];
+      const brandSlug = brand.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      const { error: brandError } = await supabase
+        .from('site_brands')
+        .insert({
+          site_id: site.id,
+          name: brand.name,
+          slug: brandSlug,
+          sort_order: i,
+          is_active: true,
+        });
+
+      if (brandError) {
+        console.error('Error creating brand:', brandError);
+      }
     }
   }
 

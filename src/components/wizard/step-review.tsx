@@ -95,6 +95,8 @@ export function StepReview() {
           gbpPlaceId: loc.gbpPlaceId,
           latitude: loc.latitude,
           longitude: loc.longitude,
+          representativeCity: loc.representativeCity,
+          representativeState: loc.representativeState,
         })),
         primaryCategory: primaryCategory ? {
           gcid: primaryCategory.gcid,

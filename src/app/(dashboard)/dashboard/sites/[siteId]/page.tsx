@@ -532,8 +532,10 @@ export default function SiteDashboardPage() {
               <p className="text-sm text-gray-600 mb-4">
                 {site.locations?.length || 0} location{site.locations?.length !== 1 ? 's' : ''} configured
               </p>
-              <Button variant="outline" size="sm" disabled>
-                Manage Locations
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/locations`}>
+                  Manage Locations
+                </Link>
               </Button>
             </CardContent>
           </Card>

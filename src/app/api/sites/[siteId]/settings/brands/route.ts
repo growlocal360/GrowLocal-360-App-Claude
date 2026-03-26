@@ -89,6 +89,51 @@ export async function POST(
   return NextResponse.json({ success: true, brand: newBrand });
 }
 
+// PATCH - Update a brand (name, is_active)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ siteId: string }> }
+) {
+  const { siteId } = await params;
+  const supabase = await createClient();
+
+  const access = await verifySiteAccess(supabase, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  const body = await request.json();
+  const { id, name, isActive } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+
+  const adminSupabase = createAdminClient();
+
+  const update: Record<string, unknown> = {};
+  if (name !== undefined) {
+    update.name = name.trim();
+    update.slug = slugify(name);
+  }
+  if (isActive !== undefined) {
+    update.is_active = isActive;
+  }
+
+  const { error: updateError } = await adminSupabase
+    .from('site_brands')
+    .update(update)
+    .eq('id', id)
+    .eq('site_id', siteId);
+
+  if (updateError) {
+    console.error('Failed to update brand:', updateError);
+    return NextResponse.json({ error: 'Failed to update brand' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 // DELETE - Remove a brand
 export async function DELETE(
   request: NextRequest,

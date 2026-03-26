@@ -58,8 +58,9 @@ export default function BrandsPage() {
   const [suggestions, setSuggestions] = useState<SuggestedBrand[]>([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
 
-  // Deleting
+  // Deleting & toggling
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Per-brand content generation
   const [generatingBrandId, setGeneratingBrandId] = useState<string | null>(null);
@@ -211,6 +212,29 @@ export default function BrandsPage() {
     }
   };
 
+  const handleToggleBrand = async (brand: Brand) => {
+    try {
+      setTogglingId(brand.id);
+      const response = await fetch(`/api/sites/${siteId}/settings/brands`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: brand.id, isActive: !brand.is_active }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update');
+
+      setBrands((prev) =>
+        prev.map((b) =>
+          b.id === brand.id ? { ...b, is_active: !b.is_active } : b
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle brand');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto p-6">
@@ -320,7 +344,7 @@ export default function BrandsPage() {
                       }`}
                       title={brand.h1 ? 'Page content generated' : 'No page content yet'}
                     />
-                    <span className="font-medium text-gray-900 truncate">{brand.name}</span>
+                    <span className={`font-medium truncate ${brand.is_active ? 'text-gray-900' : 'text-gray-400 line-through'}`}>{brand.name}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
                     <Button
@@ -340,6 +364,19 @@ export default function BrandsPage() {
                       <span className="ml-1.5 text-xs">
                         {brand.h1 ? 'Regenerate' : 'Build Page'}
                       </span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleBrand(brand)}
+                      disabled={togglingId === brand.id}
+                      className={brand.is_active ? 'text-gray-500' : 'text-green-600'}
+                    >
+                      {togglingId === brand.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <span className="text-xs">{brand.is_active ? 'Disable' : 'Enable'}</span>
+                      )}
                     </Button>
                     <Button
                       variant="ghost"

@@ -273,10 +273,34 @@ export interface Service {
   intro_copy: string | null;
   problems: ServiceProblem[] | null;
   detailed_sections: ServiceDetailedSection[] | null;
+  image_prompts: ImagePrompt[] | null;
+  generated_images: GeneratedImage[] | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface GeneratedImage {
+  url: string;
+  storage_path: string;
+  prompt_index: number;
+  engine: 'openai' | 'nano_banana';
+  width: number;
+  height: number;
+  created_at: string;
+}
+
+export interface ImagePrompt {
+  image_type: 'hero' | 'category_support' | 'service' | 'environment';
+  engine: 'openai' | 'nano_banana';
+  page_type: 'home' | 'category' | 'service' | 'about' | 'contact' | 'location';
+  section_type: 'hero' | 'grid' | 'background' | 'supporting';
+  prompt: string;
+  style: string;
+  negative_prompt: string;
+  reuse_strategy: 'new' | 'reuse_category';
+  reuse_source_category_id?: string;
 }
 
 export interface ServiceFAQ {
@@ -312,6 +336,8 @@ export interface SitePage {
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
   sections: AboutPageSections | null;
+  image_prompts: ImagePrompt[] | null;
+  generated_images: GeneratedImage[] | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

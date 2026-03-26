@@ -5,7 +5,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
-import type { SiteSettings, GenerationScope } from '@/types/database';
+import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content/image-prompts';
+import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
+import type { SiteSettings, GenerationScope, GeneratedImage } from '@/types/database';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -487,6 +489,25 @@ export const generateSiteContent = inngest.createFunction(
             : coreContent.filter(p => corePagesToGen.includes(p.page_type));
 
           for (const page of filteredContent) {
+            // Generate image prompts for this page
+            const imagePrompts = await generateImagePromptsForPage(anthropic, {
+              businessName: site.name,
+              primaryCategory: categoryName,
+              city: primaryLocation.city,
+              state: primaryLocation.state,
+              pageType: page.page_type as 'home' | 'contact',
+              brandColors: (site.settings as SiteSettings)?.brand_color || undefined,
+              defaultImageStyle: (site.settings as SiteSettings)?.default_image_style || undefined,
+              brandStyleGuide: (site.settings as SiteSettings)?.brand_style_guide || undefined,
+            });
+
+            // Generate actual images from prompts
+            let generatedImages: GeneratedImage[] | null = null;
+            if (imagePrompts.length > 0) {
+              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts);
+              generatedImages = images.length > 0 ? images : null;
+            }
+
             await supabase.from('site_pages').upsert(
               {
                 site_id: siteId,
@@ -499,6 +520,8 @@ export const generateSiteContent = inngest.createFunction(
                 hero_description: page.hero_description || null,
                 body_copy: page.body_copy,
                 body_copy_2: page.body_copy_2 || null,
+                image_prompts: imagePrompts.length > 0 ? imagePrompts : null,
+                generated_images: generatedImages,
                 is_active: true,
               },
               { onConflict: 'site_id,page_type,slug' }
@@ -535,6 +558,25 @@ export const generateSiteContent = inngest.createFunction(
           contentDirectives
         );
 
+        // Generate image prompts for about page
+        const aboutImagePrompts = await generateImagePromptsForPage(anthropic, {
+          businessName: site.name,
+          primaryCategory: categoryName,
+          city: primaryLocation.city,
+          state: primaryLocation.state,
+          pageType: 'about',
+          brandColors: settings.brand_color || undefined,
+          defaultImageStyle: settings.default_image_style || undefined,
+          brandStyleGuide: settings.brand_style_guide || undefined,
+        });
+
+        // Generate actual images for about page
+        let aboutGeneratedImages: GeneratedImage[] | null = null;
+        if (aboutImagePrompts.length > 0) {
+          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts);
+          aboutGeneratedImages = images.length > 0 ? images : null;
+        }
+
         await supabase.from('site_pages').upsert(
           {
             site_id: siteId,
@@ -548,6 +590,8 @@ export const generateSiteContent = inngest.createFunction(
             body_copy: aboutContent.body_copy,
             body_copy_2: aboutContent.body_copy_2 || null,
             sections: aboutContent.sections || null,
+            image_prompts: aboutImagePrompts.length > 0 ? aboutImagePrompts : null,
+            generated_images: aboutGeneratedImages,
             is_active: true,
           },
           { onConflict: 'site_id,page_type,slug' }
@@ -591,6 +635,26 @@ export const generateSiteContent = inngest.createFunction(
 
           const catSlug = normalizeCategorySlug(catName);
 
+          // Generate image prompts for category page
+          const catImagePrompts = await generateImagePromptsForPage(anthropic, {
+            businessName: site.name,
+            primaryCategory: categoryName,
+            city: primaryLocation.city,
+            state: primaryLocation.state,
+            pageType: 'category',
+            categoryName: catName,
+            brandColors: ((site.settings || {}) as SiteSettings).brand_color || undefined,
+            defaultImageStyle: ((site.settings || {}) as SiteSettings).default_image_style || undefined,
+            brandStyleGuide: ((site.settings || {}) as SiteSettings).brand_style_guide || undefined,
+          });
+
+          // Generate actual images for category page
+          let catGeneratedImages: GeneratedImage[] | null = null;
+          if (catImagePrompts.length > 0) {
+            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts);
+            catGeneratedImages = images.length > 0 ? images : null;
+          }
+
           await supabase.from('site_pages').upsert(
             {
               site_id: siteId,
@@ -604,6 +668,8 @@ export const generateSiteContent = inngest.createFunction(
               hero_description: categoryContent.hero_description || null,
               body_copy: categoryContent.body_copy,
               body_copy_2: categoryContent.body_copy_2 || null,
+              image_prompts: catImagePrompts.length > 0 ? catImagePrompts : null,
+              generated_images: catGeneratedImages,
               is_active: true,
             },
             { onConflict: 'site_id,page_type,slug' }
@@ -652,6 +718,22 @@ export const generateSiteContent = inngest.createFunction(
               `Generating ${batchLabel}...`
             );
 
+            // Look up parent category's generated images for reuse
+            let categoryImages: GeneratedImage[] | null = null;
+            if (siteCategoryId !== 'uncategorized') {
+              const { data: catPage } = await supabase
+                .from('site_pages')
+                .select('generated_images')
+                .eq('site_id', siteId)
+                .eq('category_id', siteCategoryId)
+                .eq('page_type', 'category')
+                .limit(1)
+                .single();
+              categoryImages = resolveServiceImages(
+                (catPage?.generated_images as GeneratedImage[] | null) ?? null
+              );
+            }
+
             try {
               const serviceContents = await generateServicePages(
                 anthropic,
@@ -679,6 +761,8 @@ export const generateSiteContent = inngest.createFunction(
                       problems: content.problems || null,
                       detailed_sections: content.detailed_sections || null,
                       faqs: content.faqs,
+                      image_prompts: getServiceImageReuse(service.site_category_id),
+                      generated_images: categoryImages,
                     })
                     .eq('id', service.id);
                 }

@@ -29,6 +29,7 @@ import type {
   WorkItemWithRelations,
   WorkItemImage,
   AboutPageSections,
+  GeneratedImage,
 } from '@/types/database';
 import type { PublicSiteData } from './get-site';
 import type { PublicTeamSource } from './get-team';
@@ -167,6 +168,7 @@ export interface PublicRenderPageContent {
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
   sections: AboutPageSections | null;
+  generated_images: GeneratedImage[] | null;
 }
 
 // --- Category (for nav and page rendering) ---
@@ -419,6 +421,7 @@ export function toPublicPageContent(page: SitePage): PublicRenderPageContent {
     body_copy_2: page.body_copy_2,
     faqs: page.faqs,
     sections: page.sections ?? null,
+    generated_images: page.generated_images ?? null,
   };
 }
 

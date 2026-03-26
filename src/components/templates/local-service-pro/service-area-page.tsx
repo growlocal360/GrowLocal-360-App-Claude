@@ -100,6 +100,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
     body_copy_2: null,
     faqs: null,
     sections: null,
+    generated_images: null,
   };
 
   // Schema.org structured data

@@ -39,8 +39,24 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
   const heroDescription = pageContent?.hero_description ||
     `${site.name} provides expert ${category.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
 
+  // Find hero image from generated images
+  const heroImage = pageContent?.generated_images?.find(
+    (img) => img.prompt_index === 0
+  );
+
   return (
     <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white lg:py-20">
+      {/* Hero background image */}
+      {heroImage && (
+        <>
+          <img
+            src={heroImage.url}
+            alt={h1}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gray-900/65" />
+        </>
+      )}
       <div className="relative mx-auto max-w-7xl px-4">
         <div className="grid gap-10 lg:grid-cols-[3fr_2fr]">
           {/* Left side: Content */}

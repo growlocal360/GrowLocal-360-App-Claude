@@ -64,6 +64,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
     hero_description: pageContent?.hero_description || null,
     body_copy: pageContent?.body_copy || null,
     body_copy_2: pageContent?.body_copy_2 || null,
+    generated_images: pageContent?.generated_images || null,
   } as PublicRenderPageContent;
 
   // Schema.org structured data

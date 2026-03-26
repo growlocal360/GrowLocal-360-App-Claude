@@ -92,6 +92,7 @@ export interface PublicRenderServiceDetail extends PublicRenderServiceListing {
   problems: ServiceProblem[] | null;
   detailed_sections: ServiceDetailedSection[] | null;
   faqs: ServiceFAQ[] | null;
+  generated_images: GeneratedImage[] | null;
 }
 
 // --- Service Area ---
@@ -336,6 +337,7 @@ export function toPublicServiceDetail(svc: Service): PublicRenderServiceDetail {
     problems: svc.problems,
     detailed_sections: svc.detailed_sections,
     faqs: svc.faqs,
+    generated_images: svc.generated_images ?? null,
   };
 }
 

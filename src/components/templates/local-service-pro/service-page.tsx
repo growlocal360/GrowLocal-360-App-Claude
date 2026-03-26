@@ -58,6 +58,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
     h1: service.h1 || `${service.name} in ${location.city}, ${location.state} - ${site.name}`,
     hero_description: service.intro_copy || service.description ||
       `Looking for professional ${service.name.toLowerCase()} in ${location.city}, ${location.state}? ${site.name} is your trusted local provider.`,
+    generated_images: service.generated_images || null,
   } as PublicRenderPageContent;
 
   const allServices: PublicRenderServiceListing[] = siblingServices.length > 0 ? [service, ...siblingServices] : [service];

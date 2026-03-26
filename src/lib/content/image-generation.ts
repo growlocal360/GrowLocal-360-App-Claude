@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ASSET_BUCKET } from '@/lib/assets/types';
 import type { ImagePrompt, GeneratedImage } from '@/types/database';
@@ -47,49 +46,97 @@ async function generateWithDallE(
 }
 
 // ---------------------------------------------------------------------------
-// Generate a single image via Google Nano Banana 2 (Gemini image generation)
+// Generate a single image via Google Nano Banana 2 (Gemini REST API)
+// Uses gemini-2.5-flash-image model with optional logo for brand context
 // ---------------------------------------------------------------------------
+
+async function fetchImageAsBase64(imageUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return buffer.toString('base64');
+  } catch {
+    return null;
+  }
+}
+
+function getMimeTypeFromUrl(url: string): string {
+  if (url.includes('.jpg') || url.includes('.jpeg')) return 'image/jpeg';
+  if (url.includes('.webp')) return 'image/webp';
+  if (url.includes('.svg')) return 'image/png'; // SVGs can't be sent as inline data
+  return 'image/png';
+}
 
 async function generateWithNanoBanana(
   prompt: string,
-  style: string
+  style: string,
+  logoUrl?: string | null
 ): Promise<{ base64: string; mimeType: string }> {
   const apiKey = process.env.NANO_BANANA_API_KEY;
   if (!apiKey) {
     throw new Error('NANO_BANANA_API_KEY not configured');
   }
 
-  const fullPrompt = `${prompt}\n\nStyle: ${style}`;
+  console.log('[image-gen] Calling Nano Banana 2 (gemini-2.5-flash-image)...');
 
-  console.log('[image-gen] Calling Nano Banana 2 (Gemini image generation)...');
+  // Build request parts
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-preview-image-generation',
-    generationConfig: {
-      responseModalities: ['image', 'text'],
-    } as Record<string, unknown>,
-  });
-
-  const response = await model.generateContent(fullPrompt);
-  console.log('[image-gen] Nano Banana 2 response received, extracting image...');
-  const parts = response.response.candidates?.[0]?.content?.parts;
-
-  if (!parts) {
-    throw new Error('Nano Banana 2 returned no content');
-  }
-
-  // Find the image part in the response
-  for (const part of parts) {
-    if (part.inlineData?.data && part.inlineData?.mimeType?.startsWith('image/')) {
-      return {
-        base64: part.inlineData.data,
-        mimeType: part.inlineData.mimeType,
-      };
+  // If logo is provided, add it as brand context
+  if (logoUrl) {
+    const logoBase64 = await fetchImageAsBase64(logoUrl);
+    if (logoBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: getMimeTypeFromUrl(logoUrl),
+          data: logoBase64,
+        },
+      });
+      prompt = `Use the provided logo image as brand reference for colors and style. ${prompt} The generated image should complement the brand identity shown in the logo. The logo can appear naturally on uniforms or vehicles, but do not add any text overlays, banners, titles, or captions to the image.`;
     }
   }
 
-  throw new Error('Nano Banana 2 returned no image data');
+  const fullPrompt = `${prompt}\n\nStyle: ${style}\n\nIMPORTANT: Do not add any text, titles, banners, captions, watermarks, or overlay text to the image. The image should be purely photographic with no text elements.`;
+  parts.push({ text: fullPrompt });
+
+  // Call Gemini REST API directly (matches working implementation)
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts }],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('[image-gen] Nano Banana API error:', errorData);
+    throw new Error(`Nano Banana API failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log('[image-gen] Nano Banana 2 response received, extracting image...');
+
+  // Extract image data from response
+  const imageData = data.candidates?.[0]?.content?.parts?.find(
+    (part: { inlineData?: { data: string } }) => part.inlineData
+  )?.inlineData?.data;
+
+  if (!imageData) {
+    throw new Error('Nano Banana 2 returned no image data');
+  }
+
+  return {
+    base64: imageData,
+    mimeType: 'image/png',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +201,8 @@ function uploadImageFromBase64(
 export async function generateImagesFromPrompts(
   siteId: string,
   pageSlug: string,
-  prompts: ImagePrompt[]
+  prompts: ImagePrompt[],
+  logoUrl?: string | null
 ): Promise<GeneratedImage[]> {
   const openai = createOpenAIClient();
   const results: GeneratedImage[] = [];
@@ -182,7 +230,7 @@ export async function generateImagesFromPrompts(
       if (prompt.engine === 'nano_banana' && process.env.NANO_BANANA_API_KEY) {
         // Nano Banana 2 (Google Gemini) — returns base64, fall back to DALL-E on failure
         try {
-          const { base64, mimeType } = await generateWithNanoBanana(prompt.prompt, prompt.style);
+          const { base64, mimeType } = await generateWithNanoBanana(prompt.prompt, prompt.style, logoUrl);
           const ext = mimeType.split('/')[1] || 'png';
           const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.${ext}`;
           const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);

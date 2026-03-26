@@ -504,7 +504,7 @@ export const generateSiteContent = inngest.createFunction(
             // Generate actual images from prompts
             let generatedImages: GeneratedImage[] | null = null;
             if (imagePrompts.length > 0) {
-              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts);
+              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts, (site.settings as SiteSettings)?.logo_url);
               generatedImages = images.length > 0 ? images : null;
             }
 
@@ -573,7 +573,7 @@ export const generateSiteContent = inngest.createFunction(
         // Generate actual images for about page
         let aboutGeneratedImages: GeneratedImage[] | null = null;
         if (aboutImagePrompts.length > 0) {
-          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts);
+          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts, (site.settings as SiteSettings)?.logo_url);
           aboutGeneratedImages = images.length > 0 ? images : null;
         }
 
@@ -651,7 +651,7 @@ export const generateSiteContent = inngest.createFunction(
           // Generate actual images for category page
           let catGeneratedImages: GeneratedImage[] | null = null;
           if (catImagePrompts.length > 0) {
-            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts);
+            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts, (site.settings as SiteSettings)?.logo_url);
             catGeneratedImages = images.length > 0 ? images : null;
           }
 

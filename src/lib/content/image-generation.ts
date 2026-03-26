@@ -61,6 +61,8 @@ async function generateWithNanoBanana(
 
   const fullPrompt = `${prompt}\n\nStyle: ${style}`;
 
+  console.log('[image-gen] Calling Nano Banana 2 (Gemini image generation)...');
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash-preview-image-generation',
@@ -70,6 +72,7 @@ async function generateWithNanoBanana(
   });
 
   const response = await model.generateContent(fullPrompt);
+  console.log('[image-gen] Nano Banana 2 response received, extracting image...');
   const parts = response.response.candidates?.[0]?.content?.parts;
 
   if (!parts) {
@@ -177,16 +180,24 @@ export async function generateImagesFromPrompts(
       let height = 1024;
 
       if (prompt.engine === 'nano_banana' && process.env.NANO_BANANA_API_KEY) {
-        // Nano Banana 2 (Google Gemini) — returns base64
-        const { base64, mimeType } = await generateWithNanoBanana(prompt.prompt, prompt.style);
-        const ext = mimeType.split('/')[1] || 'png';
-        const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.${ext}`;
-        const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
-        storagePath = uploaded.storagePath;
-        publicUrl = uploaded.publicUrl;
-        // Nano Banana 2 default output size
-        width = 1024;
-        height = 1024;
+        // Nano Banana 2 (Google Gemini) — returns base64, fall back to DALL-E on failure
+        try {
+          const { base64, mimeType } = await generateWithNanoBanana(prompt.prompt, prompt.style);
+          const ext = mimeType.split('/')[1] || 'png';
+          const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.${ext}`;
+          const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
+          storagePath = uploaded.storagePath;
+          publicUrl = uploaded.publicUrl;
+          width = 1024;
+          height = 1024;
+        } catch (nanoBananaError) {
+          console.warn(`[image-gen] Nano Banana failed, falling back to DALL-E:`, nanoBananaError);
+          const { url } = await generateWithDallE(openai, prompt.prompt, prompt.style);
+          const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.png`;
+          const uploaded = await uploadImageFromUrl(url, siteId, filename);
+          storagePath = uploaded.storagePath;
+          publicUrl = uploaded.publicUrl;
+        }
       } else {
         // DALL-E 3 — returns URL
         const { url } = await generateWithDallE(openai, prompt.prompt, prompt.style);

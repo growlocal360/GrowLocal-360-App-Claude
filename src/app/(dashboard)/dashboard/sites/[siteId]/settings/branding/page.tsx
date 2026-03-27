@@ -21,6 +21,8 @@ import {
 
 interface BrandingConfig {
   brandColor: string | null;
+  secondaryColor: string | null;
+  ctaColor: string | null;
   logoUrl: string | null;
   siteName: string;
 }
@@ -38,6 +40,8 @@ export default function BrandingSettingsPage() {
   const [success, setSuccess] = useState(false);
 
   const [brandColor, setBrandColor] = useState('#00ef99');
+  const [secondaryColor, setSecondaryColor] = useState('#1f2937');
+  const [ctaColor, setCtaColor] = useState('#00ef99');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -59,6 +63,8 @@ export default function BrandingSettingsPage() {
       const data = await response.json();
       setConfig(data);
       setBrandColor(data.brandColor || '#10b981');
+      setSecondaryColor(data.secondaryColor || '#1f2937');
+      setCtaColor(data.ctaColor || data.brandColor || '#00ef99');
       setLogoPreview(data.logoUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load branding settings');
@@ -142,6 +148,8 @@ export default function BrandingSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           brandColor,
+          secondaryColor,
+          ctaColor,
           logoUrl: newLogoUrl,
         }),
       });
@@ -156,7 +164,7 @@ export default function BrandingSettingsPage() {
       // Update local state with dashboard-resolvable URL from server
       const dashboardLogoUrl = savedData.logoUrl || null;
       setConfig((prev) =>
-        prev ? { ...prev, brandColor, logoUrl: dashboardLogoUrl } : null
+        prev ? { ...prev, brandColor, secondaryColor, ctaColor, logoUrl: dashboardLogoUrl } : null
       );
       setLogoPreview(dashboardLogoUrl);
       setLogoFile(null);
@@ -174,6 +182,8 @@ export default function BrandingSettingsPage() {
 
   const hasChanges =
     brandColor !== (config?.brandColor || '#10b981') ||
+    secondaryColor !== (config?.secondaryColor || '#1f2937') ||
+    ctaColor !== (config?.ctaColor || config?.brandColor || '#00ef99') ||
     logoFile !== null ||
     (logoPreview === null && config?.logoUrl !== null);
 
@@ -349,6 +359,104 @@ export default function BrandingSettingsPage() {
                 style={{ backgroundColor: brandColor }}
                 className="w-8 h-8 rounded-full"
               />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Secondary Color */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-gray-500" />
+            <h2 className="font-semibold">Secondary Color</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Used for headings, dark sections, and text accents. Typically a dark neutral tone.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={secondaryColor}
+              onChange={(e) => setSecondaryColor(e.target.value)}
+              className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300"
+            />
+            <Input
+              type="text"
+              value={secondaryColor}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                  setSecondaryColor(value);
+                }
+              }}
+              className="w-28 font-mono"
+              placeholder="#1f2937"
+            />
+          </div>
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-3">Preview:</p>
+            <div className="flex items-center gap-3">
+              <span style={{ color: secondaryColor }} className="text-lg font-bold">
+                Section Heading
+              </span>
+              <span style={{ backgroundColor: secondaryColor }} className="px-3 py-1 text-white rounded text-sm">
+                Dark Badge
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CTA Color */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-orange-500" />
+            <h2 className="font-semibold">CTA / Button Color</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Used for call-to-action buttons, form submit buttons, and conversion elements. Defaults to your primary brand color.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={ctaColor}
+              onChange={(e) => setCtaColor(e.target.value)}
+              className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300"
+            />
+            <Input
+              type="text"
+              value={ctaColor}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                  setCtaColor(value);
+                }
+              }}
+              className="w-28 font-mono"
+              placeholder="#00ef99"
+            />
+          </div>
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-3">Preview:</p>
+            <div className="flex items-center gap-3">
+              <button
+                style={{ backgroundColor: ctaColor }}
+                className="px-6 py-2.5 text-white rounded-full text-sm font-medium shadow-md"
+              >
+                Get Free Estimate
+              </button>
+              <button
+                style={{ backgroundColor: ctaColor }}
+                className="px-4 py-2 text-white rounded-full text-sm font-medium"
+              >
+                Book Online
+              </button>
             </div>
           </div>
         </CardContent>

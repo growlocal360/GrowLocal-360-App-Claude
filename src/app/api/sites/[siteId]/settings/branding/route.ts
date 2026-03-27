@@ -45,6 +45,8 @@ export async function GET(
 
   return NextResponse.json({
     brandColor: settings.brand_color || null,
+    secondaryColor: settings.secondary_color || null,
+    ctaColor: settings.cta_color || null,
     logoUrl: dashboardLogoUrl,
     siteName: site.name,
   });
@@ -76,7 +78,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, logoUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, logoUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -94,6 +96,8 @@ export async function PATCH(
   const updatedSettings = {
     ...currentSettings,
     brand_color: brandColor !== undefined ? brandColor : currentSettings.brand_color,
+    secondary_color: secondaryColor !== undefined ? secondaryColor : currentSettings.secondary_color,
+    cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
     logo_url: logoUrl !== undefined ? logoUrl : currentSettings.logo_url,
   };
 
@@ -131,6 +135,8 @@ export async function PATCH(
   return NextResponse.json({
     success: true,
     brandColor: updatedSettings.brand_color,
+    secondaryColor: updatedSettings.secondary_color,
+    ctaColor: updatedSettings.cta_color,
     logoUrl: responseLogo,
   });
 }

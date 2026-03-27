@@ -117,6 +117,8 @@ export interface Site {
 export interface SiteSettings {
   // Branding & Contact
   brand_color?: string;
+  secondary_color?: string;
+  cta_color?: string;
   logo_url?: string;
   phone?: string;
   email?: string;

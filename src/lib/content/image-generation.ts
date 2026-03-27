@@ -50,7 +50,7 @@ async function generateWithNanoBanana(
           data: logoBase64,
         },
       });
-      prompt = `Use the provided logo image as brand reference for colors and style. ${prompt} The generated image should complement the brand identity shown in the logo. The logo can appear naturally on uniforms or vehicles, but do not add any text overlays, banners, titles, or captions to the image.`;
+      prompt = `Use the provided logo image ONLY as a color and style reference to match the brand identity. ${prompt} Do NOT place the logo on the image unless the scene naturally includes a branded uniform, vehicle, or storefront where it would realistically appear. Do not add any text overlays, banners, titles, or captions to the image.`;
     }
   }
 

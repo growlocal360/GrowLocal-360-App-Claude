@@ -59,10 +59,10 @@ export function TestimonialsSection({
       }));
 
   return (
-    <section className="py-16">
+    <section className="py-24">
       <div className="mx-auto max-w-7xl px-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             What {city} Customers Say
           </h2>
           {hasRealReviews && averageRating ? (
@@ -92,9 +92,9 @@ export function TestimonialsSection({
 
         <div className={`mt-10 grid gap-6 ${count >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           {testimonials.map((testimonial, index) => (
-            <Card key={index} className="border-0 shadow-md">
+            <Card key={index} className="border-0 rounded-2xl shadow-md transition-all duration-300 hover:shadow-lg">
               <CardContent className="p-6">
-                <Quote className="mb-3 h-8 w-8 text-gray-200" />
+                <Quote className="mb-3 h-8 w-8" style={{ color: `${brandColor || '#00ef99'}30` }} />
                 <p className="text-gray-600 line-clamp-4">{testimonial.text}</p>
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex">
@@ -105,9 +105,14 @@ export function TestimonialsSection({
                       />
                     ))}
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
-                    {testimonial.name}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {testimonial.photoUrl && (
+                      <img src={testimonial.photoUrl} alt={testimonial.name} className="h-8 w-8 rounded-full object-cover" />
+                    )}
+                    <span className="text-sm font-medium text-gray-700">
+                      {testimonial.name}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

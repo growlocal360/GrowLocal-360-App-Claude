@@ -33,10 +33,10 @@ export function ServiceAreasSection({ site, serviceAreas, neighborhoods, locatio
   if (allAreas.length === 0) return null;
 
   return (
-    <section id="service-areas" className="bg-gray-50 py-16">
+    <section id="service-areas" className="bg-gray-50 py-24">
       <div className="mx-auto max-w-7xl px-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             Neighborhoods & Cities We Serve
           </h2>
           <p className="mt-2 text-gray-600">
@@ -50,10 +50,10 @@ export function ServiceAreasSection({ site, serviceAreas, neighborhoods, locatio
             <Link
               key={area.id}
               href={area.href}
-              className="flex items-center gap-1 text-sm hover:underline"
-              style={{ color: brandColor }}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-all duration-300 hover:shadow-sm"
+              style={{ borderColor: `${brandColor}30` }}
             >
-              <ChevronRight className="h-3 w-3 shrink-0" />
+              <ChevronRight className="h-3 w-3 shrink-0" style={{ color: brandColor }} />
               {area.name}
             </Link>
           ))}

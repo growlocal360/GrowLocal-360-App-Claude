@@ -34,11 +34,11 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
   if (services.length === 0 && (!secondaryCategories || secondaryCategories.length === 0)) return null;
 
   return (
-    <section id="services" className="py-16">
+    <section id="services" className="py-24">
       <div className="mx-auto max-w-7xl px-4">
         {/* Section header */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             Our Services{city ? ` in ${city}` : ''}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-gray-600">
@@ -51,11 +51,11 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
           {/* Primary category services */}
           {services.map((service) => (
             <Link key={service.id} href={getServiceUrl(service)}>
-              <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
+              <Card className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
                       style={{ backgroundColor: `${brandColor}20` }}
                     >
                       <Wrench className="h-6 w-6" style={{ color: brandColor }} />
@@ -72,7 +72,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                         style={{ color: brandColor }}
                       >
                         Learn More
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                       </div>
                     </div>
                   </div>
@@ -84,11 +84,11 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
           {/* Secondary GBP category cards */}
           {secondaryCategories?.map((cat) => (
             <Link key={cat.slug} href={paths.categoryPage(cat.slug, false, locationSlug)}>
-              <Card className="h-full cursor-pointer transition-all hover:border-gray-300 hover:shadow-lg">
+              <Card className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
                       style={{ backgroundColor: `${brandColor}20` }}
                     >
                       <Layers className="h-6 w-6" style={{ color: brandColor }} />
@@ -100,7 +100,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                         style={{ color: brandColor }}
                       >
                         View Services
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                       </div>
                     </div>
                   </div>

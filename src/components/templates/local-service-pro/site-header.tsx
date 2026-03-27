@@ -40,7 +40,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-white">
+    <header className="sticky top-0 z-50 border-b bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Logo / Business Name */}
         <Link href={home} className="flex shrink-0 items-center gap-2">
@@ -78,7 +78,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
           {phone && (
             <a
               href={`tel:${phone.replace(/\D/g, '')}`}
-              className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900"
+              className="flex items-center gap-2 text-sm font-semibold text-gray-700 transition-colors duration-300 hover:text-gray-900"
             >
               <Phone className="h-4 w-4" />
               {phone}
@@ -87,7 +87,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
           <Button
             asChild
             style={{ backgroundColor: brandColor }}
-            className="hover:opacity-90"
+            className="rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
           >
             <a href="#contact">Get Free Estimate</a>
           </Button>
@@ -109,7 +109,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="border-t px-4 py-4 lg:hidden">
+        <div className="border-t bg-white/95 px-4 py-4 backdrop-blur-md lg:hidden">
           <div className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <Link
@@ -137,7 +137,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
             <Button
               asChild
               style={{ backgroundColor: brandColor }}
-              className="w-full hover:opacity-90"
+              className="w-full rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             >
               <a href="#contact" onClick={() => setMobileMenuOpen(false)}>
                 Get Free Estimate

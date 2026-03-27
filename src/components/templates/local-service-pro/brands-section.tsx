@@ -22,9 +22,9 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
   const primaryCategory = site.settings?.core_industry || '';
 
   return (
-    <section className="bg-gray-50 py-16">
+    <section className="bg-gray-50 py-24">
       <div className="mx-auto max-w-7xl px-4">
-        <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
           {primaryCategory ? `${primaryCategory} Brands` : 'Brands'} We Service
           {city ? ` in ${city}` : ''}
         </h2>
@@ -36,12 +36,12 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
           {brands.map((brand) => (
             <Link key={brand.id} href={paths.brandPage(brand.slug, locationSlug)}>
               <Card
-                className="h-full cursor-pointer transition-all hover:shadow-lg"
+                className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl"
                 style={{ borderTop: `3px solid ${brandColor}` }}
               >
                 <CardContent className="flex items-center justify-between p-5">
                   <span className="font-bold text-gray-900">{brand.name}</span>
-                  <ArrowRight className="h-4 w-4 flex-shrink-0" style={{ color: brandColor }} />
+                  <ArrowRight className="h-4 w-4 flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: brandColor }} />
                 </CardContent>
               </Card>
             </Link>

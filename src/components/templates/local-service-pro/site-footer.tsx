@@ -26,7 +26,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
         <div className="grid gap-8 md:grid-cols-3">
           {/* Contact Info */}
           <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">
+            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
               Contact Info
             </h3>
             <div className="space-y-3 text-sm">
@@ -65,52 +65,52 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
 
           {/* Quick Links */}
           <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">
+            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
               Quick Links
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href={paths.locationHome(locationSlug)} className="hover:text-white">
+                <Link href={paths.locationHome(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Home
                 </Link>
               </li>
               <li>
-                <Link href={paths.aboutPage(locationSlug)} className="hover:text-white">
+                <Link href={paths.aboutPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   About
                 </Link>
               </li>
               <li>
-                <Link href={paths.servicesIndex(locationSlug)} className="hover:text-white">
+                <Link href={paths.servicesIndex(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Services
                 </Link>
               </li>
               <li>
-                <Link href={paths.areasIndex(locationSlug)} className="hover:text-white">
+                <Link href={paths.areasIndex(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Service Areas
                 </Link>
               </li>
               <li>
-                <Link href={paths.workHub(locationSlug)} className="hover:text-white">
+                <Link href={paths.workHub(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Work
                 </Link>
               </li>
               <li>
-                <Link href={paths.reviewsIndex(locationSlug)} className="hover:text-white">
+                <Link href={paths.reviewsIndex(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Reviews
                 </Link>
               </li>
               <li>
-                <Link href={paths.faqPage(locationSlug)} className="hover:text-white">
+                <Link href={paths.faqPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href={paths.jobSnapsPage(locationSlug)} className="hover:text-white">
+                <Link href={paths.jobSnapsPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Job Snaps
                 </Link>
               </li>
               <li>
-                <Link href={paths.contactPage(locationSlug)} className="hover:text-white">
+                <Link href={paths.contactPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Contact
                 </Link>
               </li>
@@ -120,7 +120,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
           {/* Service Areas */}
           {serviceAreas && serviceAreas.length > 0 && (
             <div>
-              <h3 className="mb-4 text-lg font-semibold text-white">
+              <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
                 Service Areas
               </h3>
               <ul className="space-y-2 text-sm">
@@ -128,7 +128,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                   <li key={area.id}>
                     <Link
                       href={paths.areaPage(area.slug, locationSlug)}
-                      className="hover:text-white"
+                      className="transition-colors duration-300 hover:text-white"
                     >
                       {area.name}{area.state ? `, ${area.state}` : ''}
                     </Link>
@@ -142,13 +142,13 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
 
       {/* Copyright bar */}
       <div className="border-t border-gray-800">
-        <div className="mx-auto max-w-7xl px-4 py-4 text-center text-sm">
+        <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm">
           <p>&copy; {currentYear} {site.name}. All rights reserved.</p>
           <p className="mt-1 text-xs text-gray-500">
             Powered by{' '}
             <a
               href="/"
-              className="hover:text-white"
+              className="transition-colors duration-300 hover:text-white"
               style={{ color: brandColor }}
             >
               GrowLocal 360

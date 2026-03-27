@@ -15,7 +15,7 @@ export function TrustBar({ brandColor = '#00ef99', averageRating, totalReviewCou
     : '5.0 Rating';
 
   return (
-    <section className="border-b bg-gray-50 py-6">
+    <section className="border-b bg-gray-50 py-8">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-10 px-4">
         {/* Star rating */}
         <div className="flex items-center gap-2">
@@ -35,14 +35,18 @@ export function TrustBar({ brandColor = '#00ef99', averageRating, totalReviewCou
         </div>
 
         {/* Licensed badge */}
-        <div className="flex items-center gap-2">
-          <Shield className="h-6 w-6" style={{ color: brandColor }} />
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}15` }}>
+            <Shield className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
           <span className="text-base font-medium text-gray-700">Licensed & Insured</span>
         </div>
 
         {/* Certified badge */}
-        <div className="flex items-center gap-2">
-          <Award className="h-6 w-6" style={{ color: brandColor }} />
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}15` }}>
+            <Award className="h-5 w-5" style={{ color: brandColor }} />
+          </div>
           <span className="text-base font-medium text-gray-700">Certified Professionals</span>
         </div>
       </div>

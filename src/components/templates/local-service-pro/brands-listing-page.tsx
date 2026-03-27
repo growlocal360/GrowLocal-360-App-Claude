@@ -48,9 +48,9 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
+        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
           <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tight leading-[1.1] md:text-4xl lg:text-5xl">
               {industry ? `${industry} Brands` : 'Brands'} We Service
               {city ? ` in ${city} & Surrounding Areas` : ''}
             </h1>
@@ -73,7 +73,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
                 {brands.map((brand) => (
                   <Link key={brand.id} href={paths.brandPage(brand.slug, locationSlug)}>
                     <Card
-                      className="h-full cursor-pointer transition-all hover:shadow-lg"
+                      className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl"
                       style={{ borderTop: `3px solid ${brandColor}` }}
                     >
                       <CardContent className="p-5">
@@ -88,7 +88,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
                           style={{ color: brandColor }}
                         >
                           View Services
-                          <ArrowRight className="h-3 w-3" />
+                          <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
                         </span>
                       </CardContent>
                     </Card>
@@ -107,18 +107,18 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
 
         {/* CTA Section */}
         {phone && (
-          <section className="py-12" style={{ backgroundColor: `${brandColor}08` }}>
+          <section className="bg-black py-16">
             <div className="mx-auto max-w-7xl px-4 text-center">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold tracking-tight text-white">
                 Don&apos;t See Your Brand?
               </h2>
-              <p className="mx-auto mt-2 max-w-xl text-gray-600">
+              <p className="mx-auto mt-2 max-w-xl text-gray-300">
                 We service many more brands than listed here. Give us a call and we&apos;ll let you know how we can help.
               </p>
               <Button
                 asChild
                 size="lg"
-                className="mt-6 text-lg hover:opacity-90"
+                className="mt-6 rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                 style={{ backgroundColor: brandColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>

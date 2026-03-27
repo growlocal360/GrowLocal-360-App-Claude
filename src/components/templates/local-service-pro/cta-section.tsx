@@ -17,11 +17,10 @@ export function CTASection({ site, primaryLocation }: CTASectionProps) {
   return (
     <section
       id="contact"
-      className="py-20"
-      style={{ backgroundColor: brandColor }}
+      className="bg-black py-24"
     >
       <div className="mx-auto max-w-7xl px-4 text-center text-white">
-        <h2 className="text-3xl font-bold md:text-4xl">
+        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
           Ready to Get Started?
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-lg opacity-90">
@@ -36,7 +35,7 @@ export function CTASection({ site, primaryLocation }: CTASectionProps) {
               asChild
               size="lg"
               variant="secondary"
-              className="min-w-[200px] text-lg"
+              className="min-w-50 rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             >
               <a href={`tel:${phone.replace(/\D/g, '')}`}>
                 <Phone className="mr-2 h-5 w-5" />
@@ -49,7 +48,7 @@ export function CTASection({ site, primaryLocation }: CTASectionProps) {
               asChild
               size="lg"
               variant="outline"
-              className="min-w-[200px] border-white text-lg text-white hover:bg-white hover:text-gray-900"
+              className="min-w-50 rounded-full border-white text-lg text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-gray-900 hover:shadow-lg"
             >
               <a href={`mailto:${email}`}>
                 <Mail className="mr-2 h-5 w-5" />

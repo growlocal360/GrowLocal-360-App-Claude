@@ -106,9 +106,9 @@ export function BrandDetailPage({
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
+        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
           <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tight leading-[1.1] md:text-4xl lg:text-5xl">
               {heroHeading}
             </h1>
             <p className="mt-4 max-w-2xl text-lg text-white/90">
@@ -118,7 +118,7 @@ export function BrandDetailPage({
               <Button
                 asChild
                 size="lg"
-                className="mt-6 bg-white hover:bg-gray-100"
+                className="mt-6 rounded-full bg-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 hover:shadow-lg"
                 style={{ color: brandColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
@@ -131,9 +131,9 @@ export function BrandDetailPage({
         </section>
 
         {/* Why Choose Us for Brand */}
-        <section className="py-16">
+        <section className="py-24">
           <div className="mx-auto max-w-7xl px-4">
-            <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
               Why Choose {site.name} for {brand.name}?
             </h2>
             {brand.body_copy && (
@@ -157,9 +157,9 @@ export function BrandDetailPage({
 
         {/* Services for this Brand */}
         {services.length > 0 && (
-          <section className="bg-gray-50 py-16">
+          <section className="bg-gray-50 py-24">
             <div className="mx-auto max-w-7xl px-4">
-              <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+              <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
                 Our {brand.name} Services
               </h2>
               <p className="mt-2 text-gray-600">
@@ -171,10 +171,10 @@ export function BrandDetailPage({
                     key={service.id}
                     href={paths.servicePage(service.slug, service.categorySlug, service.isPrimaryCategory, locationSlug)}
                   >
-                    <Card className="h-full cursor-pointer transition-all hover:shadow-lg">
+                    <Card className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl">
                       <CardContent className="p-5">
                         <div
-                          className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
+                          className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
                           style={{ backgroundColor: `${brandColor}15` }}
                         >
                           <Wrench className="h-5 w-5" style={{ color: brandColor }} />
@@ -185,7 +185,7 @@ export function BrandDetailPage({
                           style={{ color: brandColor }}
                         >
                           Learn More
-                          <ArrowRight className="h-3 w-3" />
+                          <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
                         </span>
                       </CardContent>
                     </Card>

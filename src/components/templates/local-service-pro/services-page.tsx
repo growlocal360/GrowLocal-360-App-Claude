@@ -65,9 +65,9 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
         {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
+        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
           <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tight leading-[1.1] md:text-4xl lg:text-5xl">
               Our Services{city ? ` in ${city}` : ''}
             </h1>
             <p className="mt-4 max-w-2xl text-lg text-white/90">
@@ -86,10 +86,10 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                   const services = servicesByCategory[cat.id] || [];
                   return (
                     <Link key={cat.id} href={getCategoryUrl(cat)}>
-                      <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
+                      <Card className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl" style={{ borderTop: `3px solid ${brandColor}` }}>
                         <CardContent className="p-5">
                           <div
-                            className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
+                            className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
                             style={{ backgroundColor: `${brandColor}15` }}
                           >
                             <Wrench className="h-5 w-5" style={{ color: brandColor }} />
@@ -157,7 +157,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {services.map((service) => (
                           <Link key={service.id} href={getServiceUrl(cat, service.slug)}>
-                            <Card className="group h-full cursor-pointer border-gray-200 transition-all hover:border-gray-300 hover:shadow-lg">
+                            <Card className="group h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:border-transparent hover:shadow-xl">
                               <CardContent className="p-5">
                                 <div className="flex items-start gap-3">
                                   <CheckCircle
@@ -178,7 +178,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                                       style={{ color: brandColor }}
                                     >
                                       Learn More
-                                      <ArrowRight className="h-3 w-3" />
+                                      <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-1" />
                                     </span>
                                   </div>
                                 </div>

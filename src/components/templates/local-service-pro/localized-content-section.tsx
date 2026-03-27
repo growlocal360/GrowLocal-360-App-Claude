@@ -19,12 +19,12 @@ export function LocalizedContentSection({ pageContent, businessName, city }: Loc
   ) ?? [];
 
   return (
-    <section className="bg-gray-50 py-16">
+    <section className="bg-gray-50 py-24">
       <div className="mx-auto max-w-7xl px-4">
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Left: Content */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
               {h2}
             </h2>
             <div className="mt-6 space-y-4 text-gray-600">
@@ -41,12 +41,12 @@ export function LocalizedContentSection({ pageContent, businessName, city }: Loc
                 <img
                   src={supportingImages[0].url}
                   alt={`${businessName} in ${city}`}
-                  className="aspect-[4/3] rounded-lg object-cover"
+                  className="aspect-[4/3] rounded-2xl object-cover shadow-md transition-all duration-300 hover:shadow-lg"
                 />
                 <img
                   src={supportingImages[1].url}
                   alt={`${businessName} services in ${city}`}
-                  className="aspect-[4/3] rounded-lg object-cover"
+                  className="aspect-[4/3] rounded-2xl object-cover shadow-md transition-all duration-300 hover:shadow-lg"
                 />
               </>
             ) : supportingImages.length === 1 ? (
@@ -54,14 +54,14 @@ export function LocalizedContentSection({ pageContent, businessName, city }: Loc
                 <img
                   src={supportingImages[0].url}
                   alt={`${businessName} in ${city}`}
-                  className="aspect-[4/3] rounded-lg object-cover"
+                  className="aspect-[4/3] rounded-2xl object-cover shadow-md transition-all duration-300 hover:shadow-lg"
                 />
-                <div className="aspect-[4/3] rounded-lg bg-gray-200" />
+                <div className="aspect-[4/3] rounded-2xl bg-gray-200" />
               </>
             ) : (
               <>
-                <div className="aspect-[4/3] rounded-lg bg-gray-200" />
-                <div className="aspect-[4/3] rounded-lg bg-gray-200" />
+                <div className="aspect-[4/3] rounded-2xl bg-gray-200" />
+                <div className="aspect-[4/3] rounded-2xl bg-gray-200" />
               </>
             )}
           </div>

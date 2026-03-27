@@ -45,7 +45,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
   ) || pageContent?.generated_images?.[0] || null;
 
   return (
-    <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-16 text-white lg:py-20">
+    <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-20 text-white lg:py-28">
       {/* Hero background image */}
       {heroImage && (
         <>
@@ -62,7 +62,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
           {/* Left side: Content */}
           <div className="flex flex-col justify-center">
             {/* Star rating badge */}
-            <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm backdrop-blur">
+            <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm backdrop-blur">
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star
@@ -83,12 +83,12 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
             </div>
 
             {/* H1 */}
-            <h1 className="text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-bold tracking-tight leading-[1.1] md:text-5xl lg:text-6xl">
               {h1}
             </h1>
 
             {/* Hero description */}
-            <p className="mt-4 text-lg text-gray-300">
+            <p className="mt-4 text-lg leading-relaxed text-gray-300 md:text-xl">
               {heroDescription}
             </p>
 
@@ -110,7 +110,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
                 <Button
                   asChild
                   size="lg"
-                  className="text-lg hover:opacity-90"
+                  className="rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                   style={{ backgroundColor: brandColor }}
                 >
                   <a href="#hero-form">Book Online</a>
@@ -121,7 +121,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
 
           {/* Right side: Multi-step form */}
           <div id="hero-form" className="flex items-center justify-center lg:justify-end">
-            <Card className="w-full max-w-md bg-white text-gray-900">
+            <Card className="w-full max-w-md rounded-2xl bg-white text-gray-900 shadow-2xl">
               <CardContent className="p-6">
                 <MultiStepForm
                   siteId={site.id}

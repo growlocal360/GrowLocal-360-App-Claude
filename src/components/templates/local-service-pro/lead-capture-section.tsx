@@ -44,7 +44,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
 
   if (submitted) {
     return (
-      <section id="contact" className="py-16">
+      <section id="contact" className="py-24">
         <div className="mx-auto max-w-xl px-4 text-center">
           <h2 className="text-2xl font-bold text-gray-900">Thank You!</h2>
           <p className="mt-4 text-gray-600">
@@ -56,10 +56,10 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
   }
 
   return (
-    <section id="contact" className="py-16">
+    <section id="contact" className="py-24">
       <div className="mx-auto max-w-xl px-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             Get a Free, No-Obligation Estimate
           </h2>
           <p className="mt-2 text-gray-600">
@@ -73,7 +73,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
               type="text"
               placeholder="Your Name"
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2"
               style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -84,7 +84,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
               type="tel"
               placeholder="Phone Number"
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2"
               style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -95,7 +95,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
               type="email"
               placeholder="Email Address"
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2"
               style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -104,7 +104,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
           {services && services.length > 0 && (
             <div>
               <select
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-700 focus:border-transparent focus:outline-none focus:ring-2"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 text-gray-700 focus:border-transparent focus:outline-none focus:ring-2"
                 style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
                 value={formData.service_type}
                 onChange={(e) => setFormData({ ...formData, service_type: e.target.value })}
@@ -121,7 +121,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 text-base hover:opacity-90"
+            className="w-full rounded-full py-3.5 text-base shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             style={{ backgroundColor: brandColor }}
           >
             {submitting ? 'Submitting...' : 'Request Estimate'}

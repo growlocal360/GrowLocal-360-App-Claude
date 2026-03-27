@@ -56,6 +56,33 @@ export async function GET(
     }
   }
 
+  // Generated images: /public/images/{filename}.png → storage: {siteId}/generated/{filename}.png
+  if (publicPath.startsWith('images/')) {
+    const filename = publicPath.replace('images/', '');
+    const storagePath = `${site.id}/generated/${filename}`;
+    const { data: imgData, error: imgError } = await adminSupabase.storage
+      .from(ASSET_BUCKET)
+      .download(storagePath);
+
+    if (!imgError && imgData) {
+      const arrayBuffer = await imgData.arrayBuffer();
+      const ext = filename.split('.').pop()?.toLowerCase() || '';
+      const contentTypes: Record<string, string> = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+      };
+      return new NextResponse(arrayBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': contentTypes[ext] || 'image/png',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
+  }
+
   // Look up the asset by site_id + public_path
   const { data: asset } = await adminSupabase
     .from('assets')

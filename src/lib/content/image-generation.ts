@@ -1,49 +1,6 @@
-import OpenAI from 'openai';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ASSET_BUCKET } from '@/lib/assets/types';
 import type { ImagePrompt, GeneratedImage } from '@/types/database';
-
-// ---------------------------------------------------------------------------
-// OpenAI client
-// ---------------------------------------------------------------------------
-
-function createOpenAIClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
-  return new OpenAI({ apiKey });
-}
-
-// ---------------------------------------------------------------------------
-// Generate a single image via DALL-E 3
-// ---------------------------------------------------------------------------
-
-async function generateWithDallE(
-  openai: OpenAI,
-  prompt: string,
-  style: string
-): Promise<{ url: string; revisedPrompt: string }> {
-  // Combine the prompt with the style block
-  const fullPrompt = `${prompt}\n\nStyle: ${style}`;
-
-  const response = await openai.images.generate({
-    model: 'dall-e-3',
-    prompt: fullPrompt,
-    n: 1,
-    size: '1792x1024', // Landscape for web hero/banner use
-    quality: 'hd',
-    response_format: 'url',
-  });
-
-  const imageData = response.data?.[0];
-  if (!imageData?.url) {
-    throw new Error('DALL-E returned no image URL');
-  }
-
-  return {
-    url: imageData.url,
-    revisedPrompt: imageData.revised_prompt || prompt,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Generate a single image via Google Nano Banana 2 (Gemini REST API)
@@ -195,16 +152,34 @@ function uploadImageFromBase64(
 }
 
 // ---------------------------------------------------------------------------
+// SEO-friendly filename from H1/title
+// e.g. "Carpet Cleaning Service in Killeen, TX" → "carpet-cleaning-service-in-killeen-tx"
+// ---------------------------------------------------------------------------
+
+function toSeoFilename(text: string, suffix?: string): string {
+  let slug = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  if (suffix) slug = `${slug}-${suffix}`;
+  return `${slug}.png`;
+}
+
+// ---------------------------------------------------------------------------
 // Generate all images for a set of prompts
+// All images use Nano Banana 2 (Gemini) for maximum realism.
+// Logo is passed for brand context on all images.
 // ---------------------------------------------------------------------------
 
 export async function generateImagesFromPrompts(
   siteId: string,
   pageSlug: string,
   prompts: ImagePrompt[],
-  logoUrl?: string | null
+  logoUrl?: string | null,
+  pageH1?: string | null,
+  siteSlug?: string | null
 ): Promise<GeneratedImage[]> {
-  const openai = createOpenAIClient();
   const results: GeneratedImage[] = [];
 
   for (let i = 0; i < prompts.length; i++) {
@@ -221,51 +196,42 @@ export async function generateImagesFromPrompts(
     }
 
     try {
-      const sanitizedSlug = pageSlug.replace(/[^a-z0-9-]/g, '-').slice(0, 40);
+      // SEO filename: derive from H1 if available, fall back to page slug
+      const baseText = pageH1 || pageSlug;
+      const suffix = i > 0 ? String(i + 1) : undefined;
+      const filename = toSeoFilename(baseText, suffix);
+
       let storagePath: string;
       let publicUrl: string;
-      let width = 1792;
-      let height = 1024;
+      const width = 1024;
+      const height = 1024;
 
-      if (prompt.engine === 'nano_banana' && process.env.NANO_BANANA_API_KEY) {
-        // Nano Banana 2 (Google Gemini) — returns base64, fall back to DALL-E on failure
-        try {
-          const { base64, mimeType } = await generateWithNanoBanana(prompt.prompt, prompt.style, logoUrl);
-          const ext = mimeType.split('/')[1] || 'png';
-          const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.${ext}`;
-          const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
-          storagePath = uploaded.storagePath;
-          publicUrl = uploaded.publicUrl;
-          width = 1024;
-          height = 1024;
-        } catch (nanoBananaError) {
-          console.warn(`[image-gen] Nano Banana failed, falling back to DALL-E:`, nanoBananaError);
-          const { url } = await generateWithDallE(openai, prompt.prompt, prompt.style);
-          const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.png`;
-          const uploaded = await uploadImageFromUrl(url, siteId, filename);
-          storagePath = uploaded.storagePath;
-          publicUrl = uploaded.publicUrl;
-        }
-      } else {
-        // DALL-E 3 — returns URL
-        const { url } = await generateWithDallE(openai, prompt.prompt, prompt.style);
-        const filename = `${sanitizedSlug}-${prompt.section_type}-${i}.png`;
-        const uploaded = await uploadImageFromUrl(url, siteId, filename);
-        storagePath = uploaded.storagePath;
-        publicUrl = uploaded.publicUrl;
-      }
+      // Use Nano Banana 2 (Gemini) for all images — pass logo for brand context
+      const { base64, mimeType } = await generateWithNanoBanana(
+        prompt.prompt,
+        prompt.style,
+        logoUrl
+      );
+      const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
+      storagePath = uploaded.storagePath;
+
+      // Store SEO-friendly local URL path (served via /public/images/ proxy)
+      // Falls back to Supabase direct URL if siteSlug not available
+      publicUrl = siteSlug
+        ? `/sites/${siteSlug}/public/images/${filename}`
+        : uploaded.publicUrl;
 
       results.push({
         url: publicUrl,
         storage_path: storagePath,
         prompt_index: i,
-        engine: prompt.engine,
+        engine: 'nano_banana',
         width,
         height,
         created_at: new Date().toISOString(),
       });
 
-      console.log(`[image-gen] Generated ${prompt.section_type} image for ${pageSlug} (${prompt.engine})`);
+      console.log(`[image-gen] Generated ${prompt.section_type} image for ${pageSlug} → ${filename}`);
     } catch (error) {
       // Image generation is non-fatal — log and continue
       console.error(`[image-gen] Failed to generate image ${i} for ${pageSlug}:`, error);

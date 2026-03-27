@@ -167,7 +167,7 @@ export const generateSiteContent = inngest.createFunction(
       ] = await Promise.all([
         supabase
           .from('sites')
-          .select('id, name, website_type, settings, status, organization_id, build_progress')
+          .select('id, name, slug, website_type, settings, status, organization_id, build_progress')
           .eq('id', siteId)
           .single(),
         supabase.from('locations').select('*').eq('site_id', siteId),
@@ -504,7 +504,7 @@ export const generateSiteContent = inngest.createFunction(
             // Generate actual images from prompts
             let generatedImages: GeneratedImage[] | null = null;
             if (imagePrompts.length > 0) {
-              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts, (site.settings as SiteSettings)?.logo_url);
+              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts, (site.settings as SiteSettings)?.logo_url, page.h1, site.slug);
               generatedImages = images.length > 0 ? images : null;
             }
 
@@ -573,7 +573,7 @@ export const generateSiteContent = inngest.createFunction(
         // Generate actual images for about page
         let aboutGeneratedImages: GeneratedImage[] | null = null;
         if (aboutImagePrompts.length > 0) {
-          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts, (site.settings as SiteSettings)?.logo_url);
+          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts, (site.settings as SiteSettings)?.logo_url, aboutContent.h1, site.slug);
           aboutGeneratedImages = images.length > 0 ? images : null;
         }
 
@@ -651,7 +651,7 @@ export const generateSiteContent = inngest.createFunction(
           // Generate actual images for category page
           let catGeneratedImages: GeneratedImage[] | null = null;
           if (catImagePrompts.length > 0) {
-            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts, (site.settings as SiteSettings)?.logo_url);
+            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts, (site.settings as SiteSettings)?.logo_url, categoryContent.h1, site.slug);
             catGeneratedImages = images.length > 0 ? images : null;
           }
 

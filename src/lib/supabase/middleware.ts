@@ -50,10 +50,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users from auth pages to dashboard
+  // Exception: don't redirect if setup=pending (user has no org profile yet)
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    const setup = request.nextUrl.searchParams.get('setup');
+    if (setup !== 'pending') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

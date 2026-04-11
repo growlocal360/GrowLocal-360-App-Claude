@@ -28,7 +28,10 @@ export default async function DashboardLayout({
     .order('created_at', { ascending: false });
 
   if (!profiles || profiles.length === 0) {
-    redirect('/login');
+    // User is authenticated but has no org profile — likely accepted
+    // an invite via Google OAuth but the redirect skipped the accept step.
+    // Send to login with a flag to prevent redirect loop.
+    redirect('/login?setup=pending');
   }
 
   // Read active org from cookie

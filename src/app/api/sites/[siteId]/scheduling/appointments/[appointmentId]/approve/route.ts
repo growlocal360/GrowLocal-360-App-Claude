@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
 
 interface RouteParams {
@@ -12,6 +14,12 @@ interface RouteParams {
  */
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   const { siteId, appointmentId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   try {
     const supabase = createAdminClient();

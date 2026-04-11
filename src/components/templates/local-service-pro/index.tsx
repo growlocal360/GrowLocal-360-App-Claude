@@ -78,9 +78,11 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           ctaStyle={ctaStyle}
         />
         <TrustBar
+          siteId={site.id}
           brandColor={brandColor}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
+          schedulingActive={schedulingActive}
         />
         {((services && services.length > 0) || (secondaryCategories && secondaryCategories.length > 0)) && (
           <ServicesPreview

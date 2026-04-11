@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 
 interface RouteParams {
   params: Promise<{ siteId: string; staffId: string }>;
@@ -10,7 +12,14 @@ interface RouteParams {
  * Get time blocks for a staff member (optionally filtered by date range)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { staffId } = await params;
+  const { siteId, staffId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
@@ -47,7 +56,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Add a time block for a staff member
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { staffId } = await params;
+  const { siteId, staffId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   try {
     const body = await request.json();
@@ -88,7 +103,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  * Delete a time block by ID (passed as query param)
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const { staffId } = await params;
+  const { siteId, staffId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const blockId = searchParams.get('blockId');
 

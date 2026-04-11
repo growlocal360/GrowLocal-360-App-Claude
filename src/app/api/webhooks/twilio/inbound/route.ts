@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import twilio from 'twilio';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { forwardSMS } from '@/lib/sms/twilio';
+
+/**
+ * Validate that the request actually came from Twilio.
+ * Uses the X-Twilio-Signature header + auth token to verify.
+ */
+function validateTwilioSignature(
+  request: NextRequest,
+  params: Record<string, string>
+): boolean {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken) {
+    console.warn('[Twilio Webhook] No TWILIO_AUTH_TOKEN — skipping signature validation');
+    return true; // Allow in dev when token isn't configured
+  }
+
+  const signature = request.headers.get('x-twilio-signature');
+  if (!signature) return false;
+
+  const url = request.url;
+  return twilio.validateRequest(authToken, signature, url, params);
+}
 
 /**
  * POST /api/webhooks/twilio/inbound
@@ -10,9 +32,18 @@ import { forwardSMS } from '@/lib/sms/twilio';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const from = formData.get('From') as string;        // Customer's phone number
-    const to = formData.get('To') as string;             // Site's Twilio number
-    const body = formData.get('Body') as string;         // Message text
+    const params: Record<string, string> = {};
+    formData.forEach((value, key) => { params[key] = value.toString(); });
+
+    // Validate Twilio signature
+    if (!validateTwilioSignature(request, params)) {
+      console.warn('[Twilio Webhook] Invalid signature — rejecting request');
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    const from = params.From;
+    const to = params.To;
+    const body = params.Body;
 
     if (!from || !to || !body) {
       return twimlResponse('');

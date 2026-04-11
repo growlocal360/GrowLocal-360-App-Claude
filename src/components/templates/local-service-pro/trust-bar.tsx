@@ -1,14 +1,44 @@
 'use client';
 
-import { Star, Shield, Award } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, Shield, Award, CalendarCheck, TrendingUp, Clock } from 'lucide-react';
+
+interface SchedulingStats {
+  sameDayRate: number;
+  totalBookings: number;
+  avgDailySpots: number;
+}
 
 interface TrustBarProps {
+  siteId?: string;
   brandColor?: string;
   averageRating?: number;
   totalReviewCount?: number;
+  schedulingActive?: boolean;
 }
 
-export function TrustBar({ brandColor = '#00ef99', averageRating, totalReviewCount }: TrustBarProps) {
+export function TrustBar({ siteId, brandColor = '#00ef99', averageRating, totalReviewCount, schedulingActive = false }: TrustBarProps) {
+  const [stats, setStats] = useState<SchedulingStats | null>(null);
+
+  useEffect(() => {
+    if (!schedulingActive || !siteId) return;
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`/api/public/scheduling-stats?siteId=${siteId}`);
+        const data = await res.json();
+        // Only set if there's meaningful data
+        if (data.sameDayRate > 0 || data.totalBookings > 0) {
+          setStats(data);
+        }
+      } catch {
+        // Silently fail — static badges still show
+      }
+    }
+
+    loadStats();
+  }, [siteId, schedulingActive]);
+
   const displayRating = averageRating || 5.0;
   const ratingLabel = averageRating
     ? `${averageRating.toFixed(1)} Rating (${totalReviewCount || 0} Reviews)`
@@ -33,6 +63,42 @@ export function TrustBar({ brandColor = '#00ef99', averageRating, totalReviewCou
           </div>
           <span className="text-base font-medium text-gray-700">{ratingLabel}</span>
         </div>
+
+        {/* Same-day availability rate */}
+        {stats && stats.sameDayRate >= 50 && (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}15` }}>
+              <CalendarCheck className="h-5 w-5" style={{ color: brandColor }} />
+            </div>
+            <span className="text-base font-medium text-gray-700">
+              Same-Day Service {stats.sameDayRate}% of Days
+            </span>
+          </div>
+        )}
+
+        {/* Total bookings completed */}
+        {stats && stats.totalBookings >= 10 && (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}15` }}>
+              <TrendingUp className="h-5 w-5" style={{ color: brandColor }} />
+            </div>
+            <span className="text-base font-medium text-gray-700">
+              {stats.totalBookings.toLocaleString()}+ Jobs Completed
+            </span>
+          </div>
+        )}
+
+        {/* Average daily spots */}
+        {stats && stats.avgDailySpots >= 2 && !stats.sameDayRate && (
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: `${brandColor}15` }}>
+              <Clock className="h-5 w-5" style={{ color: brandColor }} />
+            </div>
+            <span className="text-base font-medium text-gray-700">
+              ~{stats.avgDailySpots} Openings Daily
+            </span>
+          </div>
+        )}
 
         {/* Licensed badge */}
         <div className="flex items-center gap-3">

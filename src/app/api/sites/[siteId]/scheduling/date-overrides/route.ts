@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 
 interface RouteParams {
   params: Promise<{ siteId: string }>;
@@ -11,6 +13,12 @@ interface RouteParams {
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   try {
     const supabase = createAdminClient();
@@ -49,6 +57,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   try {
     const body = await request.json();
@@ -102,6 +116,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
+
+  const authClient = await createClient();
+  const access = await verifySiteAccess(authClient, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const overrideId = searchParams.get('overrideId');
 

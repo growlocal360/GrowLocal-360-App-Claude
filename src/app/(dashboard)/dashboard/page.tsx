@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +27,11 @@ export default async function DashboardPage() {
   const profile = (activeOrgId
     ? allProfiles?.find(p => p.organization_id === activeOrgId)
     : allProfiles?.[0]) || allProfiles?.[0] || null;
+
+  // Users only see Job Snaps — redirect them
+  if (profile?.role === 'user') {
+    redirect('/dashboard/job-snaps');
+  }
 
   // Determine which sites this user can access
   const accessibleSiteIds = await getAccessibleSiteIds(

@@ -150,8 +150,12 @@ export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
         </p>
         {mainNavItems
           .filter((item) => {
-            // Hide Team link for 'user' role
-            if (item.href === '/dashboard/team' && role === 'user') return false;
+            if (role === 'user') {
+              // Users only see Job Snaps
+              if (item.href === '/dashboard/team') return false;
+              if (item.href === '/dashboard/sites') return false;
+              if (item.href === '/dashboard') return false;
+            }
             return true;
           })
           .map((item) => {
@@ -178,7 +182,9 @@ export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
         <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-gray-400">
           Shortcuts
         </p>
-        {shortcutItems.map((item) => (
+        {shortcutItems
+          .filter(() => role !== 'user')
+          .map((item) => (
           <Link
             key={item.href}
             href={item.href}

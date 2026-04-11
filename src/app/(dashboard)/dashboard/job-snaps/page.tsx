@@ -26,6 +26,7 @@ export default function JobSnapsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>('owner');
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
@@ -45,18 +46,41 @@ export default function JobSnapsPage() {
         ? allProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
         : allProfiles?.[0]) || allProfiles?.[0] || null;
 
+      const role = profile?.role || 'user';
+      setUserRole(role);
       setUserData({
         name: profile?.full_name || user?.user_metadata?.full_name || 'User',
         email: user?.email || '',
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load sites across all user's orgs
-      const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
-      const { data: sites } = await supabase
-        .from('sites')
-        .select('id, name')
-        .in('organization_id', orgIds);
+      // Load sites — scoped to assigned sites for 'user' role
+      let sites: { id: string; name: string }[] | null = null;
+
+      if (role === 'user' && profile?.id) {
+        // Users only see their assigned sites
+        const { data: assignments } = await supabase
+          .from('profile_site_assignments')
+          .select('site_id')
+          .eq('profile_id', profile.id);
+
+        const assignedIds = (assignments || []).map((a: { site_id: string }) => a.site_id);
+        if (assignedIds.length > 0) {
+          const { data } = await supabase
+            .from('sites')
+            .select('id, name')
+            .in('id', assignedIds);
+          sites = data;
+        }
+      } else {
+        // Owner/Admin see all org sites
+        const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
+        const { data } = await supabase
+          .from('sites')
+          .select('id, name')
+          .in('organization_id', orgIds);
+        sites = data;
+      }
 
       if (!sites?.length) {
         setJobSnaps([]);
@@ -328,9 +352,9 @@ export default function JobSnapsPage() {
               <JobSnapCard
                 key={snap.id}
                 job={snap}
-                onPushToWebsite={handlePushToWebsite}
-                onPushToGBP={handlePushToGBP}
-                onRevalidate={handleRevalidate}
+                onPushToWebsite={userRole !== 'user' ? handlePushToWebsite : undefined}
+                onPushToGBP={userRole !== 'user' ? handlePushToGBP : undefined}
+                onRevalidate={userRole !== 'user' ? handleRevalidate : undefined}
                 actionLoading={actionLoading}
               />
             ))}

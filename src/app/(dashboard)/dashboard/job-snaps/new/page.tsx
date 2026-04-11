@@ -97,20 +97,41 @@ export default function NewJobSnapPage() {
             setSiteContext(ctx);
           }
         } else if (activeOrgId) {
-          // No specific site — load all sites for the active org so user can pick
-          const { data: sites } = await supabase
-            .from('sites')
-            .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
-            .eq('organization_id', activeOrgId);
+          // No specific site — load sites scoped to the user's role
+          const role = profile?.role || 'user';
+          let sites;
+
+          if (role === 'user' && profile?.id) {
+            // Users only see their assigned sites
+            const { data: assignments } = await supabase
+              .from('profile_site_assignments')
+              .select('site_id')
+              .eq('profile_id', profile.id);
+
+            const assignedIds = (assignments || []).map((a: { site_id: string }) => a.site_id);
+            if (assignedIds.length > 0) {
+              const { data } = await supabase
+                .from('sites')
+                .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+                .in('id', assignedIds);
+              sites = data;
+            }
+          } else {
+            // Owner/Admin see all org sites
+            const { data } = await supabase
+              .from('sites')
+              .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+              .eq('organization_id', activeOrgId);
+            sites = data;
+          }
 
           if (sites && sites.length > 0) {
             const mapped = sites.map(mapSite);
             setAllSites(mapped);
             if (mapped.length === 1) {
-              // Single site org — auto-select
+              // Single site — auto-select
               setSiteContext(mapped[0]);
             }
-            // Multi-site without param: leave siteContext null; selector will appear
           }
         }
       }

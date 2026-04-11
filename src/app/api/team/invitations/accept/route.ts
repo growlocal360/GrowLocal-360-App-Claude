@@ -51,7 +51,20 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (existingProfile) {
-    // Mark invitation as accepted even if already a member
+    // Still apply site assignments — the trigger may have created the profile
+    // but skipped or failed on site assignments
+    if (invitation.site_ids && invitation.site_ids.length > 0) {
+      for (const siteId of invitation.site_ids) {
+        await adminSupabase
+          .from('profile_site_assignments')
+          .upsert(
+            { profile_id: existingProfile.id, site_id: siteId },
+            { onConflict: 'profile_id,site_id' }
+          );
+      }
+    }
+
+    // Mark invitation as accepted
     await adminSupabase
       .from('invitations')
       .update({ accepted_at: new Date().toISOString() })

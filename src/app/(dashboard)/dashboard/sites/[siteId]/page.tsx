@@ -36,6 +36,7 @@ import {
   Search,
   Sparkles,
   Camera,
+  CalendarDays,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -77,6 +78,8 @@ export default function SiteDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [jobSnapCount, setJobSnapCount] = useState(0);
+  const [todayAppointmentCount, setTodayAppointmentCount] = useState(0);
+  const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [userData, setUserData] = useState({
@@ -149,6 +152,23 @@ export default function SiteDashboardPage() {
         .select('id', { count: 'exact', head: true })
         .eq('site_id', siteId);
       setJobSnapCount(count || 0);
+
+      // Fetch today's appointment count
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { count: todayCount } = await supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('site_id', siteId)
+        .eq('scheduled_date', todayStr)
+        .not('status', 'in', '("cancelled","no_show")');
+      setTodayAppointmentCount(todayCount || 0);
+
+      const { count: pendingCount } = await supabase
+        .from('appointments')
+        .select('id', { count: 'exact', head: true })
+        .eq('site_id', siteId)
+        .eq('status', 'pending');
+      setPendingAppointmentCount(pendingCount || 0);
 
       setLoading(false);
     }
@@ -560,6 +580,36 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/leads`}>
                   View Leads
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Scheduling */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+                  <CalendarDays className="h-5 w-5 text-cyan-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Scheduling</h3>
+                  <p className="text-sm text-gray-500">Appointments & booking</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {todayAppointmentCount > 0
+                  ? `${todayAppointmentCount} appointment${todayAppointmentCount !== 1 ? 's' : ''} today`
+                  : 'No appointments today'}
+                {pendingAppointmentCount > 0 && (
+                  <span className="text-yellow-600 font-medium"> ({pendingAppointmentCount} pending)</span>
+                )}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/scheduling`}>
+                  View Calendar
                 </Link>
               </Button>
             </CardContent>

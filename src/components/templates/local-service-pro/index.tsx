@@ -15,6 +15,7 @@ import { TrustBar } from './trust-bar';
 import { ServicesPreview } from './services-preview';
 import { LocalizedContentSection } from './localized-content-section';
 import { LeadCaptureSection } from './lead-capture-section';
+import { BookingWidget } from './booking-widget';
 import { TestimonialsSection } from './testimonials-section';
 import { BrandsSection } from './brands-section';
 import { ServiceAreasSection } from './service-areas-section';
@@ -32,9 +33,12 @@ interface LocalServiceProTemplateProps {
   secondaryCategories?: NavCategory[];
   locationSlug?: string;
   recentWorkItems?: PublicRenderWorkItem[];
+  schedulingActive?: boolean;
+  showAvailabilityBadge?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems, schedulingActive = false, showAvailabilityBadge = true, ctaStyle = 'booking' }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00ef99';
@@ -70,6 +74,8 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
           primaryCategoryName={primaryCategoryName}
+          showAvailabilityBadge={showAvailabilityBadge}
+          ctaStyle={ctaStyle}
         />
         <TrustBar
           brandColor={brandColor}
@@ -101,11 +107,21 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           locationSlug={locationSlug}
         />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={slug} locationSlug={locationSlug} />
-        <LeadCaptureSection
-          siteId={site.id}
-          brandColor={brandColor}
-          services={services}
-        />
+        {schedulingActive ? (
+          <BookingWidget
+            siteId={site.id}
+            brandColor={brandColor}
+            services={services}
+            ctaStyle={ctaStyle}
+          />
+        ) : (
+          <LeadCaptureSection
+            siteId={site.id}
+            brandColor={brandColor}
+            services={services}
+            ctaStyle={ctaStyle}
+          />
+        )}
         <TestimonialsSection
           city={primaryLocation?.city || 'Our'}
           reviews={reviews}

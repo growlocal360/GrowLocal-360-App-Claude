@@ -9,9 +9,10 @@ interface MultiStepFormProps {
   siteId: string;
   brandColor?: string;
   services?: PublicRenderServiceListing[];
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function MultiStepForm({ siteId, brandColor = '#00ef99', services }: MultiStepFormProps) {
+export function MultiStepForm({ siteId, brandColor = '#00ef99', services, ctaStyle = 'booking' }: MultiStepFormProps) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -61,7 +62,9 @@ export function MultiStepForm({ siteId, brandColor = '#00ef99', services }: Mult
       <div className="mb-4 flex items-center justify-between text-sm">
         <div>
           <span className="font-bold text-gray-900 text-2xl">
-            {step === 1 ? 'Book Online' : 'Your Contact Info'}
+            {step === 1
+              ? (ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate')
+              : 'Your Contact Info'}
           </span>
           {step === 1 && (
             <div className="font-medium" style={{ color: brandColor }}>In less than 30 seconds</div>
@@ -184,7 +187,7 @@ export function MultiStepForm({ siteId, brandColor = '#00ef99', services }: Mult
               className="flex-1 hover:opacity-90"
               style={{ backgroundColor: brandColor }}
             >
-              {submitting ? 'Submitting...' : 'Get Free Estimate'}
+              {submitting ? 'Submitting...' : (ctaStyle === 'booking' ? 'Schedule Service' : 'Get Free Estimate')}
             </Button>
           </div>
         </form>

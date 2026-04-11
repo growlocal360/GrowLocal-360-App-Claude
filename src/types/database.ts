@@ -76,11 +76,13 @@ export interface StaffMember {
   full_name: string;
   title: string | null;
   email: string | null;
+  phone: string | null;
   bio: string | null;
   avatar_url: string | null;
   show_on_site: boolean;
   display_order: number;
   is_active: boolean;
+  schedule_token: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -575,6 +577,137 @@ export interface Payment {
 
 export interface SubscriptionWithPlan extends Subscription {
   plan?: SubscriptionPlan;
+}
+
+// ============================================================
+// Scheduling System Types
+// ============================================================
+
+export type SchedulingMode = 'time_windows' | 'time_slots';
+export type BookingMode = 'instant' | 'approval';
+export type CTAStyle = 'booking' | 'estimate';
+export type AppointmentSource = 'online_booking' | 'manual' | 'phone';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+export type AvailabilityPostPlatform = 'google_business' | 'facebook';
+export type AvailabilityPostStatus = 'pending' | 'published' | 'failed';
+
+export interface SchedulingConfig {
+  id: string;
+  site_id: string;
+  scheduling_mode: SchedulingMode;
+  booking_mode: BookingMode;
+  cta_style: CTAStyle;
+  timezone: string;
+  advance_booking_days: number;
+  booking_buffer_minutes: number;
+  show_availability_badge: boolean;
+  auto_publish_availability: boolean;
+  publish_times: string[];       // e.g. ["07:30","11:00","14:00"]
+  publish_days: string[];        // e.g. ["mon","tue","wed","thu","fri"]
+  notification_phone: string | null;
+  notification_email: string | null;
+  confirmation_message: string | null;
+  twilio_phone_number: string | null;
+  twilio_phone_sid: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StaffSchedule {
+  id: string;
+  staff_member_id: string;
+  scheduling_config_id: string;
+  day_of_week: number;           // 0=Sun, 6=Sat
+  start_time: string;            // TIME as string "HH:MM:SS"
+  end_time: string;
+  capacity: number;
+  slot_times: string[] | null;   // for time_slots mode: ["08:00","09:00"]
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface StaffTimeBlock {
+  id: string;
+  staff_member_id: string;
+  block_date: string;            // DATE as string "YYYY-MM-DD"
+  start_time: string | null;     // null = all day block
+  end_time: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface StaffServiceArea {
+  id: string;
+  staff_member_id: string;
+  site_id: string;
+  city: string | null;
+  zip_code: string | null;
+  service_area_id: string | null;
+  created_at: string;
+}
+
+export interface Appointment {
+  id: string;
+  site_id: string;
+  staff_member_id: string | null;
+  lead_id: string | null;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
+  customer_city: string | null;
+  customer_zip: string | null;
+  service_type: string | null;
+  notes: string | null;
+  scheduled_date: string;        // DATE as "YYYY-MM-DD"
+  scheduled_time: string | null; // TIME as "HH:MM:SS"
+  time_window_start: string | null;
+  time_window_end: string | null;
+  source: AppointmentSource;
+  status: AppointmentStatus;
+  reminder_24h_sent: boolean;
+  reminder_dayof_sent: boolean;
+  confirmation_sent: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DateOverride {
+  id: string;
+  scheduling_config_id: string;
+  override_date: string;         // DATE as "YYYY-MM-DD"
+  is_blocked: boolean;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface AvailabilityPost {
+  id: string;
+  site_id: string;
+  platform: AvailabilityPostPlatform;
+  post_content: string;
+  spots_available: number;
+  posted_date: string;           // DATE as "YYYY-MM-DD"
+  external_post_id: string | null;
+  status: AvailabilityPostStatus;
+  error_message: string | null;
+  created_at: string;
+}
+
+// Extended scheduling types
+export interface AppointmentWithStaff extends Appointment {
+  staff_member?: StaffMember;
+}
+
+export interface AppointmentWithLead extends Appointment {
+  lead?: Lead;
+  staff_member?: StaffMember;
+}
+
+export interface StaffMemberWithSchedule extends StaffMember {
+  schedules?: StaffSchedule[];
+  time_blocks?: StaffTimeBlock[];
+  service_areas?: StaffServiceArea[];
 }
 
 export interface GSCQuery {

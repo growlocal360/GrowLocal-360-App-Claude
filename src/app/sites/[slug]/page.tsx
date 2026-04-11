@@ -9,6 +9,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -88,9 +89,15 @@ export default async function SitePage({ params }: SitePageProps) {
   }
 
   // Single-location / microsite: render the full template
-  const [{ categories, services }, recentWorkItems] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories, services }, recentWorkItems, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getPublishedWorkItems(data.site.id, { limit: 3 }),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style, show_availability_badge')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
@@ -129,6 +136,9 @@ export default async function SitePage({ params }: SitePageProps) {
           categories={navCategories}
           secondaryCategories={secondaryCategories}
           recentWorkItems={recentWorkItems.map(toPublicWorkItem)}
+          schedulingActive={schedulingConfig?.is_active || false}
+          showAvailabilityBadge={schedulingConfig?.show_availability_badge ?? true}
+          ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
         />
       );
   }

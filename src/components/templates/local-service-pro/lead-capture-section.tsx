@@ -8,14 +8,17 @@ interface LeadCaptureSectionProps {
   siteId: string;
   brandColor?: string;
   services?: PublicRenderServiceListing[];
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }: LeadCaptureSectionProps) {
+export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services, ctaStyle = 'booking' }: LeadCaptureSectionProps) {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
     service_type: '',
+    city: '',
+    zip: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -60,10 +63,12 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
       <div className="mx-auto max-w-xl px-4">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
-            Get a Free, No-Obligation Estimate
+            {ctaStyle === 'booking' ? 'Schedule Your Service' : 'Get a Free, No-Obligation Estimate'}
           </h2>
           <p className="mt-2 text-gray-600">
-            Fill out the form below and we&apos;ll get back to you promptly.
+            {ctaStyle === 'booking'
+              ? 'Fill out the form below to request an appointment.'
+              : 'Fill out the form below and we\'ll get back to you promptly.'}
           </p>
         </div>
 
@@ -101,6 +106,24 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              placeholder="City"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
+              value={formData.city}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            />
+            <input
+              type="text"
+              placeholder="ZIP Code"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': brandColor } as React.CSSProperties}
+              value={formData.zip}
+              onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+            />
+          </div>
           {services && services.length > 0 && (
             <div>
               <select
@@ -124,7 +147,7 @@ export function LeadCaptureSection({ siteId, brandColor = '#00ef99', services }:
             className="w-full rounded-full py-3.5 text-base shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             style={{ backgroundColor: brandColor }}
           >
-            {submitting ? 'Submitting...' : 'Request Estimate'}
+            {submitting ? 'Submitting...' : (ctaStyle === 'booking' ? 'Schedule Service' : 'Request Estimate')}
           </Button>
         </form>
       </div>

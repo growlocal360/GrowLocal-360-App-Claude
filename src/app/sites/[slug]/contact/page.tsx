@@ -9,6 +9,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -54,10 +55,16 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
     notFound();
   }
 
-  const [{ categories, services }, teamProfiles, workItems] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories, services }, teamProfiles, workItems, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getTeamMembersForSite(data.site.id, data.site.organization_id),
     getPublishedWorkItems(data.site.id, { limit: 3 }),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style, show_availability_badge')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -80,6 +87,8 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
       categories={navCategories}
       siteSlug={slug}
       recentWorkItems={workItems.map(toPublicWorkItem)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

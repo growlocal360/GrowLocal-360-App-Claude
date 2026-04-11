@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 import { MultiStepForm } from './multi-step-form';
+import { AvailabilityBadge } from './availability-badge';
 
 const LOWERCASE_WORDS = new Set([
   'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
@@ -27,9 +28,11 @@ interface HeroSectionProps {
   averageRating?: number;
   totalReviewCount?: number;
   primaryCategoryName?: string;
+  showAvailabilityBadge?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount, primaryCategoryName }: HeroSectionProps) {
+export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking' }: HeroSectionProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
@@ -92,9 +95,16 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
               {heroDescription}
             </p>
 
+            {/* Availability badge */}
+            {showAvailabilityBadge && (
+              <div className="mt-6">
+                <AvailabilityBadge siteId={site.id} brandColor={brandColor} />
+              </div>
+            )}
+
             {/* Phone CTA + Book Online */}
             {phone && (
-              <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="mt-4 flex flex-wrap items-center gap-4">
                 <a href={`tel:${phone.replace(/\D/g, '')}`} className="flex items-center gap-3">
                   <div
                     className="flex h-12 w-12 items-center justify-center rounded-full"
@@ -113,7 +123,9 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
                   className="rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                   style={{ backgroundColor: brandColor }}
                 >
-                  <a href="#hero-form">Book Online</a>
+                  <a href="#hero-form">
+                    {ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate'}
+                  </a>
                 </Button>
               </div>
             )}
@@ -127,6 +139,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
                   siteId={site.id}
                   brandColor={brandColor}
                   services={services}
+                  ctaStyle={ctaStyle}
                 />
               </CardContent>
             </Card>

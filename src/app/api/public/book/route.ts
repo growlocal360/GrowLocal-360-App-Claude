@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       siteId, customer_name, customer_email, customer_phone,
-      customer_city, customer_zip, service_type, notes,
+      customer_city, customer_zip, service_type, notes, address,
       scheduled_date, scheduled_time, time_window_start, time_window_end,
       source_page,
     } = body;
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         phone: customer_phone || null,
         service_type: service_type || null,
         message: notes || null,
+        address: address || null,
         source_page: source_page || '/contact',
         status: 'new',
       })
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
         customer_zip: customer_zip || null,
         service_type: service_type || null,
         notes: notes || null,
+        address: address || null,
         scheduled_date,
         scheduled_time: scheduled_time || null,
         time_window_start: time_window_start || null,

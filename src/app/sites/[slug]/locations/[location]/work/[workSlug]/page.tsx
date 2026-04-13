@@ -11,6 +11,7 @@ import {
   toPublicLocation,
   toPublicWorkItem,
   toPublicAreaListing,
+  toPublicCategory,
 } from '@/lib/sites/public-render-model';
 import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 
@@ -59,7 +60,8 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
     notFound();
   }
 
-  const [relatedItems, { categories }, { data: serviceAreas }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [relatedItems, { categories }, { data: serviceAreas }, { data: schedulingConfig }] = await Promise.all([
     getRelatedWorkItems({
       siteId: data.site.id,
       serviceId: data.workItem.service_id,
@@ -67,11 +69,16 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
       excludeId: data.workItem.id,
     }),
     getCategoriesWithServices(data.site.id),
-    createAdminClient()
+    supabase
       .from('service_areas')
       .select('*')
       .eq('site_id', data.site.id)
       .order('sort_order'),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -99,6 +106,9 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

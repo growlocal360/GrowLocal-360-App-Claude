@@ -20,7 +20,7 @@ import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
 import { SiteFooter } from './site-footer';
 import { TestimonialsSection } from './testimonials-section';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { RecentWorkSection } from './about/recent-work-section';
 
 interface ServicePageProps {
@@ -38,9 +38,12 @@ interface ServicePageProps {
   serviceAreas?: PublicRenderAreaListing[];
   locationSlug?: string;
   recentWorkItems?: PublicRenderWorkItem[];
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug, recentWorkItems }: ServicePageProps) {
+export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug, recentWorkItems, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || location.phone;
@@ -221,10 +224,13 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* Lead Capture Form */}
-        <LeadCaptureSection
+        <UnifiedLeadForm
           siteId={site.id}
           brandColor={brandColor}
-          services={allServices}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
         />
 
         {/* Testimonials */}

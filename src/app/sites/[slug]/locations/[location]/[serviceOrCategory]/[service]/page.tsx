@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -127,10 +128,16 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
     notFound();
   }
 
-  const [googleReviews, { categories }, workItems] = await Promise.all([
+  const supabase = createAdminClient();
+  const [googleReviews, { categories }, workItems, { data: schedulingConfig }] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -155,6 +162,9 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
       categories={navCategories}
       locationSlug={location}
       recentWorkItems={workItems.map(toPublicWorkItem)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

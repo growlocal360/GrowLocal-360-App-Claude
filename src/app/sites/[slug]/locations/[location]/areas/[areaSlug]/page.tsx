@@ -112,7 +112,15 @@ export default async function MultiLocationAreaDetailRoute({ params }: MultiLoca
     notFound();
   }
 
-  const googleReviews = await getGoogleReviewsForSite(data.site.id);
+  const supabase = createAdminClient();
+  const [googleReviews, { data: schedulingConfig }] = await Promise.all([
+    getGoogleReviewsForSite(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
+  ]);
 
   return (
     <ServiceAreaPage
@@ -127,6 +135,9 @@ export default async function MultiLocationAreaDetailRoute({ params }: MultiLoca
       siteSlug={slug}
       googleReviews={googleReviews.map(toPublicReview)}
       locationSlug={location}
+      formCategories={data.categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

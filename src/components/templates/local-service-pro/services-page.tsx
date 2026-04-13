@@ -15,7 +15,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 
 interface ServicesPageProps {
   site: PublicRenderSite;
@@ -25,9 +25,12 @@ interface ServicesPageProps {
   serviceAreas?: PublicRenderAreaListing[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug, locationSlug }: ServicesPageProps) {
+export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServicesPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -239,7 +242,14 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
           </section>
         )}
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>

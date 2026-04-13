@@ -359,6 +359,7 @@ export interface Lead {
   phone: string | null;
   service_type: string | null;
   message: string | null;
+  address: string | null;
   source_page: string | null;
   status: LeadStatus;
   created_at: string;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderNeighborhoodListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderNeighborhoodListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -14,7 +14,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 
 interface ServiceAreasListingPageProps {
   site: PublicRenderSite;
@@ -24,9 +24,12 @@ interface ServiceAreasListingPageProps {
   categories: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug }: ServiceAreasListingPageProps) {
+export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreasListingPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -156,7 +159,14 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
           </section>
         )}
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>

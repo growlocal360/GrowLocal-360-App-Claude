@@ -6,7 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
@@ -53,7 +53,8 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
     notFound();
   }
 
-  const [relatedItems, { categories }, { data: serviceAreas }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [relatedItems, { categories }, { data: serviceAreas }, { data: schedulingConfig }] = await Promise.all([
     getRelatedWorkItems({
       siteId: data.site.id,
       serviceId: data.workItem.service_id,
@@ -61,11 +62,16 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
       excludeId: data.workItem.id,
     }),
     getCategoriesWithServices(data.site.id),
-    createAdminClient()
+    supabase
       .from('service_areas')
       .select('*')
       .eq('site_id', data.site.id)
       .order('sort_order'),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -85,6 +91,9 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
       relatedItems={relatedItems.map(toPublicWorkItem)}
       serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

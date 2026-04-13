@@ -28,7 +28,7 @@ import { SiteHeader, NavCategory } from './site-header';
 import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
 import { LocalizedContentSection } from './localized-content-section';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { TestimonialsSection } from './testimonials-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
@@ -48,9 +48,12 @@ interface ServiceAreaPageProps {
   googleReviews?: PublicRenderReview[];
   recentWorkItems?: PublicRenderWorkItem[];
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, locationSlug }: ServiceAreaPageProps) {
+export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -247,10 +250,13 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
           city={serviceArea.name}
         />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
-        <LeadCaptureSection
+        <UnifiedLeadForm
           siteId={site.id}
           brandColor={brandColor}
-          services={services}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
         />
         <TestimonialsSection
           city={serviceArea.name}

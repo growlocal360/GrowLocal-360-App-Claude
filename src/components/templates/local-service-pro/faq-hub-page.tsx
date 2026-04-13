@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { HelpCircle, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderAreaListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import type { FAQHubItem } from '@/lib/sites/get-faq-hub';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -15,7 +15,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 
 interface FAQHubPageProps {
   site: PublicRenderSite;
@@ -27,6 +27,9 @@ interface FAQHubPageProps {
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 export function FAQHubPage({
@@ -39,6 +42,9 @@ export function FAQHubPage({
   categories,
   siteSlug,
   locationSlug,
+  formCategories,
+  schedulingActive = false,
+  ctaStyle = 'booking',
 }: FAQHubPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
@@ -145,7 +151,14 @@ export function FAQHubPage({
           </section>
         )}
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -10,6 +11,7 @@ import {
   toPublicLocation,
   toPublicAreaListing,
   toPublicNeighborhoodListing,
+  toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
@@ -55,7 +57,15 @@ export default async function AreasPageRoute({ params }: AreasPageProps) {
     notFound();
   }
 
-  const { categories } = await getCategoriesWithServices(data.site.id);
+  const supabase = createAdminClient();
+  const [{ categories }, { data: schedulingConfig }] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
+  ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -72,6 +82,9 @@ export default async function AreasPageRoute({ params }: AreasPageProps) {
       neighborhoods={data.neighborhoods.map(toPublicNeighborhoodListing)}
       categories={navCategories}
       siteSlug={slug}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

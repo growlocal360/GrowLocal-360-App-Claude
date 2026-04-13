@@ -2,7 +2,7 @@
 
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing, PublicRenderTeamMember, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderAreaListing, PublicRenderTeamMember, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -14,8 +14,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
-import { BookingWidget } from './booking-widget';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { TeamSection } from './team-section';
 import { RecentWorkSection } from './about/recent-work-section';
@@ -25,6 +24,7 @@ interface ContactPageProps {
   primaryLocation: PublicRenderLocation | null;
   pageContent: PublicRenderPageContent | null;
   services?: PublicRenderServiceListing[];
+  formCategories?: PublicRenderCategory[];
   serviceAreas?: PublicRenderAreaListing[];
   teamMembers?: PublicRenderTeamMember[];
   categories?: NavCategory[];
@@ -35,7 +35,7 @@ interface ContactPageProps {
   schedulingActive?: boolean;
 }
 
-export function ContactPage({ site, primaryLocation, pageContent, services, serviceAreas, teamMembers, categories, siteSlug, locationSlug, recentWorkItems, ctaStyle = 'booking', schedulingActive = false }: ContactPageProps) {
+export function ContactPage({ site, primaryLocation, pageContent, services, formCategories, serviceAreas, teamMembers, categories, siteSlug, locationSlug, recentWorkItems, ctaStyle = 'booking', schedulingActive = false }: ContactPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
@@ -121,11 +121,14 @@ export function ContactPage({ site, primaryLocation, pageContent, services, serv
 
         <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
-        {schedulingActive ? (
-          <BookingWidget siteId={site.id} brandColor={brandColor} services={services} ctaStyle={ctaStyle} />
-        ) : (
-          <LeadCaptureSection siteId={site.id} brandColor={brandColor} services={services} ctaStyle={ctaStyle} />
-        )}
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
         <EmbeddedMapSection primaryLocation={primaryLocation} />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

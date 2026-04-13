@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createStaticClient } from '@/lib/supabase/static';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -195,9 +196,15 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   const serviceData = await getMultiLocationServiceData(slug, location, serviceOrCategory);
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
-    const [googleReviews, { categories }] = await Promise.all([
+    const supabase = createAdminClient();
+    const [googleReviews, { categories }, { data: schedulingConfig }] = await Promise.all([
       getGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
+      supabase
+        .from('scheduling_configs')
+        .select('is_active, cta_style')
+        .eq('site_id', serviceData.site.id)
+        .single(),
     ]);
 
     const navCategories: NavCategory[] = categories.map(c => ({
@@ -221,6 +228,9 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
         googleReviews={googleReviews.map(toPublicReview)}
         categories={navCategories}
         locationSlug={location}
+        formCategories={categories.map(toPublicCategory)}
+        schedulingActive={schedulingConfig?.is_active || false}
+        ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       />
     );
   }
@@ -228,7 +238,15 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   // Try as category (secondary categories)
   const categoryData = await getMultiLocationCategoryData(slug, location, serviceOrCategory);
   if (categoryData) {
-    const googleReviews = await getGoogleReviewsForSite(categoryData.site.id);
+    const catSupabase = createAdminClient();
+    const [googleReviews, { data: catSchedulingConfig }] = await Promise.all([
+      getGoogleReviewsForSite(categoryData.site.id),
+      catSupabase
+        .from('scheduling_configs')
+        .select('is_active, cta_style')
+        .eq('site_id', categoryData.site.id)
+        .single(),
+    ]);
 
     return (
       <CategoryPage
@@ -242,6 +260,9 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
         siteSlug={slug}
         googleReviews={googleReviews.map(toPublicReview)}
         locationSlug={location}
+        formCategories={categoryData.allCategories.map(toPublicCategory)}
+        schedulingActive={catSchedulingConfig?.is_active || false}
+        ctaStyle={(catSchedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       />
     );
   }

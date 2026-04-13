@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Phone, ArrowRight, MapPin, Wrench, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandDetail, PublicRenderAreaListing, PublicRenderReview, PublicRenderBrandListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderBrandDetail, PublicRenderAreaListing, PublicRenderReview, PublicRenderBrandListing, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import type { BrandValueProp, ServiceFAQ } from '@/types/database';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -17,7 +17,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { TestimonialsSection } from './testimonials-section';
 import { RecentWorkSection } from './about/recent-work-section';
 
@@ -42,6 +42,9 @@ interface BrandDetailPageProps {
   siteSlug: string;
   locationSlug?: string;
   recentWorkItems?: PublicRenderWorkItem[];
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 export function BrandDetailPage({
@@ -56,6 +59,9 @@ export function BrandDetailPage({
   siteSlug,
   locationSlug,
   recentWorkItems,
+  formCategories,
+  schedulingActive = false,
+  ctaStyle = 'booking',
 }: BrandDetailPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
@@ -274,7 +280,14 @@ export function BrandDetailPage({
           </div>
         </section>
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
 
         {/* Other Brands */}
         {otherBrands.length > 0 && (

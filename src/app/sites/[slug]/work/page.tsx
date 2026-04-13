@@ -7,7 +7,8 @@ import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/g
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -50,10 +51,16 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
     notFound();
   }
 
-  const [workItems, total, { categories }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [workItems, total, { categories }, { data: schedulingConfig }] = await Promise.all([
     getPublishedWorkItems(data.site.id),
     getPublishedWorkItemsCount(data.site.id),
     getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -70,6 +77,9 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
       workItems={workItems.map(toPublicWorkItem)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
       siteId={data.site.id}
       hasMore={workItems.length < total}

@@ -6,6 +6,7 @@ import { ServicesPage } from '@/components/templates/local-service-pro/services-
 import {
   toPublicSite, toPublicLocation, toPublicCategory, toPublicServiceListing, toPublicAreaListing,
 } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { PublicRenderServiceListing } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
@@ -51,7 +52,15 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
     notFound();
   }
 
-  const { categories, services } = await getCategoriesWithServices(data.site.id);
+  const supabase = createAdminClient();
+  const [{ categories, services }, { data: schedulingConfig }] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
+  ]);
 
   // Map services to render model
   const publicServices = services.map(toPublicServiceListing);
@@ -77,6 +86,9 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
       categories={categories.map(toPublicCategory)}
       servicesByCategory={servicesByCategory}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

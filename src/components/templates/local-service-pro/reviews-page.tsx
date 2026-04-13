@@ -3,7 +3,7 @@
 import { Star, MessageCircle, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderReview, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderReview, PublicRenderAreaListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -14,7 +14,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 
 interface ReviewsPageProps {
   site: PublicRenderSite;
@@ -26,6 +26,9 @@ interface ReviewsPageProps {
   categories: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 export function ReviewsPage({
@@ -38,6 +41,9 @@ export function ReviewsPage({
   categories,
   siteSlug,
   locationSlug,
+  formCategories,
+  schedulingActive = false,
+  ctaStyle = 'booking',
 }: ReviewsPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const city = primaryLocation?.city || '';
@@ -234,7 +240,14 @@ export function ReviewsPage({
           </section>
         )}
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>

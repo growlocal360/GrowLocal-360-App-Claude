@@ -7,7 +7,8 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { ReviewsPage } from '@/components/templates/local-service-pro/reviews-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicReview, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicReview, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -61,9 +62,15 @@ export default async function ReviewsPageRoute({ params }: ReviewsPageProps) {
     notFound();
   }
 
-  const [allReviews, { categories }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [allReviews, { categories }, { data: schedulingConfig }] = await Promise.all([
     getAllGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -85,6 +92,9 @@ export default async function ReviewsPageRoute({ params }: ReviewsPageProps) {
       totalReviewCount={totalReviewCount}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

@@ -6,7 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -82,6 +82,7 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}
       services={services.map(toPublicServiceListing)}
+      formCategories={categories.map(toPublicCategory)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       teamMembers={teamProfiles.map(toPublicTeamMember)}
       categories={navCategories}

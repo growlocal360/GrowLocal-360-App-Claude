@@ -1,6 +1,6 @@
 'use client';
 
-import type { PublicRenderData, PublicRenderServiceListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import type { PublicRenderData, PublicRenderServiceListing, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -14,8 +14,7 @@ import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
 import { ServicesPreview } from './services-preview';
 import { LocalizedContentSection } from './localized-content-section';
-import { LeadCaptureSection } from './lead-capture-section';
-import { BookingWidget } from './booking-widget';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { TestimonialsSection } from './testimonials-section';
 import { BrandsSection } from './brands-section';
 import { ServiceAreasSection } from './service-areas-section';
@@ -33,12 +32,13 @@ interface LocalServiceProTemplateProps {
   secondaryCategories?: NavCategory[];
   locationSlug?: string;
   recentWorkItems?: PublicRenderWorkItem[];
+  formCategories?: PublicRenderCategory[];
   schedulingActive?: boolean;
   showAvailabilityBadge?: boolean;
   ctaStyle?: 'booking' | 'estimate';
 }
 
-export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems, schedulingActive = false, showAvailabilityBadge = true, ctaStyle = 'booking' }: LocalServiceProTemplateProps) {
+export function LocalServiceProTemplate({ data, siteSlug, services, primaryCategorySlug, primaryCategoryName, categories, secondaryCategories, locationSlug, recentWorkItems, formCategories, schedulingActive = false, showAvailabilityBadge = true, ctaStyle = 'booking' }: LocalServiceProTemplateProps) {
   const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00ef99';
@@ -71,6 +71,8 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           primaryLocation={primaryLocation}
           pageContent={homePageContent}
           services={services}
+          formCategories={formCategories}
+          schedulingActive={schedulingActive}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
           primaryCategoryName={primaryCategoryName}
@@ -109,21 +111,14 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           locationSlug={locationSlug}
         />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={slug} locationSlug={locationSlug} />
-        {schedulingActive ? (
-          <BookingWidget
-            siteId={site.id}
-            brandColor={brandColor}
-            services={services}
-            ctaStyle={ctaStyle}
-          />
-        ) : (
-          <LeadCaptureSection
-            siteId={site.id}
-            brandColor={brandColor}
-            services={services}
-            ctaStyle={ctaStyle}
-          />
-        )}
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
         <TestimonialsSection
           city={primaryLocation?.city || 'Our'}
           reviews={reviews}

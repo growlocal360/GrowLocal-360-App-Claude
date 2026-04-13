@@ -16,7 +16,7 @@ import { HeroSection } from './hero-section';
 import { TrustBar } from './trust-bar';
 import { ServicesPreview } from './services-preview';
 import { LocalizedContentSection } from './localized-content-section';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { TestimonialsSection } from './testimonials-section';
 import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
@@ -38,9 +38,12 @@ interface CategoryPageProps {
   neighborhoods?: PublicRenderNeighborhoodListing[];
   recentWorkItems?: PublicRenderWorkItem[];
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
-export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, recentWorkItems, locationSlug }: CategoryPageProps) {
+export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, recentWorkItems, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: CategoryPageProps) {
   const { site, location, category, services, allCategories, pageContent } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
   const averageRating = site.settings?.google_average_rating as number | undefined;
@@ -120,10 +123,13 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
           city={location.city}
         />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
-        <LeadCaptureSection
+        <UnifiedLeadForm
           siteId={site.id}
           brandColor={brandColor}
-          services={services}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
         />
         <TestimonialsSection
           city={location.city}

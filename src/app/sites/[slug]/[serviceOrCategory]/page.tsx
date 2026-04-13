@@ -82,10 +82,15 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
     const admin = createAdminClient();
-    const [allReviews, { categories }, { data: serviceAreas }] = await Promise.all([
+    const [allReviews, { categories }, { data: serviceAreas }, { data: schedulingConfig }] = await Promise.all([
       getAllGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
       admin.from('service_areas').select('*').eq('site_id', serviceData.site.id).order('sort_order'),
+      admin
+        .from('scheduling_configs')
+        .select('is_active, cta_style')
+        .eq('site_id', serviceData.site.id)
+        .single(),
     ]);
 
     const navCategories: NavCategory[] = categories.map(c => ({
@@ -114,6 +119,9 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         googleReviews={displayReviews}
         categories={navCategories}
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
+        formCategories={categories.map(toPublicCategory)}
+        schedulingActive={schedulingConfig?.is_active || false}
+        ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       />
     );
   }
@@ -128,10 +136,15 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     // Fetch work items for all services in this category
     const categoryServiceIds = categoryData.services.map(s => s.id);
-    const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, ...workItemResults] = await Promise.all([
+    const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, { data: catSchedulingConfig }, ...workItemResults] = await Promise.all([
       getAllGoogleReviewsForSite(categoryData.site.id),
       admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
       admin.from('neighborhoods').select('*').eq('site_id', categoryData.site.id).eq('is_active', true).order('sort_order'),
+      admin
+        .from('scheduling_configs')
+        .select('is_active, cta_style')
+        .eq('site_id', categoryData.site.id)
+        .single(),
       ...categoryServiceIds.map(sid => getPublishedWorkItems(categoryData.site.id, { serviceId: sid, limit: 6 })),
     ]);
 
@@ -165,6 +178,9 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
         neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
         recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
+        formCategories={categoryData.allCategories.map(toPublicCategory)}
+        schedulingActive={catSchedulingConfig?.is_active || false}
+        ctaStyle={(catSchedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       />
     );
   }

@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { BeforeAfterSlider } from './before-after-slider';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -28,6 +28,9 @@ interface WorkDetailPageProps {
   categories?: NavCategory[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 function formatDate(dateStr: string): string {
@@ -46,6 +49,9 @@ export function WorkDetailPage({
   categories,
   siteSlug,
   locationSlug,
+  formCategories,
+  schedulingActive = false,
+  ctaStyle = 'booking',
 }: WorkDetailPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation.phone;
@@ -295,7 +301,14 @@ export function WorkDetailPage({
           </section>
         )}
 
-        <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+        <UnifiedLeadForm
+          siteId={site.id}
+          brandColor={brandColor}
+          categories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          variant="section"
+        />
       </main>
 
       <SiteFooter

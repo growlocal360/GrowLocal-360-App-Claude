@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Service } from '@/types/database';
 import {
   toPublicSite,
@@ -42,7 +43,15 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
     notFound();
   }
 
-  const { categories, services } = await getCategoriesWithServices(data.site.id);
+  const supabase = createAdminClient();
+  const [{ categories, services }, { data: schedulingConfig }] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
+  ]);
 
   // Group services by category ID
   const servicesByCategory: Record<string, Service[]> = {};
@@ -65,6 +74,9 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       siteSlug={slug}
       locationSlug={location}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

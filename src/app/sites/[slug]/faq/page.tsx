@@ -6,7 +6,8 @@ import { getFAQHubData } from '@/lib/sites/get-faq-hub';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { FAQHubPage } from '@/components/templates/local-service-pro/faq-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -62,9 +63,15 @@ export default async function FAQPageRoute({ params }: FAQPageProps) {
     notFound();
   }
 
-  const [{ categories }, faqHub] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories }, faqHub, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getFAQHubData(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -85,6 +92,9 @@ export default async function FAQPageRoute({ params }: FAQPageProps) {
       topicGroups={faqHub.topicGroups}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

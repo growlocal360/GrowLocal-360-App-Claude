@@ -3,8 +3,8 @@
 import { Star, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing } from '@/lib/sites/public-render-model';
-import { MultiStepForm } from './multi-step-form';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { AvailabilityBadge } from './availability-badge';
 
 const LOWERCASE_WORDS = new Set([
@@ -25,6 +25,8 @@ interface HeroSectionProps {
   primaryLocation: PublicRenderLocation | null;
   pageContent?: PublicRenderPageContent | null;
   services?: PublicRenderServiceListing[];
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
   averageRating?: number;
   totalReviewCount?: number;
   primaryCategoryName?: string;
@@ -32,7 +34,7 @@ interface HeroSectionProps {
   ctaStyle?: 'booking' | 'estimate';
 }
 
-export function HeroSection({ site, primaryLocation, pageContent, services, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking' }: HeroSectionProps) {
+export function HeroSection({ site, primaryLocation, pageContent, services, formCategories, schedulingActive = false, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking' }: HeroSectionProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
@@ -135,11 +137,13 @@ export function HeroSection({ site, primaryLocation, pageContent, services, aver
           <div id="hero-form" className="flex items-center justify-center lg:justify-end">
             <Card className="w-full max-w-md rounded-2xl bg-white text-gray-900 shadow-2xl">
               <CardContent className="p-6">
-                <MultiStepForm
+                <UnifiedLeadForm
                   siteId={site.id}
                   brandColor={brandColor}
-                  services={services}
+                  categories={formCategories}
+                  schedulingActive={schedulingActive}
                   ctaStyle={ctaStyle}
+                  variant="hero"
                 />
               </CardContent>
             </Card>

@@ -6,7 +6,8 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { BrandsListingPage } from '@/components/templates/local-service-pro/brands-listing-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicBrandListing, toPublicAreaListing } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicBrandListing, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
@@ -56,7 +57,15 @@ export default async function BrandsPageRoute({ params }: BrandsPageProps) {
     notFound();
   }
 
-  const { categories } = await getCategoriesWithServices(data.site.id);
+  const supabase = createAdminClient();
+  const [{ categories }, { data: schedulingConfig }] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
+  ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -72,6 +81,9 @@ export default async function BrandsPageRoute({ params }: BrandsPageProps) {
       brands={data.brands.map(toPublicBrandListing)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

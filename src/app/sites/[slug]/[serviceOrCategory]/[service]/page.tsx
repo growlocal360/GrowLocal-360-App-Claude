@@ -143,11 +143,16 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   }
 
   const admin = createAdminClient();
-  const [allReviews, { categories }, { data: serviceAreas }, workItems] = await Promise.all([
+  const [allReviews, { categories }, { data: serviceAreas }, workItems, { data: schedulingConfig }] = await Promise.all([
     getAllGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
     getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
+    admin
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -177,6 +182,9 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       categories={navCategories}
       serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
       recentWorkItems={workItems.map(toPublicWorkItem)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

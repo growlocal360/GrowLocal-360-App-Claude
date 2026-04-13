@@ -7,7 +7,8 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { AboutPage } from '@/components/templates/local-service-pro/about-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember, toPublicServiceListing, toPublicWorkItem, toPublicReview } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember, toPublicServiceListing, toPublicWorkItem, toPublicReview, toPublicCategory } from '@/lib/sites/public-render-model';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
 
 export const revalidate = 3600;
@@ -54,10 +55,16 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
     notFound();
   }
 
-  const [{ categories, services }, teamProfiles, workItems] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories, services }, teamProfiles, workItems, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getTeamMembersForSite(data.site.id, data.site.organization_id),
     getPublishedWorkItems(data.site.id, { limit: 3 }),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -82,6 +89,9 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
       services={services.map(toPublicServiceListing)}
       workItems={workItems.map(toPublicWorkItem)}
       reviews={reviews}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
       siteSlug={slug}
     />
   );

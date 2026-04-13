@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    const { name, email, phone, service_type, message, source_page } = body;
+    const { name, email, phone, service_type, message, address, source_page } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         phone: phone || null,
         service_type: service_type || null,
         message: message || null,
+        address: address || null,
         source_page: source_page || null,
         status: 'new',
       })

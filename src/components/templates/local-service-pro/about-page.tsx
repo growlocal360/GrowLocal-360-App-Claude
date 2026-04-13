@@ -9,6 +9,7 @@ import type {
   PublicRenderServiceListing,
   PublicRenderWorkItem,
   PublicRenderReview,
+  PublicRenderCategory,
 } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -21,7 +22,7 @@ import {
 } from '@/lib/schema';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
-import { LeadCaptureSection } from './lead-capture-section';
+import { UnifiedLeadForm } from './unified-lead-form';
 import { TeamSection } from './team-section';
 import { FounderSection } from './about/founder-section';
 import { MissionValuesSection } from './about/mission-values-section';
@@ -44,6 +45,9 @@ interface AboutPageProps {
   reviews?: PublicRenderReview[];
   siteSlug: string;
   locationSlug?: string;
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 export function AboutPage({
@@ -58,6 +62,9 @@ export function AboutPage({
   reviews,
   siteSlug,
   locationSlug,
+  formCategories,
+  schedulingActive = false,
+  ctaStyle = 'booking',
 }: AboutPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -177,7 +184,14 @@ export function AboutPage({
               </section>
             )}
             <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
-            <LeadCaptureSection siteId={site.id} brandColor={brandColor} />
+            <UnifiedLeadForm
+              siteId={site.id}
+              brandColor={brandColor}
+              categories={formCategories}
+              schedulingActive={schedulingActive}
+              ctaStyle={ctaStyle}
+              variant="section"
+            />
           </>
         )}
       </main>

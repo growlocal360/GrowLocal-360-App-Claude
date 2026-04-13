@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
 import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -11,6 +12,7 @@ import {
   toPublicLocation,
   toPublicWorkItem,
   toPublicAreaListing,
+  toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
@@ -41,10 +43,16 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
     notFound();
   }
 
-  const [workItems, total, { categories }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [workItems, total, { categories }, { data: schedulingConfig }] = await Promise.all([
     getPublishedWorkItems(data.site.id),
     getPublishedWorkItemsCount(data.site.id),
     getCategoriesWithServices(data.site.id),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -65,6 +73,9 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
       locationSlug={location}
       siteId={data.site.id}
       hasMore={workItems.length < total}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

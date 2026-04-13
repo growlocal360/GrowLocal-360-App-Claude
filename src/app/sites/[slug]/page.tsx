@@ -6,7 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
+import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -136,6 +136,7 @@ export default async function SitePage({ params }: SitePageProps) {
           categories={navCategories}
           secondaryCategories={secondaryCategories}
           recentWorkItems={recentWorkItems.map(toPublicWorkItem)}
+          formCategories={categories.map(toPublicCategory)}
           schedulingActive={schedulingConfig?.is_active || false}
           showAvailabilityBadge={schedulingConfig?.show_availability_badge ?? true}
           ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}

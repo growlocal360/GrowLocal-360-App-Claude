@@ -11,7 +11,7 @@ import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite, toPublicLocation, toPublicBrandDetail, toPublicBrandListing,
-  toPublicAreaListing, toPublicReview, toPublicWorkItem,
+  toPublicAreaListing, toPublicReview, toPublicWorkItem, toPublicCategory,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
@@ -92,10 +92,16 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
 
   const { site, brand, primaryLocation, serviceAreas, brands } = data;
 
-  const [{ categories, services }, allReviews, workItems] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories, services }, allReviews, workItems, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(site.id),
     getAllGoogleReviewsForSite(site.id),
     getPublishedWorkItems(site.id, { brandName: brand.name, limit: 6 }),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', site.id)
+      .single(),
   ]);
 
   // Smart match: show reviews mentioning this brand, fall back to all
@@ -138,6 +144,9 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
       googleReviews={displayBrandReviews}
       siteSlug={slug}
       recentWorkItems={workItems.map(toPublicWorkItem)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

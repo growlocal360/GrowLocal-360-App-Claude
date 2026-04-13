@@ -11,6 +11,7 @@ import {
   toPublicLocation,
   toPublicAreaListing,
   toPublicPageContent,
+  toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
@@ -50,13 +51,19 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
     notFound();
   }
 
-  const [{ categories }, { data: aboutContent }] = await Promise.all([
+  const supabase = createAdminClient();
+  const [{ categories }, { data: aboutContent }, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
-    createAdminClient()
+    supabase
       .from('site_pages')
       .select('*')
       .eq('site_id', data.site.id)
       .eq('page_type', 'about')
+      .single(),
+    supabase
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
       .single(),
   ]);
 
@@ -76,6 +83,9 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
       categories={navCategories}
       siteSlug={slug}
       locationSlug={location}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

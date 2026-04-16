@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
   verifyDomainDNS,
@@ -25,8 +26,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    const adminSupabase = createAdminClient();
+
     // Fetch site data (no org join needed — access already verified)
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await adminSupabase
       .from('sites')
       .select('id, custom_domain, custom_domain_verified')
       .eq('id', siteId)
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Update site verification status
     if (verificationResult.verified && verificationResult.configured) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminSupabase
         .from('sites')
         .update({
           custom_domain_verified: true,

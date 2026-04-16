@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
   addDomainToVercel,
@@ -26,8 +27,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    const adminSupabase = createAdminClient();
+
     // Fetch site data (no org join needed — access already verified)
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await adminSupabase
       .from('sites')
       .select('id, slug, custom_domain, custom_domain_verified, vercel_domain_config')
       .eq('id', siteId)
@@ -80,6 +83,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    const adminSupabase = createAdminClient();
+
     // Parse request body
     const body = await request.json();
     const { domain } = body;
@@ -98,7 +103,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Check if domain is already in use by another site
-    const { data: existingSite } = await supabase
+    const { data: existingSite } = await adminSupabase
       .from('sites')
       .select('id')
       .eq('custom_domain', normalizedDomain)
@@ -112,21 +117,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Add domain to Vercel if configured
-    let vercelConfig = null;
-    if (isVercelConfigured()) {
-      const vercelResult = await addDomainToVercel(normalizedDomain);
-      if (!vercelResult.success) {
-        return NextResponse.json(
-          { error: vercelResult.error || 'Failed to add domain to Vercel' },
-          { status: 400 }
-        );
-      }
-      vercelConfig = vercelResult.domain;
+    // Vercel must be configured to add custom domains
+    if (!isVercelConfigured()) {
+      return NextResponse.json(
+        { error: 'Custom domains are not available. Vercel API is not configured.' },
+        { status: 503 }
+      );
     }
 
+    // Add domain to Vercel
+    const vercelResult = await addDomainToVercel(normalizedDomain);
+    if (!vercelResult.success) {
+      return NextResponse.json(
+        { error: vercelResult.error || 'Failed to add domain to Vercel' },
+        { status: 400 }
+      );
+    }
+    const vercelConfig = vercelResult.domain;
+
     // Update site with custom domain
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('sites')
       .update({
         custom_domain: normalizedDomain,
@@ -174,8 +184,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    const adminSupabase = createAdminClient();
+
     // Fetch site data (no org join needed — access already verified)
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await adminSupabase
       .from('sites')
       .select('id, custom_domain')
       .eq('id', siteId)
@@ -199,7 +211,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Update site to remove custom domain
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('sites')
       .update({
         custom_domain: null,

@@ -264,6 +264,17 @@ export default function DomainSettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {config && !config.vercelConfigured && (
+            <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-medium">Custom domains not available</p>
+                <p className="text-sm">
+                  Vercel API integration is not configured. Custom domains require deployment to Vercel with API credentials.
+                </p>
+              </div>
+            </div>
+          )}
           {config?.customDomain ? (
             <>
               {/* Current custom domain */}
@@ -366,7 +377,7 @@ export default function DomainSettingsPage() {
                     onChange={(e) => setNewDomain(e.target.value)}
                     className="flex-1"
                   />
-                  <Button type="submit" disabled={isAdding || !newDomain.trim()}>
+                  <Button type="submit" disabled={isAdding || !newDomain.trim() || !config?.vercelConfigured}>
                     {isAdding ? (
                       <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                     ) : null}

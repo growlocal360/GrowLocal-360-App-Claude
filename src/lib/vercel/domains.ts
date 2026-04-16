@@ -95,6 +95,13 @@ export async function addDomainToVercel(domain: string): Promise<VercelDomainRes
 
     const data = await response.json();
 
+    if (response.status === 401 || response.status === 403) {
+      return {
+        success: false,
+        error: 'Vercel API authentication failed. Check that VERCEL_API_TOKEN is valid.',
+      };
+    }
+
     if (!response.ok) {
       // Handle specific error cases
       if (data.error?.code === 'domain_already_in_use') {
@@ -144,6 +151,13 @@ export async function removeDomainFromVercel(domain: string): Promise<{ success:
       }
     );
 
+    if (response.status === 401 || response.status === 403) {
+      return {
+        success: false,
+        error: 'Vercel API authentication failed. Check that VERCEL_API_TOKEN is valid.',
+      };
+    }
+
     if (!response.ok) {
       const data = await response.json();
       return {
@@ -177,6 +191,13 @@ export async function getDomainConfig(domain: string): Promise<VercelDomainRespo
         headers: getVercelHeaders(),
       }
     );
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        success: false,
+        error: 'Vercel API authentication failed. Check that VERCEL_API_TOKEN is valid.',
+      };
+    }
 
     if (!response.ok) {
       const data = await response.json();
@@ -220,6 +241,14 @@ export async function verifyDomainDNS(domain: string): Promise<{
         headers: getVercelHeaders(),
       }
     );
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        verified: false,
+        configured: false,
+        error: 'Vercel API authentication failed. Check that VERCEL_API_TOKEN is valid.',
+      };
+    }
 
     const data = await response.json();
 

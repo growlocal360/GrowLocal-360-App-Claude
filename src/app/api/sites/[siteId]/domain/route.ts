@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
-  addDomainToVercel,
-  removeDomainFromVercel,
+  addDomainPairToVercel,
+  removeDomainPairFromVercel,
+  getApexDomain,
   getDNSInstructions,
   isVercelConfigured,
 } from '@/lib/vercel/domains';
@@ -93,14 +94,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Domain is required' }, { status: 400 });
     }
 
-    // Normalize domain (lowercase, trim)
-    const normalizedDomain = domain.toLowerCase().trim();
+    // Normalize domain (lowercase, trim, strip www to get apex)
+    const inputDomain = domain.toLowerCase().trim();
 
     // Basic domain validation
     const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/;
-    if (!domainRegex.test(normalizedDomain)) {
+    if (!domainRegex.test(inputDomain)) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
     }
+
+    // Always store the apex (root) domain — both root + www will be added to Vercel
+    const normalizedDomain = getApexDomain(inputDomain);
 
     // Check if domain is already in use by another site
     const { data: existingSite } = await adminSupabase
@@ -125,8 +129,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Add domain to Vercel
-    const vercelResult = await addDomainToVercel(normalizedDomain);
+    // Add both root + www domains to Vercel
+    const vercelResult = await addDomainPairToVercel(normalizedDomain);
     if (!vercelResult.success) {
       return NextResponse.json(
         { error: vercelResult.error || 'Failed to add domain to Vercel' },
@@ -146,9 +150,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('id', siteId);
 
     if (updateError) {
-      // Rollback Vercel domain if database update fails
+      // Rollback Vercel domains if database update fails
       if (isVercelConfigured()) {
-        await removeDomainFromVercel(normalizedDomain);
+        await removeDomainPairFromVercel(normalizedDomain);
       }
       throw updateError;
     }
@@ -201,11 +205,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No custom domain to remove' }, { status: 400 });
     }
 
-    // Remove domain from Vercel if configured
+    // Remove both root + www domains from Vercel if configured
     if (isVercelConfigured()) {
-      const vercelResult = await removeDomainFromVercel(site.custom_domain);
+      const vercelResult = await removeDomainPairFromVercel(site.custom_domain);
       if (!vercelResult.success) {
-        console.warn('Failed to remove domain from Vercel:', vercelResult.error);
+        console.warn('Failed to remove domains from Vercel:', vercelResult.error);
         // Continue anyway - we'll remove from database
       }
     }

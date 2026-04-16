@@ -275,30 +275,78 @@ export async function verifyDomainDNS(domain: string): Promise<{
 }
 
 /**
- * Get DNS instructions for a domain
- * Returns the DNS records the user needs to configure
+ * Extract the apex (root) domain from any domain input.
+ * e.g., "www.example.com" → "example.com", "example.com" → "example.com"
+ */
+export function getApexDomain(domain: string): string {
+  const parts = domain.split('.');
+  // For standard domains like "www.example.com" or "example.com"
+  if (parts.length > 2 && parts[0] === 'www') {
+    return parts.slice(1).join('.');
+  }
+  return domain;
+}
+
+/**
+ * Add both root and www domains to the Vercel project.
+ * Returns the result for the root domain.
+ */
+export async function addDomainPairToVercel(domain: string): Promise<VercelDomainResponse> {
+  const apex = getApexDomain(domain);
+  const www = `www.${apex}`;
+
+  // Add root domain first
+  const rootResult = await addDomainToVercel(apex);
+  if (!rootResult.success) return rootResult;
+
+  // Add www — don't fail the whole operation if www fails (e.g., already exists)
+  const wwwResult = await addDomainToVercel(www);
+  if (!wwwResult.success) {
+    console.warn(`Failed to add www domain (${www}):`, wwwResult.error);
+  }
+
+  return rootResult;
+}
+
+/**
+ * Remove both root and www domains from the Vercel project.
+ */
+export async function removeDomainPairFromVercel(domain: string): Promise<{ success: boolean; error?: string }> {
+  const apex = getApexDomain(domain);
+  const www = `www.${apex}`;
+
+  // Remove both — don't fail if one doesn't exist
+  const [rootResult, wwwResult] = await Promise.all([
+    removeDomainFromVercel(apex),
+    removeDomainFromVercel(www),
+  ]);
+
+  if (!rootResult.success && !wwwResult.success) {
+    return rootResult; // Return root error if both failed
+  }
+
+  return { success: true };
+}
+
+/**
+ * Get DNS instructions for a domain.
+ * Always returns both A record (root) and CNAME (www) so both resolve.
  */
 export function getDNSInstructions(domain: string, domainConfig?: VercelDomainConfig): DNSInstructions {
-  const isApex = !domain.includes('.') || domain.split('.').length === 2;
-
-  const records: VercelDNSRecord[] = [];
-
-  if (isApex) {
-    // Apex domain (e.g., example.com)
-    records.push({
+  const records: VercelDNSRecord[] = [
+    // A record for root domain (e.g., example.com)
+    {
       type: 'A',
       name: '@',
       value: '76.76.21.21',
-    });
-  } else {
-    // Subdomain (e.g., www.example.com)
-    const subdomain = domain.split('.')[0];
-    records.push({
+    },
+    // CNAME for www subdomain (e.g., www.example.com)
+    {
       type: 'CNAME',
-      name: subdomain,
+      name: 'www',
       value: 'cname.vercel-dns.com',
-    });
-  }
+    },
+  ];
 
   // Add TXT verification record if needed
   const verification = domainConfig?.verification?.[0];

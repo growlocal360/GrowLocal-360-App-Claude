@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, MessageCircle, Phone } from 'lucide-react';
+import { Star, MessageCircle, Phone, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderReview, PublicRenderAreaListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
@@ -203,6 +203,20 @@ export function ReviewsPage({
 
                 <p className="mt-8 text-center text-xs text-gray-400">
                   Reviews from Google Business Profile
+                  {primaryLocation?.gbp_place_id && (
+                    <>
+                      {' — '}
+                      <a
+                        href={`https://search.google.com/local/reviews?placeid=${primaryLocation.gbp_place_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 underline hover:text-gray-600"
+                      >
+                        View All
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </>
+                  )}
                 </p>
               </div>
             </section>

@@ -5,7 +5,6 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import {
   addDomainPairToVercel,
   removeDomainPairFromVercel,
-  getApexDomain,
   getDNSInstructions,
   isVercelConfigured,
 } from '@/lib/vercel/domains';
@@ -94,17 +93,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Domain is required' }, { status: 400 });
     }
 
-    // Normalize domain (lowercase, trim, strip www to get apex)
-    const inputDomain = domain.toLowerCase().trim();
+    // Normalize domain (lowercase, trim) — store exactly what user typed
+    const normalizedDomain = domain.toLowerCase().trim();
 
     // Basic domain validation
     const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/;
-    if (!domainRegex.test(inputDomain)) {
+    if (!domainRegex.test(normalizedDomain)) {
       return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 });
     }
-
-    // Always store the apex (root) domain — both root + www will be added to Vercel
-    const normalizedDomain = getApexDomain(inputDomain);
 
     // Check if domain is already in use by another site
     const { data: existingSite } = await adminSupabase

@@ -87,11 +87,13 @@ async function getSiteByDomain(domain: string, request: NextRequest): Promise<Si
   try {
     const supabase = createMiddlewareClient(request);
 
-    // Try exact match first, then strip www for apex lookup
-    // (custom_domain stores the apex/root domain, e.g., "example.com")
+    // Try exact match first, then the counterpart (www ↔ non-www)
+    // custom_domain stores whatever the user entered as primary
     const domainsToTry = [domain];
     if (domain.startsWith('www.')) {
       domainsToTry.push(domain.slice(4)); // strip www.
+    } else {
+      domainsToTry.push(`www.${domain}`); // add www.
     }
 
     const { data: sites } = await supabase

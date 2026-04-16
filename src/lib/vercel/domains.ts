@@ -289,23 +289,58 @@ export function getApexDomain(domain: string): string {
 
 /**
  * Add both root and www domains to the Vercel project.
- * Returns the result for the root domain.
+ * The primary domain is whichever the user entered; the other redirects to it.
  */
-export async function addDomainPairToVercel(domain: string): Promise<VercelDomainResponse> {
-  const apex = getApexDomain(domain);
+export async function addDomainPairToVercel(primaryDomain: string): Promise<VercelDomainResponse> {
+  const apex = getApexDomain(primaryDomain);
   const www = `www.${apex}`;
+  const isWwwPrimary = primaryDomain.startsWith('www.');
+  const secondaryDomain = isWwwPrimary ? apex : www;
 
-  // Add root domain first
-  const rootResult = await addDomainToVercel(apex);
-  if (!rootResult.success) return rootResult;
+  // Add primary domain first
+  const primaryResult = await addDomainToVercel(primaryDomain);
+  if (!primaryResult.success) return primaryResult;
 
-  // Add www — don't fail the whole operation if www fails (e.g., already exists)
-  const wwwResult = await addDomainToVercel(www);
-  if (!wwwResult.success) {
-    console.warn(`Failed to add www domain (${www}):`, wwwResult.error);
+  // Add secondary with redirect to primary
+  const secondaryResult = await addDomainToVercelWithRedirect(secondaryDomain, primaryDomain);
+  if (!secondaryResult.success) {
+    console.warn(`Failed to add redirect domain (${secondaryDomain}):`, secondaryResult.error);
   }
 
-  return rootResult;
+  return primaryResult;
+}
+
+/**
+ * Add a domain to Vercel with a redirect to another domain.
+ */
+async function addDomainToVercelWithRedirect(domain: string, redirectTo: string): Promise<VercelDomainResponse> {
+  try {
+    const projectId = getProjectId();
+    const teamParam = getTeamParam();
+
+    const response = await fetch(
+      `${VERCEL_API_BASE}/v10/projects/${projectId}/domains${teamParam}`,
+      {
+        method: 'POST',
+        headers: getVercelHeaders(),
+        body: JSON.stringify({ name: domain, redirect: redirectTo, redirectStatusCode: 301 }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, error: 'Vercel API authentication failed.' };
+    }
+
+    if (!response.ok) {
+      return { success: false, error: data.error?.message || 'Failed to add redirect domain' };
+    }
+
+    return { success: true, domain: data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to add redirect domain' };
+  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand, WizardGSCQuery } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand, WizardGSCQuery, MicrositeConfig } from '@/types/wizard';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
@@ -42,6 +42,7 @@ interface WizardStore extends WizardState {
   removeService: (id: string) => void;
   setWebsiteType: (type: WebsiteType) => void;
   setDomain: (domain: string) => void;
+  setMicrositeConfig: (config: MicrositeConfig | null) => void;
   setGSCPropertyUrl: (url: string | null) => void;
   setGSCQueries: (queries: WizardGSCQuery[]) => void;
   setCurrentStep: (step: WizardStep) => void;
@@ -268,9 +269,15 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       services: state.services.filter((s) => s.id !== id),
     })),
 
-  setWebsiteType: (type) => set({ websiteType: type }),
+  setWebsiteType: (type) => set({
+    websiteType: type,
+    // Clear microsite config when switching away from microsite
+    ...(type !== 'microsite' ? { micrositeConfig: null } : {}),
+  }),
 
   setDomain: (domain) => set({ domain }),
+
+  setMicrositeConfig: (config) => set({ micrositeConfig: config }),
 
   setGSCPropertyUrl: (url) => set({ gscPropertyUrl: url }),
 
@@ -365,6 +372,13 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
         return true;
 
       case 'website-type':
+        if (state.websiteType === 'microsite') {
+          return !!(
+            state.micrositeConfig &&
+            state.micrositeConfig.targetCity.trim() &&
+            state.micrositeConfig.targetServiceId
+          );
+        }
         return state.websiteType !== null;
 
       case 'review':

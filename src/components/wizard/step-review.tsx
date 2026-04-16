@@ -63,6 +63,7 @@ export function StepReview() {
     serviceAreas,
     neighborhoods,
     websiteType,
+    micrositeConfig,
     gscPropertyUrl,
     gscQueries,
     prevStep,
@@ -139,6 +140,8 @@ export function StepReview() {
         brands: brands.filter((b) => b.isSelected).map((b) => ({
           name: b.name,
         })),
+        // Microsite targeting (only when websiteType === 'microsite')
+        micrositeConfig: websiteType === 'microsite' && micrositeConfig ? micrositeConfig : undefined,
         // GSC data (optional — enhances content generation)
         gscPropertyUrl: gscPropertyUrl || undefined,
         gscQueries: gscQueries.length > 0 ? gscQueries : undefined,
@@ -669,6 +672,21 @@ export function StepReview() {
             <p className="text-sm text-gray-500">
               {locations.length} location{locations.length !== 1 ? 's' : ''}
             </p>
+            {websiteType === 'microsite' && micrositeConfig && (
+              <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">Microsite Target</p>
+                <p className="mt-1 font-semibold text-gray-900">
+                  {micrositeConfig.brandMode === 'single_brand' && micrositeConfig.selectedBrandName
+                    ? `${micrositeConfig.selectedBrandName} `
+                    : ''}
+                  {micrositeConfig.targetServiceName} in {micrositeConfig.targetCity}, {micrositeConfig.targetCityState}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Slug: <span className="font-mono">{micrositeConfig.suggestedSlug}</span>
+                  {micrositeConfig.brandMode === 'all_major' ? ' · All major brands' : ''}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -239,6 +239,16 @@ export const generateSiteContent = inngest.createFunction(
     const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings)
       + await buildGSCContext(siteId);
 
+    // Microsite targeting — read from settings
+    const isMicrosite = site.website_type === 'microsite';
+    const settings = (site.settings || {}) as SiteSettings;
+    const msCity = settings.microsite_target_city;
+    const msCityState = settings.microsite_target_city_state;
+    const msService = settings.microsite_target_service;
+    const msCategory = settings.microsite_target_category;
+    const msBrandMode = settings.microsite_brand_mode;
+    const msSelectedBrand = settings.microsite_selected_brand;
+
     // Step 1b: Auto-fix orphaned services (null site_category_id)
     const orphanedServices = allServices.filter((s) => !s.site_category_id);
     if (orphanedServices.length > 0) {
@@ -476,11 +486,12 @@ export const generateSiteContent = inngest.createFunction(
           const coreContent = await generateCorePages(
             anthropic,
             site.name,
-            primaryLocation.city,
-            primaryLocation.state,
+            isMicrosite && msCity ? msCity : primaryLocation.city,
+            isMicrosite && msCityState ? msCityState : primaryLocation.state,
             categoryName,
             site.website_type,
-            contentDirectives
+            contentDirectives,
+            isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined
           );
 
           // Filter to only the requested pages
@@ -604,8 +615,14 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 5: Generate category pages (one step per category for granularity)
+    // Microsites: only generate the target category
     const targetCategories = shouldRunCategories
-      ? (scope.type === 'categories' ? siteCategories.filter(c => scope.categoryIds.includes(c.id)) : siteCategories)
+      ? isMicrosite
+        ? siteCategories.filter(c => {
+            const name = getCategoryName(c);
+            return msCategory ? name === msCategory : c.is_primary;
+          }).slice(0, 1)
+        : (scope.type === 'categories' ? siteCategories.filter(c => scope.categoryIds.includes(c.id)) : siteCategories)
       : [];
     for (const category of targetCategories) {
       completedTasks = await step.run(
@@ -683,8 +700,18 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 6: Generate service pages (batched by category, 2 at a time)
+    // Microsites: target service + up to 2 siblings in the same category
     const targetServices = shouldRunServices
-      ? (scope.type === 'services' ? allServices.filter(s => scope.serviceIds.includes(s.id)) : allServices)
+      ? isMicrosite
+        ? (() => {
+            const target = msService ? allServices.find(s => s.name === msService) : null;
+            if (!target) return allServices.slice(0, 3);
+            const siblings = allServices
+              .filter(s => s.site_category_id === target.site_category_id && s.id !== target.id)
+              .slice(0, 2);
+            return [target, ...siblings];
+          })()
+        : (scope.type === 'services' ? allServices.filter(s => scope.serviceIds.includes(s.id)) : allServices)
       : [];
     const servicesBySiteCategory = new Map<string, typeof allServices>();
     for (const service of targetServices) {
@@ -783,8 +810,13 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 7: Generate service area pages (batched, 10 at a time)
+    // Microsites: limit to ~8 nearest areas
     const targetServiceAreas = shouldRunServiceAreas
-      ? (scope.type === 'service-areas' ? allServiceAreas.filter(a => scope.serviceAreaIds.includes(a.id)) : allServiceAreas)
+      ? isMicrosite
+        ? [...allServiceAreas]
+            .sort((a, b) => (a.distance_miles || 999) - (b.distance_miles || 999))
+            .slice(0, 8)
+        : (scope.type === 'service-areas' ? allServiceAreas.filter(a => scope.serviceAreaIds.includes(a.id)) : allServiceAreas)
       : [];
     if (targetServiceAreas.length > 0) {
       const areasBatchSize = 10;
@@ -854,8 +886,11 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 8: Generate brand pages (batched, 5 at a time)
+    // Microsites with single brand: only generate that one brand page
     const targetBrands = shouldRunBrands
-      ? (scope.type === 'brands' ? allBrands.filter(b => scope.brandIds.includes(b.id)) : allBrands)
+      ? isMicrosite && msBrandMode === 'single_brand' && msSelectedBrand
+        ? allBrands.filter(b => b.name === msSelectedBrand)
+        : (scope.type === 'brands' ? allBrands.filter(b => scope.brandIds.includes(b.id)) : allBrands)
       : [];
     if (targetBrands.length > 0) {
       const brandBatchSize = 5;
@@ -925,8 +960,11 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 8.5: Generate neighborhood pages (batched, 5 at a time with enriched context)
+    // Microsites: skip neighborhoods (city-level focus)
     const targetNeighborhoods = shouldRunNeighborhoods
-      ? (scope.type === 'neighborhoods' ? allNeighborhoods.filter(n => scope.neighborhoodIds.includes(n.id)) : allNeighborhoods)
+      ? isMicrosite
+        ? []
+        : (scope.type === 'neighborhoods' ? allNeighborhoods.filter(n => scope.neighborhoodIds.includes(n.id)) : allNeighborhoods)
       : [];
     if (targetNeighborhoods.length > 0) {
       // Pre-fetch real landmarks for all neighborhoods via Google Places API
@@ -1187,10 +1225,13 @@ async function generateCorePages(
   state: string,
   primaryCategory: string,
   websiteType: string,
-  directives: string = ''
+  directives: string = '',
+  micrositeContext?: { service?: string; brand?: string }
 ) {
   const homePageFocus =
-    websiteType === 'single_location'
+    websiteType === 'microsite' && micrositeContext?.service
+      ? `This is a MICROSITE (EMD). The home page is the primary landing page for "${micrositeContext.service}" in ${city}, ${state}.${micrositeContext.brand ? ` This site focuses specifically on ${micrositeContext.brand} products/services.` : ' Mention all major brands served.'} The H1 MUST be the exact-match keyword: "${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service} in ${city}, ${state}". Every element should reinforce this niche.`
+      : websiteType === 'single_location'
       ? `The home page IS the primary category page. It should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business.`
       : `The home page should be brand-focused for ${businessName} since this is a multi-location business.`;
 

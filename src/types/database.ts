@@ -154,6 +154,13 @@ export interface SiteSettings {
   gsc_property_url?: string;
   gsc_last_synced_at?: string;
   gsc_connected?: boolean;
+  // Microsite targeting
+  microsite_target_city?: string;
+  microsite_target_city_state?: string;
+  microsite_target_service?: string;
+  microsite_target_category?: string;
+  microsite_brand_mode?: 'all_major' | 'single_brand';
+  microsite_selected_brand?: string;
 }
 
 export interface ServiceAreaDB {

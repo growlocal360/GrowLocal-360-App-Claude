@@ -84,6 +84,19 @@ export interface WizardService {
   sortOrder: number;
 }
 
+// Microsite configuration — collected when websiteType === 'microsite'
+export interface MicrositeConfig {
+  targetCity: string;           // e.g. "Sarasota"
+  targetCityState: string;      // e.g. "FL"
+  targetServiceId: string;      // references WizardService.id
+  targetServiceName: string;    // e.g. "Refrigerator Repair"
+  targetCategoryGcid: string;   // parent category GCID
+  targetCategoryName: string;   // e.g. "Appliance Repair"
+  brandMode: 'all_major' | 'single_brand';
+  selectedBrandName?: string;   // only when brandMode === 'single_brand'
+  suggestedSlug: string;        // e.g. "sarasota-refrigerator-repair"
+}
+
 // GSC query data fetched during wizard (pre-site-creation)
 export interface WizardGSCQuery {
   query: string;
@@ -127,6 +140,7 @@ export interface WizardState {
   // Step 7
   websiteType: WebsiteType | null;
   domain?: string;
+  micrositeConfig: MicrositeConfig | null;
 
   // GSC (Google Search Console) — optional, enhances content generation
   gscPropertyUrl: string | null;
@@ -152,6 +166,7 @@ export const initialWizardState: WizardState = {
   serviceAreaRadius: 25,
   neighborhoods: [],
   websiteType: null,
+  micrositeConfig: null,
   gscPropertyUrl: null,
   gscQueries: [],
   currentStep: 'connect',

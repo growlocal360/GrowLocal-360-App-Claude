@@ -1,6 +1,7 @@
 import { createStaticClient } from '@/lib/supabase/static';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebsiteType } from '@/types/database';
+import type { MicrositeConfig } from '@/types/wizard';
 
 // Types for wizard data structure
 export interface WizardLocation {
@@ -84,6 +85,8 @@ export interface WizardSiteData {
   serviceAreas: WizardServiceArea[];
   neighborhoods: WizardNeighborhood[];
   brands?: WizardBrand[];
+  // Microsite targeting (only when websiteType === 'microsite')
+  micrositeConfig?: MicrositeConfig;
   // GSC data (optional — synced during wizard if user has Search Console)
   gscPropertyUrl?: string;
   gscQueries?: WizardGSCQueryData[];
@@ -125,8 +128,11 @@ export async function createSiteFromWizardData(
     brands,
   } = data;
 
-  // Generate a globally unique slug from business name
-  let slug = businessName
+  // Generate a globally unique slug — use microsite slug if available, otherwise business name
+  const slugBase = (websiteType === 'microsite' && data.micrositeConfig?.suggestedSlug)
+    ? data.micrositeConfig.suggestedSlug
+    : businessName;
+  let slug = slugBase
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
@@ -182,6 +188,14 @@ export async function createSiteFromWizardData(
       status_updated_at: new Date().toISOString(),
       settings: {
         core_industry: coreIndustry,
+        ...(data.micrositeConfig ? {
+          microsite_target_city: data.micrositeConfig.targetCity,
+          microsite_target_city_state: data.micrositeConfig.targetCityState,
+          microsite_target_service: data.micrositeConfig.targetServiceName,
+          microsite_target_category: data.micrositeConfig.targetCategoryName,
+          microsite_brand_mode: data.micrositeConfig.brandMode,
+          microsite_selected_brand: data.micrositeConfig.selectedBrandName,
+        } : {}),
         ...(data.gscPropertyUrl ? {
           gsc_property_url: data.gscPropertyUrl,
           gsc_connected: true,

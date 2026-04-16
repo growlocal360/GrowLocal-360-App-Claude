@@ -61,6 +61,29 @@ export default function DomainSettingsPage() {
     fetchDomainConfig();
   }, [siteId]);
 
+  // Auto-poll DNS verification every 30s when pending
+  useEffect(() => {
+    if (!config?.customDomain || config.customDomainVerified) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/sites/${siteId}/domain/verify`, {
+          method: 'POST',
+        });
+        const data = await response.json();
+        if (data.verified) {
+          setVerifyMessage('Domain verified successfully!');
+          await fetchDomainConfig();
+          clearInterval(poll);
+        }
+      } catch {
+        // Silent fail — will retry on next interval
+      }
+    }, 30000);
+
+    return () => clearInterval(poll);
+  }, [config?.customDomain, config?.customDomainVerified, siteId]);
+
   const fetchDomainConfig = async () => {
     try {
       setLoading(true);

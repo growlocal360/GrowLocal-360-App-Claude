@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { inngest } from '@/lib/inngest/client';
+// inngest import removed — build is triggered from success page after onboarding
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
@@ -124,16 +124,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
   }
 
-  // Trigger Inngest content generation function
-  await inngest.send({
-    name: 'site/content.generate',
-    data: {
-      siteId,
-      googleAccessToken: null, // No user session in webhook context
-    },
-  });
+  // Don't trigger content generation here — wait for onboarding completion.
+  // The success page will trigger the build after the user fills in (or skips)
+  // the onboarding form (About, Customers, Voice, Local), so the first build
+  // incorporates all personalization details.
 
-  console.log(`Site ${siteId} created for user ${userId} with plan ${planName}`);
+  console.log(`Site ${siteId} created for user ${userId} with plan ${planName}. Awaiting onboarding before build.`);
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {

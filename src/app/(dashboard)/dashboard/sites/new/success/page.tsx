@@ -115,8 +115,8 @@ function PaymentSuccessContent() {
 
   const sessionId = searchParams.get('session_id');
 
-  // Auto-save onboarding data
-  const saveOnboardingData = useCallback(async () => {
+  // Auto-save onboarding data (optionally trigger the build)
+  const saveOnboardingData = useCallback(async (options?: { triggerBuild?: boolean }) => {
     if (!siteData?.id) return;
     setSaving(true);
     try {
@@ -130,6 +130,7 @@ function PaymentSuccessContent() {
           pointOfView: pointOfView || undefined,
           toneValues: toneValues.length > 0 ? toneValues : undefined,
           localDetails: localDetails || undefined,
+          triggerBuild: options?.triggerBuild || false,
         }),
       });
     } catch (err) {
@@ -165,8 +166,9 @@ function PaymentSuccessContent() {
   };
 
   const handleNext = async () => {
-    await saveOnboardingData();
-    if (onboardingStep < ONBOARDING_STEPS.length - 1) {
+    const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1;
+    await saveOnboardingData({ triggerBuild: isLastStep });
+    if (!isLastStep) {
       setOnboardingStep((s) => s + 1);
     } else {
       setOnboardingComplete(true);
@@ -437,10 +439,10 @@ function PaymentSuccessContent() {
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="text-lg font-semibold text-gray-900">
-                  Building Your Website
+                  {onboardingComplete ? 'Building Your Website' : 'Setting Up Your Website'}
                 </h1>
                 <p className="truncate text-sm text-gray-500">
-                  {progressMessage}
+                  {onboardingComplete ? progressMessage : 'Complete the form below to start your build'}
                 </p>
               </div>
               <span className="text-lg font-bold text-[#00ef99]">{progress}%</span>
@@ -683,7 +685,10 @@ function PaymentSuccessContent() {
               {/* Skip link */}
               <div className="mt-4 text-center">
                 <button
-                  onClick={() => setOnboardingComplete(true)}
+                  onClick={async () => {
+                    await saveOnboardingData({ triggerBuild: true });
+                    setOnboardingComplete(true);
+                  }}
                   className="text-xs text-gray-400 underline hover:text-gray-600"
                 >
                   Skip for now — I&apos;ll fill this in later

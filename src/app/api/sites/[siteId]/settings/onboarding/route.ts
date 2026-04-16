@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { inngest } from '@/lib/inngest/client';
 
 // PATCH - Save onboarding fields (merges into site.settings without overwriting)
 export async function PATCH(
@@ -35,6 +36,7 @@ export async function PATCH(
     pointOfView,
     toneValues,
     localDetails,
+    triggerBuild,
   } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,6 +67,37 @@ export async function PATCH(
       { error: 'Failed to save onboarding data' },
       { status: 500 }
     );
+  }
+
+  // Trigger content generation if requested (after onboarding completion or skip)
+  if (triggerBuild) {
+    // Only trigger if site hasn't already started building
+    const { data: currentSite } = await adminSupabase
+      .from('sites')
+      .select('status')
+      .eq('id', siteId)
+      .single();
+
+    if (currentSite && currentSite.status === 'building') {
+      // Check if build_progress has any completed tasks — if so, build already started
+      const { data: siteWithProgress } = await adminSupabase
+        .from('sites')
+        .select('build_progress')
+        .eq('id', siteId)
+        .single();
+
+      const bp = siteWithProgress?.build_progress as { completed_tasks?: number } | null;
+      if (!bp || !bp.completed_tasks || bp.completed_tasks === 0) {
+        // Capture Google access token for review fetching
+        const { data: { session } } = await supabase.auth.getSession();
+        const googleAccessToken = session?.provider_token || null;
+
+        await inngest.send({
+          name: 'site/content.generate',
+          data: { siteId, googleAccessToken },
+        });
+      }
+    }
   }
 
   return NextResponse.json({ success: true });

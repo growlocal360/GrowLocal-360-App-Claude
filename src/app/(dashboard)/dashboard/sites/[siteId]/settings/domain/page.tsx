@@ -246,9 +246,14 @@ export default function DomainSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-600" />
-              <h2 className="font-semibold">Custom Domain</h2>
+            <div>
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-blue-600" />
+                <h2 className="font-semibold">Custom Domain</h2>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                Enter your domain with or without www. Both versions will work automatically — visitors will be redirected to your primary domain.
+              </p>
             </div>
             {config?.customDomain && (
               <Badge

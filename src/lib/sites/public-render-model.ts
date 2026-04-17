@@ -283,6 +283,19 @@ function sanitizeAvatarUrl(url: string | null | undefined): string | null {
   return url;
 }
 
+/**
+ * Clean generated image URLs — strip /sites/{slug} prefix from legacy entries.
+ * Old format: /sites/{slug}/public/images/file.png
+ * New format: /public/images/file.png
+ */
+function cleanGeneratedImages(images: GeneratedImage[] | null): GeneratedImage[] | null {
+  if (!images) return null;
+  return images.map(img => ({
+    ...img,
+    url: img.url.replace(/^\/sites\/[^/]+\/public\//, '/public/'),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Mapper functions
 // ---------------------------------------------------------------------------
@@ -347,7 +360,7 @@ export function toPublicServiceDetail(svc: Service): PublicRenderServiceDetail {
     problems: svc.problems,
     detailed_sections: svc.detailed_sections,
     faqs: svc.faqs,
-    generated_images: svc.generated_images ?? null,
+    generated_images: cleanGeneratedImages(svc.generated_images),
   };
 }
 
@@ -433,7 +446,7 @@ export function toPublicPageContent(page: SitePage): PublicRenderPageContent {
     body_copy_2: page.body_copy_2,
     faqs: page.faqs,
     sections: page.sections ?? null,
-    generated_images: page.generated_images ?? null,
+    generated_images: cleanGeneratedImages(page.generated_images),
   };
 }
 

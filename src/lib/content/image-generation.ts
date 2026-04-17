@@ -215,11 +215,9 @@ export async function generateImagesFromPrompts(
       const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
       storagePath = uploaded.storagePath;
 
-      // Store SEO-friendly local URL path (served via /public/images/ proxy)
-      // Falls back to Supabase direct URL if siteSlug not available
-      publicUrl = siteSlug
-        ? `/sites/${siteSlug}/public/images/${filename}`
-        : uploaded.publicUrl;
+      // Store clean relative URL (served via /public/images/ proxy)
+      // Middleware rewrites to /sites/{slug}/public/images/ for routing
+      publicUrl = `/public/images/${filename}`;
 
       results.push({
         url: publicUrl,

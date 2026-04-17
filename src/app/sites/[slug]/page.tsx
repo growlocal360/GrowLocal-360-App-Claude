@@ -99,6 +99,7 @@ export default async function SitePage({ params }: SitePageProps) {
       .eq('site_id', data.site.id)
       .single(),
   ]);
+  console.log(`[home-page] site=${data.site.id} slug=${slug} categories=${categories.length} services=${services.length}`);
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
   const primaryCategorySlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category.display_name) : undefined;
 

@@ -41,6 +41,8 @@ interface LocationPageProps {
 export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: LocationPageProps) {
   const { site, location, allLocations, neighborhoods, serviceAreas } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;
   const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone || location.phone;
 
@@ -92,7 +94,7 @@ export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: 
         </div>
 
         {/* Hero Section - GBP Landing Page */}
-        <section className="bg-gradient-to-br from-gray-900 to-gray-800 py-20 text-white">
+        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
           <div className="mx-auto max-w-7xl px-4">
             <div className="grid gap-12 lg:grid-cols-2">
               <div>
@@ -118,7 +120,7 @@ export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: 
                     <Button
                       asChild
                       size="lg"
-                      style={{ backgroundColor: brandColor }}
+                      style={{ backgroundColor: ctaColor }}
                       className="text-lg hover:opacity-90"
                     >
                       <a href={`tel:${phone.replace(/\D/g, '')}`}>
@@ -261,7 +263,7 @@ export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: 
                       <Button
                         asChild
                         className="mt-4 w-full"
-                        style={{ backgroundColor: brandColor }}
+                        style={{ backgroundColor: ctaColor }}
                       >
                         <a href={`tel:${phone.replace(/\D/g, '')}`}>
                           <Phone className="mr-2 h-4 w-4" />
@@ -373,7 +375,7 @@ export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: 
         )}
 
         {/* Recent Work */}
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* CTA Section */}
         <section

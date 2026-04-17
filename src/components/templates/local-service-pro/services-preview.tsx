@@ -25,6 +25,7 @@ interface ServicesPreviewProps {
 
 export function ServicesPreview({ site, services, primaryLocation, categorySlug, isPrimaryCategory, secondaryCategories, locationSlug }: ServicesPreviewProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const accentColor = site.settings?.secondary_color || brandColor;
   const city = primaryLocation?.city || '';
 
   const getServiceUrl = (service: PublicRenderServiceListing) => {
@@ -56,9 +57,9 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                   <div className="flex items-start gap-4">
                     <div
                       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-                      style={{ backgroundColor: `${brandColor}20` }}
+                      style={{ backgroundColor: `${accentColor}20` }}
                     >
-                      <Wrench className="h-6 w-6" style={{ color: brandColor }} />
+                      <Wrench className="h-6 w-6" style={{ color: accentColor }} />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{service.name}</h3>
@@ -69,7 +70,7 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                       )}
                       <div
                         className="mt-3 flex items-center gap-1 text-sm font-medium"
-                        style={{ color: brandColor }}
+                        style={{ color: accentColor }}
                       >
                         Learn More
                         <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -89,15 +90,15 @@ export function ServicesPreview({ site, services, primaryLocation, categorySlug,
                   <div className="flex items-start gap-4">
                     <div
                       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
-                      style={{ backgroundColor: `${brandColor}20` }}
+                      style={{ backgroundColor: `${accentColor}20` }}
                     >
-                      <Layers className="h-6 w-6" style={{ color: brandColor }} />
+                      <Layers className="h-6 w-6" style={{ color: accentColor }} />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{cat.name}</h3>
                       <div
                         className="mt-3 flex items-center gap-1 text-sm font-medium"
-                        style={{ color: brandColor }}
+                        style={{ color: accentColor }}
                       >
                         View Services
                         <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />

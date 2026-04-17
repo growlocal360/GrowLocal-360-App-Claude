@@ -64,7 +64,8 @@ export function BrandDetailPage({
   ctaStyle = 'booking',
 }: BrandDetailPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
   const state = primaryLocation?.state || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
   const industry = (site.settings?.core_industry as string) || '';
@@ -226,7 +227,7 @@ export function BrandDetailPage({
         )}
 
         {/* Recent Work */}
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* Testimonials */}
         <TestimonialsSection
@@ -269,7 +270,7 @@ export function BrandDetailPage({
                 asChild
                 size="lg"
                 className="mt-6 text-lg hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
                   <Phone className="mr-2 h-5 w-5" />
@@ -282,7 +283,7 @@ export function BrandDetailPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

@@ -112,7 +112,8 @@ export function WorkHubPage({
   ctaStyle = 'booking',
 }: WorkHubPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const [displayedItems, setDisplayedItems] = useState(workItems);
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const [displayedItems, setDisplayedItems] = useState(workItems);
   const [hasMoreItems, setHasMoreItems] = useState(hasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -187,7 +188,7 @@ export function WorkHubPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

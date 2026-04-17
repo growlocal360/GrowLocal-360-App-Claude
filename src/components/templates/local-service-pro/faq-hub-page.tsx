@@ -47,7 +47,8 @@ export function FAQHubPage({
   ctaStyle = 'booking',
 }: FAQHubPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
 
   const h1 = pageContent?.h1 || `Frequently Asked Questions${city ? ` — ${site.name} in ${city}` : ''}`;
   const heroDescription = pageContent?.hero_description || `Find answers to common questions about our services${city ? ` in ${city} and surrounding areas` : ''}.`;
@@ -153,7 +154,7 @@ export function FAQHubPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

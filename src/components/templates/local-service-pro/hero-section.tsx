@@ -32,10 +32,14 @@ interface HeroSectionProps {
   primaryCategoryName?: string;
   showAvailabilityBadge?: boolean;
   ctaStyle?: 'booking' | 'estimate';
+  ctaColor?: string;
+  secondaryColor?: string;
 }
 
-export function HeroSection({ site, primaryLocation, pageContent, services, formCategories, schedulingActive = false, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking' }: HeroSectionProps) {
+export function HeroSection({ site, primaryLocation, pageContent, services, formCategories, schedulingActive = false, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking', ctaColor, secondaryColor }: HeroSectionProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const buttonColor = ctaColor || brandColor;
+  const accentColor = secondaryColor || brandColor;
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const category = primaryCategoryName || site.settings?.core_industry || 'Professional Services';
@@ -50,7 +54,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
   ) || pageContent?.generated_images?.[0] || null;
 
   return (
-    <section className="relative bg-gradient-to-br from-gray-900 to-gray-800 py-20 text-white lg:py-28">
+    <section className="relative py-20 text-white lg:py-28" style={{ backgroundColor: brandColor }}>
       {/* Hero background image */}
       {heroImage && (
         <>
@@ -59,7 +63,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
             alt={h1}
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gray-900/65" />
+          <div className="absolute inset-0" style={{ backgroundColor: `${brandColor}A8` }} />
         </>
       )}
       <div className="relative mx-auto max-w-7xl px-4">
@@ -100,7 +104,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
             {/* Availability badge */}
             {showAvailabilityBadge && (
               <div className="mt-6">
-                <AvailabilityBadge siteId={site.id} brandColor={brandColor} />
+                <AvailabilityBadge siteId={site.id} brandColor={accentColor} />
               </div>
             )}
 
@@ -110,12 +114,12 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
                 <a href={`tel:${phone.replace(/\D/g, '')}`} className="flex items-center gap-3">
                   <div
                     className="flex h-12 w-12 items-center justify-center rounded-full"
-                    style={{ backgroundColor: brandColor }}
+                    style={{ backgroundColor: buttonColor }}
                   >
                     <Phone className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="text-sm" style={{ color: brandColor }}>Call for Immediate Service</div>
+                    <div className="text-sm" style={{ color: accentColor }}>Call for Immediate Service</div>
                     <div className="text-lg font-bold">{phone}</div>
                   </div>
                 </a>
@@ -123,7 +127,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
                   asChild
                   size="lg"
                   className="rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-                  style={{ backgroundColor: brandColor }}
+                  style={{ backgroundColor: buttonColor }}
                 >
                   <a href="#hero-form">
                     {ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate'}
@@ -139,7 +143,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
               <CardContent className="p-6">
                 <UnifiedLeadForm
                   siteId={site.id}
-                  brandColor={brandColor}
+                  brandColor={buttonColor}
                   categories={formCategories}
                   schedulingActive={schedulingActive}
                   ctaStyle={ctaStyle}

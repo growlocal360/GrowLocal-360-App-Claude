@@ -38,9 +38,11 @@ import type { PublicTeamSource } from './get-team';
 // Public render types
 // ---------------------------------------------------------------------------
 
-/** Only the ~8 settings fields templates actually use (vs ~20+ in SiteSettings) */
+/** Only the settings fields templates actually use (vs ~20+ in SiteSettings) */
 export interface PublicRenderSettings {
   brand_color: string;
+  secondary_color: string | null;
+  cta_color: string | null;
   logo_url: string | null;
   phone: string | null;
   email: string | null;
@@ -290,6 +292,8 @@ export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
     website_type: site.website_type,
     settings: {
       brand_color: s.brand_color || '#00ef99',
+      secondary_color: s.secondary_color || null,
+      cta_color: s.cta_color || null,
       logo_url: sanitizeAssetUrl(s.logo_url, 'brand'),
       phone: s.phone || null,
       email: s.email || null,

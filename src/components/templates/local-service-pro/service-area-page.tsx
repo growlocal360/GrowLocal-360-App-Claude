@@ -56,7 +56,8 @@ interface ServiceAreaPageProps {
 export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const averageRating = site.settings?.google_average_rating as number | undefined;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const industry = site.settings?.core_industry || 'Professional Services';
 
@@ -143,7 +144,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
           totalReviewCount={totalReviewCount}
         />
         <TrustBar
-          brandColor={brandColor}
+          brandColor={accentColor}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
@@ -249,10 +250,10 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
           businessName={site.name}
           city={serviceArea.name}
         />
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

@@ -31,7 +31,8 @@ interface ServiceAreasListingPageProps {
 
 export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreasListingPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   // Schema.org structured data
@@ -148,7 +149,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
                 asChild
                 size="lg"
                 className="mt-6 text-lg hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
                   <Phone className="mr-2 h-5 w-5" />
@@ -161,7 +162,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

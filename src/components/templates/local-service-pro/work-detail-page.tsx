@@ -54,7 +54,8 @@ export function WorkDetailPage({
   ctaStyle = 'booking',
 }: WorkDetailPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const phone = site.settings?.phone || primaryLocation.phone;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const phone = site.settings?.phone || primaryLocation.phone;
 
   // Build H1: {Brand?} {Service Name} in {City}, {State}
   const city = workItem.address_city || itemLocation?.city || primaryLocation.city;
@@ -303,7 +304,7 @@ export function WorkDetailPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

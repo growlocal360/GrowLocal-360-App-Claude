@@ -18,6 +18,7 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
   if (brands.length === 0) return null;
 
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const accentColor = site.settings?.secondary_color || brandColor;
   const city = primaryLocation?.city || '';
   const primaryCategory = site.settings?.core_industry || '';
 
@@ -37,11 +38,11 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
             <Link key={brand.id} href={paths.brandPage(brand.slug, locationSlug)}>
               <Card
                 className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl"
-                style={{ borderTop: `3px solid ${brandColor}` }}
+                style={{ borderTop: `3px solid ${accentColor}` }}
               >
                 <CardContent className="flex items-center justify-between p-5">
                   <span className="font-bold text-gray-900">{brand.name}</span>
-                  <ArrowRight className="h-4 w-4 flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: brandColor }} />
+                  <ArrowRight className="h-4 w-4 flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: accentColor }} />
                 </CardContent>
               </Card>
             </Link>
@@ -52,7 +53,7 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
           <Link
             href={paths.brandsIndex(locationSlug)}
             className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
-            style={{ color: brandColor }}
+            style={{ color: accentColor }}
           >
             View All Brands
             <ArrowRight className="h-3 w-3" />

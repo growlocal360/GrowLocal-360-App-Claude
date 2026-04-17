@@ -42,6 +42,8 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
   const { site, locations, serviceAreas, neighborhoods, sitePages, reviews, brands, primaryLocation } = data;
   const slug = siteSlug || site.slug;
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const secondaryColor = site.settings?.secondary_color || brandColor;
+  const ctaColor = site.settings?.cta_color || brandColor;
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
 
@@ -78,10 +80,12 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           primaryCategoryName={primaryCategoryName}
           showAvailabilityBadge={showAvailabilityBadge}
           ctaStyle={ctaStyle}
+          ctaColor={ctaColor}
+          secondaryColor={secondaryColor}
         />
         <TrustBar
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={secondaryColor}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
           schedulingActive={schedulingActive}
@@ -110,10 +114,10 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           siteSlug={slug}
           locationSlug={locationSlug}
         />
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={slug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={secondaryColor} siteSlug={slug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
@@ -125,7 +129,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
           reviewsHref={paths.reviewsIndex(locationSlug)}
-          brandColor={brandColor}
+          brandColor={secondaryColor}
         />
         {(serviceAreas.length > 0 || neighborhoods.length > 0) && (
           <ServiceAreasSection

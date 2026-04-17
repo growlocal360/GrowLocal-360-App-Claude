@@ -14,7 +14,8 @@ interface BrandHomepageProps {
 
 export function BrandHomepage({ site, locations }: BrandHomepageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const industry = site.settings?.core_industry || 'Professional Services';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone;
 
   return (

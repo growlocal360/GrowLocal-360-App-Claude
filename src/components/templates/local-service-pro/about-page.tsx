@@ -67,7 +67,8 @@ export function AboutPage({
   ctaStyle = 'booking',
 }: AboutPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const phone = site.settings?.phone || primaryLocation?.phone;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const phone = site.settings?.phone || primaryLocation?.phone;
 
   const h1 = pageContent?.h1 || `About ${site.name}`;
   const heroDescription = pageContent?.hero_description || '';
@@ -125,34 +126,34 @@ export function AboutPage({
         {hasNewSections ? (
           <>
             {/* Enhanced EEAT layout */}
-            <FounderSection sections={sections} teamMembers={teamMembers || []} brandColor={brandColor} />
-            <MissionValuesSection sections={sections} brandColor={brandColor} />
+            <FounderSection sections={sections} teamMembers={teamMembers || []} brandColor={accentColor} />
+            <MissionValuesSection sections={sections} brandColor={accentColor} />
             <ServicesOverviewSection
               services={services || []}
               categories={categories || []}
-              brandColor={brandColor}
+              brandColor={accentColor}
               siteSlug={siteSlug}
               locationSlug={locationSlug}
             />
-            <ExperienceSection sections={sections} brandColor={brandColor} />
-            <LocalConnectionSection sections={sections} serviceAreas={serviceAreas || []} brandColor={brandColor} />
-            <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
+            <ExperienceSection sections={sections} brandColor={accentColor} />
+            <LocalConnectionSection sections={sections} serviceAreas={serviceAreas || []} brandColor={accentColor} />
+            <TeamSection teamMembers={teamMembers || []} brandColor={accentColor} />
             <RecentWorkSection
               workItems={workItems || []}
-              brandColor={brandColor}
+              brandColor={accentColor}
               siteSlug={siteSlug}
               locationSlug={locationSlug}
             />
             <TrustSignalsSection
               sections={sections}
               reviews={reviews || []}
-              brandColor={brandColor}
+              brandColor={accentColor}
               averageRating={site.settings?.google_average_rating}
               totalReviews={site.settings?.google_total_reviews}
             />
             <AboutCTASection
               sections={sections}
-              brandColor={brandColor}
+              brandColor={accentColor}
               phone={phone}
               siteSlug={siteSlug}
               locationSlug={locationSlug}
@@ -183,10 +184,10 @@ export function AboutPage({
                 </div>
               </section>
             )}
-            <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
+            <TeamSection teamMembers={teamMembers || []} brandColor={accentColor} />
             <UnifiedLeadForm
               siteId={site.id}
-              brandColor={brandColor}
+              brandColor={ctaColor}
               categories={formCategories}
               schedulingActive={schedulingActive}
               ctaStyle={ctaStyle}

@@ -22,7 +22,8 @@ interface JobSnapsPageProps {
 
 export function JobSnapsPage({ site, primaryLocation, serviceAreas, categories, siteSlug, locationSlug }: JobSnapsPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const industry = site.settings?.core_industry || 'our industry';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const industry = site.settings?.core_industry || 'our industry';
 
   return (
     <div className="min-h-screen bg-white">
@@ -60,7 +61,7 @@ export function JobSnapsPage({ site, primaryLocation, serviceAreas, categories, 
               <Button
                 asChild
                 size="lg"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
                 className="hover:opacity-90"
               >
                 <a href={paths.contactPage(locationSlug)}>Contact Us About Opportunities</a>

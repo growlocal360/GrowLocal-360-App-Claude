@@ -32,7 +32,8 @@ interface ServicesPageProps {
 
 export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServicesPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -231,7 +232,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                 asChild
                 size="lg"
                 className="mt-6 text-lg hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
                   <Phone className="mr-2 h-5 w-5" />
@@ -244,7 +245,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

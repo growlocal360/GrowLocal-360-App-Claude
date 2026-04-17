@@ -34,7 +34,8 @@ interface NeighborhoodPageSingleLocationProps {
 export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, recentWorkItems }: NeighborhoodPageSingleLocationProps) {
   const { site, location, neighborhood, allNeighborhoods } = data;
   const brandColor = site.settings?.brand_color || '#10b981';
-  const industry = site.settings?.core_industry || 'Professional Services';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const industry = site.settings?.core_industry || 'Professional Services';
   const phone = site.settings?.phone || location.phone;
   const localFeatures = neighborhood.local_features;
 
@@ -127,7 +128,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, rec
                   <Button
                     asChild
                     size="lg"
-                    style={{ backgroundColor: brandColor }}
+                    style={{ backgroundColor: ctaColor }}
                     className="text-lg hover:opacity-90"
                   >
                     <a href={`tel:${phone.replace(/\D/g, '')}`}>
@@ -293,7 +294,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, rec
                       <Button
                         asChild
                         className="mt-4 w-full"
-                        style={{ backgroundColor: brandColor }}
+                        style={{ backgroundColor: ctaColor }}
                       >
                         <a href={`tel:${phone.replace(/\D/g, '')}`}>
                           <Phone className="mr-2 h-4 w-4" />
@@ -382,7 +383,7 @@ export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, rec
             )}
           </div>
         </section>
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} />
       </main>
 
       <SiteFooter site={site} primaryLocation={location} siteSlug={siteSlug} />

@@ -46,7 +46,8 @@ interface CategoryPageProps {
 export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neighborhoods, recentWorkItems, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: CategoryPageProps) {
   const { site, location, category, services, allCategories, pageContent } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const averageRating = site.settings?.google_average_rating as number | undefined;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categorySlug = normalizeCategorySlug(category.gbp_category.display_name);
 
@@ -103,7 +104,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
           totalReviewCount={totalReviewCount}
         />
         <TrustBar
-          brandColor={brandColor}
+          brandColor={accentColor}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
@@ -122,10 +123,10 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
           businessName={site.name}
           city={location.city}
         />
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

@@ -46,7 +46,8 @@ interface ServicePageProps {
 export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, categories, serviceAreas, locationSlug, recentWorkItems, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const phone = site.settings?.phone || location.phone;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const phone = site.settings?.phone || location.phone;
   const averageRating = site.settings?.google_average_rating as number | undefined;
   const totalReviewCount = site.settings?.google_total_reviews as number | undefined;
   const categoryName = category.gbp_category.display_name;
@@ -107,7 +108,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
           totalReviewCount={totalReviewCount}
         />
         <TrustBar
-          brandColor={brandColor}
+          brandColor={accentColor}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />
@@ -221,12 +222,12 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         </section>
 
         {/* Recent Work */}
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
 
         {/* Lead Capture Form */}
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
@@ -244,7 +245,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
 
         {/* FAQ Accordion Section */}
         {service.faqs && service.faqs.length > 0 && (
-          <FAQSection faqs={service.faqs} brandColor={brandColor} />
+          <FAQSection faqs={service.faqs} brandColor={accentColor} />
         )}
 
         {/* Related Services */}

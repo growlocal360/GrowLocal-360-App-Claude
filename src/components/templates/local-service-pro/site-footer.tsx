@@ -17,6 +17,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const accentColor = site.settings?.secondary_color || brandColor;
   const currentYear = new Date().getFullYear();
   const slug = siteSlug || site.slug;
 
@@ -26,7 +27,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
         <div className="grid gap-8 md:grid-cols-3">
           {/* Contact Info */}
           <div>
-            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
+            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: accentColor }}>
               Contact Info
             </h3>
             <div className="space-y-3 text-sm">
@@ -65,7 +66,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
 
           {/* Quick Links */}
           <div>
-            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
+            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: accentColor }}>
               Quick Links
             </h3>
             <ul className="space-y-2 text-sm">
@@ -120,7 +121,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
           {/* Service Areas */}
           {serviceAreas && serviceAreas.length > 0 && (
             <div>
-              <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: brandColor }}>
+              <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: accentColor }}>
                 Service Areas
               </h3>
               <ul className="space-y-2 text-sm">
@@ -149,7 +150,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
             <a
               href="/"
               className="transition-colors duration-300 hover:text-white"
-              style={{ color: brandColor }}
+              style={{ color: accentColor }}
             >
               GrowLocal 360
             </a>

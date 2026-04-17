@@ -46,7 +46,8 @@ export function ReviewsPage({
   ctaStyle = 'booking',
 }: ReviewsPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   // Schema.org — LocalBusiness with reviews
@@ -243,7 +244,7 @@ export function ReviewsPage({
                 asChild
                 size="lg"
                 className="mt-6 text-lg hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
                   <Phone className="mr-2 h-5 w-5" />
@@ -256,7 +257,7 @@ export function ReviewsPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

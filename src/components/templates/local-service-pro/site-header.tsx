@@ -28,6 +28,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
 
   const phone = site.settings?.phone || primaryLocation?.phone;
   const brandColor = site.settings?.brand_color || '#00ef99';
+  const ctaColor = site.settings?.cta_color || brandColor;
 
   const home = paths.locationHome(locationSlug);
   const navLinks = [
@@ -86,7 +87,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
           )}
           <Button
             asChild
-            style={{ backgroundColor: brandColor }}
+            style={{ backgroundColor: ctaColor }}
             className="rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
           >
             <a href="#contact">Get Free Estimate</a>
@@ -136,7 +137,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
             )}
             <Button
               asChild
-              style={{ backgroundColor: brandColor }}
+              style={{ backgroundColor: ctaColor }}
               className="w-full rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             >
               <a href="#contact" onClick={() => setMobileMenuOpen(false)}>

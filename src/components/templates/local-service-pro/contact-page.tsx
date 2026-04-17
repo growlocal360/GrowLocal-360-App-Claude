@@ -37,7 +37,8 @@ interface ContactPageProps {
 
 export function ContactPage({ site, primaryLocation, pageContent, services, formCategories, serviceAreas, teamMembers, categories, siteSlug, locationSlug, recentWorkItems, ctaStyle = 'booking', schedulingActive = false }: ContactPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const phone = site.settings?.phone || primaryLocation?.phone;
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
 
   const h1 = pageContent?.h1 || `Contact ${site.name}`;
@@ -119,11 +120,11 @@ export function ContactPage({ site, primaryLocation, pageContent, services, form
           </div>
         </section>
 
-        <TeamSection teamMembers={teamMembers || []} brandColor={brandColor} />
-        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={brandColor} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <TeamSection teamMembers={teamMembers || []} brandColor={accentColor} />
+        <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

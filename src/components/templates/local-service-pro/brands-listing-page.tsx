@@ -31,7 +31,8 @@ interface BrandsListingPageProps {
 
 export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas, categories, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: BrandsListingPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const city = primaryLocation?.city || '';
+  const ctaColor = site.settings?.cta_color || brandColor;
+  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
   const industry = (site.settings?.core_industry as string) || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
@@ -122,7 +123,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
                 asChild
                 size="lg"
                 className="mt-6 rounded-full text-lg shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-                style={{ backgroundColor: brandColor }}
+                style={{ backgroundColor: ctaColor }}
               >
                 <a href={`tel:${phone.replace(/\D/g, '')}`}>
                   <Phone className="mr-2 h-5 w-5" />
@@ -135,7 +136,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={brandColor}
+          brandColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

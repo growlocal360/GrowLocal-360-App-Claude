@@ -347,14 +347,24 @@ export default function DomainSettingsPage() {
                 </p>
               )}
 
-              {/* DNS Instructions */}
-              {!config.customDomainVerified && config.dnsInstructions && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="font-medium text-blue-900 mb-2">
-                    DNS Configuration Required
+              {/* DNS Instructions — always show when available so user can reference them */}
+              {config.dnsInstructions && (
+                <div className={`mt-4 p-4 rounded-lg border ${
+                  config.customDomainVerified
+                    ? 'bg-gray-50 border-gray-200'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <h3 className={`font-medium mb-2 ${
+                    config.customDomainVerified ? 'text-gray-900' : 'text-blue-900'
+                  }`}>
+                    {config.customDomainVerified ? 'DNS Records' : 'DNS Configuration Required'}
                   </h3>
-                  <p className="text-sm text-blue-700 mb-4">
-                    Add the following DNS record to your domain provider:
+                  <p className={`text-sm mb-4 ${
+                    config.customDomainVerified ? 'text-gray-600' : 'text-blue-700'
+                  }`}>
+                    {config.customDomainVerified
+                      ? 'Your DNS records for reference:'
+                      : 'Add the following DNS records to your domain provider:'}
                   </p>
                   <div className="space-y-2">
                     {config.dnsInstructions.records.map((record, index) => (
@@ -382,9 +392,11 @@ export default function DomainSettingsPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-blue-600 mt-3">
-                    DNS changes can take up to 48 hours to propagate.
-                  </p>
+                  {!config.customDomainVerified && (
+                    <p className="text-xs text-blue-600 mt-3">
+                      DNS changes can take up to 48 hours to propagate.
+                    </p>
+                  )}
                 </div>
               )}
             </>

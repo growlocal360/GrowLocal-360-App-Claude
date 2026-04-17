@@ -410,19 +410,29 @@ async function addDomainToVercelWithRedirect(domain: string, redirectTo: string)
 
 /**
  * Remove both root and www domains from the Vercel project.
+ * Removes the secondary (redirect) domain first, then the primary.
+ * Vercel won't let you delete the primary while a redirect points to it.
  */
 export async function removeDomainPairFromVercel(domain: string): Promise<{ success: boolean; error?: string }> {
   const apex = getApexDomain(domain);
   const www = `www.${apex}`;
+  const isWwwPrimary = domain.startsWith('www.');
 
-  // Remove both — don't fail if one doesn't exist
-  const [rootResult, wwwResult] = await Promise.all([
-    removeDomainFromVercel(apex),
-    removeDomainFromVercel(www),
-  ]);
+  // Remove secondary (redirect) first, then primary
+  const secondaryDomain = isWwwPrimary ? apex : www;
+  const primaryDomain = isWwwPrimary ? www : apex;
 
-  if (!rootResult.success && !wwwResult.success) {
-    return rootResult; // Return root error if both failed
+  // Step 1: Remove the redirect domain
+  const secondaryResult = await removeDomainFromVercel(secondaryDomain);
+  if (!secondaryResult.success) {
+    // Not found is OK — it might not exist
+    console.warn(`Secondary domain removal (${secondaryDomain}):`, secondaryResult.error);
+  }
+
+  // Step 2: Remove the primary domain
+  const primaryResult = await removeDomainFromVercel(primaryDomain);
+  if (!primaryResult.success) {
+    return { success: false, error: `Failed to remove ${primaryDomain}: ${primaryResult.error}` };
   }
 
   return { success: true };

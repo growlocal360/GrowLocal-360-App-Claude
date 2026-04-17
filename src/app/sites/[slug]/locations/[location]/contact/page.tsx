@@ -12,6 +12,7 @@ import {
   toPublicServiceListing,
   toPublicAreaListing,
   toPublicPageContent,
+  toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
 export const revalidate = 3600;
@@ -75,6 +76,7 @@ export default async function MultiLocationContactPageRoute({ params }: MultiLoc
       services={services.map(toPublicServiceListing)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}
+      formCategories={categories.map(toPublicCategory)}
       siteSlug={slug}
       locationSlug={location}
     />

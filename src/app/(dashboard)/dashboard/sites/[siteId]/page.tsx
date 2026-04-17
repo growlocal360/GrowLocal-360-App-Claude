@@ -82,6 +82,7 @@ export default function SiteDashboardPage() {
   const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [revalidating, setRevalidating] = useState(false);
   const [userData, setUserData] = useState({
     name: 'User',
     email: '',
@@ -211,6 +212,24 @@ export default function SiteDashboardPage() {
 
     return () => clearInterval(interval);
   }, [site?.status, regenerating, isActivelyRegenerating, supabase, siteId]);
+
+  const handleRevalidate = async () => {
+    setRevalidating(true);
+    try {
+      const response = await fetch(`/api/sites/${siteId}/revalidate`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        // Brief visual feedback then reset
+        setTimeout(() => setRevalidating(false), 1500);
+      } else {
+        setRevalidating(false);
+      }
+    } catch (error) {
+      console.error('Failed to revalidate:', error);
+      setRevalidating(false);
+    }
+  };
 
   const handleRegenerate = async () => {
     setRegenerating(true);
@@ -350,6 +369,21 @@ export default function SiteDashboardPage() {
                   <ExternalLink className="mr-2 h-4 w-4" />
                   View Site
                 </a>
+              </Button>
+            )}
+            {site.status === 'active' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevalidate}
+                disabled={revalidating}
+              >
+                {revalidating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RotateCw className="mr-2 h-4 w-4" />
+                )}
+                {revalidating ? 'Refreshing...' : 'Refresh Cache'}
               </Button>
             )}
             {(site.status === 'active' || site.status === 'failed') && (

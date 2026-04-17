@@ -52,6 +52,14 @@ interface DNSInstructions {
   };
 }
 
+interface VercelDomainDNSConfig {
+  misconfigured: boolean;
+  configuredBy: 'A' | 'CNAME' | 'http' | 'dns-01' | null;
+  recommendedCNAME?: { rank: number; value: string }[];
+  recommendedIPv4?: { rank: number; value: string[] }[];
+  acceptedChallenges?: string[];
+}
+
 function getVercelHeaders(): HeadersInit {
   const token = process.env.VERCEL_API_TOKEN;
   if (!token) {
@@ -222,8 +230,59 @@ export async function getDomainConfig(domain: string): Promise<VercelDomainRespo
 }
 
 /**
- * Verify domain DNS configuration
- * Returns true if DNS is properly configured
+ * Get domain DNS configuration from Vercel's domain config API.
+ * Returns recommended CNAME/IPv4 values and whether the domain is misconfigured.
+ * This is the /v6/domains/{domain}/config endpoint (not project-scoped).
+ */
+export async function getDomainDNSConfig(domain: string): Promise<{
+  success: boolean;
+  config?: VercelDomainDNSConfig;
+  error?: string;
+}> {
+  try {
+    const teamParam = getTeamParam();
+
+    const response = await fetch(
+      `${VERCEL_API_BASE}/v6/domains/${domain}/config${teamParam}`,
+      {
+        method: 'GET',
+        headers: getVercelHeaders(),
+      }
+    );
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, error: 'Vercel API authentication failed.' };
+    }
+
+    if (!response.ok) {
+      const data = await response.json();
+      return { success: false, error: data.error?.message || 'Failed to get domain DNS config' };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      config: {
+        misconfigured: data.misconfigured ?? true,
+        configuredBy: data.configuredBy ?? null,
+        recommendedCNAME: data.recommendedCNAME,
+        recommendedIPv4: data.recommendedIPv4,
+        acceptedChallenges: data.acceptedChallenges,
+      },
+    };
+  } catch (error) {
+    console.error('Error getting domain DNS config:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get domain DNS config',
+    };
+  }
+}
+
+/**
+ * Verify domain DNS configuration.
+ * Calls the project verify endpoint for ownership, then the domain config
+ * endpoint for actual DNS configuration status.
  */
 export async function verifyDomainDNS(domain: string): Promise<{
   verified: boolean;
@@ -234,6 +293,7 @@ export async function verifyDomainDNS(domain: string): Promise<{
     const projectId = getProjectId();
     const teamParam = getTeamParam();
 
+    // Step 1: Verify domain ownership via project domains API
     const response = await fetch(
       `${VERCEL_API_BASE}/v9/projects/${projectId}/domains/${domain}/verify${teamParam}`,
       {
@@ -260,10 +320,15 @@ export async function verifyDomainDNS(domain: string): Promise<{
       };
     }
 
-    return {
-      verified: data.verified ?? false,
-      configured: data.configured ?? false,
-    };
+    const verified = data.verified ?? false;
+
+    // Step 2: Check DNS configuration via domain config API
+    const dnsConfig = await getDomainDNSConfig(domain);
+    const configured = dnsConfig.success
+      ? !dnsConfig.config!.misconfigured
+      : false;
+
+    return { verified, configured };
   } catch (error) {
     console.error('Error verifying domain DNS:', error);
     return {
@@ -365,29 +430,63 @@ export async function removeDomainPairFromVercel(domain: string): Promise<{ succ
 
 /**
  * Get DNS instructions for a domain.
- * Always returns both A record (root) and CNAME (www) so both resolve.
+ * Fetches domain-specific recommended values from Vercel's config API.
+ * Falls back to generic values if the API call fails.
  */
-export function getDNSInstructions(domain: string, domainConfig?: VercelDomainConfig): DNSInstructions {
+export async function getDNSInstructions(
+  domain: string,
+  domainConfig?: VercelDomainConfig
+): Promise<DNSInstructions> {
+  const apex = getApexDomain(domain);
+
+  // Default (generic) values as fallback
+  let aRecordValue = '76.76.21.21';
+  let cnameValue = 'cname.vercel-dns.com';
+  let configured = domainConfig?.configured ?? false;
+
+  // Fetch domain-specific DNS recommendations from Vercel
+  try {
+    const [rootConfig, wwwConfig] = await Promise.all([
+      getDomainDNSConfig(apex),
+      getDomainDNSConfig(`www.${apex}`),
+    ]);
+
+    // Use recommended A record (rank 1 preferred) for root domain
+    if (rootConfig.success && rootConfig.config?.recommendedIPv4?.length) {
+      const preferred = rootConfig.config.recommendedIPv4
+        .sort((a, b) => a.rank - b.rank)[0];
+      if (preferred?.value?.length) {
+        aRecordValue = preferred.value[0];
+      }
+    }
+
+    // Use recommended CNAME (rank 1 preferred) for www domain
+    if (wwwConfig.success && wwwConfig.config?.recommendedCNAME?.length) {
+      const preferred = wwwConfig.config.recommendedCNAME
+        .sort((a, b) => a.rank - b.rank)[0];
+      if (preferred?.value) {
+        cnameValue = preferred.value;
+      }
+    }
+
+    // Update configured status from DNS config
+    if (rootConfig.success && rootConfig.config) {
+      configured = !rootConfig.config.misconfigured;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch domain-specific DNS config, using generic values:', error);
+  }
+
   const records: VercelDNSRecord[] = [
-    // A record for root domain (e.g., example.com)
-    {
-      type: 'A',
-      name: '@',
-      value: '76.76.21.21',
-    },
-    // CNAME for www subdomain (e.g., www.example.com)
-    {
-      type: 'CNAME',
-      name: 'www',
-      value: 'cname.vercel-dns.com',
-    },
+    { type: 'A', name: '@', value: aRecordValue },
+    { type: 'CNAME', name: 'www', value: cnameValue },
   ];
 
   // Add TXT verification record if needed
   const verification = domainConfig?.verification?.[0];
 
   return {
-    configured: domainConfig?.configured ?? false,
+    configured,
     records,
     verification: verification
       ? {

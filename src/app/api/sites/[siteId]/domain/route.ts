@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get DNS instructions if custom domain is set
     let dnsInstructions = null;
     if (site.custom_domain) {
-      dnsInstructions = getDNSInstructions(
+      dnsInstructions = await getDNSInstructions(
         site.custom_domain,
         site.vercel_domain_config as Parameters<typeof getDNSInstructions>[1]
       );
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get DNS instructions
-    const dnsInstructions = getDNSInstructions(normalizedDomain, vercelConfig ?? undefined);
+    const dnsInstructions = await getDNSInstructions(normalizedDomain, vercelConfig ?? undefined);
 
     return NextResponse.json({
       success: true,

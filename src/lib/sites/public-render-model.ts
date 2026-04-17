@@ -246,6 +246,12 @@ function sanitizeAssetUrl(
 ): string | null {
   if (!url) return null;
   if (url.startsWith('/public/')) return url;
+  // Admin proxy URL — convert back to clean /public/ path
+  // e.g., /api/sites/{siteId}/assets/brand/file.svg → /public/assets/brand/file.svg
+  const adminMatch = url.match(/^\/api\/sites\/[^/]+\/(.+)$/);
+  if (adminMatch) {
+    return `/public/${adminMatch[1]}`;
+  }
   // Raw Supabase storage URL — extract filename
   const supabaseMatch = url.match(
     /\/storage\/v1\/object\/public\/[^/]+\/(?:sites\/[^/]+\/)?(.+)$/

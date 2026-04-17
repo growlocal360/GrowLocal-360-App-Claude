@@ -90,6 +90,16 @@ export async function PATCH(
     }
   }
 
+  // Normalize logo URL: convert admin proxy paths back to clean /public/ format
+  let cleanLogoUrl = logoUrl;
+  if (cleanLogoUrl) {
+    // /api/sites/{siteId}/assets/brand/file.svg → /public/assets/brand/file.svg
+    const adminPathMatch = cleanLogoUrl.match(/^\/api\/sites\/[^/]+\/(.+)$/);
+    if (adminPathMatch) {
+      cleanLogoUrl = `/public/${adminPathMatch[1]}`;
+    }
+  }
+
   // Merge with existing settings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
@@ -98,7 +108,7 @@ export async function PATCH(
     brand_color: brandColor !== undefined ? brandColor : currentSettings.brand_color,
     secondary_color: secondaryColor !== undefined ? secondaryColor : currentSettings.secondary_color,
     cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
-    logo_url: logoUrl !== undefined ? logoUrl : currentSettings.logo_url,
+    logo_url: logoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
   };
 
   // Update site settings (use admin client to bypass RLS)

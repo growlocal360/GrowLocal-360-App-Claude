@@ -205,8 +205,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (isVercelConfigured()) {
       const vercelResult = await removeDomainPairFromVercel(site.custom_domain);
       if (!vercelResult.success) {
-        console.warn('Failed to remove domains from Vercel:', vercelResult.error);
-        // Continue anyway - we'll remove from database
+        console.error('Failed to remove domains from Vercel:', vercelResult.error);
+        return NextResponse.json(
+          { error: 'Failed to remove domain from Vercel. Please try again.' },
+          { status: 500 }
+        );
       }
     }
 

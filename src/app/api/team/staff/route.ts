@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Only owners and admins can add staff' }, { status: 403 });
   }
 
-  const { fullName, title, email, bio, siteIds } = await request.json();
+  const { fullName, title, email, bio, siteIds, profileId } = await request.json();
 
   if (!fullName?.trim()) {
     return NextResponse.json({ error: 'Full name is required' }, { status: 400 });
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       title: title?.trim() || null,
       email: email?.trim().toLowerCase() || null,
       bio: bio?.trim() || null,
+      ...(profileId ? { profile_id: profileId } : {}),
     })
     .select()
     .single();
@@ -122,7 +123,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Only owners and admins can edit staff' }, { status: 403 });
   }
 
-  const { staffId, fullName, title, email, bio, siteIds, showOnSite, avatarUrl } = await request.json();
+  const { staffId, fullName, title, email, bio, siteIds, showOnSite, avatarUrl, profileId } = await request.json();
 
   if (!staffId) {
     return NextResponse.json({ error: 'Missing staffId' }, { status: 400 });
@@ -150,6 +151,7 @@ export async function PATCH(request: NextRequest) {
   if (bio !== undefined) updates.bio = bio?.trim() || null;
   if (showOnSite !== undefined) updates.show_on_site = showOnSite;
   if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
+  if (profileId !== undefined) updates.profile_id = profileId || null;
 
   const { error } = await admin
     .from('staff_members')

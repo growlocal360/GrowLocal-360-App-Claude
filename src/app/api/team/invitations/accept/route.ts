@@ -64,6 +64,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // For 'user' role (technicians): ensure a linked staff_member exists
+    if (invitation.role === 'user') {
+      await ensureStaffMember(adminSupabase, existingProfile.id, invitation, user);
+    }
+
     // Mark invitation as accepted
     await adminSupabase
       .from('invitations')
@@ -102,6 +107,11 @@ export async function POST(request: NextRequest) {
     }));
 
     await adminSupabase.from('profile_site_assignments').insert(assignments);
+  }
+
+  // For 'user' role (technicians): auto-create a linked staff_member
+  if (invitation.role === 'user') {
+    await ensureStaffMember(adminSupabase, newProfile.id, invitation, user);
   }
 
   // Mark invitation as accepted
@@ -164,4 +174,44 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json({ success: true });
+}
+
+// Auto-create a linked staff_member for 'user' role (technicians) so they can be scheduled
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureStaffMember(admin: any, profileId: string, invitation: any, user: any) {
+  try {
+    // Check if a staff_member already exists for this profile
+    const { data: existing } = await admin
+      .from('staff_members')
+      .select('id')
+      .eq('profile_id', profileId)
+      .single();
+
+    if (existing) return;
+
+    // Create staff_member linked to the profile
+    const { data: staffMember } = await admin
+      .from('staff_members')
+      .insert({
+        organization_id: invitation.organization_id,
+        full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Unnamed',
+        email: user.email,
+        profile_id: profileId,
+        show_on_site: false,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+
+    // Mirror site assignments to staff_site_assignments
+    if (staffMember && invitation.site_ids && invitation.site_ids.length > 0) {
+      const staffAssignments = invitation.site_ids.map((siteId: string) => ({
+        staff_member_id: staffMember.id,
+        site_id: siteId,
+      }));
+      await admin.from('staff_site_assignments').insert(staffAssignments);
+    }
+  } catch (err) {
+    console.error('ensureStaffMember: failed for profile', profileId, err);
+  }
 }

@@ -628,8 +628,8 @@ export default function SchedulingSettingsPage() {
                 <p className="text-gray-500">No staff members assigned to this site.</p>
                 <p className="text-sm text-gray-400 mt-1">
                   Add staff in{' '}
-                  <Link href={`/dashboard/sites/${siteId}/settings/staff`} className="text-[#00ef99] hover:underline">
-                    Staff Settings
+                  <Link href="/dashboard/team" className="text-[#00ef99] hover:underline">
+                    Team Management
                   </Link>
                 </p>
               </div>

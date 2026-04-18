@@ -73,6 +73,7 @@ export interface ProfileSiteAssignment {
 export interface StaffMember {
   id: string;
   organization_id: string;
+  profile_id: string | null;
   full_name: string;
   title: string | null;
   email: string | null;

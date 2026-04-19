@@ -21,6 +21,7 @@ export async function GET() {
     .select('*')
     .eq('organization_id', caller.organization_id)
     .eq('is_active', true)
+    .is('profile_id', null)
     .order('display_order')
     .order('created_at');
 

@@ -151,9 +151,8 @@ export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
         {mainNavItems
           .filter((item) => {
             if (role === 'user') {
-              // Users only see Job Snaps
+              // Users see Sites (for scheduling) and Job Snaps
               if (item.href === '/dashboard/team') return false;
-              if (item.href === '/dashboard/sites') return false;
               if (item.href === '/dashboard') return false;
             }
             return true;

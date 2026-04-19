@@ -97,6 +97,7 @@ export default function SchedulingPage() {
     staff_member_id: '', source: 'manual',
   });
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
+  const [userRole, setUserRole] = useState<string>('owner');
   const [pendingCount, setPendingCount] = useState(0);
   const [availabilityPosts, setAvailabilityPosts] = useState<AvailabilityPost[]>([]);
 
@@ -131,6 +132,8 @@ export default function SchedulingPage() {
         email: user?.email || '',
         avatarUrl: profile?.avatar_url,
       });
+      const currentRole = profile?.role || 'user';
+      setUserRole(currentRole);
 
       // Load staff
       const { data: assignments } = await supabase
@@ -145,7 +148,16 @@ export default function SchedulingPage() {
           .select('*')
           .in('id', staffIds)
           .eq('is_active', true);
-        setStaff((staffData || []) as StaffMember[]);
+        const staffList = (staffData || []) as StaffMember[];
+        setStaff(staffList);
+
+        // For 'user' role (technicians): auto-filter to their own schedule
+        if (currentRole === 'user' && profile?.id) {
+          const myStaff = staffList.find(s => s.profile_id === profile.id);
+          if (myStaff) {
+            setStaffFilter(myStaff.id);
+          }
+        }
       }
 
       // Load recent availability posts
@@ -258,7 +270,7 @@ export default function SchedulingPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Scheduling" user={userData} />
+      <Header title={userRole === 'user' ? 'My Schedule' : 'Scheduling'} user={userData} />
 
       <div className="space-y-6 p-6">
         {/* Top Nav */}
@@ -272,7 +284,7 @@ export default function SchedulingPage() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {pendingCount > 0 && (
+            {pendingCount > 0 && userRole !== 'user' && (
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/scheduling/pending`}>
                   <AlertCircle className="mr-1.5 h-4 w-4 text-yellow-500" />
@@ -280,16 +292,20 @@ export default function SchedulingPage() {
                 </Link>
               </Button>
             )}
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/dashboard/sites/${siteId}/scheduling/settings`}>
-                <Settings className="mr-1.5 h-4 w-4" />
-                Settings
-              </Link>
-            </Button>
-            <Button size="sm" onClick={() => setShowNewForm(true)}>
-              <CalendarPlus className="mr-1.5 h-4 w-4" />
-              New Appointment
-            </Button>
+            {userRole !== 'user' && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/scheduling/settings`}>
+                  <Settings className="mr-1.5 h-4 w-4" />
+                  Settings
+                </Link>
+              </Button>
+            )}
+            {userRole !== 'user' && (
+              <Button size="sm" onClick={() => setShowNewForm(true)}>
+                <CalendarPlus className="mr-1.5 h-4 w-4" />
+                New Appointment
+              </Button>
+            )}
           </div>
         </div>
 
@@ -351,17 +367,21 @@ export default function SchedulingPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-400" />
-            <select
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-              value={staffFilter}
-              onChange={e => setStaffFilter(e.target.value)}
-            >
-              <option value="all">All Staff</option>
-              {staff.map(s => (
-                <option key={s.id} value={s.id}>{s.full_name}</option>
+            {userRole !== 'user' && (
+              <>
+                <Users className="h-4 w-4 text-gray-400" />
+                <select
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                  value={staffFilter}
+                  onChange={e => setStaffFilter(e.target.value)}
+                >
+                  <option value="all">All Staff</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.full_name}</option>
               ))}
             </select>
+              </>
+            )}
           </div>
         </div>
 

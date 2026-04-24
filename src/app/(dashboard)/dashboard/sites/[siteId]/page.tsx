@@ -572,6 +572,115 @@ export default function SiteDashboardPage() {
           {/* Admin-only cards below */}
           {userRole !== 'user' && (<>
 
+          {/* Branding */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center"
+                  style={{ backgroundColor: site.settings?.brand_color || '#00ef99' }}
+                >
+                  <Palette className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Branding</h3>
+                  <p className="text-sm text-gray-500">Logo & colors</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.settings?.logo_url
+                  ? 'Logo uploaded'
+                  : 'No logo uploaded yet'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/branding`}>
+                  Customize Branding
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Domain */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Globe className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Domain</h3>
+                  <p className="text-sm text-gray-500">Custom domain</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.custom_domain
+                  ? site.custom_domain_verified
+                    ? site.custom_domain
+                    : `${site.custom_domain} (pending)`
+                  : `${site.slug}.${appDomain}`}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/domain`}>
+                  Manage Domain
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Locations */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Locations</h3>
+                  <p className="text-sm text-gray-500">Service areas</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.locations?.length || 0} location{site.locations?.length !== 1 ? 's' : ''} configured
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/locations`}>
+                  Manage Locations
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Leads */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Inbox className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Leads</h3>
+                  <p className="text-sm text-gray-500">Form submissions</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                View and manage leads from your website forms
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/leads`}>
+                  View Leads
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Business Info */}
           <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>

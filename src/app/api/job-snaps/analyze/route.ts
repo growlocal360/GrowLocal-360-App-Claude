@@ -4,9 +4,6 @@ import { createAnthropicClient, withRetry } from '@/lib/content/generators';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { JobSnapAnalysisResult } from '@/lib/job-snaps/types';
 
-// Allow up to 10 MB — images are resized client-side but this provides headroom
-export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
-
 /**
  * POST /api/job-snaps/analyze
  *

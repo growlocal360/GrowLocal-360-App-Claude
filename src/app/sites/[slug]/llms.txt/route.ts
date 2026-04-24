@@ -24,7 +24,7 @@ export async function GET(
 
   const { site, primaryLocation, serviceAreas } = data;
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const siteUrl = `https://${domain}`;
 
   const { categories, services } = await getCategoriesWithServices(site.id);

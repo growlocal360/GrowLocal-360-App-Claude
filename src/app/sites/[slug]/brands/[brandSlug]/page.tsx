@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: BrandDetailPageProps): Promis
   const industry = (site.settings?.core_industry as string) || '';
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/brands/${brandSlug}`;
 
   const title = brand.meta_title || `${brand.name} ${industry} ${city} ${state} | ${site.name}`.trim();

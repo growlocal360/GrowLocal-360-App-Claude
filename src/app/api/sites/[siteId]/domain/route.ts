@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
+import { revalidateSite } from '@/lib/sites/revalidate';
 import {
   addDomainPairToVercel,
   removeDomainPairFromVercel,
@@ -156,6 +157,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Get DNS instructions
     const dnsInstructions = await getDNSInstructions(normalizedDomain, vercelConfig ?? undefined);
 
+    // Revalidate so canonical/schema URLs reflect that a custom domain now exists
+    // (the actual switch from subdomain → custom domain happens once verified)
+    await revalidateSite(siteId);
+
     return NextResponse.json({
       success: true,
       customDomain: normalizedDomain,
@@ -226,6 +231,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (updateError) {
       throw updateError;
     }
+
+    // Revalidate so canonical/schema URLs revert to subdomain
+    await revalidateSite(siteId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

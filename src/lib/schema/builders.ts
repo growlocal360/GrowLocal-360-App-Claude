@@ -18,7 +18,8 @@ export function getSiteUrl(business: SchemaBusinessInput): string {
   if (business.domain) {
     return `https://${business.domain}`;
   }
-  return `https://${business.siteSlug}.growlocal360.com`;
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  return `https://${business.siteSlug}.${appDomain}`;
 }
 
 /** Reference-only business node for embedding as provider */

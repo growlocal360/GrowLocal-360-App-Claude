@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
 
   const { site, primaryLocation, sitePages } = data;
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}`;
 
   // Use generated home page metadata if available

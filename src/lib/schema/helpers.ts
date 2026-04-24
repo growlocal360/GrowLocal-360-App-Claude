@@ -5,6 +5,7 @@ interface SiteInput {
   slug: string;
   domain: string | null;
   custom_domain: string | null;
+  custom_domain_verified?: boolean | null;
   settings: {
     phone?: string | null;
     email?: string | null;
@@ -34,7 +35,7 @@ export function toBusinessInput(
     siteName: site.name,
     siteSlug: site.slug,
     domain: site.domain,
-    customDomain: site.custom_domain,
+    customDomain: site.custom_domain_verified ? site.custom_domain : null,
     phone: site.settings?.phone || location?.phone || null,
     email: site.settings?.email || null,
     logoUrl: site.settings?.logo_url || null,

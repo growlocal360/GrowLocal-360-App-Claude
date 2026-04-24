@@ -32,7 +32,7 @@ export async function GET(
 
   const { site, serviceAreas, neighborhoods, brands } = data;
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const baseUrl = `https://${domain}`;
   const lastmod = new Date(site.updated_at).toISOString().split('T')[0];
 

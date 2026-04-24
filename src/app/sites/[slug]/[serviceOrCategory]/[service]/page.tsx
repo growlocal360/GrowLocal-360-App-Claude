@@ -121,7 +121,7 @@ export async function generateMetadata({ params }: NestedServicePageProps) {
   const { service: svc, location, site } = data;
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/${serviceOrCategory}/${service}`;
 
   return {

@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: BrandsPageProps): Promise<Met
   const industry = (site.settings?.core_industry as string) || '';
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/brands`;
 
   const title = `${industry ? `${industry} ` : ''}Brands We Service${city ? ` in ${city}` : ''} | ${site.name}`;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
+import { revalidateSite } from '@/lib/sites/revalidate';
 import {
   verifyDomainDNS,
   getDomainConfig,
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (updateError) {
         console.error('Error updating verification status:', updateError);
       }
+
+      // Revalidate so canonical/schema URLs flip from subdomain → custom domain
+      await revalidateSite(siteId);
 
       return NextResponse.json({
         verified: true,

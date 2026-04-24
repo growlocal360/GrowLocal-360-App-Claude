@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
   const serviceData = await getServiceBySlugSingleLocation(slug, serviceOrCategory);
   if (serviceData) {
     const { service, location, site } = serviceData;
-    const domain = site.custom_domain || `${slug}.${appDomain}`;
+    const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
     const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
     const ogImage = getSiteOgImage(site.settings);
     return withOpenGraph({
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     }
     const { category, location, site, pageContent } = categoryData;
     const categoryName = category.gbp_category.display_name;
-    const domain = site.custom_domain || `${slug}.${appDomain}`;
+    const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
     const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
     const ogImage = getSiteOgImage(site.settings);
     return withOpenGraph({

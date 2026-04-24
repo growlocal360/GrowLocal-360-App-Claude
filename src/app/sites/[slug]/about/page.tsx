@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: AboutPageProps): Promise<Meta
   const aboutPage = data.sitePages?.find(p => p.page_type === 'about');
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = data.site.custom_domain || `${slug}.${appDomain}`;
+  const domain = (data.site.custom_domain_verified && data.site.custom_domain) ? data.site.custom_domain : `${slug}.${appDomain}`;
   const canonicalUrl = `https://${domain}/about`;
 
   const ogImage = getSiteOgImage(data.site.settings);

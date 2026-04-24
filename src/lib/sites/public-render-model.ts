@@ -58,6 +58,7 @@ export interface PublicRenderSite {
   slug: string;
   domain: string | null;
   custom_domain: string | null;
+  custom_domain_verified: boolean | null;
   website_type: WebsiteType;
   settings: PublicRenderSettings;
 }
@@ -308,6 +309,7 @@ export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
     slug: site.slug,
     domain: site.domain,
     custom_domain: site.custom_domain,
+    custom_domain_verified: site.custom_domain_verified ?? null,
     website_type: site.website_type,
     settings: {
       brand_color: s.brand_color || '#00ef99',

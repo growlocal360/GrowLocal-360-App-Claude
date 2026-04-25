@@ -73,7 +73,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {serviceAreas.map((area) => (
                   <Link key={area.id} href={paths.areaPage(area.slug, locationSlug)}>
-                    <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
+                    <Card className="h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                       <CardContent className="p-5">
                         <div
                           className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
@@ -110,7 +110,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {neighborhoods.map((neighborhood) => (
                   <Link key={neighborhood.id} href={paths.neighborhoodPage(neighborhood.slug, locationSlug)}>
-                    <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
+                    <Card className="h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                       <CardContent className="p-5">
                         <div
                           className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"

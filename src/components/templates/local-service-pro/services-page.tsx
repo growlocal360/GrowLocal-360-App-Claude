@@ -90,7 +90,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
                   const services = servicesByCategory[cat.id] || [];
                   return (
                     <Link key={cat.id} href={getCategoryUrl(cat)}>
-                      <Card className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl" style={{ borderTop: `3px solid ${brandColor}` }}>
+                      <Card className="group h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                         <CardContent className="p-5">
                           <div
                             className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"

@@ -49,13 +49,13 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
             <Image
               src={site.settings.logo_url}
               alt={site.name}
-              width={160}
-              height={40}
-              className="h-10 w-auto object-contain"
+              width={256}
+              height={64}
+              className="h-12 w-auto object-contain md:h-16"
               priority
             />
           ) : (
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-xl font-bold text-gray-900 md:text-2xl">
               {site.name}
             </span>
           )}

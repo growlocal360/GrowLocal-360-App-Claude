@@ -37,8 +37,7 @@ export function BrandsSection({ site, primaryLocation, brands, siteSlug, locatio
           {brands.map((brand) => (
             <Link key={brand.id} href={paths.brandPage(brand.slug, locationSlug)}>
               <Card
-                className="group h-full cursor-pointer rounded-2xl transition-all duration-300 hover:border-transparent hover:shadow-xl"
-                style={{ borderTop: `3px solid ${accentColor}` }}
+                className="group h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <CardContent className="flex items-center justify-between p-5">
                   <span className="font-bold text-gray-900">{brand.name}</span>

@@ -74,7 +74,7 @@ export function BrandHomepage({ site, locations }: BrandHomepageProps) {
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {locations.map((loc) => (
                 <Link key={loc.id} href={`/${loc.slug}`}>
-                  <Card className="h-full cursor-pointer transition-all hover:shadow-lg" style={{ borderTop: `3px solid ${brandColor}` }}>
+                  <Card className="h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
                         <div

@@ -7,14 +7,18 @@ import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Briefcase,
   Plus,
   Loader2,
   Search,
+  Camera,
+  Code2,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-snap-card';
+import { IntegrationsPanel } from '@/components/integrations/integrations-panel';
 import { toast } from 'sonner';
 import type { JobStatus } from '@/types/database';
 
@@ -291,6 +295,19 @@ export default function JobSnapsPage() {
           </Button>
         </div>
 
+        <Tabs defaultValue="snaps" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="snaps">
+              <Camera className="h-4 w-4 mr-2" />
+              Snaps
+            </TabsTrigger>
+            <TabsTrigger value="connect">
+              <Code2 className="h-4 w-4 mr-2" />
+              Connect Your Website
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="snaps" className="space-y-6">
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
@@ -360,6 +377,12 @@ export default function JobSnapsPage() {
             ))}
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="connect">
+            <IntegrationsPanel />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

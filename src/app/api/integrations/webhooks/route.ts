@@ -1,60 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifySiteAccess } from '@/lib/auth/permissions';
+import { resolveActiveOrg } from '@/lib/auth/resolve-org';
 import { generateWebhookSecret } from '@/lib/webhooks/sign';
 import type { WebhookEndpoint, WebhookEndpointPublic } from '@/types/database';
 
-function toPublic(ep: WebhookEndpoint): WebhookEndpointPublic {
+interface WebhookEndpointWithSite extends WebhookEndpointPublic {
+  site_name: string;
+}
+
+function toPublic(
+  ep: WebhookEndpoint & { sites?: { name: string } | null }
+): WebhookEndpointWithSite {
+  const { sites, ...rest } = ep;
   return {
-    ...ep,
+    ...rest,
     secret_preview: `${ep.secret.slice(0, 12)}…`,
+    site_name: sites?.name || 'Unknown',
   };
 }
 
-// GET — list webhook endpoints for site
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ siteId: string }> }
-) {
-  const { siteId } = await params;
+// GET — list all webhook endpoints in the active org
+export async function GET() {
   const supabase = await createClient();
-
-  const access = await verifySiteAccess(supabase, siteId);
-  if (access.error) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+  const ctx = await resolveActiveOrg(supabase);
+  if ('error' in ctx) {
+    return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
 
   const admin = createAdminClient();
   const { data } = await admin
     .from('webhook_endpoints')
-    .select('*')
-    .eq('site_id', siteId)
+    .select('*, sites(name)')
+    .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false });
 
   return NextResponse.json({
-    endpoints: (data || []).map((ep) => toPublic(ep as WebhookEndpoint)),
+    endpoints: (data || []).map((ep) =>
+      toPublic(ep as WebhookEndpoint & { sites?: { name: string } | null })
+    ),
   });
 }
 
-// POST — create a new endpoint. Returns FULL secret once.
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ siteId: string }> }
-) {
-  const { siteId } = await params;
+// POST — create endpoint
+export async function POST(req: NextRequest) {
   const supabase = await createClient();
-
-  const access = await verifySiteAccess(supabase, siteId);
-  if (access.error || !access.caller || !access.siteOrgId) {
-    return NextResponse.json(
-      { error: access.error || 'Unauthorized' },
-      { status: access.status || 401 }
-    );
+  const ctx = await resolveActiveOrg(supabase);
+  if ('error' in ctx) {
+    return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
 
   const body = await req.json().catch(() => ({}));
   const url = (body.url || '').trim();
+  const siteId = body.siteId;
   const events = Array.isArray(body.events) && body.events.length > 0
     ? body.events
     : ['job_snap.published', 'job_snap.updated', 'job_snap.unpublished'];
@@ -62,22 +60,37 @@ export async function POST(
   if (!url || !/^https?:\/\//.test(url)) {
     return NextResponse.json({ error: 'url must be a valid http(s) URL' }, { status: 400 });
   }
+  if (!siteId) {
+    return NextResponse.json({ error: 'siteId is required' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  // Verify the site belongs to the user's active org
+  const { data: site } = await admin
+    .from('sites')
+    .select('id, organization_id')
+    .eq('id', siteId)
+    .single();
+
+  if (!site || site.organization_id !== ctx.organizationId) {
+    return NextResponse.json({ error: 'Site not found in active org' }, { status: 404 });
+  }
 
   const secret = generateWebhookSecret();
-  const admin = createAdminClient();
 
   const { data, error } = await admin
     .from('webhook_endpoints')
     .insert({
       site_id: siteId,
-      organization_id: access.siteOrgId,
+      organization_id: ctx.organizationId,
       url,
       secret,
       events,
       is_active: true,
-      created_by: access.caller.id,
+      created_by: ctx.profileId,
     })
-    .select('*')
+    .select('*, sites(name)')
     .single();
 
   if (error || !data) {
@@ -85,23 +98,18 @@ export async function POST(
   }
 
   return NextResponse.json({
-    endpoint: toPublic(data as WebhookEndpoint),
-    secret, // shown once for the customer to store on their server
+    endpoint: toPublic(data as WebhookEndpoint & { sites?: { name: string } | null }),
+    secret,
     warning: 'Store this signing secret now. It will never be shown again.',
   });
 }
 
-// PATCH — update url, events, or is_active
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ siteId: string }> }
-) {
-  const { siteId } = await params;
+// PATCH — toggle is_active or update url/events
+export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
-
-  const access = await verifySiteAccess(supabase, siteId);
-  if (access.error) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+  const ctx = await resolveActiveOrg(supabase);
+  if ('error' in ctx) {
+    return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -125,7 +133,7 @@ export async function PATCH(
     .from('webhook_endpoints')
     .update(updateData)
     .eq('id', id)
-    .eq('site_id', siteId);
+    .eq('organization_id', ctx.organizationId);
 
   if (error) {
     return NextResponse.json({ error: 'Failed to update endpoint' }, { status: 500 });
@@ -134,17 +142,12 @@ export async function PATCH(
   return NextResponse.json({ success: true });
 }
 
-// DELETE — remove a webhook endpoint
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ siteId: string }> }
-) {
-  const { siteId } = await params;
+// DELETE — remove endpoint
+export async function DELETE(req: NextRequest) {
   const supabase = await createClient();
-
-  const access = await verifySiteAccess(supabase, siteId);
-  if (access.error) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+  const ctx = await resolveActiveOrg(supabase);
+  if ('error' in ctx) {
+    return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   }
 
   const url = new URL(req.url);
@@ -158,7 +161,7 @@ export async function DELETE(
     .from('webhook_endpoints')
     .delete()
     .eq('id', id)
-    .eq('site_id', siteId);
+    .eq('organization_id', ctx.organizationId);
 
   if (error) {
     return NextResponse.json({ error: 'Failed to delete endpoint' }, { status: 500 });

@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  ArrowLeft,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Code2,
   Copy,
   Check,
@@ -23,7 +27,35 @@ import {
   Loader2,
   Power,
 } from 'lucide-react';
-import type { ApiKeyPublic, WebhookEndpointPublic } from '@/types/database';
+
+interface ApiKeyRow {
+  id: string;
+  site_id: string;
+  organization_id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  site_name: string;
+}
+
+interface WebhookRow {
+  id: string;
+  site_id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  secret_preview: string;
+  created_at: string;
+  site_name: string;
+}
+
+interface SiteOption {
+  id: string;
+  name: string;
+}
 
 const APP_URL =
   typeof window !== 'undefined'
@@ -62,40 +94,49 @@ function CodeBlock({ children }: { children: string }) {
   );
 }
 
-export default function IntegrationsPage() {
-  const params = useParams();
-  const siteId = params.siteId as string;
-
-  const [keys, setKeys] = useState<ApiKeyPublic[]>([]);
-  const [endpoints, setEndpoints] = useState<WebhookEndpointPublic[]>([]);
+export function IntegrationsPanel() {
+  const [keys, setKeys] = useState<ApiKeyRow[]>([]);
+  const [endpoints, setEndpoints] = useState<WebhookRow[]>([]);
+  const [sites, setSites] = useState<SiteOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Reveal-once state for newly created secrets
+  // Reveal-once state
   const [newKey, setNewKey] = useState<{ name: string; fullKey: string } | null>(null);
   const [newSecret, setNewSecret] = useState<{ url: string; secret: string } | null>(null);
 
   // Form state
   const [keyName, setKeyName] = useState('');
+  const [keySiteId, setKeySiteId] = useState<string>('');
   const [creatingKey, setCreatingKey] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookSiteId, setWebhookSiteId] = useState<string>('');
   const [creatingWebhook, setCreatingWebhook] = useState(false);
 
   useEffect(() => {
     fetchAll();
-  }, [siteId]);
+  }, []);
 
   async function fetchAll() {
     setLoading(true);
     try {
-      const [keysRes, hooksRes] = await Promise.all([
-        fetch(`/api/sites/${siteId}/settings/api-keys`),
-        fetch(`/api/sites/${siteId}/settings/webhooks`),
+      const [keysRes, hooksRes, sitesRes] = await Promise.all([
+        fetch(`/api/integrations/api-keys`),
+        fetch(`/api/integrations/webhooks`),
+        fetch(`/api/integrations/sites`),
       ]);
       const keysData = await keysRes.json();
       const hooksData = await hooksRes.json();
+      const sitesData = await sitesRes.json();
       setKeys(keysData.keys || []);
       setEndpoints(hooksData.endpoints || []);
+      setSites(sitesData.sites || []);
+      // Auto-select first site if exactly one exists
+      const list: SiteOption[] = sitesData.sites || [];
+      if (list.length > 0) {
+        setKeySiteId((prev) => prev || list[0].id);
+        setWebhookSiteId((prev) => prev || list[0].id);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -104,14 +145,14 @@ export default function IntegrationsPage() {
   }
 
   async function createKey() {
-    if (!keyName.trim()) return;
+    if (!keyName.trim() || !keySiteId) return;
     setCreatingKey(true);
     setError(null);
     try {
-      const res = await fetch(`/api/sites/${siteId}/settings/api-keys`, {
+      const res = await fetch(`/api/integrations/api-keys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: keyName.trim() }),
+        body: JSON.stringify({ name: keyName.trim(), siteId: keySiteId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -127,19 +168,19 @@ export default function IntegrationsPage() {
 
   async function revokeKey(id: string) {
     if (!confirm('Revoke this API key? Sites using it will immediately lose access.')) return;
-    await fetch(`/api/sites/${siteId}/settings/api-keys?id=${id}`, { method: 'DELETE' });
+    await fetch(`/api/integrations/api-keys?id=${id}`, { method: 'DELETE' });
     await fetchAll();
   }
 
   async function createWebhook() {
-    if (!webhookUrl.trim()) return;
+    if (!webhookUrl.trim() || !webhookSiteId) return;
     setCreatingWebhook(true);
     setError(null);
     try {
-      const res = await fetch(`/api/sites/${siteId}/settings/webhooks`, {
+      const res = await fetch(`/api/integrations/webhooks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: webhookUrl.trim() }),
+        body: JSON.stringify({ url: webhookUrl.trim(), siteId: webhookSiteId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -154,7 +195,7 @@ export default function IntegrationsPage() {
   }
 
   async function toggleWebhook(id: string, isActive: boolean) {
-    await fetch(`/api/sites/${siteId}/settings/webhooks`, {
+    await fetch(`/api/integrations/webhooks`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, isActive: !isActive }),
@@ -164,36 +205,42 @@ export default function IntegrationsPage() {
 
   async function deleteWebhook(id: string) {
     if (!confirm('Delete this webhook endpoint?')) return;
-    await fetch(`/api/sites/${siteId}/settings/webhooks?id=${id}`, { method: 'DELETE' });
+    await fetch(`/api/integrations/webhooks?id=${id}`, { method: 'DELETE' });
     await fetchAll();
   }
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 rounded" />
-        </div>
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-1/3" />
+        <div className="h-64 bg-gray-200 rounded" />
       </div>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Link
-        href={`/dashboard/sites/${siteId}`}
-        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900"
-      >
-        <ArrowLeft className="h-4 w-4 mr-1" />
-        Back to Site
-      </Link>
+  if (sites.length === 0) {
+    return (
+      <Card className="border-dashed border-2">
+        <CardContent className="p-8 text-center">
+          <Globe className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="font-semibold text-gray-900 mb-2">No site or workspace yet</h3>
+          <p className="text-sm text-gray-500">
+            You need a site or Job Snaps workspace before you can generate API keys.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
+  const showSiteSelector = sites.length > 1;
+
+  return (
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Connect Your Website</h1>
-        <p className="text-gray-500 mt-1">
-          Display your Job Snaps on any external website — Next.js, WordPress, HighLevel, or any
-          site that can run JavaScript.
+        <h2 className="text-xl font-bold text-gray-900">Connect Your Website</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Display your Job Snaps on any external website &mdash; Next.js, WordPress, HighLevel, or
+          any site that can run JavaScript.
         </p>
       </div>
 
@@ -210,15 +257,15 @@ export default function IntegrationsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-amber-600" />
-              <h2 className="font-semibold text-amber-900">
+              <h3 className="font-semibold text-amber-900">
                 Your new API key &mdash; copy it now
-              </h2>
+              </h3>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-amber-800">
               This key will <strong>never be shown again</strong>. Store it in your environment
-              variables (e.g. <code className="bg-amber-100 px-1 rounded">JOBSNAPS_API_KEY</code>).
+              variables.
             </p>
             <div className="flex gap-2 items-center">
               <Input value={newKey.fullKey} readOnly className="font-mono text-xs bg-white" />
@@ -241,15 +288,15 @@ export default function IntegrationsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Webhook className="h-5 w-5 text-amber-600" />
-              <h2 className="font-semibold text-amber-900">
+              <h3 className="font-semibold text-amber-900">
                 Webhook signing secret &mdash; copy it now
-              </h2>
+              </h3>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-amber-800">
-              Use this secret on your server to verify incoming webhook signatures. Will
-              <strong> never be shown again</strong>.
+              Use this secret on your server to verify incoming webhook signatures. Will{' '}
+              <strong>never be shown again</strong>.
             </p>
             <div className="text-xs text-amber-700">URL: {newSecret.url}</div>
             <div className="flex gap-2 items-center">
@@ -276,30 +323,28 @@ export default function IntegrationsPage() {
           <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
 
-        {/* ── NEXT.JS ───────────────────────────────────────────────── */}
         <TabsContent value="nextjs" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Code2 className="h-5 w-5 text-[#00ef99]" />
-                <h2 className="font-semibold">Drop into your Next.js site</h2>
+                <h3 className="font-semibold">Drop into your Next.js site</h3>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="font-medium text-sm mb-2">1. Add your API key to .env.local</h3>
+                <h4 className="font-medium text-sm mb-2">1. Add your API key to .env.local</h4>
                 <CodeBlock>{`JOBSNAPS_API_KEY=your_api_key_here`}</CodeBlock>
               </div>
-
               <div>
-                <h3 className="font-medium text-sm mb-2">
+                <h4 className="font-medium text-sm mb-2">
                   2. Fetch and render snaps in a Server Component
-                </h3>
+                </h4>
                 <CodeBlock>{`// app/work/page.tsx
 export default async function WorkPage() {
   const res = await fetch('${APP_URL}/api/v1/job-snaps?limit=20', {
     headers: { 'X-API-Key': process.env.JOBSNAPS_API_KEY! },
-    next: { revalidate: 3600 }, // ISR — 1 hour
+    next: { revalidate: 3600 },
   });
   const { data: snaps } = await res.json();
 
@@ -319,48 +364,33 @@ export default async function WorkPage() {
   );
 }`}</CodeBlock>
               </div>
-
               <div>
-                <h3 className="font-medium text-sm mb-2">
-                  3. (Optional) Add a webhook endpoint for instant updates
-                </h3>
+                <h4 className="font-medium text-sm mb-2">
+                  3. (Optional) Webhook for instant updates
+                </h4>
                 <CodeBlock>{`// app/api/jobsnaps-webhook/route.ts
 import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request) {
-  // Verify signature (recommended — use the secret from your dashboard)
-  // const signature = req.headers.get('x-webhook-signature');
-  // ...verifyWebhookSignature(body, signature, process.env.JOBSNAPS_WEBHOOK_SECRET)
-
   revalidatePath('/work');
   return Response.json({ ok: true });
 }`}</CodeBlock>
-                <p className="text-xs text-gray-500 mt-2">
-                  Then register{' '}
-                  <code className="bg-gray-100 px-1 rounded">
-                    https://yoursite.com/api/jobsnaps-webhook
-                  </code>{' '}
-                  in the Webhooks section below.
-                </p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── WORDPRESS ─────────────────────────────────────────────── */}
         <TabsContent value="wordpress" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-[#00ef99]" />
-                <h2 className="font-semibold">WordPress Plugin</h2>
+                <h3 className="font-semibold">WordPress Plugin</h3>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="p-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 text-center">
-                <p className="text-sm text-gray-600">
-                  WordPress plugin coming soon.
-                </p>
+                <p className="text-sm text-gray-600">WordPress plugin coming soon.</p>
                 <p className="text-xs text-gray-500 mt-1">
                   In the meantime, the Embed Script tab works on any WordPress site.
                 </p>
@@ -369,19 +399,17 @@ export async function POST(req: Request) {
           </Card>
         </TabsContent>
 
-        {/* ── EMBED SCRIPT ──────────────────────────────────────────── */}
         <TabsContent value="embed" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Code2 className="h-5 w-5 text-[#00ef99]" />
-                <h2 className="font-semibold">Embed on any website</h2>
+                <h3 className="font-semibold">Embed on any website</h3>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">
-                Paste this snippet anywhere you want a Job Snaps gallery to appear &mdash;
-                Squarespace, Wix, HighLevel, raw HTML, anywhere.
+                Paste this snippet anywhere &mdash; Squarespace, Wix, HighLevel, raw HTML.
               </p>
               <CodeBlock>{`<div id="jobsnaps-gallery"></div>
 <script
@@ -391,40 +419,38 @@ export async function POST(req: Request) {
   data-limit="20"
 ></script>`}</CodeBlock>
               <p className="text-xs text-gray-500">
-                Embed script ships with default styling that works on dark or light backgrounds.
-                Coming soon &mdash; for now, use the API tab to fetch directly.
+                Embed script ships with default styling. Coming soon &mdash; for now, use the API
+                tab to fetch directly.
               </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── API ───────────────────────────────────────────────────── */}
         <TabsContent value="api" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Code2 className="h-5 w-5 text-[#00ef99]" />
-                <h2 className="font-semibold">Public REST API</h2>
+                <h3 className="font-semibold">Public REST API</h3>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="font-medium text-sm mb-2">Endpoint</h3>
+                <h4 className="font-medium text-sm mb-2">Endpoint</h4>
                 <CodeBlock>{`GET ${APP_URL}/api/v1/job-snaps`}</CodeBlock>
               </div>
               <div>
-                <h3 className="font-medium text-sm mb-2">Authentication</h3>
-                <CodeBlock>{`# Either header works:
-X-API-Key: your_api_key_here
+                <h4 className="font-medium text-sm mb-2">Authentication</h4>
+                <CodeBlock>{`X-API-Key: your_api_key_here
 Authorization: Bearer your_api_key_here`}</CodeBlock>
               </div>
               <div>
-                <h3 className="font-medium text-sm mb-2">curl example</h3>
+                <h4 className="font-medium text-sm mb-2">curl example</h4>
                 <CodeBlock>{`curl -H "X-API-Key: your_api_key_here" \\
   "${APP_URL}/api/v1/job-snaps?limit=20"`}</CodeBlock>
               </div>
               <div>
-                <h3 className="font-medium text-sm mb-2">Query params</h3>
+                <h4 className="font-medium text-sm mb-2">Query params</h4>
                 <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
                   <li>
                     <code className="bg-gray-100 px-1 rounded">limit</code> &mdash; default 20, max
@@ -432,11 +458,9 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                   </li>
                   <li>
                     <code className="bg-gray-100 px-1 rounded">offset</code> &mdash; pagination
-                    offset
                   </li>
                   <li>
-                    <code className="bg-gray-100 px-1 rounded">brand</code> &mdash; filter by
-                    detected brand
+                    <code className="bg-gray-100 px-1 rounded">brand</code> &mdash; filter by brand
                   </li>
                   <li>
                     <code className="bg-gray-100 px-1 rounded">service_type</code> &mdash; filter
@@ -449,27 +473,42 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
         </TabsContent>
       </Tabs>
 
-      {/* ── API KEYS LIST ─────────────────────────────────────────── */}
+      {/* API KEYS LIST */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-[#00ef99]" />
-              <h2 className="font-semibold">API Keys</h2>
+              <h3 className="font-semibold">API Keys</h3>
               <Badge variant="secondary">{keys.length}</Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="Key name (e.g. WordPress site, Next.js site)"
               value={keyName}
               onChange={(e) => setKeyName(e.target.value)}
+              className="flex-1"
             />
+            {showSiteSelector && (
+              <Select value={keySiteId} onValueChange={setKeySiteId}>
+                <SelectTrigger className="sm:w-48">
+                  <SelectValue placeholder="Site..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               onClick={createKey}
-              disabled={!keyName.trim() || creatingKey}
+              disabled={!keyName.trim() || !keySiteId || creatingKey}
               className="bg-black hover:bg-gray-800"
             >
               {creatingKey ? (
@@ -493,6 +532,11 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                     <div className="font-medium text-sm">{k.name}</div>
                     <div className="font-mono text-xs text-gray-500 mt-0.5">
                       {k.key_prefix}…
+                      {showSiteSelector && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {k.site_name}
+                        </Badge>
+                      )}
                       {k.revoked_at && (
                         <Badge variant="secondary" className="ml-2 bg-red-50 text-red-700">
                           Revoked
@@ -523,12 +567,12 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
         </CardContent>
       </Card>
 
-      {/* ── WEBHOOKS LIST ─────────────────────────────────────────── */}
+      {/* WEBHOOKS LIST */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Webhook className="h-5 w-5 text-[#00ef99]" />
-            <h2 className="font-semibold">Webhooks</h2>
+            <h3 className="font-semibold">Webhooks</h3>
             <Badge variant="secondary">{endpoints.length}</Badge>
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -537,15 +581,30 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="https://yoursite.com/api/jobsnaps-webhook"
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
+              className="flex-1"
             />
+            {showSiteSelector && (
+              <Select value={webhookSiteId} onValueChange={setWebhookSiteId}>
+                <SelectTrigger className="sm:w-48">
+                  <SelectValue placeholder="Site..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               onClick={createWebhook}
-              disabled={!webhookUrl.trim() || creatingWebhook}
+              disabled={!webhookUrl.trim() || !webhookSiteId || creatingWebhook}
               className="bg-black hover:bg-gray-800"
             >
               {creatingWebhook ? (
@@ -575,6 +634,11 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                           {e}
                         </Badge>
                       ))}
+                      {showSiteSelector && (
+                        <Badge variant="secondary" className="text-xs">
+                          {ep.site_name}
+                        </Badge>
+                      )}
                       {!ep.is_active && (
                         <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
                           Disabled
@@ -589,7 +653,11 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                       onClick={() => toggleWebhook(ep.id, ep.is_active)}
                       title={ep.is_active ? 'Disable' : 'Enable'}
                     >
-                      <Power className={`h-4 w-4 ${ep.is_active ? 'text-[#00ef99]' : 'text-gray-400'}`} />
+                      <Power
+                        className={`h-4 w-4 ${
+                          ep.is_active ? 'text-[#00ef99]' : 'text-gray-400'
+                        }`}
+                      />
                     </Button>
                     <Button
                       variant="ghost"

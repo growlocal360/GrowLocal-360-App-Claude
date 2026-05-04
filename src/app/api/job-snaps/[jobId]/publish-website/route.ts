@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jobSnapToWorkItemPayload, slugifyTitle } from '@/lib/job-snaps/transforms';
+import { emitJobSnapEvent } from '@/lib/webhooks/emit';
 import type { JobSnapWithRelations, WorkItemImage } from '@/types/database';
 
 /**
@@ -174,6 +175,12 @@ export async function POST(
     revalidatePath(base, 'layout');
 
     const publicUrl = `https://${site.slug}.goleadflow.com/work/${workSlug}`;
+
+    // Fire webhook to any external sites listening (WP plugin, Next.js, embed, etc.)
+    await emitJobSnapEvent(
+      workItemId ? 'job_snap.updated' : 'job_snap.published',
+      jobId
+    );
 
     return NextResponse.json({
       success: true,

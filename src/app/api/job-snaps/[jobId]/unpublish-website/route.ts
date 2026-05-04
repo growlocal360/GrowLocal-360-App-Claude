@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { emitJobSnapEvent } from '@/lib/webhooks/emit';
 
 /**
  * POST /api/job-snaps/[jobId]/unpublish-website
@@ -96,6 +97,8 @@ export async function POST(
       revalidatePath(`${base}/work/${workItem.slug}`, 'page');
     }
     revalidatePath(base, 'page');
+
+    await emitJobSnapEvent('job_snap.unpublished', jobId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

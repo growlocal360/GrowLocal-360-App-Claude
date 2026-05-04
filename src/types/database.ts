@@ -542,6 +542,65 @@ export interface JobSnapWithRelations extends JobSnap {
   created_by_profile?: Profile;
 }
 
+// ─── API Keys (public REST API for external sites) ──────────────────────────
+export type ApiKeyScope = 'jobsnaps:read';
+
+export interface ApiKey {
+  id: string;
+  site_id: string;
+  organization_id: string;
+  name: string;
+  key_prefix: string;
+  key_hash: string;
+  scopes: ApiKeyScope[];
+  last_used_at: string | null;
+  created_at: string;
+  created_by: string | null;
+  revoked_at: string | null;
+}
+
+// Public-facing shape (never include key_hash on the wire)
+export type ApiKeyPublic = Omit<ApiKey, 'key_hash'>;
+
+// ─── Webhooks ────────────────────────────────────────────────────────────────
+export type WebhookEventType =
+  | 'job_snap.published'
+  | 'job_snap.updated'
+  | 'job_snap.unpublished';
+
+export interface WebhookEndpoint {
+  id: string;
+  site_id: string;
+  organization_id: string;
+  url: string;
+  secret: string;
+  events: WebhookEventType[];
+  is_active: boolean;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string;
+}
+
+export type WebhookEndpointPublic = Omit<WebhookEndpoint, 'secret'> & {
+  secret_preview: string;
+};
+
+export type WebhookDeliveryStatus = 'pending' | 'delivered' | 'failed';
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_endpoint_id: string;
+  event_type: WebhookEventType;
+  payload: Record<string, unknown>;
+  status: WebhookDeliveryStatus;
+  attempts: number;
+  last_attempt_at: string | null;
+  response_status: number | null;
+  response_body: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
 // Subscription types for Stripe integration
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
 export type PaymentStatus = 'succeeded' | 'failed' | 'pending' | 'refunded';

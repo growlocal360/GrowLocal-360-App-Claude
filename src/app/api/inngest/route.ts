@@ -9,6 +9,7 @@ import {
   dailyScheduleDigest,
 } from '@/lib/inngest/functions/booking-notifications';
 import { publishAvailability } from '@/lib/inngest/functions/publish-availability';
+import { dispatchWebhook, deliverWebhook } from '@/lib/inngest/functions/deliver-webhook';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -20,5 +21,7 @@ export const { GET, POST, PUT } = serve({
     sendReminders,
     dailyScheduleDigest,
     publishAvailability,
+    dispatchWebhook,
+    deliverWebhook,
   ],
 });

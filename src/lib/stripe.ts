@@ -27,6 +27,21 @@ export const stripe = {
 
 // Plan configuration - maps internal plan names to Stripe Price IDs
 export const PLAN_CONFIG = {
+  jobsnaps_solo: {
+    name: 'jobsnaps_solo',
+    displayName: 'Job Snaps Pro',
+    priceId: process.env.STRIPE_JOBSNAPS_PRO_PRICE_ID || 'price_jobsnaps_pro_placeholder',
+    priceCents: 3700,
+    trialDays: 14,
+    features: [
+      'AI-generated photo titles + descriptions',
+      'Push to your existing website (Next.js, WordPress, anywhere)',
+      'Push to Google Business Profile',
+      'Unlimited Job Snaps',
+      'API + Webhooks',
+      '14-day free trial',
+    ],
+  },
   growth: {
     name: 'growth',
     displayName: 'Growth',

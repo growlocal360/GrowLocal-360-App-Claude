@@ -19,6 +19,8 @@ import {
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-snap-card';
 import { IntegrationsPanel } from '@/components/integrations/integrations-panel';
+import { GetStartedCard } from '@/components/job-snaps/get-started-card';
+import { OnboardingChecklist } from '@/components/job-snaps/onboarding-checklist';
 import { toast } from 'sonner';
 import type { JobStatus } from '@/types/database';
 
@@ -32,6 +34,8 @@ export default function JobSnapsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('owner');
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
+  const [hasAnySite, setHasAnySite] = useState(false);
+  const [activeTab, setActiveTab] = useState<'snaps' | 'connect'>('snaps');
 
   const supabase = createClient();
 
@@ -85,6 +89,8 @@ export default function JobSnapsPage() {
           .in('organization_id', orgIds);
         sites = data;
       }
+
+      setHasAnySite(!!sites?.length);
 
       if (!sites?.length) {
         setJobSnaps([]);
@@ -276,6 +282,25 @@ export default function JobSnapsPage() {
     { value: 'rejected', label: 'Rejected' },
   ];
 
+  // No sites + not loading → user has no Job Snaps subscription yet.
+  // Show the standalone signup CTA instead of the snaps UI.
+  if (!loading && !hasAnySite) {
+    return (
+      <div className="flex flex-col">
+        <Header title="Job Snaps" user={userData} />
+        <div className="p-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Job Snaps</h2>
+            <p className="text-gray-500">
+              Snap a photo of your work, AI writes the post, publishes everywhere.
+            </p>
+          </div>
+          <GetStartedCard />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       <Header title="Job Snaps" user={userData} />
@@ -295,7 +320,7 @@ export default function JobSnapsPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="snaps" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'snaps' | 'connect')} className="space-y-6">
           <TabsList>
             <TabsTrigger value="snaps">
               <Camera className="h-4 w-4 mr-2" />
@@ -308,6 +333,13 @@ export default function JobSnapsPage() {
           </TabsList>
 
           <TabsContent value="snaps" className="space-y-6">
+        {jobSnaps.length === 0 && !loading && (
+          <OnboardingChecklist
+            hasSnaps={false}
+            onConnectClick={() => setActiveTab('connect')}
+          />
+        )}
+
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">

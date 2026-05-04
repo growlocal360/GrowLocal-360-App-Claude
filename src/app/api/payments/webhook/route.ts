@@ -5,6 +5,7 @@ import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 // inngest import removed — build is triggered from success page after onboarding
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
+import { createWorkspaceSite } from '@/lib/sites/create-workspace-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
 // Disable body parsing for webhook
@@ -22,38 +23,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Get site data - either from metadata or pending_site_data table
-  let siteData: WizardSiteData | null = null;
-
-  if (metadata.site_data) {
-    try {
-      siteData = JSON.parse(metadata.site_data);
-    } catch (e) {
-      console.error('Failed to parse site_data from metadata:', e);
-    }
-  } else if (metadata.pending_site_id) {
-    const { data: pendingData } = await supabase
-      .from('pending_site_data')
-      .select('site_data')
-      .eq('id', metadata.pending_site_id)
-      .single();
-
-    if (pendingData?.site_data) {
-      siteData = pendingData.site_data as WizardSiteData;
-
-      // Delete the pending record
-      await supabase
-        .from('pending_site_data')
-        .delete()
-        .eq('id', metadata.pending_site_id);
-    }
-  }
-
-  if (!siteData) {
-    console.error('No site data found for checkout session');
-    return;
-  }
-
   // Get the subscription plan from database
   const { data: plan } = await supabase
     .from('subscription_plans')
@@ -66,21 +35,76 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Ensure user has an organization (pass admin client to bypass RLS)
-  const organizationId = await ensureUserOrganization(
-    userId,
-    undefined,
-    siteData.businessName,
-    supabase
-  );
+  // ── Branch: Job Snaps Pro standalone signup ─────────────────────────────
+  // No wizard data; create a hidden workspace site so the existing
+  // job_snaps.site_id NOT NULL constraint is satisfied.
+  let siteId: string;
 
-  // Create the site (pass admin client to bypass RLS)
-  const { siteId } = await createSiteFromWizardData(
-    userId,
-    organizationId,
-    siteData,
-    supabase
-  );
+  if (planName === 'jobsnaps_solo') {
+    const businessName = metadata.business_name || 'My Business';
+    const organizationId = await ensureUserOrganization(
+      userId,
+      undefined,
+      businessName,
+      supabase
+    );
+
+    const workspace = await createWorkspaceSite(supabase, {
+      organizationId,
+      userId,
+      businessName,
+      industry: metadata.industry || null,
+      city: metadata.city || null,
+      state: metadata.state || null,
+      phone: metadata.phone || null,
+    });
+    siteId = workspace.siteId;
+  } else {
+    // ── Branch: GL360 site with wizard data ──────────────────────────────
+    let siteData: WizardSiteData | null = null;
+
+    if (metadata.site_data) {
+      try {
+        siteData = JSON.parse(metadata.site_data);
+      } catch (e) {
+        console.error('Failed to parse site_data from metadata:', e);
+      }
+    } else if (metadata.pending_site_id) {
+      const { data: pendingData } = await supabase
+        .from('pending_site_data')
+        .select('site_data')
+        .eq('id', metadata.pending_site_id)
+        .single();
+
+      if (pendingData?.site_data) {
+        siteData = pendingData.site_data as WizardSiteData;
+        await supabase
+          .from('pending_site_data')
+          .delete()
+          .eq('id', metadata.pending_site_id);
+      }
+    }
+
+    if (!siteData) {
+      console.error('No site data found for GL360 checkout session');
+      return;
+    }
+
+    const organizationId = await ensureUserOrganization(
+      userId,
+      undefined,
+      siteData.businessName,
+      supabase
+    );
+
+    const result = await createSiteFromWizardData(
+      userId,
+      organizationId,
+      siteData,
+      supabase
+    );
+    siteId = result.siteId;
+  }
 
   // Create subscription record
   const subscriptionId = session.subscription as string;

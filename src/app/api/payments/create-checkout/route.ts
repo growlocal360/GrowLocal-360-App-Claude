@@ -35,9 +35,6 @@ export async function POST(request: NextRequest) {
     const isJobSnapsOnly = planName === 'jobsnaps_pro' || planName === 'jobsnaps_max';
 
     // Get or create Stripe customer
-    let stripeCustomerId: string;
-
-    // Check if user already has a Stripe customer ID
     // Note: .limit(1) instead of .single() — multi-org users have multiple profiles
     const { data: profiles } = await supabase
       .from('profiles')
@@ -47,10 +44,31 @@ export async function POST(request: NextRequest) {
       .limit(1);
     const profile = profiles?.[0];
 
-    if (profile?.stripe_customer_id) {
-      stripeCustomerId = profile.stripe_customer_id;
-    } else {
-      // Create new Stripe customer
+    let stripeCustomerId: string | null = profile?.stripe_customer_id || null;
+
+    // Verify the saved customer still exists in THIS Stripe account.
+    // Common gotcha: switching Stripe accounts (test mode, sandboxes, or
+    // live→test) leaves stale cus_xxx IDs that don't exist in the new account.
+    if (stripeCustomerId) {
+      try {
+        const existing = await stripe.customers.retrieve(stripeCustomerId);
+        if ('deleted' in existing && existing.deleted) {
+          stripeCustomerId = null;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '';
+        if (msg.includes('No such customer') || msg.includes('resource_missing')) {
+          console.warn(
+            `Stale stripe_customer_id ${stripeCustomerId} not found in current Stripe account; creating new customer.`
+          );
+          stripeCustomerId = null;
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    if (!stripeCustomerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: {
@@ -59,7 +77,6 @@ export async function POST(request: NextRequest) {
       });
       stripeCustomerId = customer.id;
 
-      // Save Stripe customer ID to profile
       await supabase
         .from('profiles')
         .update({ stripe_customer_id: stripeCustomerId })

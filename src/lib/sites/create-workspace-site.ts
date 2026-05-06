@@ -46,9 +46,9 @@ export async function createWorkspaceSite(
       website_type: 'single_location',
       status: 'active',
       is_active: true,
-      created_by: userId,
       settings: {
         workspace_only: true,        // NOT a public site — Job Snaps container only
+        created_by: userId,          // store provenance in settings since sites has no created_by column
         industry: industry || null,
         city: city || null,
         state: state || null,

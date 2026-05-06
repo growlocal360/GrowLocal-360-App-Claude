@@ -90,17 +90,33 @@ export default async function DashboardPage() {
 
       <div className="p-6">
         {/* Header Section */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
             <p className="text-gray-500">Overview of your local service businesses.</p>
           </div>
-          <Button asChild className="bg-black hover:bg-gray-800">
-            <Link href="/dashboard/sites/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Site
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="bg-[#00ef99] hover:bg-[#00ef99]/90 text-black font-semibold shadow-sm shadow-[#00ef99]/20 ring-1 ring-[#00ef99]/30"
+            >
+              <Link href="/dashboard/sites/new/jobsnaps">
+                <Camera className="mr-2 h-5 w-5" />
+                Add Job Snaps
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              className="bg-[#00ef99] hover:bg-[#00ef99]/90 text-black font-semibold shadow-sm shadow-[#00ef99]/20 ring-1 ring-[#00ef99]/30"
+            >
+              <Link href="/dashboard/sites/new">
+                <Plus className="mr-2 h-5 w-5" />
+                Add Site
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -204,19 +220,6 @@ export default async function DashboardPage() {
                     </div>
                     <p className="font-medium text-gray-900">Add another site</p>
                     <p className="text-sm text-gray-500">Expand your business</p>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              {/* Add Job Snaps Card */}
-              <Card className="border-dashed border-2 hover:border-[#00ef99]/30 transition-colors cursor-pointer">
-                <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[160px]">
-                  <Link href="/dashboard/sites/new/jobsnaps" className="flex flex-col items-center">
-                    <div className="rounded-full bg-[#00ef99]/10 p-3 mb-3">
-                      <Camera className="h-6 w-6 text-[#00ef99]" />
-                    </div>
-                    <p className="font-medium text-gray-900">Add Job Snaps</p>
-                    <p className="text-sm text-gray-500">For an existing website</p>
                   </Link>
                 </CardContent>
               </Card>

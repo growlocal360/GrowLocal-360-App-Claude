@@ -159,9 +159,16 @@ export async function POST(request: NextRequest) {
       url: session.url,
     });
   } catch (error) {
-    console.error('Create checkout error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Create checkout error:', message, error);
+    // Bubble up specifics in dev/preview so we can debug without server logs.
+    // In production, keep the generic message to avoid leaking internals.
+    const detail =
+      process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview'
+        ? `: ${message}`
+        : '';
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: `Failed to create checkout session${detail}` },
       { status: 500 }
     );
   }

@@ -249,7 +249,7 @@ export default async function DashboardPage() {
                       </li>
                     </ul>
                     <div className="flex items-baseline gap-1 mb-3">
-                      <span className="text-2xl font-bold text-gray-900">From $79</span>
+                      <span className="text-2xl font-bold text-gray-900">From $147</span>
                       <span className="text-sm text-gray-500">/month</span>
                     </div>
                     <Button asChild className="w-full bg-black hover:bg-gray-800">

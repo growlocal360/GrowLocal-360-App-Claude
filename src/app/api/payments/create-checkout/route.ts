@@ -20,7 +20,10 @@ export async function POST(request: NextRequest) {
     const { planName, siteData, successUrl, cancelUrl } = body;
 
     // Validate plan
-    if (!planName || !['growth', 'growth_ai_leads', 'jobsnaps_solo'].includes(planName)) {
+    if (
+      !planName ||
+      !['starter', 'growth', 'dominate', 'jobsnaps_pro', 'jobsnaps_max'].includes(planName)
+    ) {
       return NextResponse.json(
         { error: 'Invalid plan selected' },
         { status: 400 }
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const plan = getPlanConfig(planName as PlanName);
-    const isJobSnapsOnly = planName === 'jobsnaps_solo';
+    const isJobSnapsOnly = planName === 'jobsnaps_pro' || planName === 'jobsnaps_max';
 
     // Get or create Stripe customer
     let stripeCustomerId: string;

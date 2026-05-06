@@ -35,12 +35,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // ── Branch: Job Snaps Pro standalone signup ─────────────────────────────
+  // ── Branch: Job Snaps standalone signup (Pro or Max) ────────────────────
   // No wizard data; create a hidden workspace site so the existing
   // job_snaps.site_id NOT NULL constraint is satisfied.
   let siteId: string;
 
-  if (planName === 'jobsnaps_solo') {
+  if (planName === 'jobsnaps_pro' || planName === 'jobsnaps_max') {
     const businessName = metadata.business_name || 'My Business';
     const organizationId = await ensureUserOrganization(
       userId,

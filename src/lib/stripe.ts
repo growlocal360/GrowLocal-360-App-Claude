@@ -25,10 +25,12 @@ export const stripe = {
   get webhooks() { return getStripe().webhooks; },
 };
 
-// Plan configuration - maps internal plan names to Stripe Price IDs
+// Plan configuration - maps internal plan names to Stripe Price IDs.
+// Internal keys MATCH display names so code/env vars/customer-facing labels
+// all line up. Renaming is intentionally deep — see migration 045.
 export const PLAN_CONFIG = {
-  jobsnaps_solo: {
-    name: 'jobsnaps_solo',
+  jobsnaps_pro: {
+    name: 'jobsnaps_pro',
     displayName: 'Job Snaps Pro',
     priceId: process.env.STRIPE_JOBSNAPS_PRO_PRICE_ID || 'price_jobsnaps_pro_placeholder',
     priceCents: 3700,
@@ -37,41 +39,73 @@ export const PLAN_CONFIG = {
       'AI-generated photo titles + descriptions',
       'Push to your existing website (Next.js, WordPress, anywhere)',
       'Push to Google Business Profile',
+      'Push to Facebook, Instagram, TikTok',
       'Unlimited Job Snaps',
       'API + Webhooks',
       '14-day free trial',
     ],
   },
-  growth: {
-    name: 'growth',
-    displayName: 'Growth',
-    priceId: process.env.STRIPE_GROWTH_PRICE_ID || 'price_growth_placeholder',
-    priceCents: 7900,
+  jobsnaps_max: {
+    name: 'jobsnaps_max',
+    displayName: 'Job Snaps Max',
+    priceId: process.env.STRIPE_JOBSNAPS_MAX_PRICE_ID || 'price_jobsnaps_max_placeholder',
+    priceCents: 6700,
+    trialDays: 14,
     features: [
-      'AI-Generated SEO Website',
-      'Job Snaps Photo Posts',
-      'Unlimited Service Pages',
-      'Service Area Landing Pages',
-      'Mobile-Optimized Design',
-      'Basic Analytics',
+      'Everything in Job Snaps Pro',
+      'Auto-generated flip-through videos for Reels/Shorts',
+      'YouTube Shorts publishing',
+      'Branded video outros + music',
+      'Priority support',
     ],
   },
-  growth_ai_leads: {
-    name: 'growth_ai_leads',
-    displayName: 'Growth + AI Leads',
-    priceId: process.env.STRIPE_GROWTH_AI_LEADS_PRICE_ID || 'price_growth_ai_leads_placeholder',
+  starter: {
+    name: 'starter',
+    displayName: 'GrowLocal 360 Starter',
+    priceId: process.env.STRIPE_STARTER_PRICE_ID || 'price_starter_placeholder',
+    priceCents: 14700,
+    features: [
+      'AI-generated SEO website built for local map pack ranking',
+      'Job Snaps Pro included ($37 value)',
+      'Unlimited service + service area landing pages',
+      'GBP integration',
+      'Lead capture forms + basic scheduling',
+      'Mobile-optimized design',
+      'Basic analytics',
+    ],
+  },
+  growth: {
+    name: 'growth',
+    displayName: 'GrowLocal 360 Growth',
+    priceId: process.env.STRIPE_GROWTH_PRICE_ID || 'price_growth_placeholder',
     priceCents: 29700,
     features: [
-      'Everything in Growth',
-      'AI Chat Widget',
-      'Call Tracking Number',
-      'CRM Integration (GoHighLevel)',
-      'Automated Follow-ups',
-      'Missed Call Text Back',
-      'Lead Notifications',
-      'Priority Support',
+      'Everything in Starter',
+      'Job Snaps Max included ($67 value)',
+      'AI chat widget',
+      'Call tracking number',
+      'CRM integration (GoHighLevel)',
+      'Automated follow-ups',
+      'Missed call text back',
+      'Lead notifications',
+      'Priority support',
     ],
     highlighted: true,
+  },
+  dominate: {
+    name: 'dominate',
+    displayName: 'GrowLocal 360 Dominate',
+    priceId: process.env.STRIPE_DOMINATE_PRICE_ID || 'price_dominate_placeholder',
+    priceCents: 49700,
+    features: [
+      'Everything in Growth',
+      'HighLevel Conversations AI',
+      'HighLevel Voice AI (AI receptionist)',
+      'Custom AI agents',
+      'Multi-location support',
+      'Advanced analytics + GSC feedback loop',
+      'Dedicated account manager',
+    ],
   },
 } as const;
 

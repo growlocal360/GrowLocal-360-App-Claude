@@ -112,7 +112,7 @@ function JobSnapsSignupForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          planName: 'jobsnaps_solo',
+          planName: 'jobsnaps_pro',
           siteData: {
             // Webhook reads these from session metadata
             businessName,

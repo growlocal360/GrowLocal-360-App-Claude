@@ -305,9 +305,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Webhook handler error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('Webhook handler error:', message, stack, error);
+    // Surface specifics in non-prod so Stripe Dashboard shows the real issue.
+    const detail =
+      process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview'
+        ? `: ${message}`
+        : '';
     return NextResponse.json(
-      { error: 'Webhook handler failed' },
+      { error: `Webhook handler failed${detail}` },
       { status: 500 }
     );
   }

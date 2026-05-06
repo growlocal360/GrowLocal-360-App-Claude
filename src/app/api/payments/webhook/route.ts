@@ -308,13 +308,10 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
     console.error('Webhook handler error:', message, stack, error);
-    // Surface specifics in non-prod so Stripe Dashboard shows the real issue.
-    const detail =
-      process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview'
-        ? `: ${message}`
-        : '';
+    // Always include the error message — webhook responses go to Stripe only,
+    // never to end users, so leaking internals isn't a concern here.
     return NextResponse.json(
-      { error: `Webhook handler failed${detail}` },
+      { error: `Webhook handler failed: ${message}` },
       { status: 500 }
     );
   }

@@ -99,7 +99,8 @@ export default async function DashboardPage() {
             <Button
               asChild
               size="lg"
-              className="bg-[#00ef99] hover:bg-[#00ef99]/90 text-black font-semibold shadow-sm shadow-[#00ef99]/20 ring-1 ring-[#00ef99]/30"
+              variant="outline"
+              className="rounded-full border-2 border-dashed border-[#00ef99] bg-white text-[#00ef99] hover:bg-[#00ef99]/5 hover:text-[#00ef99] hover:border-[#00ef99] hover:border-solid font-semibold px-7 transition-all"
             >
               <Link href="/dashboard/sites/new/jobsnaps">
                 <Camera className="mr-2 h-5 w-5" />
@@ -109,7 +110,8 @@ export default async function DashboardPage() {
             <Button
               asChild
               size="lg"
-              className="bg-[#00ef99] hover:bg-[#00ef99]/90 text-black font-semibold shadow-sm shadow-[#00ef99]/20 ring-1 ring-[#00ef99]/30"
+              variant="outline"
+              className="rounded-full border-2 border-dashed border-[#00ef99] bg-white text-[#00ef99] hover:bg-[#00ef99]/5 hover:text-[#00ef99] hover:border-[#00ef99] hover:border-solid font-semibold px-7 transition-all"
             >
               <Link href="/dashboard/sites/new">
                 <Plus className="mr-2 h-5 w-5" />

@@ -98,9 +98,8 @@ export default async function DashboardPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               asChild
-              size="lg"
               variant="outline"
-              className="rounded-full border-2 border-dashed border-[#00ef99] bg-white text-[#00ef99] hover:bg-[#00ef99]/5 hover:text-[#00ef99] hover:border-[#00ef99] hover:border-solid font-semibold px-7 transition-all"
+              className="h-12 rounded-full border-2 border-dashed border-[#00ef99] bg-white text-black hover:bg-[#00ef99]/10 hover:text-black hover:border-[#00ef99] hover:border-solid font-semibold text-base px-9 transition-all"
             >
               <Link href="/dashboard/sites/new/jobsnaps">
                 <Camera className="mr-2 h-5 w-5" />
@@ -109,9 +108,8 @@ export default async function DashboardPage() {
             </Button>
             <Button
               asChild
-              size="lg"
               variant="outline"
-              className="rounded-full border-2 border-dashed border-[#00ef99] bg-white text-[#00ef99] hover:bg-[#00ef99]/5 hover:text-[#00ef99] hover:border-[#00ef99] hover:border-solid font-semibold px-7 transition-all"
+              className="h-12 rounded-full border-2 border-dashed border-[#00ef99] bg-white text-black hover:bg-[#00ef99]/10 hover:text-black hover:border-[#00ef99] hover:border-solid font-semibold text-base px-9 transition-all"
             >
               <Link href="/dashboard/sites/new">
                 <Plus className="mr-2 h-5 w-5" />

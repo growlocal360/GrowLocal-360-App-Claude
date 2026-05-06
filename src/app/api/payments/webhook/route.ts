@@ -42,12 +42,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   if (planName === 'jobsnaps_pro' || planName === 'jobsnaps_max') {
     const businessName = metadata.business_name || 'My Business';
-    const organizationId = await ensureUserOrganization(
-      userId,
-      undefined,
-      businessName,
-      supabase
-    );
+
+    // If the checkout came from a logged-in user adding Job Snaps to their
+    // existing org (e.g. agency adding a 12th business), the active org_id
+    // is in metadata. Otherwise (brand-new signup), find or create one.
+    const organizationId = metadata.organization_id
+      ? metadata.organization_id
+      : await ensureUserOrganization(userId, undefined, businessName, supabase);
 
     const workspace = await createWorkspaceSite(supabase, {
       organizationId,

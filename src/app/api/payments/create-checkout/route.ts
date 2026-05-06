@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { stripe, getPlanConfig, PlanName } from '@/lib/stripe';
+import { getActiveOrgId } from '@/lib/auth/active-org';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,11 +38,14 @@ export async function POST(request: NextRequest) {
     let stripeCustomerId: string;
 
     // Check if user already has a Stripe customer ID
-    const { data: profile } = await supabase
+    // Note: .limit(1) instead of .single() — multi-org users have multiple profiles
+    const { data: profiles } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
-      .single();
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const profile = profiles?.[0];
 
     if (profile?.stripe_customer_id) {
       stripeCustomerId = profile.stripe_customer_id;
@@ -62,6 +66,11 @@ export async function POST(request: NextRequest) {
         .eq('user_id', user.id);
     }
 
+    // For Job Snaps flows, capture the active org so the webhook attaches
+    // the new workspace site to the right org. Existing logged-in users
+    // (multi-org agencies) need this; brand-new signups don't have one yet.
+    const activeOrgId = isJobSnapsOnly ? await getActiveOrgId() : null;
+
     let metadataPayload: Record<string, string>;
 
     if (isJobSnapsOnly) {
@@ -75,6 +84,7 @@ export async function POST(request: NextRequest) {
         city: (siteData?.city || '').slice(0, 50),
         state: (siteData?.state || '').slice(0, 10),
         phone: (siteData?.phone || '').slice(0, 30),
+        ...(activeOrgId ? { organization_id: activeOrgId } : {}),
       };
     } else {
       // GL360 wizard — store full siteData JSON or fall back to pending_site_data

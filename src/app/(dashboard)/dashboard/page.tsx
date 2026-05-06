@@ -207,6 +207,19 @@ export default async function DashboardPage() {
                   </Link>
                 </CardContent>
               </Card>
+
+              {/* Add Job Snaps Card */}
+              <Card className="border-dashed border-2 hover:border-[#00ef99]/30 transition-colors cursor-pointer">
+                <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full min-h-[160px]">
+                  <Link href="/dashboard/sites/new/jobsnaps" className="flex flex-col items-center">
+                    <div className="rounded-full bg-[#00ef99]/10 p-3 mb-3">
+                      <Camera className="h-6 w-6 text-[#00ef99]" />
+                    </div>
+                    <p className="font-medium text-gray-900">Add Job Snaps</p>
+                    <p className="text-sm text-gray-500">For an existing website</p>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <div className="space-y-6">

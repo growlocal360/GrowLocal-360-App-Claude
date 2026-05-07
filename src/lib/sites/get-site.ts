@@ -1,6 +1,17 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { SiteWithRelations, Location, ServiceAreaDB, Neighborhood, SitePage, GoogleReview, SiteBrand } from '@/types/database';
 
+/**
+ * Returns true if a site row should be served as a public website.
+ * Workspace-only sites (Job Snaps Pro/Max signups without a GL360 plan)
+ * exist purely as data containers and must never render a public page.
+ */
+function isPublicSite(site: { settings?: unknown } | null | undefined): boolean {
+  if (!site) return false;
+  const settings = site.settings as { workspace_only?: boolean } | null | undefined;
+  return !settings?.workspace_only;
+}
+
 export interface PublicSiteData {
   site: SiteWithRelations;
   locations: Location[];
@@ -25,7 +36,7 @@ export async function getSiteBySlug(slug: string): Promise<PublicSiteData | null
     .limit(1);
 
   const site = sites?.[0];
-  if (siteError || !site) {
+  if (siteError || !site || !isPublicSite(site)) {
     return null;
   }
 
@@ -114,7 +125,7 @@ export async function getNeighborhoodBySlug(
     .limit(1);
 
   const site = sites?.[0];
-  if (!site) return null;
+  if (!site || !isPublicSite(site)) return null;
 
   // Fetch location
   const { data: location } = await supabase
@@ -160,10 +171,10 @@ export async function getAllSiteSlugs(): Promise<string[]> {
 
   const { data: sites } = await supabase
     .from('sites')
-    .select('slug')
+    .select('slug, settings')
     .eq('is_active', true);
 
-  return sites?.map(s => s.slug) || [];
+  return (sites || []).filter(isPublicSite).map((s) => s.slug);
 }
 
 // Get neighborhood by slug for single-location sites (no location in URL)
@@ -188,7 +199,7 @@ export async function getNeighborhoodBySlugSingleLocation(
     .limit(1);
 
   const site = sites?.[0];
-  if (!site) return null;
+  if (!site || !isPublicSite(site)) return null;
 
   // For single-location sites, get the primary location
   const { data: location } = await supabase
@@ -250,7 +261,7 @@ export async function getLocationBySlug(
     .limit(1);
 
   const site = sites?.[0];
-  if (!site) return null;
+  if (!site || !isPublicSite(site)) return null;
 
   // Fetch the specific location
   const { data: location } = await supabase

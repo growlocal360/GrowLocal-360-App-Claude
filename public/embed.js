@@ -157,11 +157,25 @@
   }
 
   // ── Boot ───────────────────────────────────────────────────────────────
-  function init() {
-    var target = findTarget();
+  // Cache the most recent fetch so SPA re-renders are instant after the first.
+  var cachedSnaps = null;
+  var cachedAt = 0;
+  var CACHE_TTL_MS = 60 * 1000; // 60s — short enough to feel fresh, long enough to avoid hammering the API on rapid navigation
+
+  function ensureRendered(target) {
     if (!target) return;
+    // Skip if we've already rendered into this exact element.
+    if (target.getAttribute('data-jobsnaps-rendered') === 'true') return;
+    target.setAttribute('data-jobsnaps-rendered', 'true');
 
     injectStyles();
+
+    // Use cached data if recent — avoids loading flash on SPA navigation.
+    if (cachedSnaps && Date.now() - cachedAt < CACHE_TTL_MS) {
+      render(target, cachedSnaps);
+      return;
+    }
+
     target.innerHTML =
       '<div class="jobsnaps-loading">Loading recent work…</div>';
 
@@ -182,7 +196,9 @@
         return res.json();
       })
       .then(function (json) {
-        render(target, json.data || []);
+        cachedSnaps = json.data || [];
+        cachedAt = Date.now();
+        render(target, cachedSnaps);
       })
       .catch(function (err) {
         console.error('[JobSnaps] failed to load:', err);
@@ -190,9 +206,39 @@
       });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
+  function tryRender() {
+    ensureRendered(document.querySelector(targetSelector));
   }
+
+  // Initial run — covers normal page load.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryRender);
+  } else {
+    tryRender();
+  }
+
+  // SPA support — watch for the target appearing again after client-side
+  // navigation. HighLevel, Next.js, Astro view-transitions, etc. swap DOM
+  // without firing DOMContentLoaded, so we observe the body and re-render
+  // whenever a fresh (un-flagged) gallery target shows up.
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    var observer = new MutationObserver(function () {
+      var target = document.querySelector(targetSelector);
+      if (target && target.getAttribute('data-jobsnaps-rendered') !== 'true') {
+        ensureRendered(target);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // Also catch back/forward navigation, which can restore the DOM via bfcache
+  // without triggering MutationObserver. Re-render in that case too.
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      // Restored from bfcache — clear our flag so the existing target re-renders fresh.
+      var target = document.querySelector(targetSelector);
+      if (target) target.removeAttribute('data-jobsnaps-rendered');
+      tryRender();
+    }
+  });
 })();

@@ -29,6 +29,7 @@ import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-sn
 import { IntegrationsPanel } from '@/components/integrations/integrations-panel';
 import { GetStartedCard } from '@/components/job-snaps/get-started-card';
 import { OnboardingChecklist } from '@/components/job-snaps/onboarding-checklist';
+import { GBPConnectCard } from '@/components/sites/gbp-connect-card';
 import { toast } from 'sonner';
 import type { JobStatus } from '@/types/database';
 
@@ -390,6 +391,11 @@ export default function JobSnapsPage() {
           </TabsList>
 
           <TabsContent value="snaps" className="space-y-6">
+        {/* When scoped to a specific workspace, surface its connections panel */}
+        {selectedWorkspace !== 'all' && (
+          <GBPConnectCard siteId={selectedWorkspace} />
+        )}
+
         {jobSnaps.length === 0 && !loading && (
           <OnboardingChecklist
             hasSnaps={false}

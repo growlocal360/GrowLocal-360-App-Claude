@@ -419,8 +419,8 @@ export async function POST(req: Request) {
   data-limit="20"
 ></script>`}</CodeBlock>
               <p className="text-xs text-gray-500">
-                Embed script ships with default styling. Coming soon &mdash; for now, use the API
-                tab to fetch directly.
+                Optional <code className="bg-gray-100 px-1 rounded">data-theme=&quot;dark&quot;</code> for
+                dark backgrounds. Styles are scoped so they won&apos;t conflict with your site&apos;s CSS.
               </p>
             </CardContent>
           </Card>

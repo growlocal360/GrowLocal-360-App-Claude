@@ -43,9 +43,9 @@ export default function NewJobSnapPage() {
   const [analysisStale, setAnalysisStale] = useState(false);
 
   // Track site context for AI and save
-  const [siteContext, setSiteContext] = useState<{ siteId: string; name: string; category: string } | null>(null);
+  const [siteContext, setSiteContext] = useState<{ siteId: string; name: string; category: string; workspaceOnly?: boolean } | null>(null);
   // All sites for the org — used to show selector when no siteId param and org has 2+ sites
-  const [allSites, setAllSites] = useState<{ siteId: string; name: string; category: string }[]>([]);
+  const [allSites, setAllSites] = useState<{ siteId: string; name: string; category: string; workspaceOnly?: boolean }[]>([]);
 
   const reviewRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -74,19 +74,29 @@ export default function NewJobSnapPage() {
       // All org IDs this user belongs to (needed for cross-org siteId lookup)
       const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
 
+      // Use the resolved profile's org rather than the cookie — the active_org
+      // cookie may be null for users who've never used the org switcher.
+      const targetOrgId = profile?.organization_id || activeOrgId;
+
       if (orgIds.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapSite = (s: any) => {
           const primaryCat = (s.site_categories as { is_primary: boolean; gbp_category: { name: string } | null }[])
             ?.find((c) => c.is_primary);
-          return { siteId: s.id as string, name: s.name as string, category: primaryCat?.gbp_category?.name || '' };
+          const settings = s.settings as { workspace_only?: boolean } | null;
+          return {
+            siteId: s.id as string,
+            name: s.name as string,
+            category: primaryCat?.gbp_category?.name || '',
+            workspaceOnly: !!settings?.workspace_only,
+          };
         };
 
         if (siteIdParam) {
           // Specific site requested — verify user has access to it through any of their orgs
           const { data: sites } = await supabase
             .from('sites')
-            .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+            .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
             .eq('id', siteIdParam)
             .in('organization_id', orgIds)
             .limit(1);
@@ -96,7 +106,7 @@ export default function NewJobSnapPage() {
             setAllSites([ctx]);
             setSiteContext(ctx);
           }
-        } else if (activeOrgId) {
+        } else if (targetOrgId) {
           // No specific site — load sites scoped to the user's role
           const role = profile?.role || 'user';
           let sites;
@@ -112,16 +122,16 @@ export default function NewJobSnapPage() {
             if (assignedIds.length > 0) {
               const { data } = await supabase
                 .from('sites')
-                .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+                .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
                 .in('id', assignedIds);
               sites = data;
             }
           } else {
-            // Owner/Admin see all org sites
+            // Owner/Admin see all org sites (including workspace-only Job Snaps containers)
             const { data } = await supabase
               .from('sites')
-              .select(`id, name, site_categories(is_primary, gbp_category:gbp_categories(name))`)
-              .eq('organization_id', activeOrgId);
+              .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+              .eq('organization_id', targetOrgId);
             sites = data;
           }
 
@@ -132,6 +142,9 @@ export default function NewJobSnapPage() {
               // Single site — auto-select
               setSiteContext(mapped[0]);
             }
+          } else {
+            // Empty list — set to [] explicitly so the UI knows we're done loading.
+            setAllSites([]);
           }
         }
       }
@@ -493,6 +506,7 @@ export default function NewJobSnapPage() {
                       {allSites.map((s) => (
                         <SelectItem key={s.siteId} value={s.siteId}>
                           {s.name}
+                          {s.workspaceOnly ? ' • Job Snaps' : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>

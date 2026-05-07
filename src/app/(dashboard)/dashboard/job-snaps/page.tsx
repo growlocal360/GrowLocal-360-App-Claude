@@ -363,7 +363,13 @@ export default function JobSnapsPage() {
               </Select>
             )}
             <Button asChild className="bg-black hover:bg-gray-800">
-              <Link href="/dashboard/job-snaps/new">
+              <Link
+                href={
+                  selectedWorkspace !== 'all'
+                    ? `/dashboard/job-snaps/new?siteId=${selectedWorkspace}`
+                    : '/dashboard/job-snaps/new'
+                }
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Job
               </Link>

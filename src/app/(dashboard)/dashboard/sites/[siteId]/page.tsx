@@ -147,6 +147,13 @@ export default function SiteDashboardPage() {
         .eq('id', siteId)
         .single();
 
+      // Job Snaps workspace sites have no GL360 features — bounce them to Job Snaps.
+      const settings = siteData?.settings as { workspace_only?: boolean } | null;
+      if (settings?.workspace_only) {
+        router.replace(`/dashboard/job-snaps?workspace=${siteId}`);
+        return;
+      }
+
       setSite(siteData as SiteData);
 
       // Fetch job snap count for this site

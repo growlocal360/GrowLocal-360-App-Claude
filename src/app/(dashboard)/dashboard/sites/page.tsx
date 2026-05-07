@@ -97,13 +97,18 @@ export default function SitesPage() {
 
       let sitesQuery = supabase
         .from('sites')
-        .select('id, name, slug, status, build_progress, status_message, created_at, locations(id)')
+        .select('id, name, slug, status, build_progress, status_message, created_at, settings, locations(id)')
         .eq('organization_id', profile?.organization_id);
       if (accessibleSiteIds) sitesQuery = sitesQuery.in('id', accessibleSiteIds);
       const { data: sitesData } = await sitesQuery.order('created_at', { ascending: false });
 
-      setSites(sitesData as SiteWithLocations[] || []);
-      setFilteredSites(sitesData as SiteWithLocations[] || []);
+      // Filter out workspace_only (Job Snaps) sites — they're managed under Job Snaps, not Sites.
+      const realSites = (sitesData || []).filter(
+        (s: { settings?: { workspace_only?: boolean } }) => !s.settings?.workspace_only
+      );
+
+      setSites(realSites as SiteWithLocations[]);
+      setFilteredSites(realSites as SiteWithLocations[]);
       setLoading(false);
     }
 

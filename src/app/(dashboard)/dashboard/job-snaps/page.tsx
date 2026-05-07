@@ -2,12 +2,20 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Briefcase,
   Plus,
@@ -26,6 +34,12 @@ import type { JobStatus } from '@/types/database';
 
 type StatusFilter = 'all' | JobStatus;
 
+interface SiteOption {
+  id: string;
+  name: string;
+  workspace_only: boolean;
+}
+
 export default function JobSnapsPage() {
   const [jobSnaps, setJobSnaps] = useState<JobSnapCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +50,12 @@ export default function JobSnapsPage() {
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
   const [hasAnySite, setHasAnySite] = useState(false);
   const [activeTab, setActiveTab] = useState<'snaps' | 'connect'>('snaps');
+
+  // Workspace switcher
+  const searchParams = useSearchParams();
+  const initialWorkspace = searchParams.get('workspace') || 'all';
+  const [workspaceSites, setWorkspaceSites] = useState<SiteOption[]>([]);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(initialWorkspace);
 
   const supabase = createClient();
 
@@ -63,7 +83,7 @@ export default function JobSnapsPage() {
       });
 
       // Load sites — scoped to assigned sites for 'user' role
-      let sites: { id: string; name: string }[] | null = null;
+      let sites: { id: string; name: string; settings?: { workspace_only?: boolean } | null }[] | null = null;
 
       if (role === 'user' && profile?.id) {
         // Users only see their assigned sites
@@ -76,7 +96,7 @@ export default function JobSnapsPage() {
         if (assignedIds.length > 0) {
           const { data } = await supabase
             .from('sites')
-            .select('id, name')
+            .select('id, name, settings')
             .in('id', assignedIds);
           sites = data;
         }
@@ -85,12 +105,20 @@ export default function JobSnapsPage() {
         const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
         const { data } = await supabase
           .from('sites')
-          .select('id, name')
+          .select('id, name, settings')
           .in('organization_id', orgIds);
         sites = data;
       }
 
       setHasAnySite(!!sites?.length);
+
+      // Build the workspace switcher options (each site = a workspace).
+      const workspaces: SiteOption[] = (sites || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        workspace_only: !!s.settings?.workspace_only,
+      }));
+      setWorkspaceSites(workspaces);
 
       if (!sites?.length) {
         setJobSnaps([]);
@@ -184,6 +212,11 @@ export default function JobSnapsPage() {
   const filteredSnaps = useMemo(() => {
     let result = jobSnaps;
 
+    // Workspace scope (highest-priority filter)
+    if (selectedWorkspace !== 'all') {
+      result = result.filter((snap) => snap.site_id === selectedWorkspace);
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter((snap) => {
@@ -200,7 +233,7 @@ export default function JobSnapsPage() {
     }
 
     return result;
-  }, [jobSnaps, searchQuery, statusFilter]);
+  }, [jobSnaps, searchQuery, statusFilter, selectedWorkspace]);
 
   async function handlePushToWebsite(jobId: string) {
     const snap = jobSnaps.find((s) => s.id === jobId);
@@ -312,12 +345,30 @@ export default function JobSnapsPage() {
             <h2 className="text-2xl font-bold text-gray-900">Job Snaps</h2>
             <p className="text-gray-500">Manage and view all jobs across connected sites.</p>
           </div>
-          <Button asChild className="bg-black hover:bg-gray-800">
-            <Link href="/dashboard/job-snaps/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Job
-            </Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            {workspaceSites.length > 1 && (
+              <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
+                <SelectTrigger className="w-55">
+                  <SelectValue placeholder="Workspace" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All workspaces</SelectItem>
+                  {workspaceSites.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                      {w.workspace_only ? ' • Job Snaps' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button asChild className="bg-black hover:bg-gray-800">
+              <Link href="/dashboard/job-snaps/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Job
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'snaps' | 'connect')} className="space-y-6">

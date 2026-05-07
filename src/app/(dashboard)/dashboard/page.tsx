@@ -40,11 +40,13 @@ export default async function DashboardPage() {
     (profile?.role as UserRole) || 'user'
   );
 
-  // Get stats — scoped to accessible sites
+  // Get stats — scoped to accessible sites, excluding Job Snaps workspace sites.
+  // Workspace-only sites are managed under Job Snaps, not the Sites listing.
   let sitesCountQuery = supabase
     .from('sites')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', profile?.organization_id);
+    .eq('organization_id', profile?.organization_id)
+    .or('settings->>workspace_only.is.null,settings->>workspace_only.neq.true');
   if (accessibleSiteIds) sitesCountQuery = sitesCountQuery.in('id', accessibleSiteIds);
   const { count: sitesCount } = await sitesCountQuery;
 
@@ -70,11 +72,12 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', profile?.organization_id);
 
-  // Get sites with status and build progress — scoped
+  // Get sites with status and build progress — scoped, workspace-only excluded
   let sitesQuery = supabase
     .from('sites')
     .select('*, locations(*), status, build_progress, status_message')
-    .eq('organization_id', profile?.organization_id);
+    .eq('organization_id', profile?.organization_id)
+    .or('settings->>workspace_only.is.null,settings->>workspace_only.neq.true');
   if (accessibleSiteIds) sitesQuery = sitesQuery.in('id', accessibleSiteIds);
   const { data: sites } = await sitesQuery.order('created_at', { ascending: false });
 

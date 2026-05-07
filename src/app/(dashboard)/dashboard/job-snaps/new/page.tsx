@@ -484,11 +484,17 @@ export default function NewJobSnapPage() {
 
         {/* 0. Site selector — shown when no siteId in URL */}
         {!siteIdParam && (
-          <Card className={!siteContext ? 'border-amber-300 bg-amber-50' : ''}>
+          <Card
+            className={
+              !siteContext
+                ? 'border-2 border-dashed border-[#00ef99] bg-[#00ef99]/5'
+                : ''
+            }
+          >
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-gray-400" />
+                  <Building2 className="h-4 w-4 text-[#00ef99]" />
                   Company *
                 </label>
                 {allSites.length > 0 ? (
@@ -515,7 +521,7 @@ export default function NewJobSnapPage() {
                   <p className="text-sm text-gray-400">Loading companies...</p>
                 )}
                 {!siteContext && allSites.length > 0 && (
-                  <p className="text-xs text-amber-600">Select a company before analyzing photos</p>
+                  <p className="text-xs text-gray-600">Select a company before analyzing photos</p>
                 )}
               </div>
             </CardContent>

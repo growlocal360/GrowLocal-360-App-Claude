@@ -9,7 +9,7 @@ import {
   LayoutDashboard,
   Globe,
   Plus,
-  Briefcase,
+  Camera,
   Users,
   Settings,
   LogOut,
@@ -49,7 +49,7 @@ const mainNavItems = [
   {
     title: 'Job Snaps',
     href: '/dashboard/job-snaps',
-    icon: Briefcase,
+    icon: Camera,
   },
   {
     title: 'Team',

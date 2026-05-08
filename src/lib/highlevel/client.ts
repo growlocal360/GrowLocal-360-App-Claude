@@ -84,31 +84,33 @@ async function call<T>(
 
 /**
  * Verify a Private Integration Token + Location ID combination by calling
- * a lightweight endpoint. Used during the Connect HL flow to validate
- * credentials before storing them.
+ * the blog posts list endpoint with limit=1. We use this instead of
+ * /locations/{id} because that endpoint behaves inconsistently with
+ * PIT-scoped tokens — some PITs get 401/403 there even with valid
+ * locations.readonly scope.
  *
- * Returns location info on success; throws with a helpful error message
- * on failure.
+ * The blogs/posts endpoint is guaranteed to work since the user must
+ * grant blogs/posts.readonly to use this integration at all.
+ *
+ * Returns the location id on success (no human-readable name available
+ * from this endpoint — UI uses the user-provided Blog Name as the label).
  */
 export async function verifyToken(
   token: string,
   locationId: string
 ): Promise<{ id: string; name: string }> {
-  type LocationResponse = {
-    location?: { id: string; name: string };
-  };
-
-  const data = await call<LocationResponse>(
+  // Hitting the blog posts list verifies: (1) token is valid, (2) it has
+  // blogs scope, (3) the locationId is reachable. Body content isn't needed
+  // — we just want a 200 vs 401/403/404.
+  await call<unknown>(
     token,
     'GET',
-    `/locations/${encodeURIComponent(locationId)}`
+    `/blogs/posts?locationId=${encodeURIComponent(locationId)}&limit=1&offset=0`
   );
 
-  if (!data.location?.id) {
-    throw new Error('HighLevel returned an unexpected response shape for /locations.');
-  }
-
-  return { id: data.location.id, name: data.location.name };
+  // No location-name lookup; caller treats locationId as the display label
+  // unless the user provided an explicit Blog Name in the form.
+  return { id: locationId, name: locationId };
 }
 
 /**

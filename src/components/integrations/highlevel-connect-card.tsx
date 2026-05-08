@@ -7,13 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -33,11 +26,6 @@ interface Status {
   connectedAt?: string;
 }
 
-interface Blog {
-  id: string;
-  name: string;
-}
-
 export function HighLevelConnectCard({ siteId }: HighLevelConnectCardProps) {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,10 +34,8 @@ export function HighLevelConnectCard({ siteId }: HighLevelConnectCardProps) {
   // Connect form state
   const [token, setToken] = useState('');
   const [locationId, setLocationId] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [verifiedLocationName, setVerifiedLocationName] = useState<string | null>(null);
-  const [selectedBlog, setSelectedBlog] = useState<string>('');
+  const [blogId, setBlogId] = useState('');
+  const [blogName, setBlogName] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -69,37 +55,8 @@ export function HighLevelConnectCard({ siteId }: HighLevelConnectCardProps) {
     }
   }
 
-  async function handleVerify() {
-    if (!token.trim() || !locationId.trim()) return;
-    setVerifying(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/sites/${siteId}/integrations/highlevel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim(), locationId: locationId.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Verification failed');
-        return;
-      }
-      setBlogs(data.blogs || []);
-      setVerifiedLocationName(data.location?.name || null);
-      if ((data.blogs || []).length === 1) {
-        setSelectedBlog(data.blogs[0].id);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error');
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function handleSave() {
-    if (!selectedBlog) return;
-    const blog = blogs.find((b) => b.id === selectedBlog);
-    if (!blog) return;
+  async function handleConnect() {
+    if (!token.trim() || !locationId.trim() || !blogId.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -109,21 +66,20 @@ export function HighLevelConnectCard({ siteId }: HighLevelConnectCardProps) {
         body: JSON.stringify({
           token: token.trim(),
           locationId: locationId.trim(),
-          blogId: blog.id,
-          blogName: blog.name,
+          blogId: blogId.trim(),
+          blogName: blogName.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Failed to save');
+        setError(data.error || 'Connection failed');
         return;
       }
-      // Reset form, refresh status
+      // Reset, refresh status
       setToken('');
       setLocationId('');
-      setBlogs([]);
-      setVerifiedLocationName(null);
-      setSelectedBlog('');
+      setBlogId('');
+      setBlogName('');
       await fetchStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
@@ -225,106 +181,84 @@ export function HighLevelConnectCard({ siteId }: HighLevelConnectCardProps) {
           </div>
         )}
 
-        {/* Step 1: token + location */}
-        {blogs.length === 0 && (
-          <>
-            <div className="space-y-1">
-              <Label htmlFor="hl-token">HighLevel Private Integration Token</Label>
-              <Input
-                id="hl-token"
-                type="password"
-                placeholder="pit-xxxxxxxxxxxxxxxxxxxxxxxx"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="font-mono text-xs"
-              />
-              <p className="text-xs text-gray-500">
-                Generate in HighLevel: Settings → Integrations → Private Integrations →
-                <strong> create a token with the <code>blogs/post.write</code> scope.</strong>{' '}
-                <a
-                  href="https://help.gohighlevel.com/support/solutions/articles/155000005467-private-integrations"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#00ef99] hover:underline inline-flex items-center gap-0.5"
-                >
-                  HL docs <ExternalLink className="h-3 w-3" />
-                </a>
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="hl-location">HighLevel Location ID</Label>
-              <Input
-                id="hl-location"
-                placeholder="abc123XYZ..."
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-                className="font-mono text-xs"
-              />
-              <p className="text-xs text-gray-500">
-                Find in HighLevel: Settings → Business Profile → Location ID.
-              </p>
-            </div>
-
-            <Button
-              onClick={handleVerify}
-              disabled={!token.trim() || !locationId.trim() || verifying}
-              className="bg-black hover:bg-gray-800"
+        <div className="space-y-1">
+          <Label htmlFor="hl-token">HighLevel Private Integration Token</Label>
+          <Input
+            id="hl-token"
+            type="password"
+            placeholder="pit-xxxxxxxxxxxxxxxxxxxxxxxx"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            className="font-mono text-xs"
+          />
+          <p className="text-xs text-gray-500">
+            Generate in HighLevel: Settings → Integrations → Private Integrations →
+            <strong> create a token with the <code>blogs/post.write</code> scope.</strong>{' '}
+            <a
+              href="https://help.gohighlevel.com/support/solutions/articles/155000005467-private-integrations"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#00ef99] hover:underline inline-flex items-center gap-0.5"
             >
-              {verifying ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Verify & List Blogs
-            </Button>
-          </>
-        )}
+              HL docs <ExternalLink className="h-3 w-3" />
+            </a>
+          </p>
+        </div>
 
-        {/* Step 2: pick blog + save */}
-        {blogs.length > 0 && (
-          <>
-            <div className="p-3 rounded-lg bg-[#00ef99]/5 border border-[#00ef99]/20 text-sm text-gray-700">
-              <CheckCircle2 className="inline h-4 w-4 text-[#00ef99] mr-1" />
-              Verified <strong>{verifiedLocationName}</strong>. Pick the blog to publish snaps to:
-            </div>
+        <div className="space-y-1">
+          <Label htmlFor="hl-location">HighLevel Location ID</Label>
+          <Input
+            id="hl-location"
+            placeholder="abc123XYZ..."
+            value={locationId}
+            onChange={(e) => setLocationId(e.target.value)}
+            className="font-mono text-xs"
+          />
+          <p className="text-xs text-gray-500">
+            Find in HighLevel: Settings → Business Profile → Location ID.
+          </p>
+        </div>
 
-            <div className="space-y-1">
-              <Label>Target Blog</Label>
-              <Select value={selectedBlog} onValueChange={setSelectedBlog}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a blog..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {blogs.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="space-y-1">
+          <Label htmlFor="hl-blog">HighLevel Blog ID</Label>
+          <Input
+            id="hl-blog"
+            placeholder="abc123XYZ..."
+            value={blogId}
+            onChange={(e) => setBlogId(e.target.value)}
+            className="font-mono text-xs"
+          />
+          <p className="text-xs text-gray-500">
+            Find in HighLevel: Sites → Blogs → click your blog. The Blog ID is in the URL,
+            usually after <code className="bg-gray-100 px-1 rounded">/blogs/</code> (e.g.{' '}
+            <code className="bg-gray-100 px-1 rounded">.../blogs/abc123xyz/posts</code> →
+            blog ID is <code className="bg-gray-100 px-1 rounded">abc123xyz</code>).
+          </p>
+        </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={!selectedBlog || saving}
-                className="bg-black hover:bg-gray-800"
-              >
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Connection
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setBlogs([]);
-                  setVerifiedLocationName(null);
-                  setSelectedBlog('');
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </>
-        )}
+        <div className="space-y-1">
+          <Label htmlFor="hl-blog-name">Blog Name <span className="text-gray-400 font-normal">(optional, for display)</span></Label>
+          <Input
+            id="hl-blog-name"
+            placeholder="Our Work"
+            value={blogName}
+            onChange={(e) => setBlogName(e.target.value)}
+          />
+        </div>
+
+        <Button
+          onClick={handleConnect}
+          disabled={!token.trim() || !locationId.trim() || !blogId.trim() || saving}
+          className="bg-black hover:bg-gray-800"
+        >
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Connect HighLevel
+        </Button>
+
+        <p className="text-xs text-gray-500">
+          We&apos;ll verify the token + location, then save your connection. Published Job
+          Snaps will start syncing to your blog immediately after.
+        </p>
       </CardContent>
     </Card>
   );

@@ -79,7 +79,7 @@ export async function POST(
   const body = await req.json().catch(() => ({}));
   const token: string = (body.token || '').trim();
   const locationId: string = (body.locationId || '').trim();
-  const blogId: string | undefined = body.blogId?.trim();
+  const blogId: string = (body.blogId || '').trim();
   const blogName: string | undefined = body.blogName?.trim();
 
   if (!token) {
@@ -88,37 +88,17 @@ export async function POST(
   if (!locationId) {
     return NextResponse.json({ error: 'locationId is required' }, { status: 400 });
   }
-
-  // Phase 1 — verify token + return blogs to choose from
   if (!blogId) {
-    try {
-      const location = await hl.verifyToken(token, locationId);
-      const blogs = await hl.listBlogs(token, locationId);
-      return NextResponse.json({
-        verified: true,
-        location,
-        blogs,
-      });
-    } catch (err: any) {
-      const status = err?.status === 401 || err?.status === 403 ? 401 : 400;
-      return NextResponse.json(
-        {
-          error:
-            err?.status === 401 || err?.status === 403
-              ? 'Token rejected by HighLevel — check that the token is valid and has Blog scopes.'
-              : err?.message || 'Could not verify HighLevel credentials.',
-        },
-        { status }
-      );
-    }
+    return NextResponse.json({ error: 'blogId is required' }, { status: 400 });
   }
 
-  // Phase 2 — save the verified credentials
+  // Single-phase: verify token + location, then save with the user-provided blog ID.
+  // (HighLevel's PIT-accessible API doesn't expose a reliable "list blogs"
+  // endpoint, so the customer pastes the Blog ID directly from the HL admin URL.)
   try {
     const location = await hl.verifyToken(token, locationId);
     const admin = createAdminClient();
 
-    // Upsert (one connection per site per provider)
     const encrypted = encrypt(token);
     const metadata = {
       location_id: locationId,
@@ -154,9 +134,15 @@ export async function POST(
       blogName: blogName || null,
     });
   } catch (err: any) {
+    const isAuth = err?.status === 401 || err?.status === 403;
+    const status = isAuth ? 401 : 400;
     return NextResponse.json(
-      { error: err?.message || 'Could not save HighLevel connection.' },
-      { status: 400 }
+      {
+        error: isAuth
+          ? 'Token rejected by HighLevel — check the token, scopes, and Location ID.'
+          : err?.message || 'Could not save HighLevel connection.',
+      },
+      { status }
     );
   }
 }

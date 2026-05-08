@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { encrypt } from '@/lib/integrations/crypto';
-import * as hl from '@/lib/highlevel/client';
 
 /**
  * GET — connection status for the HighLevel integration on this site.
@@ -92,17 +91,26 @@ export async function POST(
     return NextResponse.json({ error: 'blogId is required' }, { status: 400 });
   }
 
-  // Single-phase: verify token + location, then save with the user-provided blog ID.
-  // (HighLevel's PIT-accessible API doesn't expose a reliable "list blogs"
-  // endpoint, so the customer pastes the Blog ID directly from the HL admin URL.)
-  try {
-    const location = await hl.verifyToken(token, locationId);
-    const admin = createAdminClient();
+  // Save the credentials without API verification. HighLevel's PIT-accessible
+  // endpoints are inconsistent (different paths/headers per scope), and the
+  // bad-credentials feedback loop is better delivered by the actual publish
+  // path (Inngest deliver-highlevel logs failures to webhook_deliveries with
+  // the real error message).
+  //
+  // Basic input validation: token format + non-empty IDs.
+  if (!/^pit-/i.test(token) && !/^Bearer /i.test(token)) {
+    // Soft-warn, don't block — HL token formats can vary.
+    console.warn(
+      'HL token does not start with "pit-" — saving anyway, but check format if publishing fails.'
+    );
+  }
 
+  try {
+    const admin = createAdminClient();
     const encrypted = encrypt(token);
     const metadata = {
       location_id: locationId,
-      location_name: location.name,
+      location_name: blogName || locationId, // human-readable fallback
       blog_id: blogId,
       blog_name: blogName || null,
       url_prefix: 'work',
@@ -130,19 +138,13 @@ export async function POST(
 
     return NextResponse.json({
       connected: true,
-      locationName: location.name,
+      locationName: metadata.location_name,
       blogName: blogName || null,
     });
   } catch (err: any) {
-    const isAuth = err?.status === 401 || err?.status === 403;
-    const status = isAuth ? 401 : 400;
     return NextResponse.json(
-      {
-        error: isAuth
-          ? 'Token rejected by HighLevel — check the token, scopes, and Location ID.'
-          : err?.message || 'Could not save HighLevel connection.',
-      },
-      { status }
+      { error: err?.message || 'Could not save HighLevel connection.' },
+      { status: 500 }
     );
   }
 }

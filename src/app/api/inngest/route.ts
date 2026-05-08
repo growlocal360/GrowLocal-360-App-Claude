@@ -10,6 +10,7 @@ import {
 } from '@/lib/inngest/functions/booking-notifications';
 import { publishAvailability } from '@/lib/inngest/functions/publish-availability';
 import { dispatchWebhook, deliverWebhook } from '@/lib/inngest/functions/deliver-webhook';
+import { deliverHighLevel } from '@/lib/inngest/functions/deliver-highlevel';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -23,5 +24,6 @@ export const { GET, POST, PUT } = serve({
     publishAvailability,
     dispatchWebhook,
     deliverWebhook,
+    deliverHighLevel,
   ],
 });

@@ -27,6 +27,7 @@ import {
   Loader2,
   Power,
 } from 'lucide-react';
+import { HighLevelConnectCard } from '@/components/integrations/highlevel-connect-card';
 
 interface ApiKeyRow {
   id: string;
@@ -94,7 +95,14 @@ function CodeBlock({ children }: { children: string }) {
   );
 }
 
-export function IntegrationsPanel() {
+interface IntegrationsPanelProps {
+  /** Currently-selected workspace id from the Job Snaps page. When set,
+   *  the HighLevel tab targets that workspace. Pass undefined or 'all'
+   *  to show a "pick a workspace" message in the HL tab. */
+  selectedSiteId?: string;
+}
+
+export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {}) {
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [endpoints, setEndpoints] = useState<WebhookRow[]>([]);
   const [sites, setSites] = useState<SiteOption[]>([]);
@@ -316,9 +324,10 @@ export function IntegrationsPanel() {
       )}
 
       <Tabs defaultValue="nextjs">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="nextjs">Next.js</TabsTrigger>
           <TabsTrigger value="wordpress">WordPress</TabsTrigger>
+          <TabsTrigger value="highlevel">HighLevel</TabsTrigger>
           <TabsTrigger value="embed">Embed Script</TabsTrigger>
           <TabsTrigger value="api">API</TabsTrigger>
         </TabsList>
@@ -397,6 +406,32 @@ export async function POST(req: Request) {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="highlevel" className="space-y-4 mt-4">
+          {selectedSiteId && selectedSiteId !== 'all' ? (
+            <HighLevelConnectCard siteId={selectedSiteId} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-[#00ef99]" />
+                  <h3 className="font-semibold">HighLevel Integration</h3>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 text-center space-y-2">
+                  <p className="text-sm text-gray-700 font-medium">
+                    Pick a workspace from the dropdown above to connect HighLevel
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    HighLevel connections are per-workspace — published Job Snaps from a
+                    workspace become real blog posts on that workspace&apos;s HighLevel site.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="embed" className="space-y-4 mt-4">

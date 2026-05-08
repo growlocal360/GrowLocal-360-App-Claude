@@ -475,7 +475,7 @@ export default function JobSnapsPage() {
           </TabsContent>
 
           <TabsContent value="connect">
-            <IntegrationsPanel />
+            <IntegrationsPanel selectedSiteId={selectedWorkspace} />
           </TabsContent>
         </Tabs>
       </div>

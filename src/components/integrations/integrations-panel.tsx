@@ -791,39 +791,55 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="https://yoursite.com/api/jobsnaps-webhook"
-              value={webhookUrl}
-              onChange={(e) => setWebhookUrl(e.target.value)}
-              className="flex-1"
-            />
-            {showSiteSelector && (
-              <Select value={webhookSiteId} onValueChange={setWebhookSiteId}>
-                <SelectTrigger className="sm:w-48">
-                  <SelectValue placeholder="Site..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sites.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {siteLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button
-              onClick={createWebhook}
-              disabled={!webhookUrl.trim() || !webhookSiteId || creatingWebhook}
-              className="bg-black hover:bg-gray-800"
-            >
+          <div className="space-y-2">
+            <Label htmlFor="webhook-url-input">Webhook URL</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="webhook-url-input"
+                placeholder="https://yoursite.com/api/jobsnaps-webhook"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="flex-1 font-mono text-xs"
+              />
+              {showSiteSelector && (
+                <Select value={webhookSiteId} onValueChange={setWebhookSiteId}>
+                  <SelectTrigger className="sm:w-48">
+                    <SelectValue placeholder="Site..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {siteLabel(s)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                onClick={createWebhook}
+                disabled={!webhookUrl.trim() || !webhookSiteId || creatingWebhook}
+                className="bg-black hover:bg-gray-800"
+              >
               {creatingWebhook ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <Plus className="h-4 w-4 mr-2" />
               )}
               Add Endpoint
-            </Button>
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Format:{' '}
+              <code className="bg-gray-100 px-1 rounded font-mono">
+                https://yoursite.com/api/jobsnaps-webhook
+              </code>{' '}
+              for Next.js, or{' '}
+              <code className="bg-gray-100 px-1 rounded font-mono">
+                https://yoursite.com/wp-json/jobsnaps/v1/webhook
+              </code>{' '}
+              for WordPress. The endpoint doesn&apos;t need to exist yet &mdash; the AI Setup
+              Prompt will create the handler at this URL.
+            </p>
           </div>
 
           {endpoints.length === 0 ? (

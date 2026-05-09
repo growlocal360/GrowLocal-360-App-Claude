@@ -10,13 +10,17 @@ interface WebhookEndpointWithSite extends WebhookEndpointPublic {
 }
 
 function toPublic(
-  ep: WebhookEndpoint & { sites?: { name: string } | null }
+  ep: WebhookEndpoint & {
+    sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null;
+  }
 ): WebhookEndpointWithSite {
   const { sites, ...rest } = ep;
+  const isWorkspace = !!sites?.settings?.workspace_only;
+  const baseName = sites?.name || 'Unknown';
   return {
     ...rest,
     secret_preview: `${ep.secret.slice(0, 12)}…`,
-    site_name: sites?.name || 'Unknown',
+    site_name: `${baseName} · ${isWorkspace ? 'Job Snaps' : 'Site'}`,
   };
 }
 
@@ -31,13 +35,13 @@ export async function GET() {
   const admin = createAdminClient();
   const { data } = await admin
     .from('webhook_endpoints')
-    .select('*, sites(name)')
+    .select('*, sites(name, settings)')
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false });
 
   return NextResponse.json({
     endpoints: (data || []).map((ep) =>
-      toPublic(ep as WebhookEndpoint & { sites?: { name: string } | null })
+      toPublic(ep as WebhookEndpoint & { sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null })
     ),
   });
 }
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest) {
       is_active: true,
       created_by: ctx.profileId,
     })
-    .select('*, sites(name)')
+    .select('*, sites(name, settings)')
     .single();
 
   if (error || !data) {
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    endpoint: toPublic(data as WebhookEndpoint & { sites?: { name: string } | null }),
+    endpoint: toPublic(data as WebhookEndpoint & { sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null }),
     secret,
     warning: 'Store this signing secret now. It will never be shown again.',
   });

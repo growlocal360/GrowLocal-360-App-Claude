@@ -9,12 +9,16 @@ interface ApiKeyWithSite extends ApiKeyPublic {
   site_name: string;
 }
 
-function toPublic(key: ApiKey & { sites?: { name: string } | null }): ApiKeyWithSite {
+function toPublic(
+  key: ApiKey & { sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null }
+): ApiKeyWithSite {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { key_hash, sites, ...rest } = key;
+  const isWorkspace = !!sites?.settings?.workspace_only;
+  const baseName = sites?.name || 'Unknown';
   return {
     ...rest,
-    site_name: sites?.name || 'Unknown',
+    site_name: `${baseName} · ${isWorkspace ? 'Job Snaps' : 'Site'}`,
   };
 }
 
@@ -29,12 +33,12 @@ export async function GET() {
   const admin = createAdminClient();
   const { data } = await admin
     .from('api_keys')
-    .select('*, sites(name)')
+    .select('*, sites(name, settings)')
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false });
 
   return NextResponse.json({
-    keys: (data || []).map((k) => toPublic(k as ApiKey & { sites?: { name: string } | null })),
+    keys: (data || []).map((k) => toPublic(k as ApiKey & { sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null })),
   });
 }
 
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest) {
       key_hash: keyHash,
       created_by: ctx.profileId,
     })
-    .select('*, sites(name)')
+    .select('*, sites(name, settings)')
     .single();
 
   if (error || !data) {
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    key: toPublic(data as ApiKey & { sites?: { name: string } | null }),
+    key: toPublic(data as ApiKey & { sites?: { name: string; settings?: { workspace_only?: boolean } | null } | null }),
     fullKey,
     warning: 'Store this key now. It will never be shown again.',
   });

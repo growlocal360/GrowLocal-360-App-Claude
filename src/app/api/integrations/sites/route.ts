@@ -20,9 +20,18 @@ export async function GET() {
   const admin = createAdminClient();
   const { data } = await admin
     .from('sites')
-    .select('id, name, slug')
+    .select('id, name, slug, settings')
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: true });
 
-  return NextResponse.json({ sites: data || [] });
+  // Surface workspace_only as a top-level field so dropdowns can label
+  // Job-Snaps-only workspaces vs full GL360 sites distinctly.
+  const sites = (data || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    workspace_only: !!(s.settings as { workspace_only?: boolean } | null)?.workspace_only,
+  }));
+
+  return NextResponse.json({ sites });
 }

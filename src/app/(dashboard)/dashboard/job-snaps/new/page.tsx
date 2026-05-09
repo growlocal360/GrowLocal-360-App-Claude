@@ -511,8 +511,7 @@ export default function NewJobSnapPage() {
                     <SelectContent>
                       {allSites.map((s) => (
                         <SelectItem key={s.siteId} value={s.siteId}>
-                          {s.name}
-                          {s.workspaceOnly ? ' • Job Snaps' : ''}
+                          {s.name} · {s.workspaceOnly ? 'Job Snaps' : 'Site'}
                         </SelectItem>
                       ))}
                     </SelectContent>

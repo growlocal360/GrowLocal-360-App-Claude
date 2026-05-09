@@ -356,8 +356,7 @@ export default function JobSnapsPage() {
                   <SelectItem value="all">All workspaces</SelectItem>
                   {workspaceSites.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                      {w.workspace_only ? ' • Job Snaps' : ''}
+                      {w.name} · {w.workspace_only ? 'Job Snaps' : 'Site'}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -56,6 +56,14 @@ interface WebhookRow {
 interface SiteOption {
   id: string;
   name: string;
+  workspace_only?: boolean;
+}
+
+/** Append a clear ·-suffix so dropdown entries with identical names
+ *  (e.g. "Latour's HVAC" exists as both a GL360 site AND a Job Snaps
+ *  workspace) are unambiguous. */
+function siteLabel(s: SiteOption): string {
+  return `${s.name} · ${s.workspace_only ? 'Job Snaps' : 'Site'}`;
 }
 
 const APP_URL =
@@ -333,12 +341,111 @@ export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {
         </TabsList>
 
         <TabsContent value="nextjs" className="space-y-4 mt-4">
-          <Card>
+          {/* ── Production-grade pattern (recommended) ───────────────────── */}
+          <Card className="border-[#00ef99]/40">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Code2 className="h-5 w-5 text-[#00ef99]" />
-                <h3 className="font-semibold">Drop into your Next.js site</h3>
+                <h3 className="font-semibold">Production setup &mdash; webhook + local DB</h3>
+                <Badge variant="outline" className="ml-auto text-[#00ef99] border-[#00ef99]/30 bg-[#00ef99]/5">
+                  Recommended
+                </Badge>
               </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Webhook stores each snap in <strong>your</strong> database. Pages render from
+                local data — fast, persistent, and your snaps stay forever even if you cancel
+                your subscription. ~30 min setup.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-medium text-sm mb-2">1. Webhook handler — receives snap events</h4>
+                <CodeBlock>{`// app/api/jobsnaps-webhook/route.ts
+import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import crypto from 'crypto';
+
+const SECRET = process.env.JOBSNAPS_WEBHOOK_SECRET!;
+
+function verifySignature(body: string, header: string | null): boolean {
+  if (!header) return false;
+  const parts = Object.fromEntries(header.split(',').map(p => p.split('=')));
+  const expected = crypto.createHmac('sha256', SECRET)
+    .update(\`\${parts.t}.\${body}\`).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+}
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  if (!verifySignature(body, req.headers.get('x-webhook-signature'))) {
+    return Response.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  const { type, data } = JSON.parse(body);
+  if (type === 'job_snap.published' || type === 'job_snap.updated') {
+    await db.snaps.upsert({
+      where: { id: data.id },
+      create: { id: data.id, ...data },
+      update: data,
+    });
+  } else if (type === 'job_snap.unpublished') {
+    await db.snaps.delete({ where: { id: data.id } });
+  }
+
+  revalidatePath('/work');
+  return Response.json({ ok: true });
+}`}</CodeBlock>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-2">
+                  2. Render from your local DB (no external API call)
+                </h4>
+                <CodeBlock>{`// app/work/page.tsx
+import { db } from '@/lib/db';
+
+export default async function WorkPage() {
+  const snaps = await db.snaps.findMany({
+    orderBy: { published_at: 'desc' },
+    take: 20,
+  });
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {snaps.map((snap) => (
+        <article key={snap.id}>
+          {snap.media[0] && <img src={snap.media[0].url} alt={snap.media[0].alt} />}
+          <h2>{snap.title}</h2>
+          <p>{snap.description}</p>
+          <span>{snap.location.city}, {snap.location.state}</span>
+        </article>
+      ))}
+    </div>
+  );
+}`}</CodeBlock>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-2">3. Configure</h4>
+                <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
+                  <li>Register your webhook URL in the <strong>Webhooks</strong> section below</li>
+                  <li>Add <code className="bg-gray-100 px-1 rounded">JOBSNAPS_WEBHOOK_SECRET</code> to your env vars (the signing secret shown when you create the webhook)</li>
+                  <li>Run a DB migration to create a <code className="bg-gray-100 px-1 rounded">snaps</code> table matching the snap shape</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Quick start (live fetch) ───────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Code2 className="h-5 w-5 text-gray-500" />
+                <h3 className="font-semibold">Quick start &mdash; live fetch</h3>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Fetch from our API on every ISR rebuild. Works in 5 minutes, no database
+                needed. <strong>Trade-off:</strong> snaps disappear from your site if you cancel
+                your subscription (the API key gets revoked).
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -371,18 +478,6 @@ export default async function WorkPage() {
       ))}
     </div>
   );
-}`}</CodeBlock>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm mb-2">
-                  3. (Optional) Webhook for instant updates
-                </h4>
-                <CodeBlock>{`// app/api/jobsnaps-webhook/route.ts
-import { revalidatePath } from 'next/cache';
-
-export async function POST(req: Request) {
-  revalidatePath('/work');
-  return Response.json({ ok: true });
 }`}</CodeBlock>
               </div>
             </CardContent>
@@ -535,7 +630,7 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                 <SelectContent>
                   {sites.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {siteLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -631,7 +726,7 @@ Authorization: Bearer your_api_key_here`}</CodeBlock>
                 <SelectContent>
                   {sites.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {siteLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>

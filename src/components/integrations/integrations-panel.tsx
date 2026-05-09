@@ -28,6 +28,7 @@ import {
   Power,
 } from 'lucide-react';
 import { HighLevelConnectCard } from '@/components/integrations/highlevel-connect-card';
+import { SetupPromptDialog } from '@/components/integrations/setup-prompt-dialog';
 
 interface ApiKeyRow {
   id: string;
@@ -111,6 +112,8 @@ interface IntegrationsPanelProps {
 }
 
 export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {}) {
+  // Resolved further down once `sites` is loaded — used for tailored prompt copy.
+  // (Declared via a getter so it picks up the latest sites/selectedSiteId on render.)
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [endpoints, setEndpoints] = useState<WebhookRow[]>([]);
   const [sites, setSites] = useState<SiteOption[]>([]);
@@ -250,6 +253,12 @@ export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {
 
   const showSiteSelector = sites.length > 1;
 
+  // Resolve the selected workspace's name for tailored prompt copy.
+  const selectedSiteName =
+    selectedSiteId && selectedSiteId !== 'all'
+      ? sites.find((s) => s.id === selectedSiteId)?.name || null
+      : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -341,6 +350,26 @@ export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {
         </TabsList>
 
         <TabsContent value="nextjs" className="space-y-4 mt-4">
+          {/* ── AI Setup Prompt — instant integration ──────────────────── */}
+          <Card className="bg-linear-to-br from-[#00ef99]/5 via-violet-50 to-cyan-50 border-[#00ef99]/30">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900">Skip the docs &mdash; have AI build it</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Generate a complete setup prompt to paste into Claude Code, Cursor, or any AI
+                  coding tool inside your Next.js project. Pre-fill your credentials below for a
+                  ready-to-paste prompt.
+                </p>
+              </div>
+              <SetupPromptDialog
+                framework="nextjs"
+                apiBase={APP_URL}
+                businessName={selectedSiteName}
+                triggerVariant="default"
+              />
+            </CardContent>
+          </Card>
+
           {/* ── Production-grade pattern (recommended) ───────────────────── */}
           <Card className="border-[#00ef99]/40">
             <CardHeader>
@@ -485,6 +514,29 @@ export default async function WorkPage() {
         </TabsContent>
 
         <TabsContent value="wordpress" className="space-y-4 mt-4">
+          {/* ── AI Setup Prompt — works today even without the plugin ───── */}
+          <Card className="bg-linear-to-br from-[#00ef99]/5 via-violet-50 to-cyan-50 border-[#00ef99]/30">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900">
+                  Have AI build a WordPress integration today
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Skip waiting for the plugin. Generate an AI prompt that walks Claude/Cursor/etc.
+                  through registering a Custom Post Type + webhook handler in your theme&apos;s
+                  <code className="bg-gray-100 px-1 rounded ml-1">functions.php</code> or as a
+                  small custom plugin. Server-rendered, SEO-friendly, indexed by Google.
+                </p>
+              </div>
+              <SetupPromptDialog
+                framework="wordpress"
+                apiBase={APP_URL}
+                businessName={selectedSiteName}
+                triggerVariant="default"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -494,9 +546,10 @@ export default async function WorkPage() {
             </CardHeader>
             <CardContent>
               <div className="p-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 text-center">
-                <p className="text-sm text-gray-600">WordPress plugin coming soon.</p>
+                <p className="text-sm text-gray-600">Official WordPress plugin coming soon.</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  In the meantime, the Embed Script tab works on any WordPress site.
+                  In the meantime, use the AI Setup Prompt above (works today) or the Embed
+                  Script tab.
                 </p>
               </div>
             </CardContent>
@@ -557,6 +610,26 @@ export default async function WorkPage() {
         </TabsContent>
 
         <TabsContent value="api" className="space-y-4 mt-4">
+          {/* ── AI Setup Prompt ─────────────────────────────────────── */}
+          <Card className="bg-linear-to-br from-[#00ef99]/5 via-violet-50 to-cyan-50 border-[#00ef99]/30">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900">Have AI integrate this for you</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Generate an AI prompt with the API spec + your credentials baked in. Paste
+                  into your AI coding tool and it&apos;ll wire up the integration in the right
+                  place for your stack.
+                </p>
+              </div>
+              <SetupPromptDialog
+                framework="api"
+                apiBase={APP_URL}
+                businessName={selectedSiteName}
+                triggerVariant="default"
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">

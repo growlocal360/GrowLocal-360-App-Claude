@@ -366,6 +366,9 @@ export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {
                 apiBase={APP_URL}
                 businessName={selectedSiteName}
                 triggerVariant="default"
+                initialApiKey={newKey?.fullKey || null}
+                initialWebhookUrl={newSecret?.url || null}
+                initialWebhookSecret={newSecret?.secret || null}
               />
             </CardContent>
           </Card>
@@ -533,6 +536,9 @@ export default async function WorkPage() {
                 apiBase={APP_URL}
                 businessName={selectedSiteName}
                 triggerVariant="default"
+                initialApiKey={newKey?.fullKey || null}
+                initialWebhookUrl={newSecret?.url || null}
+                initialWebhookSecret={newSecret?.secret || null}
               />
             </CardContent>
           </Card>
@@ -626,6 +632,7 @@ export default async function WorkPage() {
                 apiBase={APP_URL}
                 businessName={selectedSiteName}
                 triggerVariant="default"
+                initialApiKey={newKey?.fullKey || null}
               />
             </CardContent>
           </Card>

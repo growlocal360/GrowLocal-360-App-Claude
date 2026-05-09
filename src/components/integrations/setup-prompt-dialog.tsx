@@ -35,6 +35,12 @@ interface SetupPromptDialogProps {
   triggerLabel?: string;
   /** Visual variant of the trigger button. */
   triggerVariant?: 'default' | 'outline';
+  /** Pre-fill the API key field (e.g., a key just shown to the user once). */
+  initialApiKey?: string | null;
+  /** Pre-fill the webhook URL field. */
+  initialWebhookUrl?: string | null;
+  /** Pre-fill the webhook secret field. */
+  initialWebhookSecret?: string | null;
 }
 
 const FRAMEWORK_LABEL: Record<SetupPromptFramework, string> = {
@@ -49,14 +55,29 @@ export function SetupPromptDialog({
   businessName,
   triggerLabel,
   triggerVariant = 'outline',
+  initialApiKey,
+  initialWebhookUrl,
+  initialWebhookSecret,
 }: SetupPromptDialogProps) {
   const [open, setOpen] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [webhookSecret, setWebhookSecret] = useState('');
+  const [apiKey, setApiKey] = useState(initialApiKey || '');
+  const [webhookUrl, setWebhookUrl] = useState(initialWebhookUrl || '');
+  const [webhookSecret, setWebhookSecret] = useState(initialWebhookSecret || '');
   const [databaseChoice, setDatabaseChoice] =
     useState<NonNullable<SetupPromptParams['databaseChoice']>>('supabase');
   const [copied, setCopied] = useState(false);
+
+  // Re-sync the form fields whenever new initial values arrive (e.g., the user
+  // generated a fresh API key or webhook secret right before opening this).
+  useEffect(() => {
+    if (initialApiKey) setApiKey(initialApiKey);
+  }, [initialApiKey]);
+  useEffect(() => {
+    if (initialWebhookUrl) setWebhookUrl(initialWebhookUrl);
+  }, [initialWebhookUrl]);
+  useEffect(() => {
+    if (initialWebhookSecret) setWebhookSecret(initialWebhookSecret);
+  }, [initialWebhookSecret]);
 
   // Reset copied indicator a moment after copying
   useEffect(() => {

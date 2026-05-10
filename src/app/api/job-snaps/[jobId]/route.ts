@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { emitJobSnapEvent } from '@/lib/webhooks/emit';
 
 /**
  * DELETE /api/job-snaps/[jobId]
@@ -52,6 +53,13 @@ export async function DELETE(
     if (!site || !userOrgIds.includes(site.organization_id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // ── Fire unpublish webhook BEFORE we delete the row ───────────────────────
+    // External integrations (HL, Next.js webhook handlers, embed-script
+    // caches, etc.) need to know to remove their copy of the snap. Must be
+    // emitted before the DB row is gone — emitJobSnapEvent loads the snap
+    // to serialize the payload.
+    await emitJobSnapEvent('job_snap.unpublished', jobId);
 
     // ── Delete media files from storage ───────────────────────────────────────
     const { data: media } = await adminClient

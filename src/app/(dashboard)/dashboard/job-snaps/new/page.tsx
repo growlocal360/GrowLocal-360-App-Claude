@@ -432,10 +432,14 @@ export default function NewJobSnapPage() {
         serviceType: editedAnalysis.serviceType ?? undefined,
         serviceId: editedAnalysis.serviceId ?? undefined,
         brand: editedAnalysis.brand ?? undefined,
-        // Structured SEO inputs from Claude analyzer — feed the canonical naming engine.
+        // Structured SEO inputs from Claude analyzer + user review panel —
+        // feed the canonical naming engine.
         primaryProblem: editedAnalysis.primaryProblem ?? undefined,
         equipmentType: editedAnalysis.equipmentType ?? undefined,
         neighborhood: editedAnalysis.neighborhood ?? undefined,
+        // clientName is user-only (never AI-emitted); attached by the review
+        // panel onto the analysis object so it can flow through here.
+        clientName: (editedAnalysis as JobSnapAnalysisResult & { clientName?: string | null }).clientName ?? undefined,
         location: location
           ? {
               addressFull: location.address,

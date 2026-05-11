@@ -15,6 +15,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import type { JobSnapAnalysisResult } from '@/lib/job-snaps/analyze';
 import type { JobLocation } from '@/components/job-snaps/job-location-card';
@@ -130,6 +131,10 @@ export function AnalysisReviewPanel({
     serviceType: analysis.serviceType ?? '',
     serviceId: analysis.serviceId ?? null as string | null,
     brand: analysis.brand ?? '',
+    clientName: '',
+    equipmentType: analysis.equipmentType ?? '',
+    primaryProblem: analysis.primaryProblem ?? '',
+    neighborhood: analysis.neighborhood ?? '',
   });
 
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -162,13 +167,18 @@ export function AnalysisReviewPanel({
 
   // Re-sync editable fields when analysis changes (re-analyze)
   useEffect(() => {
-    setEdited({
+    setEdited((prev) => ({
       title: analysis.title,
       description: analysis.description,
       serviceType: analysis.serviceType ?? '',
       serviceId: analysis.serviceId ?? null,
       brand: analysis.brand ?? '',
-    });
+      // Preserve user-entered clientName across re-analyze (AI never emits it).
+      clientName: prev.clientName,
+      equipmentType: analysis.equipmentType ?? '',
+      primaryProblem: analysis.primaryProblem ?? '',
+      neighborhood: analysis.neighborhood ?? '',
+    }));
   }, [analysis]);
 
   const locationDisplay = location
@@ -200,7 +210,13 @@ export function AnalysisReviewPanel({
       serviceType: edited.serviceType.trim() || null,
       serviceId: edited.serviceId,
       brand: edited.brand.trim() || null,
-    });
+      equipmentType: edited.equipmentType.trim() || null,
+      primaryProblem: edited.primaryProblem.trim() || null,
+      neighborhood: edited.neighborhood.trim() || null,
+      // Attach client_name onto the analysis payload so the parent page can
+      // forward it to the save route. AI never emits this — user-only field.
+      clientName: edited.clientName.trim() || null,
+    } as JobSnapAnalysisResult & { clientName: string | null });
   };
 
   // Get selected service name for display
@@ -247,7 +263,7 @@ export function AnalysisReviewPanel({
           />
         </div>
 
-        {/* Service Type (AI-detected, read-only context) + Brand */}
+        {/* Service Type + Brand */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
@@ -263,16 +279,88 @@ export function AnalysisReviewPanel({
           </div>
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
-              Brand / Client
+              Brand
             </label>
             <div className="mt-1">
               <BrandCombobox
                 value={edited.brand}
                 onChange={(v) => setEdited((prev) => ({ ...prev, brand: v }))}
                 siteId={siteId}
-                placeholder="e.g. Whirlpool, Acme Co."
+                placeholder="e.g. Whirlpool"
               />
             </div>
+            <p className="mt-1 text-[11px] text-gray-400">
+              Equipment manufacturer. Shown publicly when present.
+            </p>
+          </div>
+        </div>
+
+        {/* Client Name (internal-only) + Equipment Type */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-400 flex items-center gap-1">
+              <Lock className="h-3 w-3 text-gray-400" />
+              Client Name (Internal Only)
+            </label>
+            <Input
+              className="mt-1"
+              value={edited.clientName}
+              onChange={(e) => setEdited((prev) => ({ ...prev, clientName: e.target.value }))}
+              placeholder="e.g. Anderson Family"
+              disabled={isLoading}
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              Never shown publicly. Internal record only.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              Equipment Type
+            </label>
+            <Input
+              className="mt-1"
+              value={edited.equipmentType}
+              onChange={(e) => setEdited((prev) => ({ ...prev, equipmentType: e.target.value }))}
+              placeholder="e.g. Dryer, Condenser Unit"
+              disabled={isLoading}
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              When the job involves a specific piece of equipment.
+            </p>
+          </div>
+        </div>
+
+        {/* Primary Problem + Neighborhood */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              Primary Problem
+            </label>
+            <Input
+              className="mt-1"
+              value={edited.primaryProblem}
+              onChange={(e) => setEdited((prev) => ({ ...prev, primaryProblem: e.target.value }))}
+              placeholder="e.g. drum roller replacement"
+              disabled={isLoading}
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              Drives the SEO URL and title.
+            </p>
+          </div>
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+              Neighborhood
+            </label>
+            <Input
+              className="mt-1"
+              value={edited.neighborhood}
+              onChange={(e) => setEdited((prev) => ({ ...prev, neighborhood: e.target.value }))}
+              placeholder="e.g. Graywood"
+              disabled={isLoading}
+            />
+            <p className="mt-1 text-[11px] text-gray-400">
+              Optional. Appears in H1 and body when present.
+            </p>
           </div>
         </div>
 

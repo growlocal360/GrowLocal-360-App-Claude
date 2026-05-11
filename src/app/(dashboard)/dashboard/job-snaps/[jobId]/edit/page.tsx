@@ -45,11 +45,27 @@ interface FormState {
   serviceType: string;
   serviceId: string | null;
   brand: string;
+  /** Internal-only customer/family name. Never shown publicly. */
+  clientName: string;
+  equipmentType: string;
+  primaryProblem: string;
+  neighborhood: string;
+  streetNamePublic: string;
   status: JobStatus;
   addressFull: string;
   city: string;
   state: string;
   zip: string;
+}
+
+interface SeoOverrides {
+  slug: string;
+  metaTitle: string;
+  h1: string;
+  metaDescription: string;
+  altTextDefault: string;
+  imageFilenameBase: string;
+  publicLocationLabel: string;
 }
 
 const EDITABLE_STATUSES: { value: JobStatus; label: string }[] = [
@@ -77,6 +93,11 @@ export default function EditJobSnapPage() {
     serviceType: '',
     serviceId: null,
     brand: '',
+    clientName: '',
+    equipmentType: '',
+    primaryProblem: '',
+    neighborhood: '',
+    streetNamePublic: '',
     status: 'draft',
     addressFull: '',
     city: '',
@@ -87,6 +108,20 @@ export default function EditJobSnapPage() {
   const [mediaToDelete, setMediaToDelete] = useState<string[]>([]);
   const [isBeforeAfter, setIsBeforeAfter] = useState(false);
   const [mediaRoles, setMediaRoles] = useState<Record<string, { role: string; pairGroup: number | null }>>({});
+
+  // Advanced SEO panel state
+  const [seoExpanded, setSeoExpanded] = useState(false);
+  const [seoOverrides, setSeoOverrides] = useState<SeoOverrides>({
+    slug: '',
+    metaTitle: '',
+    h1: '',
+    metaDescription: '',
+    altTextDefault: '',
+    imageFilenameBase: '',
+    publicLocationLabel: '',
+  });
+  const [seoOverridesDirty, setSeoOverridesDirty] = useState<Partial<Record<keyof SeoOverrides, boolean>>>({});
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const supabase = createClient();
 
@@ -144,6 +179,11 @@ export default function EditJobSnapPage() {
           serviceType: typedSnap.service_type || '',
           serviceId: typedSnap.service_id || null,
           brand: typedSnap.brand || '',
+          clientName: typedSnap.client_name || '',
+          equipmentType: typedSnap.equipment_type || '',
+          primaryProblem: typedSnap.primary_problem || '',
+          neighborhood: typedSnap.neighborhood || '',
+          streetNamePublic: typedSnap.street_name_public || '',
           status: typedSnap.status,
           addressFull: typedSnap.address_full || '',
           city: typedSnap.city || '',
@@ -152,6 +192,16 @@ export default function EditJobSnapPage() {
         };
         setForm(initialForm);
         setOriginalForm(initialForm);
+        setSeoOverrides({
+          slug: typedSnap.slug || '',
+          metaTitle: typedSnap.meta_title || '',
+          h1: typedSnap.h1 || '',
+          metaDescription: typedSnap.meta_description || '',
+          altTextDefault: typedSnap.alt_text_default || '',
+          imageFilenameBase: typedSnap.image_filename_base || '',
+          publicLocationLabel: typedSnap.public_location_label || '',
+        });
+        setSeoOverridesDirty({});
         setIsBeforeAfter(typedSnap.is_before_after || false);
 
         // Initialize media roles from existing data
@@ -178,10 +228,11 @@ export default function EditJobSnapPage() {
     if (mediaToDelete.length > 0) return true;
     if (isBeforeAfter !== (jobSnap?.is_before_after || false)) return true;
     if (Object.keys(mediaRoles).length > 0) return true;
+    if (Object.values(seoOverridesDirty).some(Boolean)) return true;
     return (Object.keys(form) as (keyof FormState)[]).some(
       (key) => form[key] !== originalForm[key]
     );
-  }, [form, originalForm, mediaToDelete, isBeforeAfter, jobSnap, mediaRoles]);
+  }, [form, originalForm, mediaToDelete, isBeforeAfter, jobSnap, mediaRoles, seoOverridesDirty]);
 
   // Unsaved changes warning on browser close/refresh
   useEffect(() => {
@@ -254,6 +305,41 @@ export default function EditJobSnapPage() {
     }
   }
 
+  function buildPatchBody(regenerate: boolean) {
+    const address_public = publicAddressPreview;
+    // Only ship overrides the user explicitly touched. Untouched fields stay
+    // governed by the naming engine.
+    const overrides: Record<string, string> = {};
+    if (seoOverridesDirty.slug) overrides.slug = seoOverrides.slug.trim();
+    if (seoOverridesDirty.metaTitle) overrides.meta_title = seoOverrides.metaTitle.trim();
+    if (seoOverridesDirty.h1) overrides.h1 = seoOverrides.h1.trim();
+    if (seoOverridesDirty.metaDescription) overrides.meta_description = seoOverrides.metaDescription.trim();
+    if (seoOverridesDirty.altTextDefault) overrides.alt_text_default = seoOverrides.altTextDefault.trim();
+    if (seoOverridesDirty.imageFilenameBase) overrides.image_filename_base = seoOverrides.imageFilenameBase.trim();
+    if (seoOverridesDirty.publicLocationLabel) overrides.public_location_label = seoOverrides.publicLocationLabel.trim();
+
+    return {
+      title: form.title.trim() || null,
+      description: form.description.trim() || null,
+      service_type: form.serviceType.trim() || null,
+      service_id: form.serviceId || null,
+      brand: form.brand.trim() || null,
+      client_name: form.clientName.trim() || null,
+      equipment_type: form.equipmentType.trim() || null,
+      primary_problem: form.primaryProblem.trim() || null,
+      neighborhood: form.neighborhood.trim() || null,
+      street_name_public: form.streetNamePublic.trim() || null,
+      status: form.status,
+      address_full: form.addressFull.trim() || null,
+      address_public: address_public || null,
+      city: form.city.trim() || null,
+      state: form.state.trim() || null,
+      zip: form.zip.trim() || null,
+      regenerate_seo_fields: regenerate,
+      overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+    };
+  }
+
   async function handleSave() {
     if (allMediaDeleted) {
       toast.error('At least one photo is required.');
@@ -276,31 +362,27 @@ export default function EditJobSnapPage() {
         await supabase.from('job_snap_media').delete().in('id', mediaToDelete);
       }
 
-      // 2. Compute public address
-      const address_public = publicAddressPreview;
+      // 2. PATCH the snap server-side so the naming engine recomputes
+      //    canonical SEO fields. Permalink fields (slug, image_filename_base)
+      //    are preserved by default; only the "Regenerate SEO Fields" advanced
+      //    action triggers a full recompute.
+      const res = await fetch(`/api/job-snaps/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPatchBody(false)),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Save failed');
+      }
 
-      // 3. Update job snap
-      const { error } = await supabase
+      // 3. is_before_after + media roles still go through Supabase directly
+      //    (no server-side recompute needed; these don't affect naming).
+      await supabase
         .from('job_snaps')
-        .update({
-          title: form.title.trim() || null,
-          description: form.description.trim() || null,
-          service_type: form.serviceType.trim() || null,
-          service_id: form.serviceId || null,
-          brand: form.brand.trim() || null,
-          status: form.status,
-          address_full: form.addressFull.trim() || null,
-          address_public: address_public || null,
-          city: form.city.trim() || null,
-          state: form.state.trim() || null,
-          zip: form.zip.trim() || null,
-          is_before_after: isBeforeAfter,
-        })
+        .update({ is_before_after: isBeforeAfter })
         .eq('id', jobId);
 
-      if (error) throw error;
-
-      // 4. Update media roles/pair_groups if changed
       for (const [mediaId, { role, pairGroup }] of Object.entries(mediaRoles)) {
         await supabase
           .from('job_snap_media')
@@ -312,8 +394,35 @@ export default function EditJobSnapPage() {
       router.push(`/dashboard/job-snaps/${jobId}`);
     } catch (err) {
       console.error('Save failed:', err);
-      toast.error('Save failed. Please try again.');
+      toast.error(err instanceof Error ? err.message : 'Save failed. Please try again.');
       setIsSaving(false);
+    }
+  }
+
+  async function handleRegenerateSeoFields() {
+    const confirmed = window.confirm(
+      'Regenerate SEO Fields will recompute the slug, URL, and image filename for this snap. The public URL (/work/<slug>) will change, which may break existing share links. Continue?'
+    );
+    if (!confirmed) return;
+    setIsRegenerating(true);
+    try {
+      const res = await fetch(`/api/job-snaps/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPatchBody(true)),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Regenerate failed');
+      }
+      toast.success('SEO fields regenerated');
+      // Reload to surface the new permalinks
+      router.refresh();
+    } catch (err) {
+      console.error('Regenerate failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Regenerate failed. Please try again.');
+    } finally {
+      setIsRegenerating(false);
     }
   }
 
@@ -612,7 +721,7 @@ export default function EditJobSnapPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="brand">Brand / Client</Label>
+                  <Label htmlFor="brand">Brand</Label>
                   <BrandCombobox
                     id="brand"
                     value={form.brand}
@@ -620,7 +729,49 @@ export default function EditJobSnapPage() {
                     siteId={jobSnap?.site_id ?? ''}
                     placeholder="e.g. Whirlpool"
                   />
+                  <p className="text-xs text-gray-400">Equipment manufacturer. Shown publicly when present.</p>
                 </div>
+              </div>
+
+              {/* Client name (internal-only) + Equipment Type */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="clientName" className="flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-gray-400" />
+                    Client Name (Internal Only)
+                  </Label>
+                  <Input
+                    id="clientName"
+                    value={form.clientName}
+                    onChange={(e) => field('clientName', e.target.value)}
+                    placeholder="e.g. Anderson Family"
+                  />
+                  <p className="text-xs text-gray-400">Never shown publicly. Used internally only.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="equipmentType">Equipment Type</Label>
+                  <Input
+                    id="equipmentType"
+                    value={form.equipmentType}
+                    onChange={(e) => field('equipmentType', e.target.value)}
+                    placeholder="e.g. Dryer, Condenser Unit"
+                  />
+                  <p className="text-xs text-gray-400">When the job involves a specific piece of equipment.</p>
+                </div>
+              </div>
+
+              {/* Primary Problem */}
+              <div className="space-y-1.5">
+                <Label htmlFor="primaryProblem">Primary Problem</Label>
+                <Input
+                  id="primaryProblem"
+                  value={form.primaryProblem}
+                  onChange={(e) => field('primaryProblem', e.target.value)}
+                  placeholder="e.g. drum roller replacement, storm damage cleanup"
+                />
+                <p className="text-xs text-gray-400">
+                  Short phrase describing the core issue or completed task. Drives the SEO URL and title.
+                </p>
               </div>
 
               {/* Status */}
@@ -718,6 +869,30 @@ export default function EditJobSnapPage() {
                 </div>
               )}
 
+              {/* Neighborhood + Sanitized street name (public location signals) */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="neighborhood">Neighborhood (Public)</Label>
+                  <Input
+                    id="neighborhood"
+                    value={form.neighborhood}
+                    onChange={(e) => field('neighborhood', e.target.value)}
+                    placeholder="e.g. Graywood, South Lake Charles"
+                  />
+                  <p className="text-xs text-gray-400">Optional hyper-local signal. Appears in H1 and body when present.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="streetNamePublic">Public Street Name</Label>
+                  <Input
+                    id="streetNamePublic"
+                    value={form.streetNamePublic}
+                    onChange={(e) => field('streetNamePublic', e.target.value)}
+                    placeholder="e.g. Kirby St"
+                  />
+                  <p className="text-xs text-gray-400">House number stripped. Auto-filled from address if blank.</p>
+                </div>
+              </div>
+
               {/* Read-only: location source + GPS */}
               <div className="flex flex-wrap gap-4 pt-1">
                 {jobSnap.location_source && (
@@ -739,6 +914,154 @@ export default function EditJobSnapPage() {
                 )}
               </div>
             </CardContent>
+          </Card>
+
+          {/* ── Advanced SEO (collapsible, power-user only) ── */}
+          <Card>
+            <CardHeader
+              className="cursor-pointer select-none"
+              onClick={() => setSeoExpanded((v) => !v)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Advanced SEO</CardTitle>
+                  <CardDescription>
+                    GL360-generated SEO fields. Source of truth for every output channel. Override only if you know what you&apos;re doing.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="text-xs">
+                  {seoExpanded ? 'Collapse' : 'Expand'}
+                </Badge>
+              </div>
+            </CardHeader>
+            {seoExpanded && (
+              <CardContent className="space-y-5">
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs text-amber-800">
+                    These fields are auto-generated by the SEO naming engine. Edit only to override the default for this specific snap. Routine saves keep the slug + image filename stable; the &ldquo;Regenerate SEO Fields&rdquo; button below recomputes them from scratch.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="seo-slug">Slug</Label>
+                  <Input
+                    id="seo-slug"
+                    value={seoOverrides.slug}
+                    onChange={(e) => {
+                      setSeoOverrides((prev) => ({ ...prev, slug: e.target.value }));
+                      setSeoOverridesDirty((prev) => ({ ...prev, slug: true }));
+                    }}
+                    placeholder="cleveland-dryer-repair-whirlpool-drum-roller-replacement"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-gray-400">Public URL: /work/{seoOverrides.slug || '<slug>'}/</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="seo-meta-title">Meta Title</Label>
+                    <Input
+                      id="seo-meta-title"
+                      value={seoOverrides.metaTitle}
+                      onChange={(e) => {
+                        setSeoOverrides((prev) => ({ ...prev, metaTitle: e.target.value }));
+                        setSeoOverridesDirty((prev) => ({ ...prev, metaTitle: true }));
+                      }}
+                      maxLength={120}
+                    />
+                    <p className="text-xs text-gray-400">{seoOverrides.metaTitle.length}/120</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="seo-h1">H1</Label>
+                    <Input
+                      id="seo-h1"
+                      value={seoOverrides.h1}
+                      onChange={(e) => {
+                        setSeoOverrides((prev) => ({ ...prev, h1: e.target.value }));
+                        setSeoOverridesDirty((prev) => ({ ...prev, h1: true }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="seo-meta-desc">Meta Description</Label>
+                  <Textarea
+                    id="seo-meta-desc"
+                    value={seoOverrides.metaDescription}
+                    onChange={(e) => {
+                      setSeoOverrides((prev) => ({ ...prev, metaDescription: e.target.value }));
+                      setSeoOverridesDirty((prev) => ({ ...prev, metaDescription: true }));
+                    }}
+                    rows={2}
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-gray-400">{seoOverrides.metaDescription.length}/160 target</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="seo-alt">Default Alt Text</Label>
+                    <Input
+                      id="seo-alt"
+                      value={seoOverrides.altTextDefault}
+                      onChange={(e) => {
+                        setSeoOverrides((prev) => ({ ...prev, altTextDefault: e.target.value }));
+                        setSeoOverridesDirty((prev) => ({ ...prev, altTextDefault: true }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="seo-loc">Public Location Label</Label>
+                    <Input
+                      id="seo-loc"
+                      value={seoOverrides.publicLocationLabel}
+                      onChange={(e) => {
+                        setSeoOverrides((prev) => ({ ...prev, publicLocationLabel: e.target.value }));
+                        setSeoOverridesDirty((prev) => ({ ...prev, publicLocationLabel: true }));
+                      }}
+                      placeholder="Graywood, Lake Charles, LA"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="seo-filename">Image Filename Base</Label>
+                  <Input
+                    id="seo-filename"
+                    value={seoOverrides.imageFilenameBase}
+                    onChange={(e) => {
+                      setSeoOverrides((prev) => ({ ...prev, imageFilenameBase: e.target.value }));
+                      setSeoOverridesDirty((prev) => ({ ...prev, imageFilenameBase: true }));
+                    }}
+                    placeholder="whirlpool-dryer-repair-cleveland-oh-8b60"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-gray-400">No extension. Per-image filenames: &lt;base&gt;-1.jpg, &lt;base&gt;-2.jpg, …</p>
+                </div>
+
+                <div className="border-t pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleRegenerateSeoFields}
+                    disabled={isRegenerating || isSaving}
+                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  >
+                    {isRegenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Regenerating…
+                      </>
+                    ) : (
+                      'Regenerate SEO Fields'
+                    )}
+                  </Button>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Recomputes slug + image filename from scratch using current structured fields. Changes the public URL — existing share links may break.
+                  </p>
+                </div>
+              </CardContent>
+            )}
           </Card>
 
           {/* ── Action bar ── */}

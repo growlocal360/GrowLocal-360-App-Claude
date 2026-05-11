@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { toPublicAddress, toStorageFileName } from '@/lib/job-snaps/address';
+import { toPublicAddress } from '@/lib/job-snaps/address';
+import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
 
 // Allow large bodies for base64-encoded images (up to 4 × 20MB)
 export const maxDuration = 60;
@@ -34,6 +35,11 @@ interface SaveRequest {
   serviceType?: string | null;
   serviceId?: string | null;
   brand?: string | null;
+  /** Structured fields feeding the SEO naming engine. */
+  primaryProblem?: string | null;
+  equipmentType?: string | null;
+  neighborhood?: string | null;
+  clientName?: string | null;
   location?: SaveLocationInput | null;
   images: SaveImageInput[];
 }
@@ -99,48 +105,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Site not found or access denied' }, { status: 403 });
     }
 
-    // ── Upload images to storage ────────────────────────────────────────────
-    const uploadedPaths: string[] = [];
-
-    for (let i = 0; i < body.images.length; i++) {
-      const img = body.images[i];
-      const ext = mimeToExt(img.mimeType);
-
-      const fileName = toStorageFileName({
-        serviceType: body.serviceType ?? null,
-        address: body.location?.addressFull ?? '',
-        city: body.location?.city ?? '',
-        state: body.location?.state ?? '',
-        zip: body.location?.zip ?? '',
-        sequence: i + 1,
-        ext,
-      });
-
-      // Unique folder per job (use a random UUID prefix to avoid collisions)
-      const folderName = crypto.randomUUID();
-      const storagePath = `${body.siteId}/${folderName}/${fileName}`;
-
-      const buffer = Buffer.from(img.base64, 'base64');
-
-      const { error: uploadError } = await admin.storage
-        .from('job-snap-media')
-        .upload(storagePath, buffer, {
-          contentType: img.mimeType,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        // Clean up already-uploaded files before failing
-        if (uploadedPaths.length > 0) {
-          await admin.storage.from('job-snap-media').remove(uploadedPaths);
-        }
-        console.error('Storage upload failed:', uploadError);
-        return NextResponse.json({ error: 'Image upload failed' }, { status: 500 });
-      }
-
-      uploadedPaths.push(storagePath);
-    }
-
     // ── Build address fields ────────────────────────────────────────────────
     const loc = body.location;
     const addressPublic = loc
@@ -152,10 +116,73 @@ export async function POST(request: Request) {
         }))
       : null;
 
+    // ── Pre-load existing slugs for collision detection ─────────────────────
+    const { data: existingSlugRows } = await admin
+      .from('job_snaps')
+      .select('slug')
+      .eq('site_id', body.siteId)
+      .not('slug', 'is', null);
+    const siteExistingSlugs = new Set<string>(
+      (existingSlugRows || []).map((r: { slug: string | null }) => r.slug || '').filter(Boolean)
+    );
+
+    // ── Compute canonical SEO naming (source of truth across all channels) ──
+    // GL360-generated SEO fields are authoritative. Customer integrations
+    // consume these fields verbatim unless an explicit override is configured.
+    const naming = computeJobSnapNaming(
+      {
+        title: body.title ?? body.aiGeneratedTitle ?? null,
+        description: body.description ?? body.aiGeneratedDescription ?? null,
+        service_type: body.serviceType ?? null,
+        brand: body.brand ?? null,
+        primary_problem: body.primaryProblem ?? null,
+        equipment_type: body.equipmentType ?? null,
+        city: loc?.city ?? null,
+        state: loc?.state ?? null,
+        zip: loc?.zip ?? null,
+        neighborhood: body.neighborhood ?? null,
+        address_public: addressPublic,
+      },
+      { siteExistingSlugs }
+    );
+
+    // ── Pre-generate snap UUID so storage paths can use it ──────────────────
+    const snapId = crypto.randomUUID();
+
+    // ── Upload images to storage (SEO-friendly filenames per naming engine) ─
+    const uploadedPaths: string[] = [];
+
+    for (let i = 0; i < body.images.length; i++) {
+      const img = body.images[i];
+      const ext = mimeToExt(img.mimeType);
+      const fileName = `${naming.image_filename_base}-${i + 1}.${ext}`;
+      const storagePath = `${body.siteId}/${snapId}/${fileName}`;
+
+      const buffer = Buffer.from(img.base64, 'base64');
+
+      const { error: uploadError } = await admin.storage
+        .from('job-snap-media')
+        .upload(storagePath, buffer, {
+          contentType: img.mimeType,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        if (uploadedPaths.length > 0) {
+          await admin.storage.from('job-snap-media').remove(uploadedPaths);
+        }
+        console.error('Storage upload failed:', uploadError);
+        return NextResponse.json({ error: 'Image upload failed' }, { status: 500 });
+      }
+
+      uploadedPaths.push(storagePath);
+    }
+
     // ── Insert job_snaps record ─────────────────────────────────────────────
     const { data: jobSnap, error: insertError } = await admin
       .from('job_snaps')
       .insert({
+        id: snapId,
         site_id: body.siteId,
         created_by: profile.id,
         title: body.title ?? null,
@@ -165,6 +192,24 @@ export async function POST(request: Request) {
         service_type: body.serviceType ?? null,
         service_id: body.serviceId ?? null,
         brand: body.brand ?? null,
+        // Structured fields feeding the naming engine
+        primary_problem: body.primaryProblem ?? null,
+        equipment_type: body.equipmentType ?? null,
+        client_name: body.clientName ?? null,
+        neighborhood: body.neighborhood ?? null,
+        // Generated SEO fields (GL360 = source of truth)
+        state_abbr: naming.state_abbr,
+        street_name_public: naming.street_name_public,
+        short_id: naming.short_id,
+        slug: naming.slug,
+        url_path: naming.url_path,
+        meta_title: naming.meta_title,
+        h1: naming.h1,
+        meta_description: naming.meta_description,
+        alt_text_default: naming.alt_text_default,
+        image_filename_base: naming.image_filename_base,
+        public_location_label: naming.public_location_label,
+        // Status + location
         status: 'draft',
         location_source: loc?.source ?? null,
         address_full: loc?.addressFull ?? null,
@@ -192,6 +237,7 @@ export async function POST(request: Request) {
       job_snap_id: jobSnap.id,
       storage_path: uploadedPaths[i],
       file_name: uploadedPaths[i].split('/').pop() ?? img.fileName,
+      alt_text: naming.alt_text_default,
       mime_type: img.mimeType,
       file_size: Math.round((img.base64.length * 3) / 4), // approximate from base64 length
       role: img.role ?? null,

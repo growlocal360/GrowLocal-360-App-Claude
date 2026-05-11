@@ -432,6 +432,10 @@ export default function NewJobSnapPage() {
         serviceType: editedAnalysis.serviceType ?? undefined,
         serviceId: editedAnalysis.serviceId ?? undefined,
         brand: editedAnalysis.brand ?? undefined,
+        // Structured SEO inputs from Claude analyzer — feed the canonical naming engine.
+        primaryProblem: editedAnalysis.primaryProblem ?? undefined,
+        equipmentType: editedAnalysis.equipmentType ?? undefined,
+        neighborhood: editedAnalysis.neighborhood ?? undefined,
         location: location
           ? {
               addressFull: location.address,

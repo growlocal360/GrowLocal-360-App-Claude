@@ -80,13 +80,14 @@ export async function POST(
     }
 
     // ── Build public storage URLs for media ───────────────────────────────────
+    // Use snap.alt_text_default (naming engine) when no per-image alt is set.
     const mediaImages: WorkItemImage[] = media.map((m, i) => {
       const { data: urlData } = adminClient.storage
         .from('job-snap-media')
         .getPublicUrl(m.storage_path);
       return {
         url: urlData.publicUrl,
-        alt: m.alt_text || `${title} — photo ${i + 1}`,
+        alt: m.alt_text || typedSnap.alt_text_default || `${title} — photo ${i + 1}`,
         width: m.width ?? undefined,
         height: m.height ?? undefined,
         role: m.role ?? undefined,
@@ -94,33 +95,34 @@ export async function POST(
       };
     });
 
-    // ── Generate a unique slug ─────────────────────────────────────────────────
+    // ── Resolve the work_item slug ────────────────────────────────────────────
+    // Prefer the naming engine's pre-computed snap.slug. Legacy snaps with null
+    // slug fall back to slugifyTitle. Collisions get the snap's short_id suffix.
     let workItemId: string | null = typedSnap.work_item_id || null;
     let workSlug: string;
 
     if (workItemId) {
-      // Already published — fetch existing slug to reuse it
+      // Already published — reuse existing work_item slug for URL stability.
       const { data: existing } = await adminClient
         .from('work_items')
         .select('slug')
         .eq('id', workItemId)
         .single();
-      workSlug = existing?.slug || slugifyTitle(title);
+      workSlug = existing?.slug || typedSnap.slug || slugifyTitle(title);
     } else {
-      // New publish — generate unique slug
-      const base = slugifyTitle(title);
-      workSlug = base;
-      let attempt = 1;
-      while (true) {
-        const { data: conflict } = await adminClient
-          .from('work_items')
-          .select('id')
-          .eq('site_id', snap.site_id)
-          .eq('slug', workSlug)
-          .limit(1);
-        if (!conflict?.length) break;
-        attempt++;
-        workSlug = `${base}-${attempt}`;
+      const baseSlug = typedSnap.slug || slugifyTitle(title);
+      workSlug = baseSlug;
+      const { data: conflict } = await adminClient
+        .from('work_items')
+        .select('id')
+        .eq('site_id', snap.site_id)
+        .eq('slug', workSlug)
+        .limit(1);
+      if (conflict?.length) {
+        // Collision: append the snap's short_id (stable across re-publishes)
+        // rather than rewriting word order.
+        const suffix = typedSnap.short_id || Math.random().toString(36).slice(2, 6);
+        workSlug = `${baseSlug}-${suffix}`;
       }
     }
 

@@ -3,6 +3,212 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { emitJobSnapEvent } from '@/lib/webhooks/emit';
+import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
+
+// ─── Shared helpers ────────────────────────────────────────────────────────
+
+async function loadAuthorizedSnap(jobId: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { error: 'Unauthorized' as const, status: 401 };
+
+  const adminClient = createAdminClient();
+
+  const { data: profiles } = await adminClient
+    .from('profiles')
+    .select('organization_id')
+    .eq('user_id', user.id);
+  const userOrgIds = (profiles || []).map((p: { organization_id: string }) => p.organization_id);
+
+  const { data: snap, error: snapError } = await adminClient
+    .from('job_snaps')
+    .select('*')
+    .eq('id', jobId)
+    .single();
+
+  if (snapError || !snap) return { error: 'Job snap not found' as const, status: 404 };
+
+  const { data: site } = await adminClient
+    .from('sites')
+    .select('slug, organization_id')
+    .eq('id', snap.site_id)
+    .single();
+
+  if (!site || !userOrgIds.includes(site.organization_id)) {
+    return { error: 'Forbidden' as const, status: 403 };
+  }
+
+  return { adminClient, snap, site };
+}
+
+// ─── PATCH ────────────────────────────────────────────────────────────────
+// Edit handler. Recomputes the canonical SEO naming on every save.
+//
+// Modes (controlled by body.regenerate_seo_fields):
+//   - false (default): partial recompute — re-derive meta_title/h1/alt_text/
+//     meta_description/public_location_label. Permalink fields (slug, url_path,
+//     image_filename_base, short_id) are preserved so existing /work/<slug>
+//     URLs and image storage paths stay stable.
+//   - true: full recompute — slug + image_filename_base also regenerate.
+//     Used by the "Regenerate SEO Fields" advanced action in the editor.
+//
+// GL360-generated SEO fields are the source of truth across every output
+// channel. Downstream consumers should not duplicate this logic.
+
+interface PatchBody {
+  title?: string | null;
+  description?: string | null;
+  service_type?: string | null;
+  service_id?: string | null;
+  brand?: string | null;
+  client_name?: string | null;
+  primary_problem?: string | null;
+  equipment_type?: string | null;
+  neighborhood?: string | null;
+  street_name_public?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  address_full?: string | null;
+  address_public?: string | null;
+  status?: 'draft' | 'queued' | 'approved' | 'deployed' | 'rejected';
+  regenerate_seo_fields?: boolean;
+  /** Optional per-field overrides applied AFTER the naming engine runs. */
+  overrides?: {
+    slug?: string;
+    meta_title?: string;
+    h1?: string;
+    meta_description?: string;
+    alt_text_default?: string;
+    image_filename_base?: string;
+    public_location_label?: string;
+  };
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ jobId: string }> }
+) {
+  try {
+    const { jobId } = await params;
+    const body = (await req.json()) as PatchBody;
+
+    const result = await loadAuthorizedSnap(jobId);
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    const { adminClient, snap, site } = result;
+
+    // Merge incoming patch values onto the existing snap row.
+    const merged = {
+      title: body.title !== undefined ? body.title : snap.title,
+      description: body.description !== undefined ? body.description : snap.description,
+      service_type: body.service_type !== undefined ? body.service_type : snap.service_type,
+      service_id: body.service_id !== undefined ? body.service_id : snap.service_id,
+      brand: body.brand !== undefined ? body.brand : snap.brand,
+      client_name: body.client_name !== undefined ? body.client_name : snap.client_name,
+      primary_problem:
+        body.primary_problem !== undefined ? body.primary_problem : snap.primary_problem,
+      equipment_type:
+        body.equipment_type !== undefined ? body.equipment_type : snap.equipment_type,
+      neighborhood: body.neighborhood !== undefined ? body.neighborhood : snap.neighborhood,
+      street_name_public:
+        body.street_name_public !== undefined ? body.street_name_public : snap.street_name_public,
+      city: body.city !== undefined ? body.city : snap.city,
+      state: body.state !== undefined ? body.state : snap.state,
+      zip: body.zip !== undefined ? body.zip : snap.zip,
+      address_full: body.address_full !== undefined ? body.address_full : snap.address_full,
+      address_public:
+        body.address_public !== undefined ? body.address_public : snap.address_public,
+      status: body.status !== undefined ? body.status : snap.status,
+    };
+
+    // Existing slug pool for collision detection on full recompute.
+    let siteExistingSlugs = new Set<string>();
+    if (body.regenerate_seo_fields) {
+      const { data: rows } = await adminClient
+        .from('job_snaps')
+        .select('slug')
+        .eq('site_id', snap.site_id)
+        .neq('id', snap.id)
+        .not('slug', 'is', null);
+      siteExistingSlugs = new Set(
+        (rows || []).map((r: { slug: string | null }) => r.slug || '').filter(Boolean)
+      );
+    }
+
+    const naming = computeJobSnapNaming(
+      {
+        title: merged.title,
+        description: merged.description,
+        service_type: merged.service_type,
+        brand: merged.brand,
+        primary_problem: merged.primary_problem,
+        equipment_type: merged.equipment_type,
+        city: merged.city,
+        state: merged.state,
+        zip: merged.zip,
+        neighborhood: merged.neighborhood,
+        address_public: merged.address_public,
+        street_name_public: merged.street_name_public,
+      },
+      {
+        preservePermalinks: !body.regenerate_seo_fields,
+        siteExistingSlugs,
+        existing: {
+          slug: snap.slug,
+          url_path: snap.url_path,
+          image_filename_base: snap.image_filename_base,
+          short_id: snap.short_id,
+        },
+      }
+    );
+
+    // Per-field overrides take precedence over the engine output.
+    const overrides = body.overrides || {};
+
+    const update: Record<string, unknown> = {
+      ...merged,
+      state_abbr: naming.state_abbr,
+      street_name_public: naming.street_name_public,
+      short_id: naming.short_id,
+      slug: overrides.slug ?? naming.slug,
+      url_path: naming.url_path,
+      meta_title: overrides.meta_title ?? naming.meta_title,
+      h1: overrides.h1 ?? naming.h1,
+      meta_description: overrides.meta_description ?? naming.meta_description,
+      alt_text_default: overrides.alt_text_default ?? naming.alt_text_default,
+      image_filename_base: overrides.image_filename_base ?? naming.image_filename_base,
+      public_location_label: overrides.public_location_label ?? naming.public_location_label,
+    };
+
+    const { error: updateError } = await adminClient
+      .from('job_snaps')
+      .update(update)
+      .eq('id', snap.id);
+
+    if (updateError) {
+      console.error('PATCH job_snaps failed:', updateError);
+      return NextResponse.json({ error: 'Failed to update job snap' }, { status: 500 });
+    }
+
+    // Notify subscribers + revalidate public surface if the snap is live.
+    if (snap.is_published_to_website) {
+      await emitJobSnapEvent('job_snap.updated', snap.id);
+      const base = `/sites/${site.slug}`;
+      revalidatePath(`${base}/work`);
+      if (snap.slug) revalidatePath(`${base}/work/${snap.slug}`);
+      if (update.slug !== snap.slug && typeof update.slug === 'string') {
+        revalidatePath(`${base}/work/${update.slug}`);
+      }
+    }
+
+    return NextResponse.json({ success: true, naming: update });
+  } catch (error) {
+    console.error('PATCH job_snaps threw:', error);
+    return NextResponse.json({ error: 'Update failed. Please try again.' }, { status: 500 });
+  }
+}
 
 /**
  * DELETE /api/job-snaps/[jobId]

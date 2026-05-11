@@ -45,8 +45,13 @@ export interface WorkItemInsertPayload {
 /**
  * Maps a JobSnapWithRelations to a work_item insert payload.
  *
+ * Generated SEO fields on the snap (set by the naming engine in
+ * `src/lib/job-snaps/naming.ts`) are AUTHORITATIVE — they flow directly
+ * into the work_item without recomputation. Legacy snaps with null naming
+ * fields fall back to the original on-render computation below.
+ *
  * Privacy rules enforced:
- * - address_street_name uses address_public (house number stripped)
+ * - address_street_name uses snap.street_name_public (preferred) or address_public
  * - address_full is never included
  */
 export function jobSnapToWorkItemPayload(
@@ -57,16 +62,20 @@ export function jobSnapToWorkItemPayload(
   const title = snap.title || snap.ai_generated_title || 'Job Snap';
   const description = snap.description || snap.ai_generated_description || null;
 
-  // Build SEO meta from title + service + location
-  const locationTag = [snap.city, snap.state].filter(Boolean).join(', ');
+  // ── Prefer naming-engine values; fall back for legacy snaps ─────────────
+  const locationTag = [snap.city, snap.state_abbr || snap.state].filter(Boolean).join(', ');
   const serviceTag = snap.service_type || snap.service?.name || null;
-  const metaParts = [title, serviceTag, locationTag].filter(Boolean);
-  const metaTitle = metaParts.join(' | ').slice(0, 120) || null;
-  const metaDescription = description
+  const fallbackMetaTitle =
+    [title, serviceTag, locationTag].filter(Boolean).join(' | ').slice(0, 120) || null;
+  const fallbackMetaDescription = description
     ? description.slice(0, 160)
     : [serviceTag, locationTag].filter(Boolean).join(' in ').slice(0, 160) || null;
 
-  // Summary: first 200 chars of description, ending at a sentence boundary if possible
+  const metaTitle = snap.meta_title || fallbackMetaTitle;
+  const metaDescription = snap.meta_description || fallbackMetaDescription;
+  const h1 = snap.h1 || title;
+
+  // Summary: prefer first sentence of description; legacy fallback.
   let summary: string | null = null;
   if (description) {
     if (description.length <= 200) {
@@ -78,13 +87,12 @@ export function jobSnapToWorkItemPayload(
     }
   }
 
-  // address_public already has house number stripped (via toPublicAddress in save route)
-  // Extract street name portion (everything before the first comma)
-  const streetName = snap.address_public
-    ? snap.address_public.split(',')[0]?.trim() || null
-    : null;
+  // Street name: prefer the snap's pre-sanitized form.
+  const streetName =
+    snap.street_name_public ||
+    (snap.address_public ? snap.address_public.split(',')[0]?.trim() || null : null);
 
-  // Brand slug: slugify brand name for URL use
+  // Brand slug: slugify brand name for URL use.
   const brandSlug = snap.brand ? slugifyTitle(snap.brand) : null;
 
   return {
@@ -92,7 +100,7 @@ export function jobSnapToWorkItemPayload(
     status: 'published',
     slug,
     title,
-    h1: title,
+    h1,
     meta_title: metaTitle,
     meta_description: metaDescription,
     summary,
@@ -139,26 +147,42 @@ export interface GbpPostPayload {
 
 /**
  * Builds a GBP-friendly short post summary from a job snap.
- * GBP posts are closer to social copy than full page descriptions.
+ *
+ * Prefers the naming engine's outputs (snap.h1 / snap.meta_description)
+ * when present — keeps GBP, website, and webhook copy consistent.
+ *
  * Max 1500 chars; aim for 300–500 for readability.
  */
 export function toGbpPostSummary(snap: JobSnapWithRelations): string {
   const title = snap.title || snap.ai_generated_title || '';
   const desc = snap.description || snap.ai_generated_description || '';
-  const locationTag = [snap.city, snap.state].filter(Boolean).join(', ');
+  const locationTag = [snap.city, snap.state_abbr || snap.state].filter(Boolean).join(', ');
   const serviceTag = snap.service_type || snap.service?.name || '';
 
-  // Build: "Title. Service in City, State. First 1-2 sentences of description."
   const parts: string[] = [];
-  if (title) parts.push(title + '.');
-  if (serviceTag && locationTag) parts.push(`${serviceTag} in ${locationTag}.`);
-  else if (locationTag) parts.push(`Job completed in ${locationTag}.`);
 
-  if (desc) {
-    // Take first 2 sentences of description
-    const sentences = desc.match(/[^.!?]+[.!?]+/g) || [desc];
-    const twoSentences = sentences.slice(0, 2).join(' ').trim();
-    parts.push(twoSentences);
+  // Prefer naming-engine H1 as the leading sentence (SEO-tuned).
+  if (snap.h1) {
+    parts.push(snap.h1.replace(/\.+$/, '') + '.');
+  } else if (title) {
+    parts.push(title.replace(/\.+$/, '') + '.');
+  }
+
+  // Service + location context (skipped if already encoded in H1 above).
+  if (!snap.h1) {
+    if (serviceTag && locationTag) parts.push(`${serviceTag} in ${locationTag}.`);
+    else if (locationTag) parts.push(`Job completed in ${locationTag}.`);
+  }
+
+  // Body: prefer the engine's meta_description; fall back to first 2 sentences.
+  const body = snap.meta_description || desc;
+  if (body) {
+    if (snap.meta_description) {
+      parts.push(body);
+    } else {
+      const sentences = body.match(/[^.!?]+[.!?]+/g) || [body];
+      parts.push(sentences.slice(0, 2).join(' ').trim());
+    }
   }
 
   const combined = parts.join(' ').trim();

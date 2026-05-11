@@ -470,6 +470,24 @@ export interface JobSnap {
   ai_generated_description: string | null;
   service_type: string | null;
   brand: string | null;
+  // ── Migration 047 structured fields (feed the SEO naming engine) ──
+  primary_problem: string | null;
+  equipment_type: string | null;
+  client_name: string | null; // NEVER serialized publicly
+  neighborhood: string | null;
+  street_name_public: string | null;
+  state_abbr: string | null;
+  short_id: string | null;
+  // ── Migration 047 generated SEO fields (GL360 = source of truth) ──
+  slug: string | null;
+  url_path: string | null;
+  meta_title: string | null;
+  h1: string | null;
+  meta_description: string | null;
+  alt_text_default: string | null;
+  image_filename_base: string | null;
+  public_location_label: string | null;
+  // ── Status + location ──
   status: JobStatus;
   location_source: 'exif' | 'device' | 'manual' | null;
   address_full: string | null;

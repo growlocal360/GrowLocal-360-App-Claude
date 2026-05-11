@@ -97,23 +97,27 @@ export async function POST(request: Request) {
       },
     }));
 
-    const systemPrompt = `You are a job documentation analyst for local service businesses. You analyze photos of completed work to generate structured job data.
+    const systemPrompt = `You are a job documentation analyst for local service businesses. You analyze photos of completed work to generate structured job data that feeds a canonical SEO naming engine.
 
 Your output must be valid JSON matching this exact schema:
 {
-  "title": "string - SEO-friendly job title. Pattern: {Primary Item or Service} + {Action} + {Context}. Do NOT include exact house numbers. Use neighborhood, street name, or city instead. Examples: 'Washroom Dryer Removal for Home Remodel', 'Complete Kitchen Appliance Suite Removal for Condo Renovation', 'Garage Cleanout and Organization - Lake Charles Family Home'",
-  "description": "string - 2-4 sentence readable summary. Describe what was done based on visual evidence. Be factual, no fake claims or excessive fluff. Reference the location context if available.",
-  "serviceType": "string or null - The primary service category this job falls under. Examples: 'Appliance Removal', 'Garage Clean Out', 'Junk Removal', 'Demolition', 'Hauling'. Use null if unclear.",
-  "brand": "string or null - Any product/equipment brand visibly identifiable in the images. Examples: 'Whirlpool', 'Samsung', 'GE'. Use null if no brand is confidently identifiable.",
+  "title": "string - SEO-friendly job title. Pattern: {Primary Item or Service} + {Action} + {Context}. Do NOT include exact house numbers. Use neighborhood, street name, or city instead.",
+  "description": "string - 2-4 sentence readable summary. Describe what was done based on visual evidence. Be factual, no fake claims or excessive fluff. Reference the location context if available. Do not overpromise outcomes.",
+  "serviceType": "string or null - The primary service category. Examples: 'Appliance Repair', 'HVAC Service', 'Tree Removal', 'Pressure Washing', 'Roofing', 'Plumbing', 'Junk Removal'. Use null if unclear.",
+  "brand": "string or null - Equipment manufacturer visible in the photos (e.g., 'Whirlpool', 'Samsung', 'Bosch', 'Carrier', 'Trane'). NOT a customer's family or business name. Use null if no brand identifiable.",
+  "equipmentType": "string or null - When the work involves a piece of equipment, name the equipment type only (e.g., 'Dryer', 'Condenser Unit', 'Water Heater', 'Roof', 'Garage Door'). For non-equipment services like tree removal or junk hauling, use null.",
+  "primaryProblem": "string - REQUIRED. A short noun phrase describing the core issue or completed task in 2-5 words. This drives the SEO URL and title. Examples: 'drum roller replacement', 'storm damage cleanup', 'condenser replacement', 'no heat diagnosis', 'grinding noise', 'leak repair', 'mainline clog'. Use lowercase, no trailing punctuation.",
+  "neighborhood": "string or null - If you can confidently infer a neighborhood, area name, or subdivision from the photos or the supplied location context, name it. Examples: 'Graywood', 'South Lake Charles'. Use null if not inferable.",
   "confidence": {
-    "service": "number 0-1 - How confident you are in the service type classification",
-    "brand": "number 0-1 - How confident you are in the brand identification. 0 if no brand detected",
-    "location": "number 0-1 - How well the images match the provided location context. 0 if no location context provided"
+    "service": "number 0-1 - Confidence in service type",
+    "brand": "number 0-1 - Confidence in brand identification (0 if none)",
+    "location": "number 0-1 - How well the images match the provided location",
+    "primaryProblem": "number 0-1 - Confidence in the primary_problem phrase"
   },
   "imageRoles": [
     {
-      "index": "number - 0-based index matching the image order provided",
-      "role": "string - One of: 'primary' (best overall shot), 'before' (showing pre-work state), 'after' (showing completed work), 'process' (showing work in progress), 'detail' (close-up of specific item)"
+      "index": "number - 0-based index",
+      "role": "string - One of: 'primary', 'before', 'after', 'process', 'detail'"
     }
   ]
 }
@@ -121,11 +125,13 @@ Your output must be valid JSON matching this exact schema:
 Rules:
 - Analyze ALL images together to understand the full job story
 - Look for before/after patterns, items being removed/installed, work in progress
-- Be practical and specific in your title — this will be used on a website
-- Description should read naturally and be based only on visual evidence
+- primaryProblem should be ACTION-oriented when work was completed (e.g., 'drum roller replacement', not just 'broken dryer')
+- For diagnostic-only jobs, use diagnostic language ('no heat diagnosis', 'leak inspection')
+- Be practical and specific in your title — it will be used on a website
 - Every image must have exactly one role assignment
-- If you can see brand logos, labels, or model plates, identify them with high confidence
+- If a brand logo, label, or model plate is visible, identify it with high confidence
 - If brand is uncertain, set brand to null and confidence.brand to 0
+- Do NOT include house numbers in any field
 - Return ONLY the JSON object, no markdown or explanation`;
 
     const userPrompt = `Analyze these ${body.images.length} job photo${body.images.length > 1 ? 's' : ''} and generate structured job data.${businessContext}${locationContext}
@@ -171,7 +177,25 @@ Images are provided in order. Assign a role to each image based on what it shows
         .replace(/^```\s*/i, '')
         .replace(/\s*```$/i, '')
         .trim();
-      analysis = { ...JSON.parse(cleaned), serviceId: null };
+      const parsed = JSON.parse(cleaned);
+      // Apply defaults so structured naming fields always have a value.
+      analysis = {
+        title: parsed.title ?? '',
+        description: parsed.description ?? '',
+        serviceType: parsed.serviceType ?? null,
+        serviceId: null,
+        brand: parsed.brand ?? null,
+        equipmentType: parsed.equipmentType ?? null,
+        primaryProblem: parsed.primaryProblem ?? null,
+        neighborhood: parsed.neighborhood ?? null,
+        confidence: {
+          service: parsed.confidence?.service ?? 0,
+          brand: parsed.confidence?.brand ?? 0,
+          location: parsed.confidence?.location ?? 0,
+          primaryProblem: parsed.confidence?.primaryProblem ?? 0,
+        },
+        imageRoles: Array.isArray(parsed.imageRoles) ? parsed.imageRoles : [],
+      };
     } catch {
       console.error('Failed to parse AI response:', result);
       return NextResponse.json(

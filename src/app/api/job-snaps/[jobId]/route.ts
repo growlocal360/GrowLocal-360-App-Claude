@@ -66,6 +66,7 @@ interface PatchBody {
   equipment_type?: string | null;
   neighborhood?: string | null;
   street_name_public?: string | null;
+  technician_id?: string | null;
   city?: string | null;
   state?: string | null;
   zip?: string | null;
@@ -114,6 +115,8 @@ export async function PATCH(
       neighborhood: body.neighborhood !== undefined ? body.neighborhood : snap.neighborhood,
       street_name_public:
         body.street_name_public !== undefined ? body.street_name_public : snap.street_name_public,
+      technician_id:
+        body.technician_id !== undefined ? body.technician_id : snap.technician_id,
       city: body.city !== undefined ? body.city : snap.city,
       state: body.state !== undefined ? body.state : snap.state,
       zip: body.zip !== undefined ? body.zip : snap.zip,

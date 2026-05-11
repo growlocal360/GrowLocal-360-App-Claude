@@ -90,6 +90,13 @@ export interface PublicJobOutput {
   city: string | null;
   state: string | null;
   performedAt: string | null;
+
+  // Technician attribution (snapshot at publish time — null when not credited)
+  technician: {
+    name: string;
+    title: string | null;
+    avatarUrl: string | null;
+  } | null;
 }
 
 // ─── Image alt builder ─────────────────────────────────────────────────────────
@@ -209,6 +216,15 @@ export function toPublicJobOutput(
     { name: h1, url: canonicalUrl },
   ];
 
+  // Technician snapshot (denormalized at publish time)
+  const technician = item.technician_name
+    ? {
+        name: item.technician_name,
+        title: item.technician_title,
+        avatarUrl: item.technician_avatar_url,
+      }
+    : null;
+
   return {
     slug: item.slug,
     canonicalUrl,
@@ -227,5 +243,6 @@ export function toPublicJobOutput(
     city,
     state,
     performedAt: item.performed_at,
+    technician,
   };
 }

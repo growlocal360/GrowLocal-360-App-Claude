@@ -61,7 +61,10 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
   let query = supabase
     .from('job_snaps')
-    .select('*, media:job_snap_media(*)', { count: 'exact' })
+    .select(
+      '*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url)',
+      { count: 'exact' }
+    )
     .eq('site_id', apiKey.site_id)
     .eq('is_published_to_website', true)
     .order('deployed_at', { ascending: false, nullsFirst: false })

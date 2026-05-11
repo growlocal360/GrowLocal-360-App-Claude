@@ -96,6 +96,13 @@ type WebhookEvent = {
     primary_problem: string | null;
     equipment_type: string | null;
 
+    // Technician credited for the work (snapshot — may be null).
+    technician: {
+      name: string;
+      title: string | null;
+      avatar_url: string | null;
+    } | null;
+
     location: {
       address: string | null;       // street name only, no house number
       city: string | null;

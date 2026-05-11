@@ -39,6 +39,9 @@ export interface WorkItemInsertPayload {
   address_city: string | null;
   address_state: string | null;
   address_zip: string | null;
+  technician_name: string | null;
+  technician_title: string | null;
+  technician_avatar_url: string | null;
   performed_at: string | null;
 }
 
@@ -113,6 +116,10 @@ export function jobSnapToWorkItemPayload(
     address_city: snap.city,
     address_state: snap.state,
     address_zip: snap.zip,
+    // Technician snapshot — denormalized for fast public-page rendering.
+    technician_name: snap.technician?.full_name ?? null,
+    technician_title: snap.technician?.title ?? null,
+    technician_avatar_url: snap.technician?.avatar_url ?? null,
     performed_at: snap.created_at,
   };
 }

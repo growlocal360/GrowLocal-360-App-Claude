@@ -49,6 +49,19 @@ export async function POST(
       return NextResponse.json({ error: 'Job snap not found' }, { status: 404 });
     }
 
+    // ── Load technician profile (if attributed) ──────────────────────────────
+    // Loaded separately because job_snaps has two FKs to profiles
+    // (created_by + technician_id); the named relation isn't unique.
+    let technician = null;
+    if (snap.technician_id) {
+      const { data: tech } = await adminClient
+        .from('profiles')
+        .select('id, full_name, title, avatar_url')
+        .eq('id', snap.technician_id)
+        .single();
+      technician = tech || null;
+    }
+
     // ── Org access check ──────────────────────────────────────────────────────
     const { data: site } = await adminClient
       .from('sites')
@@ -60,7 +73,10 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const typedSnap = snap as unknown as JobSnapWithRelations;
+    const typedSnap = {
+      ...(snap as unknown as JobSnapWithRelations),
+      technician,
+    } as JobSnapWithRelations;
 
     // ── Validate publishability ────────────────────────────────────────────────
     const title = typedSnap.title || typedSnap.ai_generated_title;

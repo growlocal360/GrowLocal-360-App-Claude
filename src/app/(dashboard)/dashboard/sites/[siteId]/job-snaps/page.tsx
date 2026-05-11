@@ -81,6 +81,7 @@ export default function SiteJobSnapsPage() {
           city,
           state,
           brand,
+          technician_id,
           is_published_to_website,
           is_published_to_gbp,
           created_at,
@@ -95,6 +96,25 @@ export default function SiteJobSnapsPage() {
         setJobSnaps([]);
         setLoading(false);
         return;
+      }
+
+      // Resolve technician names in one batch query.
+      const technicianIds = Array.from(
+        new Set(
+          (snaps as { technician_id: string | null }[])
+            .map((s) => s.technician_id)
+            .filter((v): v is string => !!v)
+        )
+      );
+      const technicianMap = new Map<string, string>();
+      if (technicianIds.length > 0) {
+        const { data: techProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', technicianIds);
+        for (const p of techProfiles || []) {
+          if (p.full_name) technicianMap.set(p.id, p.full_name);
+        }
       }
 
       const cardData: JobSnapCardData[] = snaps.map((snap: Record<string, unknown>) => {
@@ -129,6 +149,9 @@ export default function SiteJobSnapsPage() {
           is_published_to_website: (snap.is_published_to_website as boolean) || false,
           is_published_to_gbp: (snap.is_published_to_gbp as boolean) || false,
           is_workspace_only: isWorkspaceOnly,
+          technician_name: snap.technician_id
+            ? technicianMap.get(snap.technician_id as string) || null
+            : null,
         };
       });
 

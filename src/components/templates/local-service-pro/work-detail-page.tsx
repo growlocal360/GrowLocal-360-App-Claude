@@ -163,6 +163,38 @@ export function WorkDetailPage({
                 <span className="text-gray-500">{workItem.brand_name}</span>
               )}
             </div>
+
+            {/* Technician attribution */}
+            {workItem.technician && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                {workItem.technician.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={workItem.technician.avatar_url}
+                    alt={workItem.technician.name}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-500">
+                    {workItem.technician.name
+                      .split(' ')
+                      .map((w) => w.charAt(0))
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()}
+                  </span>
+                )}
+                <span>
+                  Completed by{' '}
+                  <span className="font-medium text-gray-900">
+                    {workItem.technician.name}
+                  </span>
+                  {workItem.technician.title && (
+                    <span className="text-gray-500">, {workItem.technician.title}</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </section>
 

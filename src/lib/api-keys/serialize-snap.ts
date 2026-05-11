@@ -79,6 +79,14 @@ export function serializeJobSnapPublic(snap: JobSnapWithRelations) {
     brand: snap.brand,
     primary_problem: snap.primary_problem,
     equipment_type: snap.equipment_type,
+    // Technician credited for the work — null when not attributed.
+    technician: snap.technician
+      ? {
+          name: snap.technician.full_name,
+          title: snap.technician.title,
+          avatar_url: snap.technician.avatar_url,
+        }
+      : null,
     // NOTE: client_name is internal-only and intentionally absent here.
 
     location: {

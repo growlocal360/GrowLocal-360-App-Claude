@@ -423,6 +423,10 @@ export interface WorkItem {
   address_city: string | null;
   address_state: string | null;
   address_zip: string | null;
+  /** Migration 048 — technician snapshot at publish time. */
+  technician_name: string | null;
+  technician_title: string | null;
+  technician_avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -504,6 +508,8 @@ export interface JobSnap {
   deployed_at: string | null;
   work_item_id: string | null;
   is_before_after: boolean;
+  /** Migration 048 — technician credited for the work (separate from created_by uploader). */
+  technician_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -558,6 +564,7 @@ export interface JobSnapWithRelations extends JobSnap {
   media?: JobSnapMedia[];
   service?: Service;
   created_by_profile?: Profile;
+  technician?: Profile | null;
 }
 
 // ─── API Keys (public REST API for external sites) ──────────────────────────

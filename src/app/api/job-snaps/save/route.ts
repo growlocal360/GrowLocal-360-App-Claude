@@ -40,6 +40,8 @@ interface SaveRequest {
   equipmentType?: string | null;
   neighborhood?: string | null;
   clientName?: string | null;
+  /** Technician credited for the work (defaults to uploader's profile when unset). */
+  technicianId?: string | null;
   location?: SaveLocationInput | null;
   images: SaveImageInput[];
 }
@@ -197,6 +199,11 @@ export async function POST(request: Request) {
         equipment_type: body.equipmentType ?? null,
         client_name: body.clientName ?? null,
         neighborhood: body.neighborhood ?? null,
+        // Technician credited for the work. Default to the uploader when the
+        // field is absent from the request; respect an explicit null (the
+        // user picked "No specific technician") as a real choice.
+        technician_id:
+          body.technicianId === undefined ? profile.id : body.technicianId,
         // Generated SEO fields (GL360 = source of truth)
         state_abbr: naming.state_abbr,
         street_name_public: naming.street_name_public,

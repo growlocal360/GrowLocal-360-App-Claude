@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import { ServiceCombobox } from '@/components/job-snaps/service-combobox';
+import { TechnicianCombobox } from '@/components/job-snaps/technician-combobox';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { toast } from 'sonner';
 import type { JobStatus, JobSnapWithRelations, JobSnapMedia } from '@/types/database';
@@ -51,6 +52,8 @@ interface FormState {
   primaryProblem: string;
   neighborhood: string;
   streetNamePublic: string;
+  /** Profile id of the technician credited for the work. null = no attribution. */
+  technicianId: string | null;
   status: JobStatus;
   addressFull: string;
   city: string;
@@ -98,6 +101,7 @@ export default function EditJobSnapPage() {
     primaryProblem: '',
     neighborhood: '',
     streetNamePublic: '',
+    technicianId: null,
     status: 'draft',
     addressFull: '',
     city: '',
@@ -184,6 +188,7 @@ export default function EditJobSnapPage() {
           primaryProblem: typedSnap.primary_problem || '',
           neighborhood: typedSnap.neighborhood || '',
           streetNamePublic: typedSnap.street_name_public || '',
+          technicianId: typedSnap.technician_id || null,
           status: typedSnap.status,
           addressFull: typedSnap.address_full || '',
           city: typedSnap.city || '',
@@ -329,6 +334,7 @@ export default function EditJobSnapPage() {
       primary_problem: form.primaryProblem.trim() || null,
       neighborhood: form.neighborhood.trim() || null,
       street_name_public: form.streetNamePublic.trim() || null,
+      technician_id: form.technicianId,
       status: form.status,
       address_full: form.addressFull.trim() || null,
       address_public: address_public || null,
@@ -771,6 +777,22 @@ export default function EditJobSnapPage() {
                 />
                 <p className="text-xs text-gray-400">
                   Short phrase describing the core issue or completed task. Drives the SEO URL and title.
+                </p>
+              </div>
+
+              {/* Technician */}
+              <div className="space-y-1.5">
+                <Label htmlFor="technicianId">Technician on Job</Label>
+                <TechnicianCombobox
+                  id="technicianId"
+                  siteId={jobSnap?.site_id ?? ''}
+                  value={form.technicianId}
+                  onChange={(id) =>
+                    setForm((prev) => ({ ...prev, technicianId: id }))
+                  }
+                />
+                <p className="text-xs text-gray-400">
+                  Who performed the work. Owner/admin can choose any team member; team members can only credit themselves.
                 </p>
               </div>
 

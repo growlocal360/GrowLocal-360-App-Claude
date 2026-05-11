@@ -16,6 +16,7 @@ import {
   Tag,
   Wrench,
   Calendar,
+  User,
 } from 'lucide-react';
 import type { JobStatus } from '@/types/database';
 
@@ -45,6 +46,8 @@ export interface JobSnapCardData {
   is_before_after?: boolean;
   // Workspace-only sites have no public website to revalidate
   is_workspace_only?: boolean;
+  // Technician credited for the work (null when not attributed)
+  technician_name?: string | null;
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
@@ -137,6 +140,12 @@ export function JobSnapCard({
                   <Badge variant="outline" className="text-xs font-normal text-gray-600">
                     <MapPin className="mr-1 h-3 w-3" />
                     {locationDisplay}
+                  </Badge>
+                )}
+                {job.technician_name && (
+                  <Badge variant="outline" className="text-xs font-normal text-gray-600">
+                    <User className="mr-1 h-3 w-3" />
+                    {job.technician_name}
                   </Badge>
                 )}
               </div>

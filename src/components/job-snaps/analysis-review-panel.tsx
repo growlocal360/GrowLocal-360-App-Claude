@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
+import { TechnicianCombobox } from '@/components/job-snaps/technician-combobox';
 import {
   Sparkles,
   MapPin,
@@ -135,6 +136,7 @@ export function AnalysisReviewPanel({
     equipmentType: analysis.equipmentType ?? '',
     primaryProblem: analysis.primaryProblem ?? '',
     neighborhood: analysis.neighborhood ?? '',
+    technicianId: null as string | null,
   });
 
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -173,11 +175,12 @@ export function AnalysisReviewPanel({
       serviceType: analysis.serviceType ?? '',
       serviceId: analysis.serviceId ?? null,
       brand: analysis.brand ?? '',
-      // Preserve user-entered clientName across re-analyze (AI never emits it).
+      // Preserve user-entered fields across re-analyze (AI never emits these).
       clientName: prev.clientName,
       equipmentType: analysis.equipmentType ?? '',
       primaryProblem: analysis.primaryProblem ?? '',
       neighborhood: analysis.neighborhood ?? '',
+      technicianId: prev.technicianId,
     }));
   }, [analysis]);
 
@@ -213,10 +216,11 @@ export function AnalysisReviewPanel({
       equipmentType: edited.equipmentType.trim() || null,
       primaryProblem: edited.primaryProblem.trim() || null,
       neighborhood: edited.neighborhood.trim() || null,
-      // Attach client_name onto the analysis payload so the parent page can
-      // forward it to the save route. AI never emits this — user-only field.
+      // Attach user-only fields onto the analysis payload so the parent page
+      // can forward them to the save route. AI never emits these.
       clientName: edited.clientName.trim() || null,
-    } as JobSnapAnalysisResult & { clientName: string | null });
+      technicianId: edited.technicianId,
+    } as JobSnapAnalysisResult & { clientName: string | null; technicianId: string | null });
   };
 
   // Get selected service name for display
@@ -362,6 +366,24 @@ export function AnalysisReviewPanel({
               Optional. Appears in H1 and body when present.
             </p>
           </div>
+        </div>
+
+        {/* Technician attribution */}
+        <div>
+          <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+            Technician on Job
+          </label>
+          <div className="mt-1">
+            <TechnicianCombobox
+              siteId={siteId}
+              value={edited.technicianId}
+              onChange={(id) => setEdited((prev) => ({ ...prev, technicianId: id }))}
+              disabled={isLoading}
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-gray-400">
+            Who performed the work. Defaults to the uploader if left unset.
+          </p>
         </div>
 
         {/* Category / Service Selector */}

@@ -204,6 +204,12 @@ export interface PublicRenderWorkItem {
   brand_name: string | null;
   service?: { id: string; name: string; slug: string } | null;
   location?: { id: string; city: string; state: string; slug: string } | null;
+  /** Technician credited for the work — snapshot at publish time. */
+  technician?: {
+    name: string;
+    title: string | null;
+    avatar_url: string | null;
+  } | null;
 }
 
 // --- Aggregated render data for home page ---
@@ -482,6 +488,13 @@ export function toPublicWorkItem(item: WorkItemWithRelations): PublicRenderWorkI
     brand_name: item.brand_name,
     service: item.service || null,
     location: item.location || null,
+    technician: item.technician_name
+      ? {
+          name: item.technician_name,
+          title: item.technician_title,
+          avatar_url: item.technician_avatar_url,
+        }
+      : null,
   };
 }
 

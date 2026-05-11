@@ -56,15 +56,16 @@ export default function SiteJobSnapsPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load the site name
+      // Load the site name + workspace_only flag
       const { data: site } = await supabase
         .from('sites')
-        .select('name')
+        .select('name, settings')
         .eq('id', siteId)
         .single();
 
       const currentSiteName = site?.name || '';
       setSiteName(currentSiteName);
+      const isWorkspaceOnly = !!(site?.settings as { workspace_only?: boolean } | null)?.workspace_only;
 
       // Load job snaps for this specific site
       const { data: snaps } = await supabase
@@ -127,6 +128,7 @@ export default function SiteJobSnapsPage() {
           media_count: media.length,
           is_published_to_website: (snap.is_published_to_website as boolean) || false,
           is_published_to_gbp: (snap.is_published_to_gbp as boolean) || false,
+          is_workspace_only: isWorkspaceOnly,
         };
       });
 

@@ -43,6 +43,8 @@ export interface JobSnapCardData {
   is_published_to_gbp: boolean;
   // Before & After
   is_before_after?: boolean;
+  // Workspace-only sites have no public website to revalidate
+  is_workspace_only?: boolean;
 }
 
 const statusConfig: Record<JobStatus, { label: string; className: string }> = {
@@ -223,7 +225,7 @@ export function JobSnapCard({
                 </svg>
               </Button>
             )}
-            {onRevalidate && (
+            {onRevalidate && !job.is_workspace_only && (
               <Button
                 variant="ghost"
                 size="icon"

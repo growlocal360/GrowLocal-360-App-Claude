@@ -129,6 +129,12 @@ export default function JobSnapsPage() {
 
       const siteIds = sites.map((s: { id: string }) => s.id);
       const siteMap = new Map(sites.map((s: { id: string; name: string }) => [s.id, s.name]));
+      const workspaceOnlyMap = new Map(
+        sites.map((s: { id: string; settings?: { workspace_only?: boolean } | null }) => [
+          s.id,
+          !!s.settings?.workspace_only,
+        ])
+      );
 
       // Load job snaps with relations
       const { data: snaps } = await supabase
@@ -193,6 +199,7 @@ export default function JobSnapsPage() {
           media_count: media.length,
           is_published_to_website: (snap.is_published_to_website as boolean) || false,
           is_published_to_gbp: (snap.is_published_to_gbp as boolean) || false,
+          is_workspace_only: workspaceOnlyMap.get(snap.site_id as string) || false,
         };
       });
 

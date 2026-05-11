@@ -100,12 +100,25 @@ Create a \`snaps\` table with these columns:
 - \`service_type\` TEXT
 - \`brand\` TEXT
 - \`location\` JSONB  ({ address, city, state, zip })
-- \`media\` JSONB  (array of { url, alt, width, height, role })
+- \`media\` JSONB  (array of { url, alt, width, height, role })  ← URLs will point to MY Supabase storage, not the source API
 - \`published_at\` TIMESTAMPTZ
 - \`created_at\` TIMESTAMPTZ
 - \`updated_at\` TIMESTAMPTZ DEFAULT NOW()
 
 Index on \`slug\` and \`published_at\`.
+
+## Image storage — mirror to my own infrastructure (CRITICAL for SEO + ownership)
+
+The incoming webhook payload contains image URLs that point to GrowLocal's storage. **Don't render those directly** — for SEO and data ownership, mirror each image into my own Supabase storage:
+
+1. Create a public Storage bucket called \`snaps\` in my Supabase project (5 MB file size limit, allowed mime types: image/jpeg, image/png, image/webp). Public read, authenticated write.
+2. In the webhook handler, for each item in \`payload.data.media\`:
+   - \`fetch(item.url)\` to download the image bytes
+   - Upload to the \`snaps\` bucket with a deterministic key like \`<snap_id>/<index>.<ext>\` (so re-publishes overwrite the same file instead of accumulating duplicates)
+   - Get back the public URL via \`supabase.storage.from('snaps').getPublicUrl(path)\`
+   - Replace \`item.url\` with the new URL before upserting
+3. On \`job_snap.unpublished\` events, also call \`supabase.storage.from('snaps').remove([...])\` to clean up the mirrored files (no orphan storage cost).
+4. Handle fetch failures gracefully — if the image download fails, skip that media item but still upsert the snap (better partial data than no data).
 
 ## Webhook handler
 
@@ -143,17 +156,27 @@ type WebhookEvent = {
 
 ## Pages
 
+**Use \`next/image\` for ALL snap photos.** Even though the URLs now point to my own Supabase, rendering through \`next/image\` means the browser sees \`<my-domain>/_next/image?url=...\` — that gives me Next.js image optimization (WebP/AVIF, lazy loading, responsive sizes) AND keeps the public-facing image URL on my domain for SEO.
+
+Update \`next.config.js\` (or \`next.config.mjs\`) to allow the Supabase storage hostname:
+
+\`\`\`js
+images: {
+  remotePatterns: [{ protocol: 'https', hostname: '*.supabase.co' }],
+}
+\`\`\`
+
 Create \`app/work/page.tsx\`:
 - Server component that queries \`snaps\` ordered by \`published_at DESC\`.
-- Renders a responsive grid of cards (3 columns desktop, 1 mobile). Each card: featured image (first media item), title, truncated description (3 lines), location.
+- Renders a responsive grid of cards (3 columns desktop, 1 mobile). Each card: featured image via \`<Image>\`, title, truncated description (3 lines), location.
 - Each card links to \`/work/<slug>\`.
 - Add page-level \`<title>\` and meta description.
 
 Create \`app/work/[slug]/page.tsx\`:
 - Server component that loads the snap by slug.
 - If not found, call \`notFound()\`.
-- Render full title, description, all photos in a gallery, location.
-- Add JSON-LD structured data (Article schema) with the snap's data.
+- Render full title, description, all photos in a gallery (each via \`<Image>\` with proper width/height + \`priority\` on the featured image), location.
+- Add JSON-LD structured data (Article schema) with the snap's data — use the original Supabase URL as the schema's image (not the optimized \`/_next/image?\` path) so search engines can crawl it directly.
 - Set page metadata via \`generateMetadata\` (title, description, OG image = first media url).
 
 ## Styling

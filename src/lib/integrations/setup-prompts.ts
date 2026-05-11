@@ -111,7 +111,7 @@ Index on \`slug\` and \`published_at\`.
 
 The incoming webhook payload contains image URLs that point to GrowLocal's storage. **Don't render those directly** — for SEO and data ownership, mirror each image into my own Supabase storage:
 
-1. Create a public Storage bucket called \`snaps\` in my Supabase project (5 MB file size limit, allowed mime types: image/jpeg, image/png, image/webp). Public read, authenticated write.
+1. Create a public Storage bucket called \`snaps\` in my Supabase project (20 MB file size limit per file — modern phone photos can easily hit 8-12 MB, allowed mime types: image/jpeg, image/png, image/webp). Public read, authenticated write.
 2. In the webhook handler, for each item in \`payload.data.media\`:
    - \`fetch(item.url)\` to download the image bytes
    - Upload to the \`snaps\` bucket with a deterministic key like \`<snap_id>/<index>.<ext>\` (so re-publishes overwrite the same file instead of accumulating duplicates)

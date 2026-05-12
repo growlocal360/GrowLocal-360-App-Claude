@@ -560,9 +560,8 @@ export default async function WorkPage() {
                 <li>
                   <strong>astro.config.mjs</strong> — switches the adapter to
                   <code className="bg-gray-100 px-1 mx-1 rounded">@astrojs/vercel/serverless</code>
-                  and adds <code className="bg-gray-100 px-1 rounded">**.supabase.co</code> to
-                  <code className="bg-gray-100 px-1 mx-1 rounded">imagesConfig.remotePatterns</code>
-                  (without this, every image renders as a broken icon).
+                  with <code className="bg-gray-100 px-1 rounded">output: &apos;server&apos;</code>
+                  so the webhook route runs as a serverless function.
                 </li>
                 <li>
                   <strong>src/pages/api/jobsnaps-webhook.ts</strong> — webhook handler returning
@@ -572,14 +571,22 @@ export default async function WorkPage() {
                 </li>
                 <li>
                   <strong>src/pages/work/index.astro</strong> + <strong>[slug].astro</strong> —
-                  SSR pages that read from your local DB and use Astro&apos;s
-                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;Image&gt;</code> component
-                  (from <code className="bg-gray-100 px-1 rounded">astro:assets</code>).
+                  SSR pages that read from your local DB and render snap photos with plain
+                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;img&gt;</code> tags
+                  pointing directly at your Supabase storage URLs.
                 </li>
                 <li>
                   <strong>Image mirroring</strong> — same as the Next.js path: snaps&apos; photos
                   copy to your own Supabase bucket using the SEO-safe filename GL360 ships in
                   <code className="bg-gray-100 px-1 mx-1 rounded">payload.data.media[i].filename</code>.
+                </li>
+                <li className="text-gray-500">
+                  <strong>Skipped on purpose:</strong> Astro&apos;s
+                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;Image&gt;</code> component +
+                  Vercel image optimizer. Plain <code className="bg-gray-100 px-1 rounded">&lt;img&gt;</code>
+                  tags hit Supabase&apos;s Cloudflare CDN directly — already edge-cached and
+                  plenty fast for SEO. The optimizer adds debugging pain for a small WebP/AVIF
+                  win. Add later as an optional advanced step.
                 </li>
               </ul>
             </CardContent>

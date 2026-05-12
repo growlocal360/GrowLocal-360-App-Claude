@@ -294,9 +294,9 @@ JOBSNAPS_API_BASE=${apiBase}
 
 The webhook will be POSTed to: \`${webhookUrl}\` (already configured on the GrowLocal side).
 
-## Astro configuration (CRITICAL — image optimizer)
+## Astro configuration
 
-Update \`astro.config.mjs\` so the Vercel image optimizer will fetch from my Supabase storage hostname AND so my site runs in server mode (needed for API routes + on-request rendering of snap pages):
+Update \`astro.config.mjs\` so the site can run API routes + on-request rendering of snap pages:
 
 \`\`\`js
 import { defineConfig } from 'astro/config';
@@ -304,20 +304,18 @@ import vercel from '@astrojs/vercel/serverless';
 
 export default defineConfig({
   output: 'server',
-  adapter: vercel({
-    imageService: true,
-    imagesConfig: {
-      sizes: [320, 640, 768, 1024, 1280, 1536],
-      domains: [],
-      remotePatterns: [
-        { protocol: 'https', hostname: '**.supabase.co' },
-      ],
-    },
-  }),
+  adapter: vercel(),
 });
 \`\`\`
 
 If the project is currently configured with \`@astrojs/vercel/static\`, switch to \`@astrojs/vercel/serverless\` so the webhook handler can run as a serverless function. (Static pages still render statically; only the API routes and dynamic snap routes use SSR.)
+
+**Note on image rendering:** Snap photos render via plain HTML \`<img>\` tags pointing directly at my own Supabase storage URLs. Supabase serves images via Cloudflare's CDN, which is already globally edge-cached and plenty fast for SEO. We're intentionally NOT routing through Vercel's image optimizer because:
+- Astro's \`<Image>\` component has known issues generating malformed \`src\` attributes for dynamic remote URLs
+- Vercel's optimizer rejects long Supabase URLs with \`INVALID_IMAGE_OPTIMIZE_REQUEST\` in some adapter version combinations
+- WebP/AVIF conversion is a small win that doesn't justify the engineering pain for a service-business work portfolio
+
+If you ever want to add the optimizer later, it's a 10-minute follow-up — see "Optional: Vercel image optimization" at the bottom.
 
 ## Database
 
@@ -386,7 +384,7 @@ Snap pages should run in SSR mode so updates appear immediately without rebuild/
 
 ### \`src/pages/work/index.astro\` — list page
 
-Frontmatter queries \`snaps\` ordered by \`published_at DESC\`. Renders a responsive grid of cards (3 columns desktop, 1 mobile). Each card: featured image via Astro's \`<Image>\` component with \`alt={snap.alt_text}\`, \`snap.h1\` (or \`snap.title\`), truncated description (3 lines), \`snap.public_location_label\`. Each card links to \`snap.url_path\` (already \`/work/<slug>/\`).
+Frontmatter queries \`snaps\` ordered by \`published_at DESC\`. Renders a responsive grid of cards (3 columns desktop, 1 mobile). Each card: featured image as a plain \`<img>\` tag with \`alt={snap.alt_text}\`, \`snap.h1\` (or \`snap.title\`), truncated description (3 lines), \`snap.public_location_label\`. Each card links to \`snap.url_path\` (already \`/work/<slug>/\`).
 
 Set page-level \`<title>\` and \`<meta name="description">\` in the layout slot.
 
@@ -394,29 +392,29 @@ Set page-level \`<title>\` and \`<meta name="description">\` in the layout slot.
 
 Use \`Astro.params.slug\` to look up the snap by slug. If not found, return a 404 response (\`return new Response(null, { status: 404 })\`).
 
-Render \`snap.h1\` as the page H1, all photos in a gallery (each via \`<Image>\` with proper width/height, and \`loading="eager"\` on the featured image), \`snap.description\`, \`snap.public_location_label\`.
+Render \`snap.h1\` as the page H1, all photos in a gallery (each as a plain \`<img>\` tag with proper width/height; use \`loading="eager"\` on the featured image and \`loading="lazy"\` on the rest), \`snap.description\`, \`snap.public_location_label\`.
 
 Set page metadata in the frontmatter: \`title = snap.meta_title\`, \`description = snap.meta_description\`. Add Open Graph tags for image (= first media url), title, and description. Add JSON-LD structured data (Article schema) inside a \`<script type="application/ld+json">\` tag using the structured fields directly.
 
-### Image component usage
+### Image rendering
 
-Astro's \`<Image>\` component (from \`astro:assets\`) needs an explicit width and height for remote sources:
+Use plain HTML \`<img>\` tags pointing directly at the mirrored Supabase URLs in \`snap.media[].url\`. **Do NOT import or use Astro's \`<Image>\` component from \`astro:assets\`** — its handling of dynamic remote URLs produces malformed src attributes when combined with the Vercel adapter's image optimizer.
 
 \`\`\`astro
 ---
-import { Image } from 'astro:assets';
 const img = snap.media[0];
 ---
-<Image
+<img
   src={img.url}
   alt={snap.alt_text}
   width={img.width ?? 1200}
   height={img.height ?? 800}
   loading="eager"
+  decoding="async"
 />
 \`\`\`
 
-Vercel's image optimizer takes care of WebP/AVIF + responsive sizing, **but ONLY if the Supabase hostname is in \`imagesConfig.remotePatterns\` (see "Astro configuration" above)**. If that step is skipped, all images will appear broken in the browser even though the source URLs work fine when opened directly.
+For lazy-loaded gallery images on the detail page, use \`loading="lazy"\` and skip the explicit width/height if the layout doesn't need them.
 
 ## Override (advanced)
 
@@ -430,14 +428,23 @@ Match the existing site's brand. Use the project's existing styling approach (Ta
 
 1. The webhook route handler at \`src/pages/api/jobsnaps-webhook.ts\`.
 2. The database migration (or SQL setup script).
-3. \`src/pages/work/index.astro\` and \`src/pages/work/[slug].astro\`.
-4. Updated \`astro.config.mjs\` with the image \`remotePatterns\` block.
+3. \`src/pages/work/index.astro\` and \`src/pages/work/[slug].astro\` using plain \`<img>\` tags.
+4. Updated \`astro.config.mjs\` with \`output: 'server'\` and the \`@astrojs/vercel/serverless\` adapter.
 5. Any helper utilities (signature verification, image mirroring) in \`src/lib/\`.
 6. Update \`README.md\` with the env var setup + how Job Snaps works.
 
 ## Test
 
-After setup, when a snap is published in GrowLocal admin, it should appear at \`/work\` within seconds and have its own \`/work/<slug>\` detail page. The detail page must be server-rendered HTML (curl-testable) for SEO, and the \`<title>\`/\`<meta name="description">\`/\`<h1>\`/\`<img alt>\` values must match what GL360 generated. Images must visually load — if they appear broken, the most common cause is missing \`**.supabase.co\` in the Vercel image \`remotePatterns\` config.
+After setup, when a snap is published in GrowLocal admin, it should appear at \`/work\` within seconds and have its own \`/work/<slug>\` detail page. The detail page must be server-rendered HTML (curl-testable) for SEO, and the \`<title>\`/\`<meta name="description">\`/\`<h1>\`/\`<img alt>\` values must match what GL360 generated. Images should load directly from my Supabase storage URLs.
+
+## Optional: Vercel image optimization (advanced, can skip)
+
+If you later want WebP/AVIF conversion and responsive \`srcset\` for snap images, you can wire up Vercel's image optimizer. **Don't do this on initial setup** — it adds debugging surface area (Astro \`<Image>\` quirks, adapter version mismatches) for a small performance win on already-fast Supabase-CDN images.
+
+When you do want it:
+
+1. In \`astro.config.mjs\`, add the \`imageService\` + \`imagesConfig\` blocks to the adapter call AND a top-level \`image.remotePatterns\` block for the build-time \`<Image>\` validator.
+2. Swap \`<img>\` tags back to \`<Image>\` from \`astro:assets\`. Confirm rendering on \`/work\` — if the \`src\` attribute comes out malformed (path starting with \`/F...\` or missing the optimizer prefix), revert. The optimizer isn't worth fighting for.
 `;
 }
 

@@ -341,8 +341,9 @@ export function IntegrationsPanel({ selectedSiteId }: IntegrationsPanelProps = {
       )}
 
       <Tabs defaultValue="nextjs">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="nextjs">Next.js</TabsTrigger>
+          <TabsTrigger value="astro">Astro</TabsTrigger>
           <TabsTrigger value="wordpress">WordPress</TabsTrigger>
           <TabsTrigger value="highlevel">HighLevel</TabsTrigger>
           <TabsTrigger value="embed">Embed Script</TabsTrigger>
@@ -512,6 +513,75 @@ export default async function WorkPage() {
   );
 }`}</CodeBlock>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="astro" className="space-y-4 mt-4">
+          {/* ── AI Setup Prompt — Astro-specific ────────────────────────── */}
+          <Card className="bg-linear-to-br from-[#00ef99]/5 via-violet-50 to-cyan-50 border-[#00ef99]/30">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900">Skip the docs &mdash; have AI build it</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Generate a complete Astro-specific setup prompt to paste into Claude Code,
+                  Cursor, or any AI coding tool inside your Astro project. Sets up the webhook
+                  handler at <code className="bg-gray-100 px-1 rounded">src/pages/api/jobsnaps-webhook.ts</code>,
+                  configures the Vercel image optimizer for your Supabase hostname, and creates
+                  SSR-rendered <code className="bg-gray-100 px-1 rounded">/work</code> pages.
+                </p>
+              </div>
+              <SetupPromptDialog
+                framework="astro"
+                apiBase={APP_URL}
+                businessName={selectedSiteName}
+                triggerVariant="default"
+                initialApiKey={newKey?.fullKey || null}
+                initialWebhookUrl={newSecret?.url || null}
+                initialWebhookSecret={newSecret?.secret || null}
+              />
+            </CardContent>
+          </Card>
+
+          {/* ── Astro-specific gotchas ──────────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Code2 className="h-5 w-5 text-gray-500" />
+                <h3 className="font-semibold">Astro setup checklist</h3>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                The prompt above covers everything below. This list is here so you know what
+                Claude Code is going to touch — and what to verify after the deploy.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-gray-700 space-y-2 list-disc list-inside">
+                <li>
+                  <strong>astro.config.mjs</strong> — switches the adapter to
+                  <code className="bg-gray-100 px-1 mx-1 rounded">@astrojs/vercel/serverless</code>
+                  and adds <code className="bg-gray-100 px-1 rounded">**.supabase.co</code> to
+                  <code className="bg-gray-100 px-1 mx-1 rounded">imagesConfig.remotePatterns</code>
+                  (without this, every image renders as a broken icon).
+                </li>
+                <li>
+                  <strong>src/pages/api/jobsnaps-webhook.ts</strong> — webhook handler returning
+                  a standard <code className="bg-gray-100 px-1 rounded">Response</code>, with
+                  <code className="bg-gray-100 px-1 mx-1 rounded">export const prerender = false;</code>
+                  so it runs as a serverless function.
+                </li>
+                <li>
+                  <strong>src/pages/work/index.astro</strong> + <strong>[slug].astro</strong> —
+                  SSR pages that read from your local DB and use Astro&apos;s
+                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;Image&gt;</code> component
+                  (from <code className="bg-gray-100 px-1 rounded">astro:assets</code>).
+                </li>
+                <li>
+                  <strong>Image mirroring</strong> — same as the Next.js path: snaps&apos; photos
+                  copy to your own Supabase bucket using the SEO-safe filename GL360 ships in
+                  <code className="bg-gray-100 px-1 mx-1 rounded">payload.data.media[i].filename</code>.
+                </li>
+              </ul>
             </CardContent>
           </Card>
         </TabsContent>

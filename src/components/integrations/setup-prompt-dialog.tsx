@@ -45,6 +45,7 @@ interface SetupPromptDialogProps {
 
 const FRAMEWORK_LABEL: Record<SetupPromptFramework, string> = {
   nextjs: 'Next.js',
+  astro: 'Astro',
   wordpress: 'WordPress',
   api: 'Generic API',
 };
@@ -95,7 +96,8 @@ export function SetupPromptDialog({
         webhookUrl: webhookUrl || null,
         webhookSecret: webhookSecret || null,
         businessName: businessName || null,
-        databaseChoice: framework === 'nextjs' ? databaseChoice : null,
+        databaseChoice:
+          framework === 'nextjs' || framework === 'astro' ? databaseChoice : null,
       }),
     [framework, apiBase, apiKey, webhookUrl, webhookSecret, businessName, databaseChoice]
   );
@@ -105,7 +107,8 @@ export function SetupPromptDialog({
     setCopied(true);
   }
 
-  const showWebhookFields = framework === 'nextjs' || framework === 'wordpress';
+  const showWebhookFields =
+    framework === 'nextjs' || framework === 'astro' || framework === 'wordpress';
 
   return (
     <>
@@ -195,7 +198,7 @@ export function SetupPromptDialog({
               </>
             )}
 
-            {framework === 'nextjs' && (
+            {(framework === 'nextjs' || framework === 'astro') && (
               <div className="space-y-1">
                 <Label htmlFor="prompt-db" className="text-xs">
                   Database choice

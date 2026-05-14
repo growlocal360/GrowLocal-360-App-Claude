@@ -396,16 +396,53 @@ Render \`snap.h1\` as the page H1, all photos in a gallery (each as a plain \`<i
 
 Set page metadata in the frontmatter: \`title = snap.meta_title\`, \`description = snap.meta_description\`. Add Open Graph tags for image (= first media url), title, and description. Add JSON-LD structured data (Article schema) inside a \`<script type="application/ld+json">\` tag using the structured fields directly.
 
-### Image rendering
+### Image rendering — branded URLs via Vercel rewrite
 
-Use plain HTML \`<img>\` tags pointing directly at the mirrored Supabase URLs in \`snap.media[].url\`. **Do NOT import or use Astro's \`<Image>\` component from \`astro:assets\`** — its handling of dynamic remote URLs produces malformed src attributes when combined with the Vercel adapter's image optimizer.
+Snap photos are stored in my own Supabase bucket, but I don't want the rendered \`<img src="...">\` to point at \`*.supabase.co\` — that leaks my backend hostname and weakens domain-level image SEO. Instead, proxy every snap image through my own domain using a Vercel edge rewrite.
+
+**1. Create \`vercel.json\` at the project root** (or merge into the existing one):
+
+\`\`\`json
+{
+  "rewrites": [
+    {
+      "source": "/public/snaps/:path*",
+      "destination": "https://<MY-SUPABASE-PROJECT-REF>.supabase.co/storage/v1/object/public/snaps/:path*"
+    }
+  ]
+}
+\`\`\`
+
+Replace \`<MY-SUPABASE-PROJECT-REF>\` with my actual Supabase project ref (the same hostname prefix you see in \`SUPABASE_URL\`). The rewrite runs at Vercel's edge — every \`/public/snaps/...\` request gets transparently proxied to Supabase and edge-cached. Zero serverless function cost.
+
+**2. Add a URL-rewrite helper** at \`src/lib/snap-image-url.ts\`:
+
+\`\`\`ts
+const SUPABASE_SNAPS_PREFIX = 'https://<MY-SUPABASE-PROJECT-REF>.supabase.co/storage/v1/object/public/snaps/';
+
+/**
+ * Rewrites a snap image's Supabase URL to a branded path on this domain.
+ * Combined with the Vercel rewrite in vercel.json, the browser sees a
+ * URL on our own domain instead of the Supabase hostname.
+ */
+export function brandedSnapImageUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith(SUPABASE_SNAPS_PREFIX)) {
+    return '/public/snaps/' + url.slice(SUPABASE_SNAPS_PREFIX.length);
+  }
+  return url; // unrecognized URL — leave as-is
+}
+\`\`\`
+
+**3. Use plain HTML \`<img>\` tags with the helper everywhere a snap photo renders.** Do NOT import or use Astro's \`<Image>\` component from \`astro:assets\` — its handling of dynamic remote URLs produces malformed src attributes when combined with the Vercel adapter's image optimizer.
 
 \`\`\`astro
 ---
+import { brandedSnapImageUrl } from '../lib/snap-image-url';
 const img = snap.media[0];
 ---
 <img
-  src={img.url}
+  src={brandedSnapImageUrl(img.url)}
   alt={snap.alt_text}
   width={img.width ?? 1200}
   height={img.height ?? 800}
@@ -415,6 +452,8 @@ const img = snap.media[0];
 \`\`\`
 
 For lazy-loaded gallery images on the detail page, use \`loading="lazy"\` and skip the explicit width/height if the layout doesn't need them.
+
+**Test it:** after deploy, visit \`/work\`, inspect any snap image. The \`src\` attribute should read \`/public/snaps/...\` (relative) or \`https://<my-domain>/public/snaps/...\` (absolute). It should NOT contain \`supabase.co\`. The image bytes still come from Supabase's CDN — but the URL is on my domain.
 
 ## Override (advanced)
 
@@ -428,14 +467,16 @@ Match the existing site's brand. Use the project's existing styling approach (Ta
 
 1. The webhook route handler at \`src/pages/api/jobsnaps-webhook.ts\`.
 2. The database migration (or SQL setup script).
-3. \`src/pages/work/index.astro\` and \`src/pages/work/[slug].astro\` using plain \`<img>\` tags.
+3. \`src/pages/work/index.astro\` and \`src/pages/work/[slug].astro\` using plain \`<img>\` tags + the \`brandedSnapImageUrl()\` helper.
 4. Updated \`astro.config.mjs\` with \`output: 'server'\` and the \`@astrojs/vercel/serverless\` adapter.
-5. Any helper utilities (signature verification, image mirroring) in \`src/lib/\`.
-6. Update \`README.md\` with the env var setup + how Job Snaps works.
+5. \`vercel.json\` at the project root with the \`/public/snaps/:path*\` rewrite.
+6. \`src/lib/snap-image-url.ts\` with the \`brandedSnapImageUrl()\` helper.
+7. Any helper utilities (signature verification, image mirroring) in \`src/lib/\`.
+8. Update \`README.md\` with the env var setup + how Job Snaps works.
 
 ## Test
 
-After setup, when a snap is published in GrowLocal admin, it should appear at \`/work\` within seconds and have its own \`/work/<slug>\` detail page. The detail page must be server-rendered HTML (curl-testable) for SEO, and the \`<title>\`/\`<meta name="description">\`/\`<h1>\`/\`<img alt>\` values must match what GL360 generated. Images should load directly from my Supabase storage URLs.
+After setup, when a snap is published in GrowLocal admin, it should appear at \`/work\` within seconds and have its own \`/work/<slug>\` detail page. The detail page must be server-rendered HTML (curl-testable) for SEO, and the \`<title>\`/\`<meta name="description">\`/\`<h1>\`/\`<img alt>\` values must match what GL360 generated. Inspect any snap photo on the live site — the \`<img src>\` should point at my own domain (\`/public/snaps/...\`), not at \`supabase.co\`.
 
 ## Optional: Vercel image optimization (advanced, can skip)
 
@@ -443,8 +484,29 @@ If you later want WebP/AVIF conversion and responsive \`srcset\` for snap images
 
 When you do want it:
 
-1. In \`astro.config.mjs\`, add the \`imageService\` + \`imagesConfig\` blocks to the adapter call AND a top-level \`image.remotePatterns\` block for the build-time \`<Image>\` validator.
+1. In \`astro.config.mjs\`, add the \`imageService\` + \`imagesConfig\` blocks to the adapter call AND a top-level \`image.remotePatterns\` block. Include both \`**.supabase.co\` (for the raw mirrored URLs) AND your own deployed hostname (for the rewritten \`/public/snaps/\` paths) so the optimizer can fetch from either form.
 2. Swap \`<img>\` tags back to \`<Image>\` from \`astro:assets\`. Confirm rendering on \`/work\` — if the \`src\` attribute comes out malformed (path starting with \`/F...\` or missing the optimizer prefix), revert. The optimizer isn't worth fighting for.
+
+## Optional: Full static rendering / SSG (advanced, can skip)
+
+By default the snap pages run SSR — the page function queries Supabase on each request and returns fresh HTML. New snaps appear within ~1 second of publishing. This is the recommended mode because the customer-facing "publish and see it instantly" UX is part of the product magic.
+
+If you later want maximum performance (truly static \`.html\` files served from CDN, ~50ms TTFB), the trade-off is that **every new snap requires a site rebuild** (~30–60 seconds before the new page goes live). For low-volume use (a few snaps per week), this is fine. For agencies publishing many snaps in a row, it's a UX regression.
+
+When you do want it:
+
+1. Remove \`export const prerender = false;\` from \`src/pages/work/index.astro\` and \`src/pages/work/[slug].astro\` so they prerender (Astro's default).
+2. In \`[slug].astro\`, add a \`getStaticPaths()\` function in the frontmatter that queries Supabase at build time and returns one path per snap slug. (Keep \`output: 'server'\` so the webhook route still works as a serverless function.)
+3. **Create a Vercel Deploy Hook** in the project (Settings → Git → Deploy Hooks → "Create Hook" named \`jobsnaps-rebuild\` targeting \`main\`). Copy the resulting URL into env var \`JOBSNAPS_DEPLOY_HOOK_URL\`.
+4. In the webhook handler, after the upsert (and after the delete for \`job_snap.unpublished\`), POST to that deploy hook URL to trigger a rebuild:
+   \`\`\`ts
+   if (process.env.JOBSNAPS_DEPLOY_HOOK_URL) {
+     await fetch(process.env.JOBSNAPS_DEPLOY_HOOK_URL, { method: 'POST' });
+   }
+   \`\`\`
+5. Watch the Vercel Deployments tab — each published snap should trigger a build that completes in under a minute.
+
+Both modes are equivalent for Googlebot indexing (each serves real HTML). SSG wins marginally on Core Web Vitals; SSR wins on the customer-facing "instant publish" UX.
 `;
 }
 

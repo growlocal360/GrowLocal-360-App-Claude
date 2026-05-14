@@ -570,10 +570,19 @@ export default async function WorkPage() {
                   so it runs as a serverless function.
                 </li>
                 <li>
+                  <strong>vercel.json</strong> — adds a
+                  <code className="bg-gray-100 px-1 mx-1 rounded">/public/snaps/:path*</code>
+                  rewrite that edge-proxies snap photos through your own domain, so the
+                  rendered <code className="bg-gray-100 px-1 rounded">&lt;img src&gt;</code>
+                  never leaks the <code className="bg-gray-100 px-1 rounded">supabase.co</code>
+                  hostname.
+                </li>
+                <li>
                   <strong>src/pages/work/index.astro</strong> + <strong>[slug].astro</strong> —
                   SSR pages that read from your local DB and render snap photos with plain
                   <code className="bg-gray-100 px-1 mx-1 rounded">&lt;img&gt;</code> tags
-                  pointing directly at your Supabase storage URLs.
+                  using a small <code className="bg-gray-100 px-1 rounded">brandedSnapImageUrl()</code>
+                  helper to point at the branded path.
                 </li>
                 <li>
                   <strong>Image mirroring</strong> — same as the Next.js path: snaps&apos; photos
@@ -582,11 +591,12 @@ export default async function WorkPage() {
                 </li>
                 <li className="text-gray-500">
                   <strong>Skipped on purpose:</strong> Astro&apos;s
-                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;Image&gt;</code> component +
-                  Vercel image optimizer. Plain <code className="bg-gray-100 px-1 rounded">&lt;img&gt;</code>
-                  tags hit Supabase&apos;s Cloudflare CDN directly — already edge-cached and
-                  plenty fast for SEO. The optimizer adds debugging pain for a small WebP/AVIF
-                  win. Add later as an optional advanced step.
+                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;Image&gt;</code> component
+                  + Vercel image optimizer, and full SSG. Plain
+                  <code className="bg-gray-100 px-1 mx-1 rounded">&lt;img&gt;</code> + SSR keeps
+                  the &ldquo;publish &amp; see it instantly&rdquo; UX intact and avoids
+                  optimizer debugging. The prompt has an &ldquo;Optional / advanced&rdquo;
+                  section for both if you ever want them later.
                 </li>
               </ul>
             </CardContent>

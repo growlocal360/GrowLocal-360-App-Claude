@@ -67,7 +67,11 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
   const supabase = createAdminClient();
   const [googleReviews, workItems, { data: schedulingConfig }] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
-    getPublishedWorkItems(data.site.id, { city: data.serviceArea.name, limit: 6 }),
+    getPublishedWorkItems(data.site.id, {
+      city: data.serviceArea.name,
+      attachmentTarget: { type: 'service_area', id: data.serviceArea.id },
+      limit: 6,
+    }),
     supabase
       .from('scheduling_configs')
       .select('is_active, cta_style')

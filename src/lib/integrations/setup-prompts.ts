@@ -105,6 +105,15 @@ type WebhookEvent = {
       avatar_url: string | null;
     } | null;
 
+    // Multi-page attachments — every taxonomy row this snap is linked to in
+    // GL360. Most customer integrations don't need this; filtering by
+    // service_type / brand / city above usually suffices. IDs are stable
+    // GL360 UUIDs; resolve them via the GL360 admin if you want names.
+    attachments: Array<{
+      type: 'service' | 'category' | 'brand' | 'service_area';
+      id: string;
+    }>;
+
     location: {
       address: string | null;       // street name only, no house number
       city: string | null;

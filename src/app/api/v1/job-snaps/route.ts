@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('job_snaps')
     .select(
-      '*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url)',
+      '*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url), attachments:job_snap_attachments(target_type, target_id)',
       { count: 'exact' }
     )
     .eq('site_id', apiKey.site_id)

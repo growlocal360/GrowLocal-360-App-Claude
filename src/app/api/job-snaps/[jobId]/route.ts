@@ -7,6 +7,29 @@ import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
+function buildAttachmentRows(
+  jobSnapId: string,
+  siteId: string,
+  attachments: PatchBody['attachments']
+): Array<{ job_snap_id: string; site_id: string; target_type: string; target_id: string }> {
+  if (!attachments) return [];
+  const seen = new Set<string>();
+  const rows: Array<{ job_snap_id: string; site_id: string; target_type: string; target_id: string }> = [];
+
+  const push = (type: 'service' | 'category' | 'brand' | 'service_area', id: string) => {
+    const key = `${type}:${id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ job_snap_id: jobSnapId, site_id: siteId, target_type: type, target_id: id });
+  };
+
+  (attachments.service_ids || []).forEach((id) => push('service', id));
+  (attachments.category_ids || []).forEach((id) => push('category', id));
+  (attachments.brand_ids || []).forEach((id) => push('brand', id));
+  (attachments.area_ids || []).forEach((id) => push('service_area', id));
+  return rows;
+}
+
 async function loadAuthorizedSnap(jobId: string) {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -74,6 +97,16 @@ interface PatchBody {
   address_public?: string | null;
   status?: 'draft' | 'queued' | 'approved' | 'deployed' | 'rejected';
   regenerate_seo_fields?: boolean;
+  /**
+   * When present, REPLACES the snap's attachment set with the supplied
+   * targets. Omit to leave attachments untouched.
+   */
+  attachments?: {
+    service_ids?: string[];
+    category_ids?: string[];
+    brand_ids?: string[];
+    area_ids?: string[];
+  } | null;
   /** Optional per-field overrides applied AFTER the naming engine runs. */
   overrides?: {
     slug?: string;
@@ -193,6 +226,27 @@ export async function PATCH(
     if (updateError) {
       console.error('PATCH job_snaps failed:', updateError);
       return NextResponse.json({ error: 'Failed to update job snap' }, { status: 500 });
+    }
+
+    // ── Replace attachments when the patch body includes them ────────────
+    // Omitted = don't touch existing attachments. Present (even if empty)
+    // means the user is intentionally setting the new set, so we wipe + insert.
+    if (body.attachments !== undefined) {
+      await adminClient
+        .from('job_snap_attachments')
+        .delete()
+        .eq('job_snap_id', snap.id);
+
+      const rows = buildAttachmentRows(snap.id, snap.site_id, body.attachments);
+      if (rows.length > 0) {
+        const { error: insertError } = await adminClient
+          .from('job_snap_attachments')
+          .insert(rows);
+        if (insertError) {
+          console.error('PATCH job_snap_attachments insert failed:', insertError);
+          // Non-fatal — snap update succeeded, just the relinking failed.
+        }
+      }
     }
 
     // Notify subscribers + revalidate public surface if the snap is live.

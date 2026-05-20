@@ -96,7 +96,11 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
   const [{ categories, services }, allReviews, workItems, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(site.id),
     getAllGoogleReviewsForSite(site.id),
-    getPublishedWorkItems(site.id, { brandName: brand.name, limit: 6 }),
+    getPublishedWorkItems(site.id, {
+      brandName: brand.name,
+      attachmentTarget: { type: 'brand', id: brand.id },
+      limit: 6,
+    }),
     supabase
       .from('scheduling_configs')
       .select('is_active, cta_style')

@@ -87,6 +87,15 @@ export function serializeJobSnapPublic(snap: JobSnapWithRelations) {
           avatar_url: snap.technician.avatar_url,
         }
       : null,
+    // Multi-page attachments — every taxonomy row this snap is linked to.
+    // Each entry: { type, id }. Customer integrations typically filter by
+    // service_type / brand / city above; attachments are for advanced cases
+    // that want to mirror GL360's "this snap surfaces on multiple pages"
+    // behavior on their own site using GL360's stable taxonomy IDs.
+    attachments: (snap.attachments || []).map((a) => ({
+      type: a.target_type,
+      id: a.target_id,
+    })),
     // NOTE: client_name is internal-only and intentionally absent here.
 
     location: {

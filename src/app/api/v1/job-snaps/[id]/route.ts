@@ -38,7 +38,7 @@ export async function GET(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('job_snaps')
-    .select('*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url)')
+    .select('*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url), attachments:job_snap_attachments(target_type, target_id)')
     .eq('id', id)
     .eq('site_id', apiKey.site_id)
     .eq('is_published_to_website', true)

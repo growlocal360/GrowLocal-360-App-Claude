@@ -36,6 +36,11 @@ import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import { ServiceCombobox } from '@/components/job-snaps/service-combobox';
 import { TechnicianCombobox } from '@/components/job-snaps/technician-combobox';
+import {
+  AttachmentPicker,
+  EMPTY_SELECTION,
+  type AttachmentSelection,
+} from '@/components/job-snaps/attachment-picker';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { toast } from 'sonner';
 import type { JobStatus, JobSnapWithRelations, JobSnapMedia } from '@/types/database';
@@ -112,6 +117,10 @@ export default function EditJobSnapPage() {
   const [mediaToDelete, setMediaToDelete] = useState<string[]>([]);
   const [isBeforeAfter, setIsBeforeAfter] = useState(false);
   const [mediaRoles, setMediaRoles] = useState<Record<string, { role: string; pairGroup: number | null }>>({});
+
+  // Multi-attachment selection (services / categories / brands / areas)
+  const [attachments, setAttachments] = useState<AttachmentSelection>(EMPTY_SELECTION);
+  const [attachmentsDirty, setAttachmentsDirty] = useState(false);
 
   // Advanced SEO panel state
   const [seoExpanded, setSeoExpanded] = useState(false);
@@ -217,6 +226,36 @@ export default function EditJobSnapPage() {
           }
         }
         setMediaRoles(roles);
+
+        // Load existing attachment rows so the multi-select picker reflects them.
+        const { data: attachRows } = await supabase
+          .from('job_snap_attachments')
+          .select('target_type, target_id')
+          .eq('job_snap_id', jobId);
+        const initialAttachments: AttachmentSelection = {
+          service_ids: [],
+          category_ids: [],
+          brand_ids: [],
+          area_ids: [],
+        };
+        for (const row of (attachRows || []) as Array<{ target_type: string; target_id: string }>) {
+          if (row.target_type === 'service') initialAttachments.service_ids.push(row.target_id);
+          else if (row.target_type === 'category') initialAttachments.category_ids.push(row.target_id);
+          else if (row.target_type === 'brand') initialAttachments.brand_ids.push(row.target_id);
+          else if (row.target_type === 'service_area') initialAttachments.area_ids.push(row.target_id);
+        }
+        // Legacy fallback: if no attachment rows exist but service_id is set
+        // on the row itself, surface that as a pre-selected service so the
+        // user doesn't have to re-pick it after re-saving.
+        if (
+          attachRows &&
+          attachRows.length === 0 &&
+          typedSnap.service_id
+        ) {
+          initialAttachments.service_ids = [typedSnap.service_id];
+        }
+        setAttachments(initialAttachments);
+        setAttachmentsDirty(false);
       } catch (err) {
         console.error('Failed to load job snap:', err);
         setNotFound(true);
@@ -234,10 +273,11 @@ export default function EditJobSnapPage() {
     if (isBeforeAfter !== (jobSnap?.is_before_after || false)) return true;
     if (Object.keys(mediaRoles).length > 0) return true;
     if (Object.values(seoOverridesDirty).some(Boolean)) return true;
+    if (attachmentsDirty) return true;
     return (Object.keys(form) as (keyof FormState)[]).some(
       (key) => form[key] !== originalForm[key]
     );
-  }, [form, originalForm, mediaToDelete, isBeforeAfter, jobSnap, mediaRoles, seoOverridesDirty]);
+  }, [form, originalForm, mediaToDelete, isBeforeAfter, jobSnap, mediaRoles, seoOverridesDirty, attachmentsDirty]);
 
   // Unsaved changes warning on browser close/refresh
   useEffect(() => {
@@ -343,6 +383,16 @@ export default function EditJobSnapPage() {
       zip: form.zip.trim() || null,
       regenerate_seo_fields: regenerate,
       overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+      // Only ship attachments if the user actually touched the picker;
+      // PATCH treats an omitted `attachments` as "leave existing alone."
+      attachments: attachmentsDirty
+        ? {
+            service_ids: attachments.service_ids,
+            category_ids: attachments.category_ids,
+            brand_ids: attachments.brand_ids,
+            area_ids: attachments.area_ids,
+          }
+        : undefined,
     };
   }
 
@@ -820,6 +870,27 @@ export default function EditJobSnapPage() {
                   </p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Section 2b: Multi-page attachments ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Link to Pages</CardTitle>
+              <CardDescription>
+                Choose every page this snap should appear on. A single snap can show up on
+                multiple service, category, brand, and area pages at once.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AttachmentPicker
+                siteId={jobSnap?.site_id ?? ''}
+                value={attachments}
+                onChange={(next) => {
+                  setAttachments(next);
+                  setAttachmentsDirty(true);
+                }}
+              />
             </CardContent>
           </Card>
 

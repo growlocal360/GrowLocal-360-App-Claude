@@ -514,6 +514,22 @@ export interface JobSnap {
   updated_at: string;
 }
 
+/**
+ * Migration 049 — polymorphic join: a Job Snap can attach to multiple
+ * services, categories, brands, and service areas at once. target_type
+ * discriminates which table target_id lives in.
+ */
+export type JobSnapAttachmentTarget = 'service' | 'category' | 'brand' | 'service_area';
+
+export interface JobSnapAttachment {
+  id: string;
+  job_snap_id: string;
+  site_id: string;
+  target_type: JobSnapAttachmentTarget;
+  target_id: string;
+  created_at: string;
+}
+
 export interface JobSnapMedia {
   id: string;
   job_snap_id: string;
@@ -565,6 +581,8 @@ export interface JobSnapWithRelations extends JobSnap {
   service?: Service;
   created_by_profile?: Profile;
   technician?: Profile | null;
+  /** Migration 049 — multi-page attachments. Loaded explicitly by callers. */
+  attachments?: Pick<JobSnapAttachment, 'target_type' | 'target_id'>[];
 }
 
 // ─── API Keys (public REST API for external sites) ──────────────────────────

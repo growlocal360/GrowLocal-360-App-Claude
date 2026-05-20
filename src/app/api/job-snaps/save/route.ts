@@ -42,8 +42,48 @@ interface SaveRequest {
   clientName?: string | null;
   /** Technician credited for the work (defaults to uploader's profile when unset). */
   technicianId?: string | null;
+  /**
+   * Multi-attachment targets. The snap will appear on the public page for
+   * every selected service, category, brand, and area. service_id remains
+   * the "primary" service for legacy compatibility (defaults to the first
+   * selected service when present).
+   */
+  attachments?: {
+    service_ids?: string[];
+    category_ids?: string[];
+    brand_ids?: string[];
+    area_ids?: string[];
+  } | null;
   location?: SaveLocationInput | null;
   images: SaveImageInput[];
+}
+
+/**
+ * Build job_snap_attachments insert rows from a SaveRequest.attachments
+ * object. Each target_type → target_id pair becomes one row. De-duplicates
+ * across types via a Set keyed by `${type}:${id}`.
+ */
+function buildAttachmentRows(
+  jobSnapId: string,
+  siteId: string,
+  attachments: SaveRequest['attachments']
+): Array<{ job_snap_id: string; site_id: string; target_type: string; target_id: string }> {
+  if (!attachments) return [];
+  const seen = new Set<string>();
+  const rows: Array<{ job_snap_id: string; site_id: string; target_type: string; target_id: string }> = [];
+
+  const push = (type: 'service' | 'category' | 'brand' | 'service_area', id: string) => {
+    const key = `${type}:${id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ job_snap_id: jobSnapId, site_id: siteId, target_type: type, target_id: id });
+  };
+
+  (attachments.service_ids || []).forEach((id) => push('service', id));
+  (attachments.category_ids || []).forEach((id) => push('category', id));
+  (attachments.brand_ids || []).forEach((id) => push('brand', id));
+  (attachments.area_ids || []).forEach((id) => push('service_area', id));
+  return rows;
 }
 
 function mimeToExt(mimeType: string): string {
@@ -192,7 +232,12 @@ export async function POST(request: Request) {
         ai_generated_title: body.aiGeneratedTitle ?? null,
         ai_generated_description: body.aiGeneratedDescription ?? null,
         service_type: body.serviceType ?? null,
-        service_id: body.serviceId ?? null,
+        // Primary service for legacy + work_item linking. Defaults to the
+        // first selected service when explicit serviceId isn't passed.
+        service_id:
+          body.serviceId ??
+          body.attachments?.service_ids?.[0] ??
+          null,
         brand: body.brand ?? null,
         // Structured fields feeding the naming engine
         primary_problem: body.primaryProblem ?? null,
@@ -259,6 +304,18 @@ export async function POST(request: Request) {
       // Job snap saved but media failed — leave the job snap and log the error
       // (recoverable: user can re-upload media later)
       console.error('job_snap_media insert failed:', mediaError);
+    }
+
+    // ── Insert attachment rows (multi-page linking) ─────────────────────────
+    const attachmentRows = buildAttachmentRows(jobSnap.id, body.siteId, body.attachments);
+    if (attachmentRows.length > 0) {
+      const { error: attachError } = await admin
+        .from('job_snap_attachments')
+        .insert(attachmentRows);
+      if (attachError) {
+        console.error('job_snap_attachments insert failed:', attachError);
+        // Non-fatal — snap is saved; user can re-attach via edit later.
+      }
     }
 
     return NextResponse.json({ success: true, jobSnapId: jobSnap.id });

@@ -147,7 +147,11 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
     getAllGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
-    getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
+    getPublishedWorkItems(data.site.id, {
+      serviceId: data.service.id,
+      attachmentTarget: { type: 'service', id: data.service.id },
+      limit: 6,
+    }),
     admin
       .from('scheduling_configs')
       .select('is_active, cta_style')

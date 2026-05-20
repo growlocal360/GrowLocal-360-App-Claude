@@ -437,10 +437,14 @@ export default function NewJobSnapPage() {
         primaryProblem: editedAnalysis.primaryProblem ?? undefined,
         equipmentType: editedAnalysis.equipmentType ?? undefined,
         neighborhood: editedAnalysis.neighborhood ?? undefined,
-        // clientName + technicianId are user-only (never AI-emitted); attached
-        // by the review panel onto the analysis object so they flow through here.
+        // clientName + technicianId + attachments are user-only (never
+        // AI-emitted); the review panel attaches them onto the analysis
+        // object so they flow through here.
         clientName: (editedAnalysis as JobSnapAnalysisResult & { clientName?: string | null }).clientName ?? undefined,
         technicianId: (editedAnalysis as JobSnapAnalysisResult & { technicianId?: string | null }).technicianId ?? undefined,
+        attachments: (editedAnalysis as JobSnapAnalysisResult & {
+          attachments?: { service_ids: string[]; category_ids: string[]; brand_ids: string[]; area_ids: string[] };
+        }).attachments,
         location: location
           ? {
               addressFull: location.address,

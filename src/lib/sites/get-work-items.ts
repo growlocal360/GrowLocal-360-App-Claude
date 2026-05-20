@@ -4,6 +4,7 @@ import type {
   Location,
   WorkItem,
   WorkItemWithRelations,
+  JobSnapAttachmentTarget,
 } from '@/types/database';
 
 export interface WorkItemPageData {
@@ -36,15 +37,47 @@ export async function getPublishedWorkItems(
   options?: {
     limit?: number;
     offset?: number;
-    serviceId?: string;  // exact match on work_items.service_id
-    brandName?: string;  // case-insensitive match on work_items.brand_name
-    city?: string;       // case-insensitive match on work_items.address_city
+    serviceId?: string;  // exact match on work_items.service_id (legacy)
+    brandName?: string;  // case-insensitive match on work_items.brand_name (legacy)
+    city?: string;       // case-insensitive match on work_items.address_city (legacy)
+    /**
+     * Multi-attachment target. When supplied, the result set is the UNION
+     * of (a) any legacy filter above and (b) every work_item whose snap is
+     * linked to this (type, id) via job_snap_attachments. Lets a single
+     * snap surface on multiple pages without duplicating rows.
+     */
+    attachmentTarget?: { type: JobSnapAttachmentTarget; id: string };
   }
 ): Promise<WorkItemWithRelations[]> {
   const supabase = createAdminClient();
   const limit = options?.limit ?? 12;
   const offset = options?.offset ?? 0;
 
+  // ── Resolve attachment-linked work_item_ids first (if requested) ──────
+  let attachmentLinkedIds: string[] = [];
+  if (options?.attachmentTarget) {
+    const { data: attachRows } = await supabase
+      .from('job_snap_attachments')
+      .select('job_snap_id')
+      .eq('site_id', siteId)
+      .eq('target_type', options.attachmentTarget.type)
+      .eq('target_id', options.attachmentTarget.id);
+    const snapIds = (attachRows || []).map(
+      (r: { job_snap_id: string }) => r.job_snap_id
+    );
+    if (snapIds.length > 0) {
+      const { data: linkedSnaps } = await supabase
+        .from('job_snaps')
+        .select('work_item_id')
+        .in('id', snapIds)
+        .not('work_item_id', 'is', null);
+      attachmentLinkedIds = (linkedSnaps || [])
+        .map((s: { work_item_id: string | null }) => s.work_item_id)
+        .filter((v: string | null): v is string => !!v);
+    }
+  }
+
+  // ── Build the legacy filter query ─────────────────────────────────────
   let query = supabase
     .from('work_items')
     .select('*')
@@ -55,12 +88,35 @@ export async function getPublishedWorkItems(
   if (options?.brandName) query = query.ilike('brand_name', options.brandName);
   if (options?.city) query = query.ilike('address_city', options.city);
 
-  const { data: items } = await query
+  const { data: legacyItems } = await query
     .order('performed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(0, offset + limit - 1);
 
-  if (!items || items.length === 0) return [];
+  // ── Fetch attachment-linked items not already in legacy results ───────
+  const seenIds = new Set((legacyItems || []).map((i: WorkItem) => i.id));
+  const missingIds = attachmentLinkedIds.filter((id) => !seenIds.has(id));
+  let attachedItems: WorkItem[] = [];
+  if (missingIds.length > 0) {
+    const { data: extra } = await supabase
+      .from('work_items')
+      .select('*')
+      .eq('site_id', siteId)
+      .eq('status', 'published')
+      .in('id', missingIds);
+    attachedItems = (extra || []) as WorkItem[];
+  }
+
+  // ── Merge, sort, paginate in JS ───────────────────────────────────────
+  const merged = [...(legacyItems || []), ...attachedItems] as WorkItem[];
+  merged.sort((a, b) => {
+    const aTime = (a.performed_at || a.created_at || '') as string;
+    const bTime = (b.performed_at || b.created_at || '') as string;
+    return bTime.localeCompare(aTime);
+  });
+  const items = merged.slice(offset, offset + limit);
+
+  if (items.length === 0) return [];
 
   // Collect unique service_ids and location_ids to batch-fetch
   const serviceIds = [...new Set(items.map(i => i.service_id).filter(Boolean))] as string[];

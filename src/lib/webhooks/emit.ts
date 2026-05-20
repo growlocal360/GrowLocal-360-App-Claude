@@ -20,7 +20,7 @@ export async function emitJobSnapEvent(
     const supabase = createAdminClient();
     const { data: snap } = await supabase
       .from('job_snaps')
-      .select('*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url)')
+      .select('*, media:job_snap_media(*), technician:profiles!technician_id(id, full_name, title, avatar_url), attachments:job_snap_attachments(target_type, target_id)')
       .eq('id', jobSnapId)
       .single();
 

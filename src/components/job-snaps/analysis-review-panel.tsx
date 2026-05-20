@@ -9,13 +9,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { BrandCombobox } from '@/components/job-snaps/brand-combobox';
 import { TechnicianCombobox } from '@/components/job-snaps/technician-combobox';
 import {
+  AttachmentPicker,
+  EMPTY_SELECTION,
+  type AttachmentSelection,
+} from '@/components/job-snaps/attachment-picker';
+import {
   Sparkles,
   MapPin,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ChevronDown,
-  ChevronRight,
   Lock,
 } from 'lucide-react';
 import type { JobSnapAnalysisResult } from '@/lib/job-snaps/analyze';
@@ -108,16 +111,6 @@ function fuzzyMatchService(
   return bestMatch?.id ?? null;
 }
 
-/**
- * Find the parent category ID for a given service ID.
- */
-function findCategoryForService(serviceId: string, categories: CategoryOption[]): string | null {
-  for (const cat of categories) {
-    if (cat.services.some(s => s.id === serviceId)) return cat.id;
-  }
-  return null;
-}
-
 export function AnalysisReviewPanel({
   analysis,
   location,
@@ -139,8 +132,12 @@ export function AnalysisReviewPanel({
     technicianId: null as string | null,
   });
 
+  // Multi-attachment state (services, categories, brands, areas). Starts
+  // empty; the AI's auto-matched service ID is folded in once we fetch
+  // categories in the effect below.
+  const [attachments, setAttachments] = useState<AttachmentSelection>(EMPTY_SELECTION);
+
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   // Fetch categories + services for this site
@@ -158,9 +155,11 @@ export function AnalysisReviewPanel({
           if (matchedId) {
             setSelectedServiceId(matchedId);
             setEdited(prev => ({ ...prev, serviceId: matchedId }));
-            // Expand the parent category
-            const catId = findCategoryForService(matchedId, cats);
-            if (catId) setExpandedCategories(new Set([catId]));
+            setAttachments((prev) =>
+              prev.service_ids.includes(matchedId)
+                ? prev
+                : { ...prev, service_ids: [...prev.service_ids, matchedId] }
+            );
           }
         }
       })
@@ -190,21 +189,6 @@ export function AnalysisReviewPanel({
         .join(', ')
     : null;
 
-  const toggleCategory = (catId: string) => {
-    setExpandedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(catId)) next.delete(catId);
-      else next.add(catId);
-      return next;
-    });
-  };
-
-  const selectService = (serviceId: string) => {
-    const newId = selectedServiceId === serviceId ? null : serviceId;
-    setSelectedServiceId(newId);
-    setEdited(prev => ({ ...prev, serviceId: newId }));
-  };
-
   const handleContinue = () => {
     onContinue({
       ...analysis,
@@ -220,13 +204,13 @@ export function AnalysisReviewPanel({
       // can forward them to the save route. AI never emits these.
       clientName: edited.clientName.trim() || null,
       technicianId: edited.technicianId,
-    } as JobSnapAnalysisResult & { clientName: string | null; technicianId: string | null });
+      attachments,
+    } as JobSnapAnalysisResult & {
+      clientName: string | null;
+      technicianId: string | null;
+      attachments: AttachmentSelection;
+    });
   };
-
-  // Get selected service name for display
-  const selectedServiceName = categories
-    .flatMap(c => c.services)
-    .find(s => s.id === selectedServiceId)?.name;
 
   return (
     <Card className="border-[#00ef99]/30 bg-[#00ef99]/5">
@@ -386,92 +370,23 @@ export function AnalysisReviewPanel({
           </p>
         </div>
 
-        {/* Category / Service Selector */}
-        {categories.length > 0 && (
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
-              Link to Service Page
-            </label>
-            <p className="mt-0.5 text-xs text-gray-400">
-              Select which service page this job should appear on
-            </p>
-            <div className="mt-2 rounded-lg border border-gray-200 bg-white overflow-hidden">
-              {categories.map((cat) => {
-                const isExpanded = expandedCategories.has(cat.id);
-                const hasSelectedChild = cat.services.some(s => s.id === selectedServiceId);
-
-                return (
-                  <div key={cat.id} className="border-b border-gray-100 last:border-b-0">
-                    {/* Category header */}
-                    <button
-                      type="button"
-                      onClick={() => toggleCategory(cat.id)}
-                      className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                        hasSelectedChild
-                          ? 'bg-[#00ef99]/5 text-gray-900'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" />
-                      )}
-                      {cat.name}
-                      {cat.isPrimary && (
-                        <Badge variant="outline" className="ml-1 text-[10px] text-gray-400 py-0">
-                          Primary
-                        </Badge>
-                      )}
-                      <span className="ml-auto text-xs text-gray-400">
-                        {cat.services.length} services
-                      </span>
-                    </button>
-
-                    {/* Services list */}
-                    {isExpanded && cat.services.length > 0 && (
-                      <div className="border-t border-gray-100 bg-gray-50/50">
-                        {cat.services.map((svc) => {
-                          const isSelected = svc.id === selectedServiceId;
-                          return (
-                            <button
-                              key={svc.id}
-                              type="button"
-                              onClick={() => selectService(svc.id)}
-                              className={`flex w-full items-center gap-2 px-3 py-2 pl-9 text-left text-sm transition-colors ${
-                                isSelected
-                                  ? 'bg-[#00ef99]/10 text-gray-900 font-medium'
-                                  : 'text-gray-600 hover:bg-gray-100'
-                              }`}
-                            >
-                              <div
-                                className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center ${
-                                  isSelected
-                                    ? 'border-[#00ef99] bg-[#00ef99]'
-                                    : 'border-gray-300'
-                                }`}
-                              >
-                                {isSelected && (
-                                  <CheckCircle2 className="h-3 w-3 text-white" />
-                                )}
-                              </div>
-                              {svc.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {selectedServiceName && (
-              <p className="mt-1.5 text-xs text-[#00ef99]">
-                Will appear on: <span className="font-medium">{selectedServiceName}</span> service page + its category page
-              </p>
-            )}
-          </div>
-        )}
+        {/* Multi-attachment picker: services, categories, brands, areas */}
+        <div>
+          <label className="text-xs font-medium uppercase tracking-wider text-gray-400">
+            Link to Pages
+          </label>
+          <p className="mt-0.5 mb-2 text-xs text-gray-400">
+            Choose every page this snap should appear on. The AI-detected service
+            is pre-selected; add more for wider SEO coverage.
+          </p>
+          <AttachmentPicker
+            siteId={siteId}
+            value={attachments}
+            onChange={setAttachments}
+            hintPrimaryServiceId={selectedServiceId}
+            disabled={isLoading}
+          />
+        </div>
 
         {/* Location */}
         {locationDisplay && (

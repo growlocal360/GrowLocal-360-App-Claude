@@ -21,14 +21,14 @@ import {
   Search,
   ExternalLink,
   Settings,
-  Pause,
-  Play,
   RotateCcw,
   RefreshCw,
   Archive,
   RotateCw,
+  Trash2,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
+import { HardDeleteSiteDialog } from '@/components/sites/hard-delete-site-dialog';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
@@ -53,6 +53,8 @@ export default function SitesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [archiveConfirm, setArchiveConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [userRole, setUserRole] = useState<string>('user');
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
@@ -81,6 +83,7 @@ export default function SitesPage() {
       // Determine accessible sites based on role + assignments
       let accessibleSiteIds: string[] | null = null;
       const role = profile?.role as string;
+      setUserRole(role || 'user');
       if (role !== 'owner') {
         const { data: assignments } = await supabase
           .from('profile_site_assignments')
@@ -163,31 +166,6 @@ export default function SitesPage() {
 
     setFilteredSites(result);
   }, [searchQuery, statusFilter, sites]);
-
-  async function handlePauseResume(siteId: string, currentStatus: SiteStatus) {
-    const newStatus = currentStatus === 'paused' ? 'active' : 'paused';
-    setActionLoading(siteId);
-
-    try {
-      const response = await fetch(`/api/sites/${siteId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        setSites(prev =>
-          prev.map(site =>
-            site.id === siteId ? { ...site, status: newStatus } : site
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Failed to update site status:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  }
 
   async function handleRetryBuild(siteId: string) {
     setActionLoading(siteId);
@@ -403,26 +381,12 @@ export default function SitesPage() {
                         </Button>
                       )}
 
-                      {(site.status === 'active' || site.status === 'paused') && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePauseResume(site.id, site.status)}
-                          disabled={actionLoading === site.id}
-                        >
-                          {site.status === 'paused' ? (
-                            <>
-                              <Play className="mr-2 h-4 w-4" />
-                              Resume
-                            </>
-                          ) : (
-                            <>
-                              <Pause className="mr-2 h-4 w-4" />
-                              Pause
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      {/*
+                        Pause/Resume is intentionally not user-facing. Pause
+                        is a system + support-managed state (billing failures,
+                        compliance holds, etc.) — surfaced read-only via the
+                        site status badge but never as a self-serve toggle.
+                      */}
 
                       {(site.status === 'failed' || site.status === 'building') && (
                         <Button
@@ -457,6 +421,27 @@ export default function SitesPage() {
                         >
                           <RotateCw className="mr-2 h-4 w-4" />
                           Restore
+                        </Button>
+                      )}
+
+                      {/*
+                        Hard Delete is owner-only and only offered after a
+                        site is already archived — that 2-step gate (archive
+                        first, delete second) plus type-to-confirm matches
+                        the GitHub / Vercel / Stripe destructive-action pattern.
+                      */}
+                      {site.status === 'archived' && userRole === 'owner' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setHardDeleteTarget({ id: site.id, name: site.name, slug: site.slug })
+                          }
+                          disabled={actionLoading === site.id}
+                          className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete forever
                         </Button>
                       )}
 
@@ -517,6 +502,19 @@ export default function SitesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hard Delete (type-to-confirm) — owner-only, archived-only */}
+      <HardDeleteSiteDialog
+        open={!!hardDeleteTarget}
+        onOpenChange={(o) => !o && setHardDeleteTarget(null)}
+        siteId={hardDeleteTarget?.id ?? null}
+        siteName={hardDeleteTarget?.name ?? null}
+        siteSlug={hardDeleteTarget?.slug ?? null}
+        onDeleted={(deletedId) => {
+          setSites((prev) => prev.filter((s) => s.id !== deletedId));
+          setHardDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

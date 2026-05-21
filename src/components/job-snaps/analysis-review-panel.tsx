@@ -12,6 +12,7 @@ import {
   AttachmentPicker,
   EMPTY_SELECTION,
   type AttachmentSelection,
+  type AttachmentAiHints,
 } from '@/components/job-snaps/attachment-picker';
 import {
   Sparkles,
@@ -24,11 +25,15 @@ import {
 import type { JobSnapAnalysisResult } from '@/lib/job-snaps/analyze';
 import type { JobLocation } from '@/components/job-snaps/job-location-card';
 
-interface CategoryOption {
-  id: string;
-  name: string;
-  isPrimary: boolean;
-  services: { id: string; name: string; slug: string }[];
+/**
+ * Shape of /api/job-snaps/attachment-targets — what AnalysisReviewPanel
+ * pulls down so it can auto-match the AI's detections to actual site rows.
+ */
+interface AttachmentTargets {
+  services: Array<{ id: string; name: string; slug: string; category_id: string | null; category_name: string | null }>;
+  categories: Array<{ id: string; name: string; is_primary: boolean }>;
+  brands: Array<{ id: string; name: string; slug: string }>;
+  service_areas: Array<{ id: string; name: string; slug: string; state: string | null }>;
 }
 
 interface AnalysisReviewPanelProps {
@@ -61,54 +66,107 @@ function ConfidenceBadge({ score, label }: { score: number; label: string }) {
 
 /**
  * Fuzzy-match AI's serviceType text against actual service names.
+ * Three passes in priority order: exact → substring → word overlap.
  * Returns the ID of the best-matching service, or null.
  */
 function fuzzyMatchService(
   serviceType: string | null,
-  categories: CategoryOption[]
+  services: AttachmentTargets['services']
 ): string | null {
-  if (!serviceType) return null;
+  if (!serviceType || services.length === 0) return null;
   const lower = serviceType.toLowerCase();
 
   // Exact match first
-  for (const cat of categories) {
-    for (const svc of cat.services) {
-      if (svc.name.toLowerCase() === lower) return svc.id;
-    }
+  for (const svc of services) {
+    if (svc.name.toLowerCase() === lower) return svc.id;
   }
 
-  // Substring match: AI text contains service name or vice versa
+  // Substring match
   let bestMatch: { id: string; score: number } | null = null;
-  for (const cat of categories) {
-    for (const svc of cat.services) {
-      const svcLower = svc.name.toLowerCase();
-      if (lower.includes(svcLower) || svcLower.includes(lower)) {
-        const score = Math.min(lower.length, svcLower.length) / Math.max(lower.length, svcLower.length);
-        if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { id: svc.id, score };
-        }
+  for (const svc of services) {
+    const svcLower = svc.name.toLowerCase();
+    if (lower.includes(svcLower) || svcLower.includes(lower)) {
+      const score = Math.min(lower.length, svcLower.length) / Math.max(lower.length, svcLower.length);
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = { id: svc.id, score };
       }
     }
   }
+  if (bestMatch) return bestMatch.id;
 
   // Word overlap match
-  if (!bestMatch) {
-    const aiWords = lower.split(/\s+/).filter(w => w.length > 2);
-    for (const cat of categories) {
-      for (const svc of cat.services) {
-        const svcWords = svc.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        const overlap = aiWords.filter(w => svcWords.some(sw => sw.includes(w) || w.includes(sw)));
-        if (overlap.length > 0) {
-          const score = overlap.length / Math.max(aiWords.length, svcWords.length);
-          if (!bestMatch || score > bestMatch.score) {
-            bestMatch = { id: svc.id, score };
-          }
-        }
+  const aiWords = lower.split(/\s+/).filter((w) => w.length > 2);
+  for (const svc of services) {
+    const svcWords = svc.name.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    const overlap = aiWords.filter((w) => svcWords.some((sw) => sw.includes(w) || w.includes(sw)));
+    if (overlap.length > 0) {
+      const score = overlap.length / Math.max(aiWords.length, svcWords.length);
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = { id: svc.id, score };
       }
     }
   }
-
   return bestMatch?.id ?? null;
+}
+
+/**
+ * Case-insensitive exact-name match. Used for brands and service areas where
+ * the AI returns a specific name we can directly look up. No fuzzy fallback
+ * — we'd rather miss than pre-check a wrong brand and have the user not
+ * notice.
+ */
+function exactMatchByName<T extends { id: string; name: string }>(
+  needle: string | null | undefined,
+  haystack: T[]
+): string | null {
+  if (!needle) return null;
+  const lower = needle.trim().toLowerCase();
+  if (!lower) return null;
+  return haystack.find((row) => row.name.trim().toLowerCase() === lower)?.id ?? null;
+}
+
+/**
+ * Compute the AI's auto-attachment hints from the analysis + location +
+ * loaded site taxonomy. Each hit gets pre-checked AND shows the "AI
+ * suggested" pill in the picker.
+ *
+ *  - service: fuzzy-match analysis.serviceType against site services
+ *  - category: pick up the parent category of any auto-matched service
+ *  - brand: exact name match against analysis.brand
+ *  - service_area: exact name match against location.city (with neighborhood fallback)
+ */
+function computeAiHints(
+  targets: AttachmentTargets,
+  analysis: JobSnapAnalysisResult,
+  location: JobLocation | null
+): { hints: AttachmentAiHints; selection: AttachmentSelection } {
+  const service_ids: string[] = [];
+  const category_ids: string[] = [];
+  const brand_ids: string[] = [];
+  const area_ids: string[] = [];
+
+  const matchedServiceId = fuzzyMatchService(analysis.serviceType, targets.services);
+  if (matchedServiceId) {
+    service_ids.push(matchedServiceId);
+    const matchedSvc = targets.services.find((s) => s.id === matchedServiceId);
+    if (matchedSvc?.category_id) category_ids.push(matchedSvc.category_id);
+  }
+
+  const matchedBrandId = exactMatchByName(analysis.brand, targets.brands);
+  if (matchedBrandId) brand_ids.push(matchedBrandId);
+
+  // Prefer the captured location's city; fall back to the AI's inferred
+  // neighborhood when no precise city is known.
+  const matchedAreaId =
+    exactMatchByName(location?.city, targets.service_areas) ??
+    exactMatchByName(analysis.neighborhood, targets.service_areas);
+  if (matchedAreaId) area_ids.push(matchedAreaId);
+
+  const hints: AttachmentAiHints = { service_ids, category_ids, brand_ids, area_ids };
+  // Initial selection mirrors the hints — user can uncheck anything that's
+  // wrong before saving.
+  const selection: AttachmentSelection = { service_ids, category_ids, brand_ids, area_ids };
+  return { hints, selection };
 }
 
 export function AnalysisReviewPanel({
@@ -132,39 +190,39 @@ export function AnalysisReviewPanel({
     technicianId: null as string | null,
   });
 
-  // Multi-attachment state (services, categories, brands, areas). Starts
-  // empty; the AI's auto-matched service ID is folded in once we fetch
-  // categories in the effect below.
+  // Multi-attachment state. AI auto-matches are folded in once the targets
+  // load; users can check/uncheck anything before saving.
   const [attachments, setAttachments] = useState<AttachmentSelection>(EMPTY_SELECTION);
+  const [aiHints, setAiHints] = useState<AttachmentAiHints>({});
 
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-
-  // Fetch categories + services for this site
+  // Fetch all four taxonomies + run AI auto-matching for services, categories,
+  // brands, and service areas in one pass.
   useEffect(() => {
     if (!siteId) return;
-    fetch(`/api/job-snaps/services?siteId=${siteId}`)
-      .then(r => r.json())
-      .then(data => {
-        const cats = data.categories || [];
-        setCategories(cats);
-
-        // Auto-match AI's serviceType to an actual service
-        if (analysis.serviceType && cats.length > 0) {
-          const matchedId = fuzzyMatchService(analysis.serviceType, cats);
-          if (matchedId) {
-            setSelectedServiceId(matchedId);
-            setEdited(prev => ({ ...prev, serviceId: matchedId }));
-            setAttachments((prev) =>
-              prev.service_ids.includes(matchedId)
-                ? prev
-                : { ...prev, service_ids: [...prev.service_ids, matchedId] }
-            );
-          }
+    let cancelled = false;
+    fetch(`/api/job-snaps/attachment-targets?siteId=${siteId}`)
+      .then((r) => r.json())
+      .then((data: AttachmentTargets) => {
+        if (cancelled || !data) return;
+        const { hints, selection } = computeAiHints(data, analysis, location);
+        setAiHints(hints);
+        // Pre-populate selection with the auto-matches. The user can still
+        // edit before saving.
+        setAttachments(selection);
+        // Keep edited.serviceId in sync with the matched service (legacy
+        // single-FK path still flows through to work_items.service_id).
+        if (hints.service_ids?.[0]) {
+          setEdited((prev) => ({ ...prev, serviceId: hints.service_ids![0] }));
         }
       })
       .catch(() => {});
-  }, [siteId, analysis.serviceType]);
+    return () => {
+      cancelled = true;
+    };
+    // analysis + location are captured at mount; re-analyze handles the
+    // re-sync separately. Avoid re-running matching on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId, analysis.serviceType, analysis.brand, analysis.neighborhood, location?.city]);
 
   // Re-sync editable fields when analysis changes (re-analyze)
   useEffect(() => {
@@ -383,7 +441,7 @@ export function AnalysisReviewPanel({
             siteId={siteId}
             value={attachments}
             onChange={setAttachments}
-            hintPrimaryServiceId={selectedServiceId}
+            aiHints={aiHints}
             disabled={isLoading}
           />
         </div>

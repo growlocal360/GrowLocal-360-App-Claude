@@ -26,12 +26,24 @@ interface TargetsResponse {
   service_areas: Array<{ id: string; name: string; slug: string; state: string | null }>;
 }
 
+/**
+ * Set of IDs that the AI auto-matched, keyed by type. Rows whose IDs appear
+ * here get an "AI suggested" pill — used in the create flow to tell the user
+ * "we pre-checked this for you based on the photo analysis."
+ */
+export interface AttachmentAiHints {
+  service_ids?: string[];
+  category_ids?: string[];
+  brand_ids?: string[];
+  area_ids?: string[];
+}
+
 interface AttachmentPickerProps {
   siteId: string;
   value: AttachmentSelection;
   onChange: (next: AttachmentSelection) => void;
-  /** When present, the picker labels selections "primary" — used in the create flow to hint that the AI suggestion is pre-selected. */
-  hintPrimaryServiceId?: string | null;
+  /** IDs the AI matched from photo + location context. Renders an "AI suggested" badge per row. */
+  aiHints?: AttachmentAiHints;
   disabled?: boolean;
 }
 
@@ -49,9 +61,19 @@ export function AttachmentPicker({
   siteId,
   value,
   onChange,
-  hintPrimaryServiceId,
+  aiHints,
   disabled,
 }: AttachmentPickerProps) {
+  // Materialize the per-type hint sets once for cheap row-level lookups.
+  const hintSets = useMemo(
+    () => ({
+      service: new Set(aiHints?.service_ids ?? []),
+      category: new Set(aiHints?.category_ids ?? []),
+      brand: new Set(aiHints?.brand_ids ?? []),
+      area: new Set(aiHints?.area_ids ?? []),
+    }),
+    [aiHints]
+  );
   const [targets, setTargets] = useState<TargetsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +222,7 @@ export function AttachmentPicker({
                       <CheckRow
                         key={svc.id}
                         checked={value.service_ids.includes(svc.id)}
-                        primary={svc.id === hintPrimaryServiceId}
+                        primary={hintSets.service.has(svc.id)}
                         label={svc.name}
                         onClick={() => !disabled && toggle('service_ids', svc.id)}
                         disabled={disabled}
@@ -223,6 +245,7 @@ export function AttachmentPicker({
                 <CheckRow
                   key={cat.id}
                   checked={value.category_ids.includes(cat.id)}
+                  primary={hintSets.category.has(cat.id)}
                   label={
                     <span className="flex items-center gap-2">
                       {cat.name}
@@ -256,6 +279,7 @@ export function AttachmentPicker({
                 <CheckRow
                   key={brand.id}
                   checked={value.brand_ids.includes(brand.id)}
+                  primary={hintSets.brand.has(brand.id)}
                   label={brand.name}
                   onClick={() => !disabled && toggle('brand_ids', brand.id)}
                   disabled={disabled}
@@ -275,6 +299,7 @@ export function AttachmentPicker({
                 <CheckRow
                   key={area.id}
                   checked={value.area_ids.includes(area.id)}
+                  primary={hintSets.area.has(area.id)}
                   label={
                     <span>
                       {area.name}

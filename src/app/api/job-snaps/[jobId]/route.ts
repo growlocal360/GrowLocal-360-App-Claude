@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { emitJobSnapEvent } from '@/lib/webhooks/emit';
 import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
+import { getIndustryArchetype } from '@/lib/job-snaps/industry-config';
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
 
@@ -173,6 +174,24 @@ export async function PATCH(
       );
     }
 
+    // Resolve the site's industry archetype from its primary GBP category
+    // (only matters when we're actually recomputing the slug).
+    let industryArchetype = undefined;
+    if (body.regenerate_seo_fields) {
+      const { data: primaryCategory } = await adminClient
+        .from('site_categories')
+        .select('gbp_category:gbp_categories(display_name)')
+        .eq('site_id', snap.site_id)
+        .eq('is_primary', true)
+        .single();
+      type CategoryJoin = { gbp_category: { display_name: string } | { display_name: string }[] | null } | null;
+      const gbpCategoryRaw = (primaryCategory as CategoryJoin)?.gbp_category;
+      const gbpCategoryName = Array.isArray(gbpCategoryRaw)
+        ? gbpCategoryRaw[0]?.display_name ?? null
+        : gbpCategoryRaw?.display_name ?? null;
+      industryArchetype = getIndustryArchetype(gbpCategoryName);
+    }
+
     const naming = computeJobSnapNaming(
       {
         title: merged.title,
@@ -191,6 +210,7 @@ export async function PATCH(
       {
         preservePermalinks: !body.regenerate_seo_fields,
         siteExistingSlugs,
+        industryArchetype,
         existing: {
           slug: snap.slug,
           url_path: snap.url_path,

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
+import { getIndustryArchetype } from '@/lib/job-snaps/industry-config';
 
 // Allow large bodies for base64-encoded images (up to 4 × 20MB)
 export const maxDuration = 60;
@@ -168,6 +169,21 @@ export async function POST(request: Request) {
       (existingSlugRows || []).map((r: { slug: string | null }) => r.slug || '').filter(Boolean)
     );
 
+    // ── Resolve the site's industry archetype from its primary GBP category ─
+    // Drives the URL slug component order (brand-led vs service-led).
+    const { data: primaryCategory } = await admin
+      .from('site_categories')
+      .select('gbp_category:gbp_categories(display_name)')
+      .eq('site_id', body.siteId)
+      .eq('is_primary', true)
+      .single();
+    type CategoryJoin = { gbp_category: { display_name: string } | { display_name: string }[] | null } | null;
+    const gbpCategoryRaw = (primaryCategory as CategoryJoin)?.gbp_category;
+    const gbpCategoryName = Array.isArray(gbpCategoryRaw)
+      ? gbpCategoryRaw[0]?.display_name ?? null
+      : gbpCategoryRaw?.display_name ?? null;
+    const industryArchetype = getIndustryArchetype(gbpCategoryName);
+
     // ── Compute canonical SEO naming (source of truth across all channels) ──
     // GL360-generated SEO fields are authoritative. Customer integrations
     // consume these fields verbatim unless an explicit override is configured.
@@ -185,7 +201,7 @@ export async function POST(request: Request) {
         neighborhood: body.neighborhood ?? null,
         address_public: addressPublic,
       },
-      { siteExistingSlugs }
+      { siteExistingSlugs, industryArchetype }
     );
 
     // ── Pre-generate snap UUID so storage paths can use it ──────────────────

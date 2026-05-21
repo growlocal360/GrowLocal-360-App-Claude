@@ -42,6 +42,11 @@
 import { randomBytes } from 'crypto';
 import { abbrToFullState, normalizeStateAbbr } from '@/lib/utils/state-abbr';
 import { stripHouseNumber } from '@/lib/job-snaps/address';
+import {
+  DEFAULT_ARCHETYPE,
+  type IndustrySlugArchetype,
+  type SlugComponentName,
+} from '@/lib/job-snaps/industry-config';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -217,40 +222,85 @@ interface SlugParts {
   service_type: string | null;
   brand: string | null;
   primary_problem: string | null;
+  equipment_type?: string | null;
+  street_name?: string | null;
 }
 
 /**
- * Build the canonical kebab-case slug for a Job Snap.
+ * Pull the value for a given slug-component name out of SlugParts.
+ * Used by the industry-aware builder to walk componentOrder in sequence.
+ */
+function pickComponent(name: SlugComponentName, parts: SlugParts): string | null {
+  switch (name) {
+    case 'brand':           return parts.brand ?? null;
+    case 'equipment_type':  return parts.equipment_type ?? null;
+    case 'service_type':    return parts.service_type ?? null;
+    case 'primary_problem': return parts.primary_problem ?? null;
+    case 'street_name':     return parts.street_name ?? null;
+    case 'city':            return parts.city ?? null;
+    default:                return null;
+  }
+}
+
+/**
+ * Build the canonical kebab-case slug for a Job Snap, using an industry
+ * archetype to decide which components appear and in what order.
  *
- * Templates (per spec):
- *   with brand:    {city}-{service_type}-{brand}-{primary_problem}
- *   without brand: {city}-{service_type}-{primary_problem}
+ * Templates by archetype:
+ *   brand_led (Appliance, HVAC, Pool, Auto):
+ *     {brand}-{equipment_type}-{primary_problem}-{street_name}-{city}
+ *   service_led (Plumbing, Pressure Washing, Roofing, Tree, etc.):
+ *     {service_type}-{primary_problem}-{street_name}-{city}
+ *   brand_optional (Garage Door):
+ *     {brand?}-{service_type}-{primary_problem}-{street_name}-{city}
  *
- * Filler words ("and", "the", "for", "near", ...) are stripped.
- * Result is lowercase, hyphenated, capped at 80 chars, no double-hyphens, no
- * leading/trailing hyphens.
+ * Behavior:
+ *   - Lowercase, hyphenated, no special chars
+ *   - Filler words stripped ("and", "the", "for", "near", ...)
+ *   - Consecutive duplicate tokens collapse (e.g., "refrigerator" once,
+ *     not twice when service_type and equipment_type overlap)
+ *   - Empty/null components are skipped (graceful degradation)
+ *   - Soft cap 80 chars at the last token boundary; hard cap 110
+ *   - brandPolicy controls when brand is included:
+ *       'omit'     → never (defends against false-positive AI detection)
+ *       'required' → only when present; archetype skips itself if missing
+ *       'optional' → include when present, skip when null
  *
  * @example
- *   generateJobSnapSlug({
- *     city: "Cleveland", service_type: "Dryer Repair",
- *     brand: "Whirlpool", primary_problem: "Drum Roller Replacement"
- *   })
- *   // "cleveland-dryer-repair-whirlpool-drum-roller-replacement"
+ *   generateJobSnapSlug(
+ *     { city: 'Lakewood Ranch', service_type: 'Refrigerator Repair',
+ *       brand: 'Sub-Zero', equipment_type: 'Refrigerator',
+ *       primary_problem: 'Defrost Repair',
+ *       street_name: 'Highfield Circle' },
+ *     BRAND_LED
+ *   )
+ *   // "sub-zero-refrigerator-defrost-repair-highfield-circle-lakewood-ranch"
  */
-export function generateJobSnapSlug(parts: SlugParts): string {
-  const orderedFields = [parts.city, parts.service_type, parts.brand, parts.primary_problem];
+export function generateJobSnapSlug(
+  parts: SlugParts,
+  archetype: IndustrySlugArchetype = DEFAULT_ARCHETYPE
+): string {
   const tokens: string[] = [];
-  for (const field of orderedFields) {
-    if (!field) continue;
-    tokens.push(...tokenize(field));
+  for (const componentName of archetype.componentOrder) {
+    // Skip brand entirely when archetype says so.
+    if (componentName === 'brand' && archetype.brandPolicy === 'omit') continue;
+
+    const value = pickComponent(componentName, parts);
+    if (!value) continue;
+    tokens.push(...tokenize(value));
   }
+
   let slug = joinSlugTokens(tokens);
+
+  // Soft cap: truncate at the last complete token inside the limit.
   if (slug.length > MAX_SLUG_LENGTH) {
-    // Truncate at the last complete token boundary inside the limit
     slug = slug.slice(0, MAX_SLUG_LENGTH);
     const lastHyphen = slug.lastIndexOf('-');
     if (lastHyphen > MAX_SLUG_LENGTH * 0.6) slug = slug.slice(0, lastHyphen);
   }
+  // Hard cap (defense in depth)
+  if (slug.length > 110) slug = slug.slice(0, 110).replace(/-[^-]*$/, '');
+
   return slug;
 }
 
@@ -266,24 +316,32 @@ export function generateJobSnapUrlPath(slug: string): string {
 }
 
 /**
- * Resolve a slug collision by appending the short_id, ONLY if the candidate slug
- * collides with an existing one. Order is never rewritten.
+ * Resolve a slug collision by appending a sequential numeric suffix
+ * (`-2`, `-3`, …), only when the candidate slug already exists on this
+ * site. Word order is never rewritten — the suffix is the only change.
  *
- * The collision check itself happens via DB query (caller supplies `siteExistingSlugs`).
+ * The first occupied slug keeps the bare form; the next collision becomes
+ * `-2`, then `-3`, etc. If `foo-2` already exists in the set, the next is
+ * `-3` (skips occupied numbers).
  *
  * @example
- *   handleDuplicateSlug("cleveland-dryer-repair", "8b60", new Set())
+ *   handleDuplicateSlug("cleveland-dryer-repair", new Set())
  *     // "cleveland-dryer-repair"
- *   handleDuplicateSlug("cleveland-dryer-repair", "8b60", new Set(["cleveland-dryer-repair"]))
- *     // "cleveland-dryer-repair-8b60"
+ *   handleDuplicateSlug("cleveland-dryer-repair", new Set(["cleveland-dryer-repair"]))
+ *     // "cleveland-dryer-repair-2"
+ *   handleDuplicateSlug("cleveland-dryer-repair", new Set([
+ *     "cleveland-dryer-repair", "cleveland-dryer-repair-2",
+ *   ]))
+ *     // "cleveland-dryer-repair-3"
  */
 export function handleDuplicateSlug(
   candidateSlug: string,
-  shortId: string,
   siteExistingSlugs: Set<string>
 ): string {
   if (!siteExistingSlugs.has(candidateSlug)) return candidateSlug;
-  return `${candidateSlug}-${shortId}`;
+  let n = 2;
+  while (siteExistingSlugs.has(`${candidateSlug}-${n}`)) n++;
+  return `${candidateSlug}-${n}`;
 }
 
 // ─── Meta title ───────────────────────────────────────────────────────────────
@@ -605,12 +663,20 @@ export interface ComputeNamingOptions {
   preservePermalinks?: boolean;
 
   /**
-   * Slugs that already exist on this site. Used for collision detection.
-   * Pass an empty Set when the caller hasn't fetched the list yet — the
-   * orchestrator will return the un-suffixed slug and let the DB unique
-   * constraint catch any race.
+   * Slugs that already exist on this site. Used for collision detection
+   * (sequential -2 / -3 / … suffix). Pass an empty Set when the caller
+   * hasn't fetched the list yet — the orchestrator will return the
+   * un-suffixed slug and let the DB unique constraint catch any race.
    */
   siteExistingSlugs?: Set<string>;
+
+  /**
+   * Industry archetype controlling slug component order + whether brand
+   * is included. Defaults to SERVICE_LED (safe fallback). Callers should
+   * resolve this from the site's primary GBP category via
+   * `getIndustryArchetype()` from `industry-config.ts`.
+   */
+  industryArchetype?: IndustrySlugArchetype;
 
   /**
    * Existing permalink values to preserve when preservePermalinks is true.
@@ -673,15 +739,19 @@ export function computeJobSnapNaming(
         short_id,
       });
   } else {
-    const candidateSlug = generateJobSnapSlug({
-      city: input.city,
-      service_type: input.service_type,
-      brand: input.brand,
-      primary_problem: input.primary_problem,
-    });
+    const candidateSlug = generateJobSnapSlug(
+      {
+        city: input.city,
+        service_type: input.service_type,
+        brand: input.brand,
+        primary_problem: input.primary_problem,
+        equipment_type: input.equipment_type ?? null,
+        street_name: street_name_public,
+      },
+      options.industryArchetype ?? DEFAULT_ARCHETYPE
+    );
     slug = handleDuplicateSlug(
       candidateSlug || `job-${short_id}`,
-      short_id,
       options.siteExistingSlugs || new Set()
     );
     url_path = generateJobSnapUrlPath(slug);

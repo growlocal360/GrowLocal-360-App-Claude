@@ -113,8 +113,38 @@ export interface Site {
   status_message: string | null;
   status_updated_at: string;
   settings: SiteSettings;
+  // Migration 050 — Site scope (used by the v4 onboarding analysis module to
+  // filter GSC data to the geography the site is being built for).
+  scope_type: ScopeType | null;
+  scope_target_city: string | null;
+  scope_city_variants: string[] | null;
+  scope_zip_codes: string[] | null;
+  scope_excluded_cities: string[] | null;
+  scope_existing_url_pattern: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type ScopeType = 'FULL_BUSINESS' | 'MICROSITE' | 'CITY_SPECIFIC';
+
+/**
+ * Migration 050 — one row per onboarding analysis run for a site.
+ * Phase 1 populates scope_snapshot + filtering_report + scoped_gsc_data.
+ * Phase 2 will populate gbp_audit_findings + scenario_classification + sitemap_spec.
+ */
+export interface OnboardingAnalysis {
+  id: string;
+  site_id: string;
+  scope_snapshot: Record<string, unknown>;
+  filtering_report: Record<string, unknown> | null;
+  scoped_gsc_data: Record<string, unknown> | null;
+  gbp_audit_findings: Record<string, unknown> | null;
+  scenario_classification: Record<string, unknown> | null;
+  sitemap_spec: Record<string, unknown> | null;
+  claude_input_tokens: number | null;
+  claude_output_tokens: number | null;
+  model: string | null;
+  created_at: string;
 }
 
 export interface SiteSettings {

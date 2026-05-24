@@ -48,6 +48,7 @@ export interface PublicRenderSettings {
   email: string | null;
   core_industry: string | null;
   cta_text: string | null;
+  tagline: string | null;
   google_average_rating: number | null;
   google_total_reviews: number | null;
 }
@@ -338,6 +339,7 @@ export function toPublicSite(
       email: s.email || null,
       core_industry: s.core_industry || null,
       cta_text: s.cta_text || null,
+      tagline: (s as { tagline?: string | null }).tagline || null,
       google_average_rating: s.google_average_rating ?? null,
       google_total_reviews: s.google_total_reviews ?? null,
     },

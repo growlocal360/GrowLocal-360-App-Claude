@@ -22,9 +22,10 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
   const slug = siteSlug || site.slug;
 
   const logoUrl = site.settings?.logo_url as string | undefined;
-  const tagline = primaryLocation
+  const customTagline = site.settings?.tagline?.trim();
+  const tagline = customTagline || (primaryLocation
     ? `Trusted local service in ${primaryLocation.city}, ${primaryLocation.state}.`
-    : 'Trusted local service for your community.';
+    : 'Trusted local service for your community.');
 
   return (
     <footer className="bg-gray-900 text-gray-400">

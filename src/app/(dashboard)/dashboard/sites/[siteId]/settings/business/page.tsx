@@ -17,6 +17,7 @@ interface BusinessInfo {
   coreIndustry: string | null;
   businessDescription: string;
   credentials: string;
+  tagline: string;
 }
 
 export default function BusinessInfoPage() {
@@ -35,6 +36,7 @@ export default function BusinessInfoPage() {
   const [coreIndustry, setCoreIndustry] = useState('');
   const [businessDescription, setBusinessDescription] = useState('');
   const [credentials, setCredentials] = useState('');
+  const [tagline, setTagline] = useState('');
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -54,6 +56,7 @@ export default function BusinessInfoPage() {
       setCoreIndustry(data.coreIndustry || '');
       setBusinessDescription(data.businessDescription || '');
       setCredentials(data.credentials || '');
+      setTagline(data.tagline || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load business info');
     } finally {
@@ -67,7 +70,8 @@ export default function BusinessInfoPage() {
     email !== (original?.email || '') ||
     coreIndustry !== (original?.coreIndustry || '') ||
     businessDescription !== (original?.businessDescription || '') ||
-    credentials !== (original?.credentials || '');
+    credentials !== (original?.credentials || '') ||
+    tagline !== (original?.tagline || '');
 
   const handleSave = async () => {
     try {
@@ -78,7 +82,7 @@ export default function BusinessInfoPage() {
       const response = await fetch(`/api/sites/${siteId}/settings/business`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials }),
+        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline }),
       });
 
       if (!response.ok) {
@@ -86,7 +90,7 @@ export default function BusinessInfoPage() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials });
+      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -154,6 +158,21 @@ export default function BusinessInfoPage() {
               placeholder="Your Business Name"
               className="mt-1"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="tagline">Tagline</Label>
+            <Input
+              id="tagline"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              placeholder="e.g., Same-day AC repair across Lake Charles."
+              maxLength={120}
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              A short one-liner shown under your logo in the footer. Keep it under ~10 words. Leave blank to use the default.
+            </p>
           </div>
 
           <div>

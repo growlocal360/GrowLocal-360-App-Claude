@@ -52,6 +52,7 @@ export async function GET(
     coreIndustry: settings.core_industry || null,
     businessDescription: settings.business_description || '',
     credentials: settings.credentials || '',
+    tagline: settings.tagline || '',
   });
 }
 
@@ -80,7 +81,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { name, phone, email, coreIndustry, businessDescription, credentials } = body;
+  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
@@ -91,6 +92,7 @@ export async function PATCH(
     core_industry: coreIndustry !== undefined ? coreIndustry : currentSettings.core_industry,
     ...(businessDescription !== undefined && { business_description: businessDescription }),
     ...(credentials !== undefined && { credentials }),
+    ...(tagline !== undefined && { tagline }),
   };
 
   const updateData: Record<string, unknown> = {

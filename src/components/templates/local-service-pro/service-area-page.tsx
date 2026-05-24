@@ -95,10 +95,13 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
 
   const areaState = serviceArea.state || location.state;
 
-  // Construct page content from serviceArea's SEO content for HeroSection & LocalizedContentSection
+  // Construct page content from serviceArea's SEO content for HeroSection & LocalizedContentSection.
+  // hero_description references the AREA being viewed (Gilbert, AZ), not the business's primary GBP
+  // location — otherwise the generic HeroSection fallback prints "in ," when primaryLocation
+  // city/state are blank.
   const pageContent: PublicRenderPageContent = {
     h1: serviceArea.h1 || `Your Trusted ${primaryCategoryName} Provider in ${serviceArea.name}`,
-    hero_description: null,
+    hero_description: `${site.name} provides expert ${industry.toLowerCase()} in ${serviceArea.name}${areaState ? `, ${areaState}` : ''} and the surrounding area.`,
     h2: `Serving ${serviceArea.name}`,
     body_copy: serviceArea.body_copy,
     body_copy_2: null,
@@ -140,6 +143,12 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
           primaryLocation={location}
           pageContent={pageContent}
           services={services}
+          formCategories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          ctaColor={ctaColor}
+          secondaryColor={accentColor}
+          primaryCategoryName={primaryCategoryName}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />

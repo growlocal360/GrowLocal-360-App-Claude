@@ -43,10 +43,18 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const category = primaryCategoryName || site.settings?.core_industry || 'Professional Services';
-  const locationStr = primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : '';
+  // Strip trailing "service"/"services" so "Appliance Repair Service" + " services" doesn't
+  // double up into "appliance repair service services".
+  const categoryNoun = category.replace(/\s*services?$/i, '').trim() || category;
+  const hasCity = !!primaryLocation?.city;
+  const hasState = !!primaryLocation?.state;
+  const cityStatePart = hasCity && hasState
+    ? `${primaryLocation!.city}, ${primaryLocation!.state}`
+    : hasCity ? primaryLocation!.city : hasState ? primaryLocation!.state : '';
+  const locationStr = cityStatePart ? ` in ${cityStatePart}` : '';
   const h1 = toTitleCase(pageContent?.h1 || `${category}${locationStr} - ${site.name}`);
   const heroDescription = pageContent?.hero_description ||
-    `${site.name} provides expert ${category.toLowerCase()} services${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state} and surrounding areas` : ''}.`;
+    `${site.name} provides expert ${categoryNoun.toLowerCase()} services${cityStatePart ? ` in ${cityStatePart} and surrounding areas` : ''}.`;
 
   // Find hero image — prefer prompt_index 0, fall back to first available
   const heroImage = pageContent?.generated_images?.find(

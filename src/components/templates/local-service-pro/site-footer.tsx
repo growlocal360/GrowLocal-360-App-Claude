@@ -21,47 +21,28 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
   const currentYear = new Date().getFullYear();
   const slug = siteSlug || site.slug;
 
+  const logoUrl = site.settings?.logo_url as string | undefined;
+  const tagline = primaryLocation
+    ? `Trusted local service in ${primaryLocation.city}, ${primaryLocation.state}.`
+    : 'Trusted local service for your community.';
+
   return (
     <footer className="bg-gray-900 text-gray-400">
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-3">
-          {/* Contact Info */}
+      <div className="mx-auto max-w-7xl px-4 py-20 md:py-24">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+          {/* Brand / Logo */}
           <div>
-            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: accentColor }}>
-              Contact Info
-            </h3>
-            <div className="space-y-3 text-sm">
-              {primaryLocation && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div>
-                    <p>{primaryLocation.address_line1}</p>
-                    <p>
-                      {primaryLocation.city}, {primaryLocation.state}{' '}
-                      {primaryLocation.zip_code}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {phone && (
-                <a
-                  href={`tel:${phone.replace(/\D/g, '')}`}
-                  className="flex items-center gap-2 hover:text-white"
-                >
-                  <Phone className="h-4 w-4" />
-                  {phone}
-                </a>
-              )}
-              {email && (
-                <a
-                  href={`mailto:${email}`}
-                  className="flex items-center gap-2 hover:text-white"
-                >
-                  <Mail className="h-4 w-4" />
-                  {email}
-                </a>
-              )}
-            </div>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={site.name}
+                className="mb-4 max-h-16 w-auto"
+              />
+            ) : (
+              <p className="mb-4 text-2xl font-bold text-white">{site.name}</p>
+            )}
+            <p className="text-sm leading-relaxed">{tagline}</p>
           </div>
 
           {/* Quick Links */}
@@ -138,12 +119,51 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
               </ul>
             </div>
           )}
+
+          {/* Contact Info */}
+          <div>
+            <h3 className="mb-4 border-l-2 pl-3 text-lg font-semibold text-white" style={{ borderColor: accentColor }}>
+              Contact Info
+            </h3>
+            <div className="space-y-3 text-sm">
+              {primaryLocation && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p>{primaryLocation.address_line1}</p>
+                    <p>
+                      {primaryLocation.city}, {primaryLocation.state}{' '}
+                      {primaryLocation.zip_code}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {phone && (
+                <a
+                  href={`tel:${phone.replace(/\D/g, '')}`}
+                  className="flex items-center gap-2 hover:text-white"
+                >
+                  <Phone className="h-4 w-4" />
+                  {phone}
+                </a>
+              )}
+              {email && (
+                <a
+                  href={`mailto:${email}`}
+                  className="flex items-center gap-2 hover:text-white"
+                >
+                  <Mail className="h-4 w-4" />
+                  {email}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Copyright bar */}
       <div className="border-t border-gray-800">
-        <div className="mx-auto max-w-7xl px-4 py-6 text-center text-sm">
+        <div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm">
           <p>&copy; {currentYear} {site.name}. All rights reserved.</p>
           <p className="mt-1 text-xs text-gray-500">
             Powered by{' '}

@@ -34,11 +34,11 @@ export function FinalCTASection({
     : 'Talk to a real person — we respond fast.');
 
   return (
-    <section className="py-16 md:py-20 text-white" style={{ backgroundColor: color }}>
+    <section className="py-24 md:py-32 text-white" style={{ backgroundColor: color }}>
       <div className="mx-auto max-w-5xl px-4 text-center">
         <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{headingText}</h2>
-        <p className="mt-3 text-lg text-white/90 md:text-xl">{subText}</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <p className="mt-4 text-lg text-white/90 md:text-xl">{subText}</p>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Button
             asChild
             size="lg"

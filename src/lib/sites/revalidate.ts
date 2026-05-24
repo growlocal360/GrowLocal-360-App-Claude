@@ -4,44 +4,51 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import type { GenerationScope } from '@/types/database';
 
 /**
- * Revalidates all cached pages for a site.
- * Call this after any settings change (branding, business info, services, etc.)
- * so the public site updates immediately instead of waiting for ISR expiry.
+ * Revalidates every cached path for a site.
  *
- * This aggressively revalidates individual service/category/area paths
- * because cached 404 responses may not be busted by layout-level revalidation alone.
+ * Called after any user-facing edit (settings, services, brands, content,
+ * scheduling, etc.) so changes appear immediately rather than waiting up
+ * to an hour for ISR to expire. Users equate "instant" with "it worked"
+ * — if they don't see a change in a few seconds they'll re-save and waste
+ * a regeneration.
+ *
+ * Covers: root listings, every category/service/area/neighborhood/brand/work
+ * detail page, the home page, /about, /contact, /faq, /reviews, /job-snaps,
+ * and the full /locations/{loc}/* multi-location subtree.
  */
 export async function revalidateSite(siteId: string) {
   const supabase = createAdminClient();
 
-  const [{ data: site }, { data: services }, { data: categories }, { data: serviceAreas }, { data: neighborhoods }] =
-    await Promise.all([
-      supabase.from('sites').select('slug').eq('id', siteId).single(),
-      supabase.from('services').select('slug, site_category_id').eq('site_id', siteId).eq('is_active', true),
-      supabase
-        .from('site_categories')
-        .select('id, is_primary, gbp_category:gbp_categories(display_name)')
-        .eq('site_id', siteId),
-      supabase.from('service_areas').select('slug').eq('site_id', siteId),
-      supabase.from('neighborhoods').select('slug').eq('site_id', siteId).eq('is_active', true),
-    ]);
+  const [
+    { data: site },
+    { data: services },
+    { data: categories },
+    { data: serviceAreas },
+    { data: neighborhoods },
+    { data: brands },
+    { data: locations },
+    { data: workItems },
+  ] = await Promise.all([
+    supabase.from('sites').select('slug').eq('id', siteId).single(),
+    supabase.from('services').select('slug, site_category_id').eq('site_id', siteId).eq('is_active', true),
+    supabase
+      .from('site_categories')
+      .select('id, is_primary, gbp_category:gbp_categories(display_name)')
+      .eq('site_id', siteId),
+    supabase.from('service_areas').select('slug').eq('site_id', siteId),
+    supabase.from('neighborhoods').select('slug').eq('site_id', siteId).eq('is_active', true),
+    supabase.from('site_brands').select('slug').eq('site_id', siteId).eq('is_active', true),
+    supabase.from('locations').select('slug').eq('site_id', siteId),
+    supabase.from('work_items').select('slug').eq('site_id', siteId).eq('status', 'published'),
+  ]);
 
   if (!site?.slug) return;
 
   const base = `/sites/${site.slug}`;
 
-  // Revalidate the layout (catches home, about, contact, etc.)
+  // Layout revalidation catches shared header/footer state across all pages
   revalidatePath(base, 'layout');
 
-  // Revalidate listing pages
-  revalidatePath(`${base}/services`, 'page');
-  revalidatePath(`${base}/areas`, 'page');
-  revalidatePath(`${base}/faq`, 'page');
-  revalidatePath(`${base}/brands`, 'page');
-  revalidatePath(`${base}/work`, 'page');
-  revalidatePath(`${base}/reviews`, 'page');
-
-  // Build category slug map
   const catSlugMap = new Map<string, { slug: string; isPrimary: boolean }>();
   for (const cat of categories || []) {
     const gbp = Array.isArray(cat.gbp_category) ? cat.gbp_category[0] : cat.gbp_category;
@@ -53,33 +60,76 @@ export async function revalidateSite(siteId: string) {
     }
   }
 
-  // Revalidate each category page
+  // -------- Root paths (single-location + multi-location root) --------
+  revalidatePath(base, 'page'); // home
+  for (const path of ['/about', '/contact', '/faq', '/services', '/areas', '/brands', '/work', '/reviews', '/job-snaps']) {
+    revalidatePath(`${base}${path}`, 'page');
+  }
+
+  // Brand detail pages (site-wide, not per-location)
+  for (const brand of brands || []) {
+    revalidatePath(`${base}/brands/${brand.slug}`, 'page');
+  }
+
+  // Category pages
   for (const [, cat] of catSlugMap) {
     revalidatePath(`${base}/${cat.slug}`, 'page');
   }
 
-  // Revalidate each service page (both primary root-level and nested under category)
+  // Service pages (primary at root, secondary nested under category)
   for (const service of services || []) {
     const cat = service.site_category_id ? catSlugMap.get(service.site_category_id) : null;
     if (cat?.isPrimary) {
-      // Primary category services live at /sites/slug/service-slug
       revalidatePath(`${base}/${service.slug}`, 'page');
     } else if (cat) {
-      // Secondary category services live at /sites/slug/category-slug/service-slug
       revalidatePath(`${base}/${cat.slug}/${service.slug}`, 'page');
     }
-    // Also revalidate at root level in case service was recently moved
+    // Defensive: revalidate root-level path too in case service was recently moved between categories
     revalidatePath(`${base}/${service.slug}`, 'page');
   }
 
-  // Revalidate service area pages
+  // Service areas + neighborhoods
   for (const area of serviceAreas || []) {
     revalidatePath(`${base}/areas/${area.slug}`, 'page');
   }
-
-  // Revalidate neighborhood pages
   for (const n of neighborhoods || []) {
     revalidatePath(`${base}/neighborhoods/${n.slug}`, 'page');
+  }
+
+  // Work detail pages
+  for (const w of workItems || []) {
+    revalidatePath(`${base}/work/${w.slug}`, 'page');
+  }
+
+  // -------- Multi-location subtree --------
+  // Every location mirrors most of the root paths under /locations/{loc}/
+  for (const loc of locations || []) {
+    const locBase = `${base}/locations/${loc.slug}`;
+    revalidatePath(locBase, 'page'); // location home
+    for (const path of ['/about', '/contact', '/services', '/areas', '/work', '/job-snaps']) {
+      revalidatePath(`${locBase}${path}`, 'page');
+    }
+    for (const [, cat] of catSlugMap) {
+      revalidatePath(`${locBase}/${cat.slug}`, 'page');
+    }
+    for (const service of services || []) {
+      const cat = service.site_category_id ? catSlugMap.get(service.site_category_id) : null;
+      if (cat?.isPrimary) {
+        revalidatePath(`${locBase}/${service.slug}`, 'page');
+      } else if (cat) {
+        revalidatePath(`${locBase}/${cat.slug}/${service.slug}`, 'page');
+      }
+      revalidatePath(`${locBase}/${service.slug}`, 'page');
+    }
+    for (const area of serviceAreas || []) {
+      revalidatePath(`${locBase}/areas/${area.slug}`, 'page');
+    }
+    for (const n of neighborhoods || []) {
+      revalidatePath(`${locBase}/neighborhoods/${n.slug}`, 'page');
+    }
+    for (const w of workItems || []) {
+      revalidatePath(`${locBase}/work/${w.slug}`, 'page');
+    }
   }
 }
 

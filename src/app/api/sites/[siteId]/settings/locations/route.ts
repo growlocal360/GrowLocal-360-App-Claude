@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 // GET - Fetch locations for this site
 export async function GET(
@@ -79,6 +80,8 @@ export async function PATCH(
   if (updateError) {
     return NextResponse.json({ error: 'Failed to update location' }, { status: 500 });
   }
+
+  await revalidateSite(siteId);
 
   return NextResponse.json({ success: true });
 }

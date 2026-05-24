@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { provisionPhoneNumber, releasePhoneNumber } from '@/lib/sms/twilio';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 interface RouteParams {
   params: Promise<{ siteId: string }>;
@@ -154,6 +155,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       console.error('Failed to update scheduling config:', error);
       return NextResponse.json({ error: 'Failed to update config' }, { status: 500 });
     }
+
+    await revalidateSite(siteId);
 
     return NextResponse.json(data);
   } catch (error) {

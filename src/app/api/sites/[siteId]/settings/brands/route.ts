@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { revalidateSite } from '@/lib/sites/revalidate';
 
 function slugify(name: string): string {
   return name
@@ -86,6 +87,8 @@ export async function POST(
     );
   }
 
+  await revalidateSite(siteId);
+
   return NextResponse.json({ success: true, brand: newBrand });
 }
 
@@ -131,6 +134,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update brand' }, { status: 500 });
   }
 
+  await revalidateSite(siteId);
+
   return NextResponse.json({ success: true });
 }
 
@@ -168,6 +173,8 @@ export async function DELETE(
       { status: 500 }
     );
   }
+
+  await revalidateSite(siteId);
 
   return NextResponse.json({ success: true });
 }

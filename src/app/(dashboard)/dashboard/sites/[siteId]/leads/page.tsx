@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Inbox, Phone, Mail, Clock } from 'lucide-react';
+import { ArrowLeft, Inbox, Phone, Mail, Clock, Send, Loader2, Bell } from 'lucide-react';
 import type { Lead, LeadStatus } from '@/types/database';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
@@ -25,6 +25,8 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
+  const [testing, setTesting] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [userData, setUserData] = useState({
     name: 'User',
     email: '',
@@ -83,6 +85,33 @@ export default function LeadsPage() {
     }
   };
 
+  const handleSendTest = async () => {
+    try {
+      setTesting(true);
+      setTestMessage(null);
+      const response = await fetch(`/api/sites/${siteId}/settings/notifications`, { method: 'POST' });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to send test');
+      }
+      setTestMessage('Test lead sent. Refresh in a moment to see it appear below. Check your inbox too.');
+      // refresh the list after a short delay so the new lead shows up
+      setTimeout(async () => {
+        const { data: leadsData } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('site_id', siteId)
+          .order('created_at', { ascending: false });
+        setLeads((leadsData || []) as Lead[]);
+      }, 1500);
+      setTimeout(() => setTestMessage(null), 8000);
+    } catch (err) {
+      setTestMessage(err instanceof Error ? err.message : 'Failed to send test');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const filteredLeads = filterStatus === 'all'
     ? leads
     : leads.filter((lead) => lead.status === filterStatus);
@@ -118,7 +147,7 @@ export default function LeadsPage() {
         </Link>
 
         {/* Page Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
             <p className="mt-1 text-gray-500">
@@ -126,7 +155,39 @@ export default function LeadsPage() {
               {newCount > 0 && ` (${newCount} new)`}
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/dashboard/sites/${siteId}/settings/notifications`}>
+                <Bell className="h-4 w-4 mr-2" />
+                Notifications
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendTest}
+              disabled={testing}
+            >
+              {testing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send test lead
+                </>
+              )}
+            </Button>
+          </div>
         </div>
+
+        {testMessage && (
+          <div className="rounded-lg border border-[#00ef99]/30 bg-[#00ef99]/5 px-4 py-3 text-sm text-[#00b478]">
+            {testMessage}
+          </div>
+        )}
 
         {/* Status Filters */}
         <div className="flex flex-wrap gap-2">

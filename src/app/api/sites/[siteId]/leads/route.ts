@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { inngest } from '@/lib/inngest/client';
 
 interface RouteParams {
   params: Promise<{ siteId: string }>;
@@ -7,7 +8,8 @@ interface RouteParams {
 
 /**
  * POST /api/sites/[siteId]/leads
- * Public endpoint — submits a lead from a site form
+ * Public endpoint — submits a lead from a site form.
+ * On success, fires `lead/created` to trigger email + (optional) SMS to the site owner.
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { siteId } = await params;
@@ -31,10 +33,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (!site) {
+      console.warn('[leads] Rejecting submission — site not found or inactive', { siteId });
       return NextResponse.json({ error: 'Site not found' }, { status: 404 });
     }
 
-    // Insert the lead
+    console.log('[leads] Inserting new lead', { siteId, name, service_type, source_page });
+
     const { data: lead, error } = await supabase
       .from('leads')
       .insert({
@@ -52,16 +56,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Failed to insert lead:', error);
+      console.error('[leads] Failed to insert lead:', error);
       return NextResponse.json({ error: 'Failed to submit lead' }, { status: 500 });
     }
 
-    // TODO: Send email notification to site owner
-    // This will be implemented with Resend/SendGrid in a future iteration
+    console.log('[leads] Inserted lead', { leadId: lead.id, siteId });
+
+    // Fire notification event (non-blocking — failures don't break the public form)
+    try {
+      await inngest.send({
+        name: 'lead/created',
+        data: { leadId: lead.id, siteId },
+      });
+    } catch (eventError) {
+      console.error('[leads] Failed to enqueue lead/created event:', eventError);
+    }
 
     return NextResponse.json({ success: true, id: lead.id }, { status: 201 });
   } catch (error) {
-    console.error('Error handling lead submission:', error);
+    console.error('[leads] Error handling lead submission:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

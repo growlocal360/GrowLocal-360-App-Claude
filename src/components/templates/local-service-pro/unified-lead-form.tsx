@@ -62,6 +62,7 @@ export function UnifiedLeadForm({
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [bookingResult, setBookingResult] = useState<{ status: string; message: string } | null>(null);
 
   // Form data
@@ -151,8 +152,9 @@ export function UnifiedLeadForm({
 
   const handleSubmitLead = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
-      await fetch(`/api/sites/${siteId}/leads`, {
+      const res = await fetch(`/api/sites/${siteId}/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,15 +167,23 @@ export function UnifiedLeadForm({
           source_page: typeof window !== 'undefined' ? window.location.pathname : '/',
         }),
       });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error('[UnifiedLeadForm] Lead submission failed:', res.status, body);
+        throw new Error(`Submission failed (${res.status})`);
+      }
       setSubmitted(true);
-    } catch {
-      setSubmitted(true);
+    } catch (err) {
+      console.error('[UnifiedLeadForm] Lead error:', err);
+      setSubmitError('We couldn\'t submit your request. Please try again or call us directly.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleSubmitBooking = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const res = await fetch('/api/public/book', {
         method: 'POST',
@@ -193,17 +203,20 @@ export function UnifiedLeadForm({
           source_page: typeof window !== 'undefined' ? window.location.pathname : '/',
         }),
       });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error('[UnifiedLeadForm] Booking submission failed:', res.status, body);
+        throw new Error(`Booking failed (${res.status})`);
+      }
       const result = await res.json();
       setBookingResult({ status: result.status, message: result.message });
       setSubmitted(true);
-    } catch {
-      setSubmitted(true);
-      setBookingResult({
-        status: 'submitted',
-        message: 'Your request has been received. We\'ll be in touch shortly!',
-      });
+    } catch (err) {
+      console.error('[UnifiedLeadForm] Booking error:', err);
+      setSubmitError('We couldn\'t book your appointment. Please try again or call us directly.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleStep3Submit = (e: React.FormEvent) => {
@@ -468,6 +481,11 @@ export function UnifiedLeadForm({
               ) : isBookingMode ? 'Continue' : (ctaStyle === 'booking' ? 'Schedule Service' : 'Get Free Estimate')}
             </Button>
           </div>
+          {submitError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {submitError}
+            </p>
+          )}
         </form>
       )}
 
@@ -591,6 +609,12 @@ export function UnifiedLeadForm({
               <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
               <span className="ml-2 text-gray-500">Booking your appointment...</span>
             </div>
+          )}
+
+          {submitError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {submitError}
+            </p>
           )}
         </div>
       )}

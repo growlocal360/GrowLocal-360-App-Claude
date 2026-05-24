@@ -37,6 +37,7 @@ import {
   Sparkles,
   Camera,
   CalendarDays,
+  Bell,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress } from '@/types/database';
@@ -683,6 +684,31 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/leads`}>
                   View Leads
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Notifications */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                  <Bell className="h-5 w-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Notifications</h3>
+                  <p className="text-sm text-gray-500">Email + SMS alerts</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                Decide where lead alerts go and send a test
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/notifications`}>
+                  Manage Notifications
                 </Link>
               </Button>
             </CardContent>

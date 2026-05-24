@@ -81,7 +81,7 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
 
   return (
     <ServicesPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       categories={categories.map(toPublicCategory)}
       servicesByCategory={servicesByCategory}

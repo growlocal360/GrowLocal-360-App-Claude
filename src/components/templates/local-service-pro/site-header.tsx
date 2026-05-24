@@ -34,6 +34,11 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
   const navLinks = [
     { label: 'Services', href: paths.servicesIndex(locationSlug) },
     { label: 'Service Areas', href: paths.areasIndex(locationSlug) },
+    // "Brands" only appears when the site has active brand rows. Driven by
+    // `site.has_brands` (populated in toPublicSite via the second arg).
+    // Service-only niches (plumbing, pressure washing, tree service) leave
+    // this false and keep the nav clean.
+    ...(site.has_brands ? [{ label: 'Brands', href: '/brands' }] : []),
     { label: 'Work', href: paths.workHub(locationSlug) },
     { label: 'FAQ', href: paths.faqPage(locationSlug) },
     { label: 'About', href: paths.aboutPage(locationSlug) },

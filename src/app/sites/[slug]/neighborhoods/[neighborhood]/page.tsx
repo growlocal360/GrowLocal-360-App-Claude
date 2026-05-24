@@ -7,6 +7,7 @@ import { NeighborhoodPageSingleLocation } from '@/components/templates/local-ser
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -62,9 +63,10 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
-  const [{ categories }, workItems] = await Promise.all([
+  const [{ categories }, workItems, hasBrands] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getPublishedWorkItems(data.site.id, { city: data.location.city, limit: 6 }),
+    siteHasActiveBrands(data.site.id),
   ]);
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -76,7 +78,7 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
   return (
     <NeighborhoodPageSingleLocation
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         neighborhood: toPublicNeighborhoodDetail(data.neighborhood),
         allNeighborhoods: data.allNeighborhoods.map(toPublicNeighborhoodListing),

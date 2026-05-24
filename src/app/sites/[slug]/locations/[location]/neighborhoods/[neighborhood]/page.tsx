@@ -7,6 +7,7 @@ import {
   toPublicNeighborhoodDetail,
   toPublicNeighborhoodListing,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -56,10 +57,12 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
+  const hasBrands = await siteHasActiveBrands(data.site.id);
+
   return (
     <NeighborhoodPage
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         neighborhood: toPublicNeighborhoodDetail(data.neighborhood),
         allNeighborhoods: data.allNeighborhoods.map(toPublicNeighborhoodListing),

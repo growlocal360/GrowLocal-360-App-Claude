@@ -14,6 +14,7 @@ import {
   toPublicAreaListing,
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -44,7 +45,7 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
   }
 
   const supabase = createAdminClient();
-  const [workItems, total, { categories }, { data: schedulingConfig }] = await Promise.all([
+  const [workItems, total, { categories }, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getPublishedWorkItems(data.site.id),
     getPublishedWorkItemsCount(data.site.id),
     getCategoriesWithServices(data.site.id),
@@ -53,6 +54,7 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -64,7 +66,7 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
 
   return (
     <WorkHubPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       workItems={workItems.map(toPublicWorkItem)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}

@@ -10,6 +10,7 @@ import {
   toPublicLocation,
   toPublicAreaListing,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -39,7 +40,10 @@ export default async function MultiLocationJobSnapsPageRoute({ params }: MultiLo
     notFound();
   }
 
-  const { categories } = await getCategoriesWithServices(data.site.id);
+  const [{ categories }, hasBrands] = await Promise.all([
+    getCategoriesWithServices(data.site.id),
+    siteHasActiveBrands(data.site.id),
+  ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -50,7 +54,7 @@ export default async function MultiLocationJobSnapsPageRoute({ params }: MultiLo
 
   return (
     <JobSnapsPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}

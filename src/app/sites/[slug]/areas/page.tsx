@@ -76,7 +76,7 @@ export default async function AreasPageRoute({ params }: AreasPageProps) {
 
   return (
     <ServiceAreasListingPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       neighborhoods={data.neighborhoods.map(toPublicNeighborhoodListing)}

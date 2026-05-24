@@ -14,6 +14,7 @@ import {
   toPublicPageContent,
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -51,7 +52,7 @@ export default async function MultiLocationContactPageRoute({ params }: MultiLoc
     notFound();
   }
 
-  const [{ categories, services }, { data: contactContent }] = await Promise.all([
+  const [{ categories, services }, { data: contactContent }, hasBrands] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     createAdminClient()
       .from('site_pages')
@@ -59,6 +60,7 @@ export default async function MultiLocationContactPageRoute({ params }: MultiLoc
       .eq('site_id', data.site.id)
       .eq('page_type', 'contact')
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -70,7 +72,7 @@ export default async function MultiLocationContactPageRoute({ params }: MultiLoc
 
   return (
     <ContactPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}
       services={services.map(toPublicServiceListing)}

@@ -10,6 +10,7 @@ import {
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -65,7 +66,7 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
   }
 
   const supabase = createAdminClient();
-  const [googleReviews, workItems, { data: schedulingConfig }] = await Promise.all([
+  const [googleReviews, workItems, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getPublishedWorkItems(data.site.id, {
       city: data.serviceArea.name,
@@ -77,12 +78,13 @@ export default async function ServiceAreaPageRoute({ params }: ServiceAreaPagePr
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   return (
     <ServiceAreaPage
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         serviceArea: toPublicAreaDetail(data.serviceArea),
         allServiceAreas: data.allServiceAreas.map(toPublicAreaListing),

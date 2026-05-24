@@ -85,7 +85,7 @@ export default async function FAQPageRoute({ params }: FAQPageProps) {
 
   return (
     <FAQHubPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={faqContent ? toPublicPageContent(faqContent) : null}
       faqItems={faqHub.items}

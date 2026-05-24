@@ -62,7 +62,7 @@ export default async function JobSnapsPageRoute({ params }: JobSnapsPageRoutePro
 
   return (
     <JobSnapsPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       categories={navCategories}

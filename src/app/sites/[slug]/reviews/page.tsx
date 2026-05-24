@@ -85,7 +85,7 @@ export default async function ReviewsPageRoute({ params }: ReviewsPageProps) {
 
   return (
     <ReviewsPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       reviews={allReviews.map(toPublicReview)}
       averageRating={averageRating}

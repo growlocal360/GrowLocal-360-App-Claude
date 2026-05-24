@@ -61,6 +61,14 @@ export interface PublicRenderSite {
   custom_domain_verified: boolean | null;
   website_type: WebsiteType;
   settings: PublicRenderSettings;
+  /**
+   * True when the site has at least one active row in `site_brands`.
+   * Populated by callers via `toPublicSite(site, { hasBrands })`. Drives
+   * the conditional "Brands" link in the main site nav — service-only
+   * niches (plumbing, pressure washing, tree service) leave it false
+   * and the nav stays clean.
+   */
+  has_brands: boolean;
 }
 
 export interface PublicRenderLocation {
@@ -307,7 +315,10 @@ function cleanGeneratedImages(images: GeneratedImage[] | null): GeneratedImage[]
 // Mapper functions
 // ---------------------------------------------------------------------------
 
-export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
+export function toPublicSite(
+  site: SiteWithRelations,
+  opts?: { hasBrands?: boolean }
+): PublicRenderSite {
   const s = site.settings || {};
   return {
     id: site.id,
@@ -317,6 +328,7 @@ export function toPublicSite(site: SiteWithRelations): PublicRenderSite {
     custom_domain: site.custom_domain,
     custom_domain_verified: site.custom_domain_verified ?? null,
     website_type: site.website_type,
+    has_brands: opts?.hasBrands ?? false,
     settings: {
       brand_color: s.brand_color || '#00ef99',
       secondary_color: s.secondary_color || null,
@@ -526,7 +538,7 @@ export function toPublicRenderData(data: PublicSiteData): PublicRenderData {
   const homePage = data.sitePages?.find(p => p.page_type === 'home');
 
   return {
-    site: toPublicSite(data.site),
+    site: toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 }),
     primaryLocation: data.primaryLocation ? toPublicLocation(data.primaryLocation) : null,
     locations: data.locations.map(toPublicLocation),
     serviceAreas: data.serviceAreas.map(toPublicAreaListing),

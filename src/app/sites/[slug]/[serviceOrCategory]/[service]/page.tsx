@@ -12,6 +12,7 @@ import {
   toPublicCategory, toPublicReview, toPublicAreaListing, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -143,7 +144,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   }
 
   const admin = createAdminClient();
-  const [allReviews, { categories }, { data: serviceAreas }, workItems, { data: schedulingConfig }] = await Promise.all([
+  const [allReviews, { categories }, { data: serviceAreas }, workItems, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getAllGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     admin.from('service_areas').select('*').eq('site_id', data.site.id).order('sort_order'),
@@ -157,6 +158,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -174,7 +176,7 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   return (
     <ServicePage
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         service: toPublicServiceDetail(data.service),
         category: toPublicCategory(data.category),

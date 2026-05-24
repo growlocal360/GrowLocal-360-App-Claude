@@ -13,6 +13,7 @@ import {
   toPublicPageContent,
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -52,7 +53,7 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
   }
 
   const supabase = createAdminClient();
-  const [{ categories }, { data: aboutContent }, { data: schedulingConfig }] = await Promise.all([
+  const [{ categories }, { data: aboutContent }, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     supabase
       .from('site_pages')
@@ -65,6 +66,7 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -76,7 +78,7 @@ export default async function MultiLocationAboutPageRoute({ params }: MultiLocat
 
   return (
     <AboutPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}

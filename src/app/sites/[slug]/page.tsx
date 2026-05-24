@@ -82,7 +82,7 @@ export default async function SitePage({ params }: SitePageProps) {
   if (site.website_type === 'multi_location') {
     return (
       <BrandHomepage
-        site={toPublicSite(site)}
+        site={toPublicSite(site, { hasBrands: (data.brands || []).length > 0 })}
         locations={data.locations.map(toPublicLocation)}
       />
     );

@@ -16,6 +16,7 @@ import {
   toPublicCategory,
   toPublicReview,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -197,7 +198,7 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
     const supabase = createAdminClient();
-    const [googleReviews, { categories }, { data: schedulingConfig }] = await Promise.all([
+    const [googleReviews, { categories }, { data: schedulingConfig }, hasBrands] = await Promise.all([
       getGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
       supabase
@@ -205,6 +206,7 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
         .select('is_active, cta_style')
         .eq('site_id', serviceData.site.id)
         .single(),
+      siteHasActiveBrands(serviceData.site.id),
     ]);
 
     const navCategories: NavCategory[] = categories.map(c => ({
@@ -217,7 +219,7 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
     return (
       <ServicePage
         data={{
-          site: toPublicSite(serviceData.site),
+          site: toPublicSite(serviceData.site, { hasBrands }),
           location: toPublicLocation(serviceData.location),
           service: toPublicServiceDetail(serviceData.service),
           category: toPublicCategory(serviceData.category),
@@ -239,19 +241,20 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
   const categoryData = await getMultiLocationCategoryData(slug, location, serviceOrCategory);
   if (categoryData) {
     const catSupabase = createAdminClient();
-    const [googleReviews, { data: catSchedulingConfig }] = await Promise.all([
+    const [googleReviews, { data: catSchedulingConfig }, categoryHasBrands] = await Promise.all([
       getGoogleReviewsForSite(categoryData.site.id),
       catSupabase
         .from('scheduling_configs')
         .select('is_active, cta_style')
         .eq('site_id', categoryData.site.id)
         .single(),
+      siteHasActiveBrands(categoryData.site.id),
     ]);
 
     return (
       <CategoryPage
         data={{
-          site: toPublicSite(categoryData.site),
+          site: toPublicSite(categoryData.site, { hasBrands: categoryHasBrands }),
           location: toPublicLocation(categoryData.location),
           category: toPublicCategory(categoryData.category),
           services: categoryData.services.map(toPublicServiceListing),

@@ -12,6 +12,7 @@ import {
   toPublicServiceListing,
   toPublicAreaListing,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -44,13 +45,14 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
   }
 
   const supabase = createAdminClient();
-  const [{ categories, services }, { data: schedulingConfig }] = await Promise.all([
+  const [{ categories, services }, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     supabase
       .from('scheduling_configs')
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   // Group services by category ID
@@ -67,7 +69,7 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
 
   return (
     <ServicesPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       categories={categories.map(toPublicCategory)}
       servicesByCategory={mappedServicesByCategory}

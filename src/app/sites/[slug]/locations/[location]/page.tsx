@@ -9,6 +9,7 @@ import {
   toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -56,15 +57,18 @@ export default async function LocationRoute({ params }: LocationPageProps) {
     notFound();
   }
 
-  const workItems = await getPublishedWorkItems(data.site.id, {
-    city: data.location.city,
-    limit: 6,
-  });
+  const [workItems, hasBrands] = await Promise.all([
+    getPublishedWorkItems(data.site.id, {
+      city: data.location.city,
+      limit: 6,
+    }),
+    siteHasActiveBrands(data.site.id),
+  ]);
 
   return (
     <LocationPage
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         allLocations: data.allLocations.map(toPublicLocation),
         neighborhoods: data.neighborhoods.map(toPublicNeighborhoodListing),

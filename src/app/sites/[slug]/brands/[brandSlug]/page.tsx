@@ -138,7 +138,7 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
 
   return (
     <BrandDetailPage
-      site={toPublicSite(site)}
+      site={toPublicSite(site, { hasBrands: brands.length > 0 })}
       brand={toPublicBrandDetail(brand)}
       primaryLocation={primaryLocation ? toPublicLocation(primaryLocation) : null}
       services={allServices}

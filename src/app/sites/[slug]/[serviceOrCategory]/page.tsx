@@ -14,6 +14,7 @@ import {
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -82,7 +83,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
   if (serviceData) {
     const isPrimaryCategory = serviceData.category.is_primary;
     const admin = createAdminClient();
-    const [allReviews, { categories }, { data: serviceAreas }, { data: schedulingConfig }] = await Promise.all([
+    const [allReviews, { categories }, { data: serviceAreas }, { data: schedulingConfig }, hasBrands] = await Promise.all([
       getAllGoogleReviewsForSite(serviceData.site.id),
       getCategoriesWithServices(serviceData.site.id),
       admin.from('service_areas').select('*').eq('site_id', serviceData.site.id).order('sort_order'),
@@ -91,6 +92,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         .select('is_active, cta_style')
         .eq('site_id', serviceData.site.id)
         .single(),
+      siteHasActiveBrands(serviceData.site.id),
     ]);
 
     const navCategories: NavCategory[] = categories.map(c => ({
@@ -108,7 +110,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     return (
       <ServicePage
         data={{
-          site: toPublicSite(serviceData.site),
+          site: toPublicSite(serviceData.site, { hasBrands }),
           location: toPublicLocation(serviceData.location),
           service: toPublicServiceDetail(serviceData.service),
           category: toPublicCategory(serviceData.category),
@@ -136,6 +138,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
 
     // Fetch work items for all services in this category
     const categoryServiceIds = categoryData.services.map(s => s.id);
+    const categoryHasBrands = await siteHasActiveBrands(categoryData.site.id);
     const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, { data: catSchedulingConfig }, ...workItemResults] = await Promise.all([
       getAllGoogleReviewsForSite(categoryData.site.id),
       admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
@@ -166,7 +169,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     return (
       <CategoryPage
         data={{
-          site: toPublicSite(categoryData.site),
+          site: toPublicSite(categoryData.site, { hasBrands: categoryHasBrands }),
           location: toPublicLocation(categoryData.location),
           category: toPublicCategory(categoryData.category),
           services: categoryData.services.map(toPublicServiceListing),

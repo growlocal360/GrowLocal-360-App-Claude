@@ -80,7 +80,7 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
 
   return (
     <AboutPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}

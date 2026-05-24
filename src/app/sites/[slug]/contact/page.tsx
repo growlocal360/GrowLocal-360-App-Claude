@@ -78,7 +78,7 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   return (
     <ContactPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}
       services={services.map(toPublicServiceListing)}

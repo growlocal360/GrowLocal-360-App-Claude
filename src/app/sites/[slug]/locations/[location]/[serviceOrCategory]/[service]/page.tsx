@@ -17,6 +17,7 @@ import {
   toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -129,7 +130,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
   }
 
   const supabase = createAdminClient();
-  const [googleReviews, { categories }, workItems, { data: schedulingConfig }] = await Promise.all([
+  const [googleReviews, { categories }, workItems, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getGoogleReviewsForSite(data.site.id),
     getCategoriesWithServices(data.site.id),
     getPublishedWorkItems(data.site.id, { serviceId: data.service.id, limit: 6 }),
@@ -138,6 +139,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -150,7 +152,7 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
   return (
     <ServicePage
       data={{
-        site: toPublicSite(data.site),
+        site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),
         service: toPublicServiceDetail(data.service),
         category: toPublicCategory(data.category),

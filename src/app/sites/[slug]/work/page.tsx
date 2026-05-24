@@ -72,7 +72,7 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
 
   return (
     <WorkHubPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       workItems={workItems.map(toPublicWorkItem)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}

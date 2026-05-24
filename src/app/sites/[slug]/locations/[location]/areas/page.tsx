@@ -13,6 +13,7 @@ import {
   toPublicNeighborhoodListing,
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -45,13 +46,14 @@ export default async function MultiLocationAreasPageRoute({ params }: MultiLocat
   }
 
   const supabase = createAdminClient();
-  const [{ categories }, { data: schedulingConfig }] = await Promise.all([
+  const [{ categories }, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     supabase
       .from('scheduling_configs')
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -63,7 +65,7 @@ export default async function MultiLocationAreasPageRoute({ params }: MultiLocat
 
   return (
     <ServiceAreasListingPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
       neighborhoods={data.neighborhoods.map(toPublicNeighborhoodListing)}

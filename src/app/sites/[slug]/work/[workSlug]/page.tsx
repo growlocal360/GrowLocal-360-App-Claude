@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
+import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
 export const revalidate = 3600;
 
@@ -54,7 +55,7 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
   }
 
   const supabase = createAdminClient();
-  const [relatedItems, { categories }, { data: serviceAreas }, { data: schedulingConfig }] = await Promise.all([
+  const [relatedItems, { categories }, { data: serviceAreas }, { data: schedulingConfig }, hasBrands] = await Promise.all([
     getRelatedWorkItems({
       siteId: data.site.id,
       serviceId: data.workItem.service_id,
@@ -72,6 +73,7 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    siteHasActiveBrands(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -83,7 +85,7 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
 
   return (
     <WorkDetailPage
-      site={toPublicSite(data.site)}
+      site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.primaryLocation)}
       workItem={toPublicWorkItem(data.workItem)}
       service={data.service}

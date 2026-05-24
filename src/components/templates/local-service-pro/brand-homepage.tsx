@@ -6,6 +6,7 @@ import { MapPin, Phone, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-render-model';
+import { PageHero } from './page-hero';
 
 interface BrandHomepageProps {
   site: PublicRenderSite;
@@ -48,18 +49,12 @@ export function BrandHomepage({ site, locations }: BrandHomepageProps) {
       </header>
 
       <main>
-        {/* Hero */}
-        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4 text-center">
-            <h1 className="text-4xl font-bold md:text-5xl lg:text-6xl">
-              {site.name}
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-xl text-white/90">
-              Professional {industry.toLowerCase()} services across multiple locations.
-              Find a location near you.
-            </p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={site.name}
+          subtitle={`Professional ${industry.toLowerCase()} services across multiple locations. Find a location near you.`}
+          align="center"
+        />
 
         {/* Locations Grid */}
         <section className="py-16">

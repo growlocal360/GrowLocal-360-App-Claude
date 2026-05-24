@@ -16,6 +16,8 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 
 interface FAQHubPageProps {
   site: PublicRenderSite;
@@ -72,13 +74,12 @@ export function FAQHubPage({
       <JsonLd data={[webPageSchema, faqSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">{h1}</h1>
-            <p className="mt-4 max-w-2xl text-lg text-white/90">{heroDescription}</p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={h1}
+          subtitle={heroDescription}
+          compact
+        />
 
         {/* Topic Navigation */}
         {topicGroups.length > 1 && (
@@ -159,6 +160,13 @@ export function FAQHubPage({
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
           variant="section"
+        />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={site.settings?.phone as string | undefined || primaryLocation?.phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
         />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

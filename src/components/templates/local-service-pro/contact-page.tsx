@@ -15,6 +15,7 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { TeamSection } from './team-section';
 import { RecentWorkSection } from './about/recent-work-section';
@@ -64,15 +65,12 @@ export function ContactPage({ site, primaryLocation, pageContent, services, form
       <JsonLd data={[contactPageSchema, localBusinessSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">{h1}</h1>
-            {heroDescription && (
-              <p className="mt-4 text-lg text-white/90">{heroDescription}</p>
-            )}
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={h1}
+          subtitle={heroDescription}
+          compact
+        />
 
         {/* Body + Contact Info */}
         <section className="py-16">

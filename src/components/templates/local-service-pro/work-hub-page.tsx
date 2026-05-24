@@ -7,6 +7,8 @@ import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, P
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 import * as paths from '@/lib/routing/paths';
 
 interface WorkHubPageProps {
@@ -144,15 +146,12 @@ export function WorkHubPage({
       />
 
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">Recent Work</h1>
-            <p className="mt-4 text-lg text-white/90">
-              See examples of our recent projects and the quality work we deliver.
-            </p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title="Recent Work"
+          subtitle="See examples of our recent projects and the quality work we deliver."
+          compact
+        />
 
         {/* Work Items Grid */}
         <section className="py-16">
@@ -193,6 +192,13 @@ export function WorkHubPage({
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
           variant="section"
+        />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={site.settings?.phone as string | undefined || primaryLocation?.phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
         />
       </main>
 

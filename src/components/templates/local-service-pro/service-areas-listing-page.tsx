@@ -15,6 +15,8 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 
 interface ServiceAreasListingPageProps {
   site: PublicRenderSite;
@@ -50,18 +52,12 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
       <JsonLd data={[collectionSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
-              Areas We Serve{city ? ` in ${city}` : ''}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-white/90">
-              {site.name} proudly serves these communities and surrounding areas
-              {city ? ` throughout the ${city} region` : ''}.
-            </p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={`Areas We Serve${city ? ` in ${city}` : ''}`}
+          subtitle={`${site.name} proudly serves these communities and surrounding areas${city ? ` throughout the ${city} region` : ''}.`}
+          compact
+        />
 
         {/* Service Areas Grid */}
         {serviceAreas.length > 0 && (
@@ -167,6 +163,13 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
           variant="section"
+        />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
         />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

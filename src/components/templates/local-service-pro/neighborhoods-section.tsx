@@ -13,7 +13,7 @@ interface NeighborhoodsSectionProps {
 }
 
 export function NeighborhoodsSection({ site, neighborhoods, locations }: NeighborhoodsSectionProps) {
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const industry = site.settings?.core_industry || 'Professional Services';
 
   // Group neighborhoods by location

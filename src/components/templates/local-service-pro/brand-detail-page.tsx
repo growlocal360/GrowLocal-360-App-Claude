@@ -18,6 +18,8 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 import { TestimonialsSection } from './testimonials-section';
 import { RecentWorkSection } from './about/recent-work-section';
 
@@ -112,30 +114,25 @@ export function BrandDetailPage({
       <JsonLd data={[webPageSchema, faqSchema, breadcrumbSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold tracking-tight leading-[1.1] md:text-4xl lg:text-5xl">
-              {heroHeading}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-white/90">
-              {heroDescription}
-            </p>
-            {phone && (
-              <Button
-                asChild
-                size="lg"
-                className="mt-6 rounded-full bg-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 hover:shadow-lg"
-                style={{ color: brandColor }}
-              >
-                <a href={`tel:${phone.replace(/\D/g, '')}`}>
-                  <Phone className="mr-2 h-5 w-5" />
-                  Call {phone}
-                </a>
-              </Button>
-            )}
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={heroHeading}
+          subtitle={heroDescription}
+        >
+          {phone && (
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full bg-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-gray-100 hover:shadow-lg"
+              style={{ color: brandColor }}
+            >
+              <a href={`tel:${phone.replace(/\D/g, '')}`}>
+                <Phone className="mr-2 h-5 w-5" />
+                Call {phone}
+              </a>
+            </Button>
+          )}
+        </PageHero>
 
         {/* Why Choose Us for Brand */}
         <section className="py-24">
@@ -311,6 +308,13 @@ export function BrandDetailPage({
             </div>
           </section>
         )}
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
+        />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>

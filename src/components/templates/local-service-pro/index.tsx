@@ -21,6 +21,9 @@ import { ServiceAreasSection } from './service-areas-section';
 import { EmbeddedMapSection } from './embedded-map-section';
 import { SiteFooter } from './site-footer';
 import { RecentWorkSection } from './about/recent-work-section';
+import { WhyChooseUsSection } from './why-choose-us-section';
+import { HowItWorksSection } from './how-it-works-section';
+import { FinalCTASection } from './final-cta-section';
 
 interface LocalServiceProTemplateProps {
   data: PublicRenderData;
@@ -102,10 +105,19 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
             locationSlug={locationSlug}
           />
         )}
+        <HowItWorksSection
+          brandColor={brandColor}
+          ctaStyle={ctaStyle}
+        />
         <LocalizedContentSection
           pageContent={homePageContent}
           businessName={site.name}
           city={primaryLocation?.city || ''}
+        />
+        <WhyChooseUsSection
+          brandColor={brandColor}
+          businessName={site.name}
+          industry={site.settings?.core_industry as string | undefined}
         />
         <BrandsSection
           site={site}
@@ -115,14 +127,6 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           locationSlug={locationSlug}
         />
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={secondaryColor} siteSlug={slug} locationSlug={locationSlug} />
-        <UnifiedLeadForm
-          siteId={site.id}
-          brandColor={ctaColor}
-          categories={formCategories}
-          schedulingActive={schedulingActive}
-          ctaStyle={ctaStyle}
-          variant="section"
-        />
         <TestimonialsSection
           city={primaryLocation?.city || 'Our'}
           reviews={reviews}
@@ -141,6 +145,12 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
           />
         )}
         <EmbeddedMapSection primaryLocation={primaryLocation} />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={site.settings?.phone as string | undefined || primaryLocation?.phone}
+          ctaStyle={ctaStyle}
+        />
       </main>
       <SiteFooter
         site={site}

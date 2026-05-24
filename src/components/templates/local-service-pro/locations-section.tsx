@@ -12,7 +12,7 @@ interface LocationsSectionProps {
 }
 
 export function LocationsSection({ site, locations }: LocationsSectionProps) {
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00ef99';
 
   const getDirectionsUrl = (location: Location) => {
     const address = encodeURIComponent(

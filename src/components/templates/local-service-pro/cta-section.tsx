@@ -12,7 +12,7 @@ interface CTASectionProps {
 export function CTASection({ site, primaryLocation }: CTASectionProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const ctaColor = site.settings?.cta_color || brandColor;
   const accentColor = site.settings?.secondary_color || brandColor;
   return (

@@ -16,6 +16,8 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 
 interface ServicesPageProps {
   site: PublicRenderSite;
@@ -68,18 +70,11 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
       <JsonLd data={[collectionSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={navCategories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-20 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold tracking-tight leading-[1.1] md:text-4xl lg:text-5xl">
-              Our Services{city ? ` in ${city}` : ''}
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg text-white/90">
-              Browse our full range of professional services. {site.name} is your trusted local provider
-              {city ? ` serving ${city} and surrounding areas` : ''}.
-            </p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={`Our Services${city ? ` in ${city}` : ''}`}
+          subtitle={`Browse our full range of professional services. ${site.name} is your trusted local provider${city ? ` serving ${city} and surrounding areas` : ''}.`}
+        />
 
         {/* Category Cards Overview */}
         {categories.length > 1 && (
@@ -250,6 +245,13 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
           variant="section"
+        />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
         />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

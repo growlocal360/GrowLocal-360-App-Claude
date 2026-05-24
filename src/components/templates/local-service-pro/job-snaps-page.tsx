@@ -10,6 +10,7 @@ import type {
 import * as paths from '@/lib/routing/paths';
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
+import { PageHero } from './page-hero';
 
 interface JobSnapsPageProps {
   site: PublicRenderSite;
@@ -29,18 +30,12 @@ export function JobSnapsPage({ site, primaryLocation, serviceAreas, categories, 
     <div className="min-h-screen bg-white">
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
-              Career Opportunities at {site.name}
-            </h1>
-            <p className="mt-4 text-lg text-white/90">
-              Join our team of {industry.toLowerCase()} professionals
-              {primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : ''}.
-            </p>
-          </div>
-        </section>
+        <PageHero
+          brandColor={brandColor}
+          title={`Career Opportunities at ${site.name}`}
+          subtitle={`Join our team of ${industry.toLowerCase()} professionals${primaryLocation ? ` in ${primaryLocation.city}, ${primaryLocation.state}` : ''}.`}
+          compact
+        />
 
         {/* Content */}
         <section className="py-16">

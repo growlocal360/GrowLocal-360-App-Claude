@@ -40,7 +40,7 @@ interface LocationPageProps {
 
 export function LocationPage({ data, siteSlug, locationSlug, recentWorkItems }: LocationPageProps) {
   const { site, location, allLocations, neighborhoods, serviceAreas } = data;
-  const brandColor = site.settings?.brand_color || '#10b981';
+  const brandColor = site.settings?.brand_color || '#00ef99';
   const ctaColor = site.settings?.cta_color || brandColor;
   const accentColor = site.settings?.secondary_color || brandColor;
   const industry = site.settings?.core_industry || 'Professional Services';

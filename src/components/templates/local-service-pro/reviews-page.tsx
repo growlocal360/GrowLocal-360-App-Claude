@@ -15,6 +15,8 @@ import {
 import { SiteHeader, NavCategory } from './site-header';
 import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
+import { PageHero } from './page-hero';
+import { FinalCTASection } from './final-cta-section';
 
 interface ReviewsPageProps {
   site: PublicRenderSite;
@@ -74,40 +76,35 @@ export function ReviewsPage({
       <JsonLd data={[localBusinessSchema]} />
       <SiteHeader site={site} primaryLocation={primaryLocation} categories={categories} siteSlug={siteSlug} locationSlug={locationSlug} />
       <main>
-        {/* Hero */}
-        <section className="py-16 text-white" style={{ backgroundColor: brandColor }}>
-          <div className="mx-auto max-w-7xl px-4">
-            <h1 className="text-3xl font-bold md:text-4xl lg:text-5xl">
-              Customer Reviews{city ? ` — ${city}` : ''}
-            </h1>
-            {averageRating && totalReviewCount ? (
-              <div className="mt-4 flex items-center gap-3">
-                <div className="flex">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-7 w-7 ${
-                        i < Math.round(averageRating)
-                          ? 'fill-yellow-400 text-yellow-400'
-                          : 'fill-white/30 text-white/30'
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xl font-semibold">
-                  {averageRating.toFixed(1)} out of 5
-                </span>
-                <span className="text-lg text-white/80">
-                  based on {totalReviewCount} review{totalReviewCount !== 1 ? 's' : ''}
-                </span>
+        <PageHero
+          brandColor={brandColor}
+          title={`Customer Reviews${city ? ` — ${city}` : ''}`}
+          subtitle={averageRating && totalReviewCount ? undefined : `See what our customers have to say about ${site.name}.`}
+          compact
+        >
+          {averageRating && totalReviewCount ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-7 w-7 ${
+                      i < Math.round(averageRating)
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'fill-white/30 text-white/30'
+                    }`}
+                  />
+                ))}
               </div>
-            ) : (
-              <p className="mt-4 text-lg text-white/90">
-                See what our customers have to say about {site.name}.
-              </p>
-            )}
-          </div>
-        </section>
+              <span className="text-xl font-semibold">
+                {averageRating.toFixed(1)} out of 5
+              </span>
+              <span className="text-lg text-white/80">
+                based on {totalReviewCount} review{totalReviewCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+          ) : null}
+        </PageHero>
 
         {reviews.length > 0 ? (
           <>
@@ -262,6 +259,13 @@ export function ReviewsPage({
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}
           variant="section"
+        />
+        <FinalCTASection
+          brandColor={brandColor}
+          businessName={site.name}
+          phone={phone}
+          ctaStyle={ctaStyle}
+          formHref="#booking"
         />
       </main>
       <SiteFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

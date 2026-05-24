@@ -11,6 +11,7 @@ import { StepServices } from './step-services';
 import { StepServiceAreas } from './step-service-areas';
 import { StepNeighborhoods } from './step-neighborhoods';
 import { StepWebsiteType } from './step-website-type';
+import { StepSiteScope } from './step-site-scope';
 import { StepReview } from './step-review';
 
 export function SiteWizard() {
@@ -36,6 +37,8 @@ export function SiteWizard() {
         return <StepNeighborhoods />;
       case 'website-type':
         return <StepWebsiteType />;
+      case 'site-scope':
+        return <StepSiteScope />;
       case 'review':
         return <StepReview />;
       default:
@@ -56,4 +59,5 @@ export { StepServices } from './step-services';
 export { StepServiceAreas } from './step-service-areas';
 export { StepNeighborhoods } from './step-neighborhoods';
 export { StepWebsiteType } from './step-website-type';
+export { StepSiteScope } from './step-site-scope';
 export { StepReview } from './step-review';

@@ -64,6 +64,7 @@ export function StepReview() {
     neighborhoods,
     websiteType,
     micrositeConfig,
+    siteScope,
     gscPropertyUrl,
     gscQueries,
     prevStep,
@@ -145,6 +146,9 @@ export function StepReview() {
         // GSC data (optional — enhances content generation)
         gscPropertyUrl: gscPropertyUrl || undefined,
         gscQueries: gscQueries.length > 0 ? gscQueries : undefined,
+        // v4 SITE_SCOPE — collected in the new site-scope wizard step.
+        // create-site.ts derives a sensible default if this is missing.
+        siteScope: siteScope ?? undefined,
       };
 
       // Create Stripe checkout session

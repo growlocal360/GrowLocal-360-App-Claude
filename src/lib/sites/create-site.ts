@@ -2,6 +2,9 @@ import { createStaticClient } from '@/lib/supabase/static';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebsiteType } from '@/types/database';
 import type { MicrositeConfig } from '@/types/wizard';
+import type { SiteScope } from '@/lib/onboarding/site-scope';
+import { FULL_BUSINESS_SCOPE } from '@/lib/onboarding/site-scope';
+import { filterGscByScope, type GscQueryForFilter } from '@/lib/onboarding/gsc-scope-filter';
 
 // Types for wizard data structure
 export interface WizardLocation {
@@ -90,6 +93,9 @@ export interface WizardSiteData {
   // GSC data (optional — synced during wizard if user has Search Console)
   gscPropertyUrl?: string;
   gscQueries?: WizardGSCQueryData[];
+  // v4 SITE_SCOPE — collected in the site-scope wizard step. Drives the
+  // GSC scope filter + the Phase 2 onboarding analysis. Null = FULL_BUSINESS.
+  siteScope?: SiteScope | null;
 }
 
 export interface CreateSiteResult {
@@ -168,6 +174,12 @@ export async function createSiteFromWizardData(
     allCategoriesCount + // Category pages
     3; // Core pages (home, about, contact)
 
+  // Resolve the effective site scope. The wizard may have passed an explicit
+  // scope; if not, microsite websiteType auto-defaults to MICROSITE scope
+  // pointed at the microsite's target city, and everything else defaults to
+  // FULL_BUSINESS.
+  const effectiveScope: SiteScope = data.siteScope ?? deriveDefaultScope(data);
+
   // Create the site with building status
   const { data: site, error: siteError } = await supabase
     .from('sites')
@@ -179,6 +191,15 @@ export async function createSiteFromWizardData(
       template_id: 'local-service-pro',
       is_active: true,
       status: 'building',
+      // v4 SITE_SCOPE — persisted alongside the legacy microsite_target_*
+      // fields. Both will populate during transition; future content gen +
+      // analysis reads from scope_* exclusively.
+      scope_type: effectiveScope.scope_type,
+      scope_target_city: effectiveScope.target_city,
+      scope_city_variants: effectiveScope.city_variants.length > 0 ? effectiveScope.city_variants : null,
+      scope_zip_codes: effectiveScope.zip_codes.length > 0 ? effectiveScope.zip_codes : null,
+      scope_excluded_cities: effectiveScope.excluded_cities.length > 0 ? effectiveScope.excluded_cities : null,
+      scope_existing_url_pattern: effectiveScope.existing_url_pattern,
       build_progress: {
         total_tasks: totalTasks,
         completed_tasks: 0,
@@ -452,10 +473,64 @@ export async function createSiteFromWizardData(
     }
   }
 
+  // ── Phase 1 onboarding analysis row ─────────────────────────────────────
+  // Record the SITE_SCOPE that was used + the result of running the GSC
+  // scope filter against the wizard's GSC queries. Phase 2 will populate
+  // gbp_audit_findings + scenario_classification + sitemap_spec via the
+  // Claude orchestrator on a separate row (or this same row, depending on
+  // where Phase 2 hooks in).
+  try {
+    const queriesForFilter: GscQueryForFilter[] = (data.gscQueries || []).map((q) => ({
+      query: q.query,
+      page_url: q.pageUrl,
+      clicks: q.clicks,
+      impressions: q.impressions,
+      ctr: q.ctr,
+      position: q.position,
+    }));
+    const { filtering_report, scoped_queries } = filterGscByScope(queriesForFilter, effectiveScope);
+    // Compact form of scoped_queries — drop redundant data (full rows live
+    // in gsc_queries). Just keep query + impressions for replay/auditing.
+    const scopedDataCompact = scoped_queries.map((q) => ({
+      q: q.query,
+      i: q.impressions,
+      c: q.clicks,
+      p: q.position,
+    }));
+    await supabase.from('onboarding_analyses').insert({
+      site_id: site.id,
+      scope_snapshot: effectiveScope,
+      filtering_report,
+      scoped_gsc_data: { queries: scopedDataCompact },
+    });
+  } catch (err) {
+    // Non-fatal — site is created; analysis row is auditability nice-to-have.
+    console.error('onboarding_analyses insert failed:', err);
+  }
+
   return {
     siteId: site.id,
     slug: site.slug,
   };
+}
+
+/**
+ * Resolve the default SiteScope when the wizard didn't collect one
+ * explicitly. Microsite websiteType → MICROSITE scope pointed at the
+ * microsite target city; everything else → FULL_BUSINESS.
+ */
+function deriveDefaultScope(data: WizardSiteData): SiteScope {
+  if (data.websiteType === 'microsite' && data.micrositeConfig) {
+    return {
+      scope_type: 'MICROSITE',
+      target_city: data.micrositeConfig.targetCity,
+      city_variants: data.micrositeConfig.targetCity ? [data.micrositeConfig.targetCity] : [],
+      zip_codes: [],
+      excluded_cities: [],
+      existing_url_pattern: null,
+    };
+  }
+  return FULL_BUSINESS_SCOPE;
 }
 
 /**

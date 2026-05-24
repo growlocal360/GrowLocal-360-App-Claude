@@ -2,6 +2,7 @@
 
 import type { WebsiteType } from './database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
+import type { SiteScope } from '@/lib/onboarding/site-scope';
 
 export type WizardStep =
   | 'connect'        // Step 1: Connect GBP or Manual
@@ -13,6 +14,7 @@ export type WizardStep =
   | 'service-areas'  // Step 5: Service Areas (cities you travel to)
   | 'neighborhoods'  // Step 6: Neighborhoods (hyper-local within GBP city)
   | 'website-type'   // Step 7: Website Type Selection
+  | 'site-scope'     // Step 7.5: v4 SITE_SCOPE — collect target geography for GSC filtering
   | 'review';        // Step 8: Review & Generate
 
 export interface WizardLocation {
@@ -142,6 +144,10 @@ export interface WizardState {
   domain?: string;
   micrositeConfig: MicrositeConfig | null;
 
+  // Step 7.5: v4 SITE_SCOPE. Drives the GSC scope filter + the Phase 2
+  // onboarding analysis. NULL for FULL_BUSINESS or until the step runs.
+  siteScope: SiteScope | null;
+
   // GSC (Google Search Console) — optional, enhances content generation
   gscPropertyUrl: string | null;
   gscQueries: WizardGSCQuery[];
@@ -167,6 +173,7 @@ export const initialWizardState: WizardState = {
   neighborhoods: [],
   websiteType: null,
   micrositeConfig: null,
+  siteScope: null,
   gscPropertyUrl: null,
   gscQueries: [],
   currentStep: 'connect',
@@ -184,6 +191,7 @@ export const WIZARD_STEPS: { id: WizardStep; title: string; description: string 
   { id: 'service-areas', title: 'Areas', description: 'Cities you travel to' },
   { id: 'neighborhoods', title: 'Local', description: 'Neighborhoods in your city' },
   { id: 'website-type', title: 'Type', description: 'Choose structure' },
+  { id: 'site-scope', title: 'Scope', description: 'Geographic focus for analysis' },
   { id: 'review', title: 'Review', description: 'Confirm & create' },
 ];
 
@@ -199,6 +207,6 @@ export const getStepsForFlow = (
 
   if (options?.includeBrands) base.push('brands');
 
-  base.push('services', 'service-areas', 'neighborhoods', 'website-type', 'review');
+  base.push('services', 'service-areas', 'neighborhoods', 'website-type', 'site-scope', 'review');
   return base;
 };

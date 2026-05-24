@@ -81,6 +81,8 @@ export default function SiteDashboardPage() {
   const [jobSnapCount, setJobSnapCount] = useState(0);
   const [todayAppointmentCount, setTodayAppointmentCount] = useState(0);
   const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
+  const [leadTotalCount, setLeadTotalCount] = useState(0);
+  const [leadNewCount, setLeadNewCount] = useState(0);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
@@ -180,6 +182,21 @@ export default function SiteDashboardPage() {
         .eq('site_id', siteId)
         .eq('status', 'pending');
       setPendingAppointmentCount(pendingCount || 0);
+
+      // Leads: total + new
+      const [{ count: leadTotal }, { count: newLeads }] = await Promise.all([
+        supabase
+          .from('leads')
+          .select('id', { count: 'exact', head: true })
+          .eq('site_id', siteId),
+        supabase
+          .from('leads')
+          .select('id', { count: 'exact', head: true })
+          .eq('site_id', siteId)
+          .eq('status', 'new'),
+      ]);
+      setLeadTotalCount(leadTotal || 0);
+      setLeadNewCount(newLeads || 0);
 
       setLoading(false);
     }
@@ -665,7 +682,13 @@ export default function SiteDashboardPage() {
           </Card>
 
           {/* Leads */}
-          <Card className="hover:border-[#00ef99]/20 transition-colors">
+          <Card className={`relative transition-colors ${leadNewCount > 0 ? 'border-amber-400 ring-2 ring-amber-100' : 'hover:border-[#00ef99]/20'}`}>
+            {leadNewCount > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-500 px-2 text-xs font-bold text-white shadow-md">
+                {leadNewCount > 99 ? '99+' : leadNewCount}
+                <span className="absolute -inset-0.5 animate-ping rounded-full bg-amber-400 opacity-60" />
+              </span>
+            )}
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
@@ -678,12 +701,21 @@ export default function SiteDashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                View and manage leads from your website forms
-              </p>
+              <div className="mb-4 flex items-baseline gap-4">
+                <div>
+                  <div className="text-3xl font-bold text-gray-900">{leadTotalCount}</div>
+                  <div className="text-xs text-gray-500">total</div>
+                </div>
+                <div>
+                  <div className={`text-3xl font-bold ${leadNewCount > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                    {leadNewCount}
+                  </div>
+                  <div className="text-xs text-gray-500">new</div>
+                </div>
+              </div>
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/leads`}>
-                  View Leads
+                  {leadNewCount > 0 ? `Review ${leadNewCount} new` : 'View Leads'}
                 </Link>
               </Button>
             </CardContent>

@@ -39,25 +39,44 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     console.log('[leads] Inserting new lead', { siteId, name, service_type, source_page });
 
-    const { data: lead, error } = await supabase
+    const buildPayload = (includeAddress: boolean) => ({
+      site_id: siteId,
+      name,
+      email: email || null,
+      phone: phone || null,
+      service_type: service_type || null,
+      message: message || null,
+      ...(includeAddress ? { address: address || null } : {}),
+      source_page: source_page || null,
+      status: 'new',
+    });
+
+    let { data: lead, error } = await supabase
       .from('leads')
-      .insert({
-        site_id: siteId,
-        name,
-        email: email || null,
-        phone: phone || null,
-        service_type: service_type || null,
-        message: message || null,
-        address: address || null,
-        source_page: source_page || null,
-        status: 'new',
-      })
+      .insert(buildPayload(true))
       .select()
       .single();
 
+    // Graceful fallback: if migration 038 hasn't been applied yet, the
+    // address column doesn't exist — retry without it so the lead still
+    // captures rather than 500ing.
+    if (error && /column .*address.* does not exist/i.test(error.message)) {
+      console.warn('[leads] address column missing — retrying without it (apply migration 038 to enable address capture)');
+      const retry = await supabase
+        .from('leads')
+        .insert(buildPayload(false))
+        .select()
+        .single();
+      lead = retry.data;
+      error = retry.error;
+    }
+
     if (error) {
       console.error('[leads] Failed to insert lead:', error);
-      return NextResponse.json({ error: 'Failed to submit lead' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to submit lead', details: error.message, code: error.code },
+        { status: 500 }
+      );
     }
 
     console.log('[leads] Inserted lead', { leadId: lead.id, siteId });

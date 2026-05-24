@@ -58,56 +58,86 @@ export async function POST(request: NextRequest) {
 
     const appointmentStatus = config.booking_mode === 'instant' ? 'confirmed' : 'pending';
 
-    // Create the lead first
-    const { data: lead, error: leadError } = await supabase
+    // Create the lead first (with graceful fallback if address column missing)
+    const buildLeadPayload = (includeAddress: boolean) => ({
+      site_id: siteId,
+      name: customer_name,
+      email: customer_email || null,
+      phone: customer_phone || null,
+      service_type: service_type || null,
+      message: notes || null,
+      ...(includeAddress ? { address: address || null } : {}),
+      source_page: source_page || '/contact',
+      status: 'new',
+    });
+
+    let leadInsert = await supabase
       .from('leads')
-      .insert({
-        site_id: siteId,
-        name: customer_name,
-        email: customer_email || null,
-        phone: customer_phone || null,
-        service_type: service_type || null,
-        message: notes || null,
-        address: address || null,
-        source_page: source_page || '/contact',
-        status: 'new',
-      })
+      .insert(buildLeadPayload(true))
       .select()
       .single();
 
-    if (leadError) {
-      console.error('Failed to create lead:', leadError);
-      return NextResponse.json({ error: 'Failed to submit booking' }, { status: 500 });
+    if (leadInsert.error && /column .*address.* does not exist/i.test(leadInsert.error.message)) {
+      console.warn('[book] address column missing on leads — retrying without it');
+      leadInsert = await supabase
+        .from('leads')
+        .insert(buildLeadPayload(false))
+        .select()
+        .single();
     }
 
-    // Create the appointment linked to the lead
-    const { data: appointment, error: apptError } = await supabase
+    if (leadInsert.error) {
+      console.error('[book] Failed to create lead:', leadInsert.error);
+      return NextResponse.json(
+        { error: 'Failed to submit booking', details: leadInsert.error.message, code: leadInsert.error.code },
+        { status: 500 }
+      );
+    }
+    const lead = leadInsert.data!;
+
+    // Create the appointment linked to the lead (same fallback)
+    const buildApptPayload = (includeAddress: boolean) => ({
+      site_id: siteId,
+      lead_id: lead.id,
+      customer_name,
+      customer_email: customer_email || null,
+      customer_phone: customer_phone || null,
+      customer_city: customer_city || null,
+      customer_zip: customer_zip || null,
+      service_type: service_type || null,
+      notes: notes || null,
+      ...(includeAddress ? { address: address || null } : {}),
+      scheduled_date,
+      scheduled_time: scheduled_time || null,
+      time_window_start: time_window_start || null,
+      time_window_end: time_window_end || null,
+      source: 'online_booking',
+      status: appointmentStatus,
+    });
+
+    let apptInsert = await supabase
       .from('appointments')
-      .insert({
-        site_id: siteId,
-        lead_id: lead.id,
-        customer_name,
-        customer_email: customer_email || null,
-        customer_phone: customer_phone || null,
-        customer_city: customer_city || null,
-        customer_zip: customer_zip || null,
-        service_type: service_type || null,
-        notes: notes || null,
-        address: address || null,
-        scheduled_date,
-        scheduled_time: scheduled_time || null,
-        time_window_start: time_window_start || null,
-        time_window_end: time_window_end || null,
-        source: 'online_booking',
-        status: appointmentStatus,
-      })
+      .insert(buildApptPayload(true))
       .select()
       .single();
 
-    if (apptError) {
-      console.error('Failed to create appointment:', apptError);
-      return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+    if (apptInsert.error && /column .*address.* does not exist/i.test(apptInsert.error.message)) {
+      console.warn('[book] address column missing on appointments — retrying without it');
+      apptInsert = await supabase
+        .from('appointments')
+        .insert(buildApptPayload(false))
+        .select()
+        .single();
     }
+
+    if (apptInsert.error) {
+      console.error('[book] Failed to create appointment:', apptInsert.error);
+      return NextResponse.json(
+        { error: 'Failed to create booking', details: apptInsert.error.message, code: apptInsert.error.code },
+        { status: 500 }
+      );
+    }
+    const appointment = apptInsert.data!;
 
     // Fire Inngest event for notification workflow
     await inngest.send({

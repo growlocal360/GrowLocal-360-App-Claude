@@ -152,6 +152,7 @@ export function AboutPage({
             <AboutCTASection
               sections={sections}
               brandColor={accentColor}
+              ctaColor={ctaColor}
               phone={phone}
               siteSlug={siteSlug}
               locationSlug={locationSlug}

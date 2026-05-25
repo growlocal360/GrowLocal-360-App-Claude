@@ -369,7 +369,7 @@ export function NeighborhoodPage({ data, siteSlug, locationSlug }: NeighborhoodP
         {/* CTA Section */}
         <section
           className="py-16"
-          style={{ backgroundColor: brandColor }}
+          style={{ backgroundColor: ctaColor }}
         >
           <div className="mx-auto max-w-7xl px-4 text-center text-white">
             <h2 className="text-2xl font-bold md:text-3xl">

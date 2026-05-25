@@ -201,7 +201,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
                         <Link
                           href={getCategoryUrl(cat)}
                           className="hidden items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:flex"
-                          style={{ backgroundColor: brandColor }}
+                          style={{ backgroundColor: ctaColor }}
                         >
                           View All {categoryName}
                           <ArrowRight className="h-4 w-4" />

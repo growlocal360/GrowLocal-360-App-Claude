@@ -7,14 +7,17 @@ import * as paths from '@/lib/routing/paths';
 interface AboutCTASectionProps {
   sections: AboutPageSections | null;
   brandColor: string;
+  ctaColor?: string;
   phone?: string | null;
   siteSlug: string;
   locationSlug?: string;
 }
 
-export function AboutCTASection({ sections, brandColor, phone, locationSlug }: AboutCTASectionProps) {
+export function AboutCTASection({ sections, brandColor, ctaColor, phone, locationSlug }: AboutCTASectionProps) {
   const cta = sections?.cta;
   if (!cta) return null;
+
+  const actionColor = ctaColor || brandColor;
 
   return (
     <section className="py-16">
@@ -25,7 +28,7 @@ export function AboutCTASection({ sections, brandColor, phone, locationSlug }: A
           <Link
             href={paths.contactPage(locationSlug)}
             className="inline-flex items-center gap-2 rounded-lg px-8 py-3 text-lg font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: brandColor }}
+            style={{ backgroundColor: actionColor }}
           >
             Contact Us
           </Link>
@@ -33,7 +36,7 @@ export function AboutCTASection({ sections, brandColor, phone, locationSlug }: A
             <a
               href={`tel:${phone.replace(/\D/g, '')}`}
               className="inline-flex items-center gap-2 rounded-lg border-2 px-8 py-3 text-lg font-semibold transition-opacity hover:opacity-80"
-              style={{ borderColor: brandColor, color: brandColor }}
+              style={{ borderColor: actionColor, color: actionColor }}
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

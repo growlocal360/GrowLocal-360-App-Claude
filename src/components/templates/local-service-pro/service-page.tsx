@@ -104,6 +104,12 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
           primaryLocation={location}
           pageContent={heroContent}
           services={allServices}
+          formCategories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          ctaColor={ctaColor}
+          secondaryColor={accentColor}
+          primaryCategoryName={categoryName}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />

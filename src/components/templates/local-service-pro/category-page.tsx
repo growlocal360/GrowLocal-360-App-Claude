@@ -100,6 +100,12 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
           primaryLocation={location}
           pageContent={sitePageContent}
           services={services}
+          formCategories={formCategories}
+          schedulingActive={schedulingActive}
+          ctaStyle={ctaStyle}
+          ctaColor={ctaColor}
+          secondaryColor={accentColor}
+          primaryCategoryName={categoryName}
           averageRating={averageRating}
           totalReviewCount={totalReviewCount}
         />

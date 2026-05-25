@@ -132,7 +132,7 @@ export function CategoryPage({ data, siteSlug, googleReviews, serviceAreas, neig
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

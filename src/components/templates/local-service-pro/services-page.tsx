@@ -240,7 +240,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

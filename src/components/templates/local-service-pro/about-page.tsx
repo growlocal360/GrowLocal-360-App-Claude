@@ -186,7 +186,7 @@ export function AboutPage({
             <TeamSection teamMembers={teamMembers || []} brandColor={accentColor} />
             <UnifiedLeadForm
               siteId={site.id}
-              brandColor={ctaColor}
+              accentColor={ctaColor}
               categories={formCategories}
               schedulingActive={schedulingActive}
               ctaStyle={ctaStyle}

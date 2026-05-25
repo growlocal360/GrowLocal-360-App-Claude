@@ -27,7 +27,7 @@ interface AddressPrediction {
 
 interface UnifiedLeadFormProps {
   siteId: string;
-  brandColor?: string;
+  accentColor?: string;
   categories?: PublicRenderCategory[];
   schedulingActive?: boolean;
   ctaStyle?: 'booking' | 'estimate';
@@ -50,7 +50,7 @@ function formatDateDisplay(dateStr: string): string {
 
 export function UnifiedLeadForm({
   siteId,
-  brandColor = '#00ef99',
+  accentColor = '#00ef99',
   categories,
   schedulingActive = false,
   ctaStyle = 'booking',
@@ -241,14 +241,14 @@ export function UnifiedLeadForm({
     ? 'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-transparent focus:outline-none focus:ring-2'
     : 'w-full rounded-xl border border-gray-300 px-4 py-3 text-sm transition-all duration-300 focus:border-transparent focus:outline-none focus:ring-2';
 
-  const ringStyle = { '--tw-ring-color': brandColor } as React.CSSProperties;
+  const ringStyle = { '--tw-ring-color': accentColor } as React.CSSProperties;
 
   // ---- Success state ----
   if (submitted) {
     if (variant === 'hero') {
       return (
         <div className="text-center py-4">
-          <CheckCircle2 className="mx-auto h-12 w-12 mb-3" style={{ color: brandColor }} />
+          <CheckCircle2 className="mx-auto h-12 w-12 mb-3" style={{ color: accentColor }} />
           <h3 className="text-xl font-bold text-gray-900">Thank You!</h3>
           <p className="mt-2 text-sm text-gray-600">
             {bookingResult?.message || 'We\'ve received your request. A team member will reach out shortly.'}
@@ -266,7 +266,7 @@ export function UnifiedLeadForm({
     return (
       <section id="booking" className="py-24">
         <div className="mx-auto max-w-xl px-4 text-center">
-          <CheckCircle2 className="mx-auto h-16 w-16 mb-4" style={{ color: brandColor }} />
+          <CheckCircle2 className="mx-auto h-16 w-16 mb-4" style={{ color: accentColor }} />
           <h2 className="text-2xl font-bold text-gray-900">
             {bookingResult?.status === 'confirmed' ? 'Appointment Confirmed!' : 'Thank You!'}
           </h2>
@@ -297,7 +297,7 @@ export function UnifiedLeadForm({
                   {step === 1 ? (ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate') : stepLabel(step)}
                 </span>
                 {step === 1 && (
-                  <div className="font-medium" style={{ color: brandColor }}>In less than 30 seconds</div>
+                  <div className="font-medium" style={{ color: accentColor }}>In less than 30 seconds</div>
                 )}
               </div>
               <span className="text-gray-500">Step {step} of {totalSteps}</span>
@@ -305,14 +305,14 @@ export function UnifiedLeadForm({
           ) : (
             <>
               <span className="text-gray-500">Step {step} of {totalSteps}</span>
-              <span className="font-medium" style={{ color: brandColor }}>{stepLabel(step)}</span>
+              <span className="font-medium" style={{ color: accentColor }}>{stepLabel(step)}</span>
             </>
           )}
         </div>
         <div className="h-2 w-full rounded-full bg-gray-200">
           <div
             className="h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(step / totalSteps) * 100}%`, backgroundColor: brandColor }}
+            style={{ width: `${(step / totalSteps) * 100}%`, backgroundColor: accentColor }}
           />
         </div>
       </div>
@@ -354,7 +354,7 @@ export function UnifiedLeadForm({
             className={variant === 'hero'
               ? 'w-full py-2.5 hover:opacity-90'
               : 'w-full rounded-full py-3.5 text-base shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg'}
-            style={{ backgroundColor: brandColor }}
+            style={{ backgroundColor: accentColor }}
             onClick={() => setStep(2)}
           >
             Continue
@@ -415,7 +415,7 @@ export function UnifiedLeadForm({
               className={variant === 'hero'
                 ? 'flex-1 hover:opacity-90'
                 : 'flex-1 rounded-full py-3.5 text-base shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg'}
-              style={{ backgroundColor: brandColor }}
+              style={{ backgroundColor: accentColor }}
               onClick={() => {
                 if (!formData.name || !formData.phone) return;
                 setStep(3);
@@ -474,7 +474,7 @@ export function UnifiedLeadForm({
               className={variant === 'hero'
                 ? 'flex-1 hover:opacity-90'
                 : 'flex-1 rounded-full py-3.5 text-base shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg'}
-              style={{ backgroundColor: brandColor }}
+              style={{ backgroundColor: accentColor }}
             >
               {submitting ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
@@ -531,12 +531,12 @@ export function UnifiedLeadForm({
                           ? 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                           : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
                     }`}
-                    style={isSelected ? { borderColor: brandColor } : undefined}
+                    style={isSelected ? { borderColor: accentColor } : undefined}
                   >
                     <div className="text-xs text-gray-500">{dayName}</div>
                     <div className="font-semibold text-gray-900">{monthDay}</div>
                     {isAvailable ? (
-                      <div className="text-xs mt-1" style={{ color: brandColor }}>
+                      <div className="text-xs mt-1" style={{ color: accentColor }}>
                         {day.spotsRemaining} spot{day.spotsRemaining !== 1 ? 's' : ''}
                       </div>
                     ) : (
@@ -595,7 +595,7 @@ export function UnifiedLeadForm({
                         {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
                       </span>
                     </div>
-                    <span className="text-sm" style={{ color: brandColor }}>
+                    <span className="text-sm" style={{ color: accentColor }}>
                       {slot.spotsAvailable} spot{slot.spotsAvailable !== 1 ? 's' : ''}
                     </span>
                   </button>

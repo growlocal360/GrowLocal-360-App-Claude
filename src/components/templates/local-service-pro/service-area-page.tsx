@@ -262,7 +262,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
         <RecentWorkSection workItems={recentWorkItems ?? []} brandColor={accentColor} siteSlug={siteSlug} locationSlug={locationSlug} />
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

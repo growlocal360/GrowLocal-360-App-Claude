@@ -280,7 +280,7 @@ export function BrandDetailPage({
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

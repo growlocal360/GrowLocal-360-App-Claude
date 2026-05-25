@@ -233,7 +233,7 @@ export function ServicePage({ data, siteSlug, isPrimaryCategory, googleReviews, 
         {/* Lead Capture Form */}
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

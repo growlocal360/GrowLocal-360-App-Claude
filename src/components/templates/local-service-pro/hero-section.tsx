@@ -151,7 +151,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
               <CardContent className="p-6">
                 <UnifiedLeadForm
                   siteId={site.id}
-                  brandColor={buttonColor}
+                  accentColor={buttonColor}
                   categories={formCategories}
                   schedulingActive={schedulingActive}
                   ctaStyle={ctaStyle}

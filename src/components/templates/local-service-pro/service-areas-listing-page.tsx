@@ -158,7 +158,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
 
         <UnifiedLeadForm
           siteId={site.id}
-          brandColor={ctaColor}
+          accentColor={ctaColor}
           categories={formCategories}
           schedulingActive={schedulingActive}
           ctaStyle={ctaStyle}

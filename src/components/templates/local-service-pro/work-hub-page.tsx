@@ -195,6 +195,7 @@ export function WorkHubPage({
         />
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={site.settings?.phone as string | undefined || primaryLocation?.phone}
           ctaStyle={ctaStyle}

@@ -147,6 +147,7 @@ export function LocalServiceProTemplate({ data, siteSlug, services, primaryCateg
         <EmbeddedMapSection primaryLocation={primaryLocation} />
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={site.settings?.phone as string | undefined || primaryLocation?.phone}
           ctaStyle={ctaStyle}

@@ -262,6 +262,7 @@ export function ReviewsPage({
         />
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={phone}
           ctaStyle={ctaStyle}

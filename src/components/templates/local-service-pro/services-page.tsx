@@ -248,6 +248,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
         />
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={phone}
           ctaStyle={ctaStyle}

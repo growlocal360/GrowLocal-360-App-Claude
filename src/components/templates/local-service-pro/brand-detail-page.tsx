@@ -310,6 +310,7 @@ export function BrandDetailPage({
         )}
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={phone}
           ctaStyle={ctaStyle}

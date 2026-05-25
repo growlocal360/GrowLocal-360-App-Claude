@@ -4,6 +4,7 @@ import { DEFAULT_BRAND_COLOR } from './theme';
 
 interface FinalCTASectionProps {
   brandColor?: string | null;
+  ctaColor?: string | null;
   businessName?: string;
   phone?: string | null;
   ctaStyle?: 'booking' | 'estimate';
@@ -15,9 +16,14 @@ interface FinalCTASectionProps {
 /**
  * Full-width band placed above the footer on every page. Gives every visitor
  * one last conversion opportunity — phone call or jump back to the form.
+ *
+ * Uses the site's CTA color (the accent reserved for buttons / calls-to-action)
+ * for the band background, falling back to brand color, then the default green.
+ * That keeps this section visually distinct from primary-color hero sections.
  */
 export function FinalCTASection({
   brandColor,
+  ctaColor,
   businessName,
   phone,
   ctaStyle = 'booking',
@@ -25,7 +31,7 @@ export function FinalCTASection({
   subheading,
   formHref = '#hero-form',
 }: FinalCTASectionProps) {
-  const color = brandColor || DEFAULT_BRAND_COLOR;
+  const color = ctaColor || brandColor || DEFAULT_BRAND_COLOR;
   const headingText = heading || (ctaStyle === 'booking'
     ? 'Ready to get on the schedule?'
     : 'Ready for a fast, no-obligation estimate?');

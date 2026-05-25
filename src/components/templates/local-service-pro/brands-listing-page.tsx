@@ -136,6 +136,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
         />
         <FinalCTASection
           brandColor={brandColor}
+          ctaColor={ctaColor}
           businessName={site.name}
           phone={phone}
           ctaStyle={ctaStyle}

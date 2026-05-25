@@ -44,6 +44,7 @@ export interface PublicRenderSettings {
   secondary_color: string | null;
   cta_color: string | null;
   logo_url: string | null;
+  logo_dark_url: string | null;
   phone: string | null;
   email: string | null;
   core_industry: string | null;
@@ -335,6 +336,7 @@ export function toPublicSite(
       secondary_color: s.secondary_color || null,
       cta_color: s.cta_color || null,
       logo_url: sanitizeAssetUrl(s.logo_url, 'brand'),
+      logo_dark_url: sanitizeAssetUrl((s as { logo_dark_url?: string | null }).logo_dark_url, 'brand'),
       phone: s.phone || null,
       email: s.email || null,
       core_industry: s.core_industry || null,

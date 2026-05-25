@@ -24,6 +24,7 @@ interface BrandingConfig {
   secondaryColor: string | null;
   ctaColor: string | null;
   logoUrl: string | null;
+  logoDarkUrl: string | null;
   siteName: string;
 }
 
@@ -31,6 +32,7 @@ export default function BrandingSettingsPage() {
   const params = useParams();
   const siteId = params.siteId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputDarkRef = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState<BrandingConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,8 @@ export default function BrandingSettingsPage() {
   const [ctaColor, setCtaColor] = useState('#00ef99');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
+  const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
 
   // Fetch current branding configuration
   useEffect(() => {
@@ -66,6 +70,7 @@ export default function BrandingSettingsPage() {
       setSecondaryColor(data.secondaryColor || '#1f2937');
       setCtaColor(data.ctaColor || data.brandColor || '#00ef99');
       setLogoPreview(data.logoUrl);
+      setLogoDarkPreview(data.logoDarkUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load branding settings');
     } finally {
@@ -73,29 +78,32 @@ export default function BrandingSettingsPage() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFile = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    variant: 'light' | 'dark',
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file');
       return;
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image must be smaller than 5MB');
       return;
     }
 
-    setLogoFile(file);
     setError(null);
-
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
-      setLogoPreview(reader.result as string);
+      if (variant === 'light') {
+        setLogoFile(file);
+        setLogoPreview(reader.result as string);
+      } else {
+        setLogoDarkFile(file);
+        setLogoDarkPreview(reader.result as string);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -108,39 +116,52 @@ export default function BrandingSettingsPage() {
     }
   };
 
+  const handleRemoveLogoDark = () => {
+    setLogoDarkFile(null);
+    setLogoDarkPreview(null);
+    if (fileInputDarkRef.current) {
+      fileInputDarkRef.current.value = '';
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const res = await fetch(`/api/sites/${siteId}/settings/branding/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to upload logo');
+    }
+    const data = await res.json();
+    return data.url as string;
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       setError(null);
       setSuccess(false);
 
-      // If there's a new logo file, upload it first
-      let newLogoUrl = config?.logoUrl || null;
+      let newLogoUrl: string | null = config?.logoUrl || null;
+      let newLogoDarkUrl: string | null = config?.logoDarkUrl || null;
+
+      if (logoFile || logoDarkFile) setUploading(true);
 
       if (logoFile) {
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('logo', logoFile);
-
-        const uploadResponse = await fetch(`/api/sites/${siteId}/settings/branding/upload`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          const data = await uploadResponse.json();
-          throw new Error(data.error || 'Failed to upload logo');
-        }
-
-        const uploadData = await uploadResponse.json();
-        newLogoUrl = uploadData.url;
-        setUploading(false);
+        newLogoUrl = await uploadFile(logoFile);
+      }
+      if (logoDarkFile) {
+        newLogoDarkUrl = await uploadFile(logoDarkFile);
       }
 
-      // Handle logo removal (if preview is null but config had a logo)
-      if (logoPreview === null && config?.logoUrl) {
-        newLogoUrl = null;
-      }
+      // Handle removals (preview cleared but config had a value)
+      if (logoPreview === null && config?.logoUrl) newLogoUrl = null;
+      if (logoDarkPreview === null && config?.logoDarkUrl) newLogoDarkUrl = null;
+
+      setUploading(false);
 
       // Save branding settings
       const response = await fetch(`/api/sites/${siteId}/settings/branding`, {
@@ -151,6 +172,7 @@ export default function BrandingSettingsPage() {
           secondaryColor,
           ctaColor,
           logoUrl: newLogoUrl,
+          logoDarkUrl: newLogoDarkUrl,
         }),
       });
 
@@ -161,16 +183,26 @@ export default function BrandingSettingsPage() {
 
       const savedData = await response.json();
 
-      // Update local state with dashboard-resolvable URL from server
       const dashboardLogoUrl = savedData.logoUrl || null;
+      const dashboardLogoDarkUrl = savedData.logoDarkUrl || null;
       setConfig((prev) =>
-        prev ? { ...prev, brandColor, secondaryColor, ctaColor, logoUrl: dashboardLogoUrl } : null
+        prev
+          ? {
+              ...prev,
+              brandColor,
+              secondaryColor,
+              ctaColor,
+              logoUrl: dashboardLogoUrl,
+              logoDarkUrl: dashboardLogoDarkUrl,
+            }
+          : null,
       );
       setLogoPreview(dashboardLogoUrl);
+      setLogoDarkPreview(dashboardLogoDarkUrl);
       setLogoFile(null);
+      setLogoDarkFile(null);
       setSuccess(true);
 
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -185,7 +217,9 @@ export default function BrandingSettingsPage() {
     secondaryColor !== (config?.secondaryColor || '#1f2937') ||
     ctaColor !== (config?.ctaColor || config?.brandColor || '#00ef99') ||
     logoFile !== null ||
-    (logoPreview === null && config?.logoUrl !== null);
+    logoDarkFile !== null ||
+    (logoPreview === null && config?.logoUrl !== null) ||
+    (logoDarkPreview === null && config?.logoDarkUrl !== null);
 
   if (loading) {
     return (
@@ -280,7 +314,7 @@ export default function BrandingSettingsPage() {
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-            onChange={handleFileSelect}
+            onChange={(e) => handleLogoFile(e, 'light')}
             className="hidden"
           />
 
@@ -292,6 +326,76 @@ export default function BrandingSettingsPage() {
             >
               <Upload className="h-4 w-4 mr-2" />
               Replace Logo
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dark-Background Logo */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-gray-700" />
+            <h2 className="font-semibold">Dark-Background Logo <span className="text-sm font-normal text-gray-500">(optional)</span></h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            A lighter variant of your logo for use on dark surfaces like the footer.
+            If left blank, the regular logo above is used everywhere. Same size guidance applies.
+          </p>
+
+          {logoDarkPreview ? (
+            <div className="flex items-start gap-4">
+              <div className="relative w-48 h-24 bg-gray-900 rounded-lg overflow-hidden border flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoDarkPreview}
+                  alt="Dark logo preview"
+                  className="max-w-full max-h-full object-contain p-2"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRemoveLogoDark}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove
+              </Button>
+            </div>
+          ) : (
+            <div
+              onClick={() => fileInputDarkRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-[#00ef99]/40 hover:bg-[#00ef99]/5 transition-colors"
+            >
+              <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+              <p className="text-sm text-gray-600">
+                Click to upload your dark-background variant
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                PNG, JPG, SVG up to 5MB
+              </p>
+            </div>
+          )}
+
+          <input
+            ref={fileInputDarkRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+            onChange={(e) => handleLogoFile(e, 'dark')}
+            className="hidden"
+          />
+
+          {logoDarkPreview && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputDarkRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Replace Dark Logo
             </Button>
           )}
         </CardContent>

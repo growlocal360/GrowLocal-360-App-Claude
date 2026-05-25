@@ -21,7 +21,9 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
   const currentYear = new Date().getFullYear();
   const slug = siteSlug || site.slug;
 
-  const logoUrl = site.settings?.logo_url as string | undefined;
+  // Prefer the dark-background variant when supplied (designed for the dark footer);
+  // fall back to the regular logo, then to the wordmark.
+  const logoUrl = (site.settings?.logo_dark_url || site.settings?.logo_url) as string | undefined;
   const customTagline = site.settings?.tagline?.trim();
   const tagline = customTagline || (primaryLocation
     ? `Trusted local service in ${primaryLocation.city}, ${primaryLocation.state}.`

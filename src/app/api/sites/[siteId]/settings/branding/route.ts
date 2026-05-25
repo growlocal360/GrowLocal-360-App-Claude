@@ -31,23 +31,21 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const settings = (site.settings || {}) as any;
 
-  // Resolve logo_url to a dashboard-accessible path
-  let dashboardLogoUrl: string | null = null;
-  if (settings.logo_url) {
-    if (settings.logo_url.startsWith('/public/assets/')) {
-      // Clean path → convert to dashboard asset proxy URL
-      dashboardLogoUrl = `/api/sites/${siteId}/${settings.logo_url.replace('/public/', '')}`;
-    } else {
-      // External/legacy URL → pass through
-      dashboardLogoUrl = settings.logo_url;
+  // Helper: resolve a stored logo URL to a dashboard-accessible path
+  const toDashboardUrl = (storedUrl: string | null | undefined): string | null => {
+    if (!storedUrl) return null;
+    if (storedUrl.startsWith('/public/assets/')) {
+      return `/api/sites/${siteId}/${storedUrl.replace('/public/', '')}`;
     }
-  }
+    return storedUrl;
+  };
 
   return NextResponse.json({
     brandColor: settings.brand_color || null,
     secondaryColor: settings.secondary_color || null,
     ctaColor: settings.cta_color || null,
-    logoUrl: dashboardLogoUrl,
+    logoUrl: toDashboardUrl(settings.logo_url),
+    logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     siteName: site.name,
   });
 }
@@ -78,7 +76,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, logoUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, logoUrl, logoDarkUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -90,15 +88,15 @@ export async function PATCH(
     }
   }
 
-  // Normalize logo URL: convert admin proxy paths back to clean /public/ format
-  let cleanLogoUrl = logoUrl;
-  if (cleanLogoUrl) {
-    // /api/sites/{siteId}/assets/brand/file.svg → /public/assets/brand/file.svg
-    const adminPathMatch = cleanLogoUrl.match(/^\/api\/sites\/[^/]+\/(.+)$/);
-    if (adminPathMatch) {
-      cleanLogoUrl = `/public/${adminPathMatch[1]}`;
-    }
-  }
+  // Normalize a logo URL: convert admin proxy paths back to clean /public/ format
+  const normalizeLogoPath = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    const adminPathMatch = url.match(/^\/api\/sites\/[^/]+\/(.+)$/);
+    return adminPathMatch ? `/public/${adminPathMatch[1]}` : url;
+  };
+
+  const cleanLogoUrl = logoUrl !== undefined ? normalizeLogoPath(logoUrl) : undefined;
+  const cleanLogoDarkUrl = logoDarkUrl !== undefined ? normalizeLogoPath(logoDarkUrl) : undefined;
 
   // Merge with existing settings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +106,8 @@ export async function PATCH(
     brand_color: brandColor !== undefined ? brandColor : currentSettings.brand_color,
     secondary_color: secondaryColor !== undefined ? secondaryColor : currentSettings.secondary_color,
     cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
-    logo_url: logoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
+    logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
+    logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
   };
 
   // Update site settings (use admin client to bypass RLS)
@@ -132,21 +131,21 @@ export async function PATCH(
   // Revalidate public site pages so branding changes appear immediately
   await revalidateSite(siteId);
 
-  // Resolve logo_url to dashboard-accessible path for client preview
-  let responseLogo: string | null = null;
-  if (updatedSettings.logo_url) {
-    if (updatedSettings.logo_url.startsWith('/public/assets/')) {
-      responseLogo = `/api/sites/${siteId}/${updatedSettings.logo_url.replace('/public/', '')}`;
-    } else {
-      responseLogo = updatedSettings.logo_url;
+  // Resolve logo URLs back to dashboard-accessible paths for client preview
+  const toDashboardUrl = (storedUrl: string | null | undefined): string | null => {
+    if (!storedUrl) return null;
+    if (storedUrl.startsWith('/public/assets/')) {
+      return `/api/sites/${siteId}/${storedUrl.replace('/public/', '')}`;
     }
-  }
+    return storedUrl;
+  };
 
   return NextResponse.json({
     success: true,
     brandColor: updatedSettings.brand_color,
     secondaryColor: updatedSettings.secondary_color,
     ctaColor: updatedSettings.cta_color,
-    logoUrl: responseLogo,
+    logoUrl: toDashboardUrl(updatedSettings.logo_url),
+    logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
   });
 }

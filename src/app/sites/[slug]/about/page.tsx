@@ -11,7 +11,7 @@ import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListin
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const slugs = await getAllSiteSlugs();

@@ -11,7 +11,7 @@ import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface WorkDetailProps {
   params: Promise<{ slug: string; workSlug: string }>;

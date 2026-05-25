@@ -15,7 +15,7 @@ import {
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface BrandDetailPageProps {
   params: Promise<{ slug: string; brandSlug: string }>;

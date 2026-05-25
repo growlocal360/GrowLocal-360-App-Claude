@@ -23,7 +23,7 @@ import {
 } from '@/lib/sites/public-render-model';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface MultiLocationAreaDetailProps {
   params: Promise<{ slug: string; location: string; areaSlug: string }>;

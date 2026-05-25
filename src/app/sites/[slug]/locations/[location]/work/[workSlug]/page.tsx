@@ -16,7 +16,7 @@ import {
 import { toPublicJobOutput } from '@/lib/job-snaps/public-transform';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface MultiLocationWorkDetailProps {
   params: Promise<{ slug: string; location: string; workSlug: string }>;

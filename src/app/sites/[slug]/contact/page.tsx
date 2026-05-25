@@ -11,7 +11,7 @@ import { getTeamMembersForSite } from '@/lib/sites/get-team';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const slugs = await getAllSiteSlugs();

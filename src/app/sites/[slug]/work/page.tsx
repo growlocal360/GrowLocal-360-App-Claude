@@ -10,7 +10,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface WorkHubProps {
   params: Promise<{ slug: string }>;

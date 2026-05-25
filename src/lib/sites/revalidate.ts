@@ -17,6 +17,8 @@ import type { GenerationScope } from '@/types/database';
  * and the full /locations/{loc}/* multi-location subtree.
  */
 export async function revalidateSite(siteId: string) {
+  console.log('[revalidateSite] start', { siteId });
+  const startedAt = Date.now();
   const supabase = createAdminClient();
 
   const [
@@ -131,6 +133,21 @@ export async function revalidateSite(siteId: string) {
       revalidatePath(`${locBase}/work/${w.slug}`, 'page');
     }
   }
+
+  console.log('[revalidateSite] done', {
+    siteId,
+    slug: site.slug,
+    ms: Date.now() - startedAt,
+    counts: {
+      services: services?.length || 0,
+      categories: categories?.length || 0,
+      areas: serviceAreas?.length || 0,
+      neighborhoods: neighborhoods?.length || 0,
+      brands: brands?.length || 0,
+      locations: locations?.length || 0,
+      workItems: workItems?.length || 0,
+    },
+  });
 }
 
 /**

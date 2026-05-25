@@ -12,7 +12,7 @@ import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface ServiceAreaPageProps {
   params: Promise<{ slug: string; areaSlug: string }>;

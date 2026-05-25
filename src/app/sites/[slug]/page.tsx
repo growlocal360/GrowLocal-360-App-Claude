@@ -11,7 +11,7 @@ import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface SitePageProps {
   params: Promise<{ slug: string }>;

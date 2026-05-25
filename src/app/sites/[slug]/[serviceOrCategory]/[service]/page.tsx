@@ -14,7 +14,7 @@ import {
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface NestedServicePageProps {
   params: Promise<{ slug: string; serviceOrCategory: string; service: string }>;

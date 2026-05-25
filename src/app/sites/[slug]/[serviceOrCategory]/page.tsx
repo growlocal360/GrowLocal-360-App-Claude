@@ -16,7 +16,7 @@ import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface ServiceOrCategoryPageProps {
   params: Promise<{ slug: string; serviceOrCategory: string }>;

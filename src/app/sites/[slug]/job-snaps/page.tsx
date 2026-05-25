@@ -11,7 +11,7 @@ import {
   toPublicAreaListing,
 } from '@/lib/sites/public-render-model';
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const slugs = await getAllSiteSlugs();

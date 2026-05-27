@@ -113,23 +113,35 @@ export default function AddJobSnapsPage() {
     <div className="flex flex-col">
       <Header title="Add Job Snaps" user={{ name: '', email: '' }} />
 
-      <div className="p-6 max-w-3xl mx-auto w-full space-y-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
-        </Link>
+      {/* Full-width gradient hero */}
+      <div className="border-b border-gray-100 bg-gradient-to-br from-[#00ef99]/10 via-cyan-50 to-violet-50">
+        <div className="px-6 py-10 md:py-12">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to Dashboard
+          </Link>
 
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Add Job Snaps for another business</h1>
-          <p className="text-gray-500 mt-1">
-            Adds a new Job Snaps workspace under your current account. Use it for an existing
-            website (Next.js, WordPress, anywhere) — totally separate from your other sites.
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-[#00b478] shadow-sm backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" />
+            Job Snaps
+          </div>
+
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+            Add Job Snaps for another business
+          </h1>
+          <p className="mt-3 max-w-2xl text-base text-gray-600 md:text-lg">
+            Snap a photo of your work, AI writes the post, and it publishes to your website and
+            Google Business Profile in one click. This adds a new workspace under your current
+            account — works with any existing site (Next.js, WordPress, anywhere) and stays
+            totally separate from your other sites.
           </p>
         </div>
+      </div>
 
+      <div className="px-6 py-8 w-full space-y-6">
         {error && (
           <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             <AlertCircle className="h-5 w-5 shrink-0" />

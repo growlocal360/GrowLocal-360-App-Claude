@@ -7,7 +7,10 @@ import { Camera, Sparkles, Globe, Zap, Check } from 'lucide-react';
 
 /**
  * Sales card shown on the Job Snaps page when the user has no Job Snaps
- * subscription AND no GL360 site. CTA → standalone signup at /signup/job-snaps.
+ * subscription AND no GL360 site. The viewer is always logged in (dashboard
+ * context), so the CTA goes to the in-dashboard tier chooser at
+ * /dashboard/sites/new/jobsnaps — NOT /signup/job-snaps, which middleware
+ * bounces authenticated users away from (caused a redirect loop).
  */
 export function GetStartedCard() {
   const features = [
@@ -63,7 +66,7 @@ export function GetStartedCard() {
                 size="lg"
                 className="w-full bg-black hover:bg-gray-800 text-base"
               >
-                <Link href="/signup/job-snaps">
+                <Link href="/dashboard/sites/new/jobsnaps">
                   Get Job Snaps Now &rarr;
                 </Link>
               </Button>

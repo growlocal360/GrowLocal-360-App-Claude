@@ -316,7 +316,7 @@ export default async function DashboardPage() {
                       <span className="text-sm text-gray-500">/month</span>
                     </div>
                     <Button asChild className="w-full bg-[#00ef99] hover:bg-[#00ef99]/90 text-black">
-                      <Link href="/signup/job-snaps">
+                      <Link href="/dashboard/sites/new/jobsnaps">
                         Try free for 14 days
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>

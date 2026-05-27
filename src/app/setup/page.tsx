@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { SetupForm } from './setup-form';
 
 /**
@@ -27,5 +28,24 @@ export default async function SetupPage() {
     user.email?.split('@')[0] ||
     '';
 
-  return <SetupForm defaultName={defaultName} />;
+  // Surface any pending team invitations for this email so a re-invited user
+  // can rejoin instead of being nudged to create their own business. Uses the
+  // admin client because invitations aren't RLS-readable by the invitee yet.
+  let invites: { token: string; orgName: string }[] = [];
+  if (user.email) {
+    const adminSupabase = createAdminClient();
+    const { data } = await adminSupabase
+      .from('invitations')
+      .select('token, organization:organizations(name)')
+      .eq('email', user.email)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString());
+
+    invites = (data || []).map((row) => {
+      const org = Array.isArray(row.organization) ? row.organization[0] : row.organization;
+      return { token: row.token as string, orgName: org?.name || 'a team' };
+    });
+  }
+
+  return <SetupForm defaultName={defaultName} invites={invites} />;
 }

@@ -11,6 +11,63 @@ import type { WizardSiteData } from '@/lib/sites/create-site';
 // Disable body parsing for webhook
 export const runtime = 'nodejs';
 
+/**
+ * Clone an org-level Google Business Profile connection (captured at Job Snaps
+ * signup) into a per-site social_connections row for a freshly created site,
+ * and stash the selected GBP location on the site's settings so Job Snaps know
+ * which listing to post to. No-op if the org never connected Google.
+ */
+async function linkOrgGoogleConnectionToSite(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  organizationId: string,
+  siteId: string
+) {
+  const { data: conn } = await supabase
+    .from('org_google_connections')
+    .select('account_id, account_name, access_token, refresh_token, token_expires_at, default_location_resource, default_location_json')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!conn) return;
+
+  await supabase
+    .from('social_connections')
+    .upsert(
+      {
+        site_id: siteId,
+        platform: 'google_business',
+        account_id: conn.account_id || 'gbp',
+        account_name: conn.account_name || null,
+        access_token: conn.access_token,
+        refresh_token: conn.refresh_token,
+        token_expires_at: conn.token_expires_at,
+        is_active: true,
+      },
+      { onConflict: 'site_id,platform,account_id' }
+    );
+
+  if (conn.default_location_resource || conn.default_location_json) {
+    const { data: site } = await supabase
+      .from('sites')
+      .select('settings')
+      .eq('id', siteId)
+      .single();
+    const settings = (site?.settings || {}) as Record<string, unknown>;
+    await supabase
+      .from('sites')
+      .update({
+        settings: {
+          ...settings,
+          gbp_location_resource: conn.default_location_resource || null,
+          gbp_location: conn.default_location_json || null,
+        },
+      })
+      .eq('id', siteId);
+  }
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const supabase = createAdminClient();
 
@@ -60,6 +117,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       phone: metadata.phone || null,
     });
     siteId = workspace.siteId;
+
+    // If the user connected their Google Business Profile at signup, clone the
+    // org-level connection down to this new workspace site so the existing
+    // per-site publish path (getGoogleToken(siteId)) works immediately — no
+    // second "Connect GBP" step.
+    await linkOrgGoogleConnectionToSite(supabase, organizationId, siteId);
   } else {
     // ── Branch: GL360 site with wizard data ──────────────────────────────
     let siteData: WizardSiteData | null = null;

@@ -98,17 +98,33 @@ export function StepConnect() {
   const [gscSynced, setGscSynced] = useState(false);
   const [gscSyncing, setGscSyncing] = useState(false);
 
+  const [orgConnection, setOrgConnection] = useState<{ accountName: string | null } | null>(null);
+
   // Check if user is already connected via Google
   useEffect(() => {
     const checkGoogleConnection = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.provider_token) {
-        // User has Google token, try to fetch locations and GSC properties in parallel
+        // Fresh Google token in session — fetch locations + GSC properties.
         fetchGBPLocations();
         fetchGSCProperties();
+        return;
+      }
+      // No fresh token — but the org may already have a stored Google connection
+      // (e.g. connected at Job Snaps signup). Offer a one-click reuse instead of
+      // forcing a re-auth.
+      try {
+        const res = await fetch('/api/google/connect');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connection) setOrgConnection({ accountName: data.connection.account_name ?? null });
+        }
+      } catch {
+        // ignore — falls back to the normal connect button
       }
     };
     checkGoogleConnection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
   const fetchGBPLocations = async () => {
@@ -693,6 +709,28 @@ export function StepConnect() {
         <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Reuse an already-connected Google account (e.g. connected at Job Snaps signup) */}
+      {orgConnection && (
+        <div className="flex flex-col gap-3 rounded-lg border border-[#00ef99]/40 bg-[#00ef99]/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <CheckCircle2 className="h-5 w-5 text-[#00ef99]" />
+            <span>
+              Your Google account{orgConnection.accountName ? ` (${orgConnection.accountName})` : ''} is
+              already connected.
+            </span>
+          </div>
+          <Button
+            type="button"
+            className="bg-[#00ef99] text-black hover:bg-[#00d488]"
+            disabled={isLoading}
+            onClick={() => fetchGBPLocations()}
+          >
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Use connected account
+          </Button>
         </div>
       )}
 

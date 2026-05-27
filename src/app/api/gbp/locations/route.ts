@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getActiveOrgId } from '@/lib/auth/active-org';
+import { getOrgGoogleToken } from '@/lib/google/get-google-token';
 import { GBPClient, gbpLocationToAppLocation } from '@/lib/google/gbp-client';
 
 export async function GET(request: Request) {
@@ -21,8 +24,28 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get the provider token (Google access token)
-    const providerToken = session.provider_token;
+    // Prefer a fresh session provider_token; otherwise fall back to the
+    // org-level stored connection (captured at Job Snaps signup) so a returning
+    // user can list locations without re-authing.
+    let providerToken = session.provider_token || null;
+
+    if (!providerToken) {
+      const cookieOrg = await getActiveOrgId();
+      let orgId = cookieOrg;
+      if (!orgId) {
+        const admin = createAdminClient();
+        const { data: profile } = await admin
+          .from('profiles')
+          .select('organization_id')
+          .eq('user_id', session.user.id)
+          .limit(1)
+          .maybeSingle();
+        orgId = profile?.organization_id || null;
+      }
+      if (orgId) {
+        providerToken = await getOrgGoogleToken(orgId);
+      }
+    }
 
     if (!providerToken) {
       return NextResponse.json(

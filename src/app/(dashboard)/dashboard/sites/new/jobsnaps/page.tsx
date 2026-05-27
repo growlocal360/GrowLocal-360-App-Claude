@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { createClient } from '@/lib/supabase/client';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,29 @@ import {
   Loader2,
   Sparkles,
   AlertCircle,
+  MapPin,
 } from 'lucide-react';
+
+/** A GBP location as returned by /api/gbp/locations (gbpLocationToAppLocation shape). */
+interface GbpLocation {
+  name: string;
+  city: string;
+  state: string;
+  phone: string;
+  gbpLocationId?: string;
+  accountId?: string;
+  accountName?: string;
+  primaryCategory?: { displayName?: string };
+}
+
+/** Best-effort map a GBP primary category to one of our INDUSTRIES options. */
+function matchIndustry(categoryName: string | undefined): string {
+  if (!categoryName) return '';
+  const c = categoryName.toLowerCase();
+  return (
+    INDUSTRIES.find((ind) => ind !== 'Other' && (c.includes(ind.toLowerCase()) || ind.toLowerCase().includes(c))) || ''
+  );
+}
 
 const INDUSTRIES = [
   'Plumbing',
@@ -81,6 +104,87 @@ export default function AddJobSnapsPage() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ── Google Business Profile connect + prefill ──────────────────────────
+  const supabase = useMemo(() => createClient(), []);
+  const [gbpLoading, setGbpLoading] = useState(false);
+  const [gbpLocations, setGbpLocations] = useState<GbpLocation[]>([]);
+  const [gbpConnected, setGbpConnected] = useState(false);
+  const [importedFrom, setImportedFrom] = useState<string | null>(null);
+
+  const fetchGbpLocations = async () => {
+    setGbpLoading(true);
+    try {
+      const res = await fetch('/api/gbp/locations');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load Google locations');
+      setGbpConnected(true);
+      setGbpLocations(data.locations || []);
+      // Auto-prefill when there's exactly one listing
+      if ((data.locations || []).length === 1) {
+        applyLocation(data.locations[0]);
+      }
+    } catch {
+      // No GBP / token issue — user can still enter details manually
+      setGbpConnected(false);
+    } finally {
+      setGbpLoading(false);
+    }
+  };
+
+  // If the user already authenticated with Google (session has a provider
+  // token), surface their GBP listings automatically.
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.provider_token) {
+        fetchGbpLocations();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
+
+  const handleConnectGoogle = async () => {
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/oauth2callback?next=/dashboard/sites/new/jobsnaps`,
+        scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
+        queryParams: { access_type: 'offline', prompt: 'consent' },
+      },
+    });
+    if (oauthError) setError(oauthError.message);
+  };
+
+  const applyLocation = async (loc: GbpLocation) => {
+    setBusinessName(loc.name || '');
+    setCity(loc.city || '');
+    setState((loc.state || '').toUpperCase().slice(0, 2));
+    setPhone(loc.phone || '');
+    const matched = matchIndustry(loc.primaryCategory?.displayName);
+    if (matched) setIndustry(matched);
+    setImportedFrom(loc.name || 'Google Business Profile');
+
+    // Persist the connection at the org level so the new workspace is auto-wired
+    // for GBP publishing and a future "Add a New Site" reuses it.
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch('/api/google/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: session?.provider_token,
+          refreshToken: session?.provider_refresh_token,
+          expiresIn: 3600,
+          accountId: loc.accountId,
+          accountName: loc.accountName,
+          location: loc,
+        }),
+      });
+    } catch {
+      // Non-fatal — prefill already happened; publishing can be connected later.
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,6 +311,82 @@ export default function AddJobSnapsPage() {
               Includes 14-day free trial. Cancel anytime.
             </p>
           </div>
+
+          {/* ── Connect Google Business Profile (prefill + auto-wire publishing) ─ */}
+          <Card className="border-[#00ef99]/30 bg-gradient-to-br from-[#00ef99]/5 via-cyan-50/40 to-violet-50/40">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-1">
+                <h2 className="font-semibold text-gray-900">Connect Google Business Profile</h2>
+                <p className="text-sm text-gray-600">
+                  Pull your business details straight from Google and auto-connect publishing —
+                  so Job Snaps can post to your Google Business Profile without setting it up twice.
+                </p>
+              </div>
+
+              {!gbpConnected && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 bg-white"
+                  onClick={handleConnectGoogle}
+                  disabled={gbpLoading}
+                >
+                  {gbpLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Connecting…</>
+                  ) : (
+                    <>Connect Google Business Profile</>
+                  )}
+                </Button>
+              )}
+
+              {gbpLoading && gbpConnected && (
+                <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading your listings…
+                </div>
+              )}
+
+              {gbpConnected && !gbpLoading && gbpLocations.length > 1 && (
+                <div className="mt-4 space-y-2">
+                  <Label>Pick the listing to import</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {gbpLocations.map((loc) => (
+                      <button
+                        key={loc.gbpLocationId || loc.name}
+                        type="button"
+                        onClick={() => applyLocation(loc)}
+                        className={`flex items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:border-[#00ef99] ${
+                          importedFrom === loc.name ? 'border-[#00ef99] bg-white' : 'border-gray-200 bg-white/70'
+                        }`}
+                      >
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#00ef99]" />
+                        <span>
+                          <span className="font-medium text-gray-900">{loc.name}</span>
+                          {(loc.city || loc.state) && (
+                            <span className="block text-xs text-gray-500">
+                              {[loc.city, loc.state].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {gbpConnected && !gbpLoading && gbpLocations.length === 0 && (
+                <p className="mt-4 text-sm text-gray-500">
+                  No Google Business Profile found for this account — just enter your details below.
+                </p>
+              )}
+
+              {importedFrom && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#00ef99]/10 px-3 py-2 text-sm text-[#00b478]">
+                  <Check className="h-4 w-4" />
+                  Imported from <strong>{importedFrom}</strong>. Review the details below.
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* ── Business basics ──────────────────────────────── */}
           <Card>

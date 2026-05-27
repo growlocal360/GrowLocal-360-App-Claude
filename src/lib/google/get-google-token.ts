@@ -74,6 +74,53 @@ export async function getGoogleToken(siteId: string): Promise<string | null> {
 }
 
 /**
+ * Retrieves a valid Google access token for an ORGANIZATION (the connection
+ * captured at Job Snaps signup, stored in org_google_connections). Mirrors
+ * getGoogleToken() but org-scoped — used so a returning user can list GBP
+ * locations without re-authing when their session provider_token is gone.
+ */
+export async function getOrgGoogleToken(organizationId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data: connection } = await admin
+    .from('org_google_connections')
+    .select('access_token, refresh_token, token_expires_at')
+    .eq('organization_id', organizationId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!connection) return null;
+
+  if (connection.token_expires_at) {
+    const expiresAt = new Date(connection.token_expires_at);
+    const bufferMs = 5 * 60 * 1000;
+    if (expiresAt.getTime() - bufferMs > Date.now()) {
+      return connection.access_token;
+    }
+  }
+
+  if (connection.refresh_token) {
+    try {
+      const refreshed = await refreshGoogleToken(connection.refresh_token);
+      if (refreshed) {
+        await admin
+          .from('org_google_connections')
+          .update({
+            access_token: refreshed.access_token,
+            token_expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('organization_id', organizationId);
+        return refreshed.access_token;
+      }
+    } catch (error) {
+      console.error('Org Google token refresh failed:', error);
+    }
+  }
+
+  return connection.access_token || null;
+}
+
+/**
  * Refreshes a Google access token using the refresh token.
  */
 async function refreshGoogleToken(

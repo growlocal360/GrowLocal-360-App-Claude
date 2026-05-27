@@ -227,7 +227,13 @@ export function Sidebar({ user, role, orgs, activeOrgId }: SidebarProps) {
             </p>
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <Button variant="outline" size="sm" className="mt-3 w-full justify-start" asChild>
+          <Link href="/setup">
+            <Plus className="mr-2 h-4 w-4" />
+            Create your own business
+          </Link>
+        </Button>
+        <div className="mt-2 flex gap-2">
           <Button variant="ghost" size="sm" className="flex-1" asChild>
             <Link href="/dashboard/settings">
               <Settings className="mr-2 h-4 w-4" />

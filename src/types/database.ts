@@ -31,6 +31,8 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  /** False when the user deliberately created this org via "Create your own business"; true for signup auto-created orgs (default). */
+  auto_created: boolean;
   created_at: string;
   updated_at: string;
 }

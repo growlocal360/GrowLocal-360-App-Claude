@@ -120,11 +120,14 @@ export async function POST(request: NextRequest) {
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invitation.id);
 
-  // Clean up orphaned empty orgs — if the user had an auto-created org
-  // with no sites and no other members, delete it to prevent clutter
+  // Clean up the throwaway org auto-created at signup — if the user joined a
+  // team and their signup org is empty, delete it to prevent clutter.
+  // Only auto_created orgs are eligible: an org the user deliberately created
+  // via the "Create your own business" flow (auto_created = false) is never
+  // swept away, even if it's still empty.
   const { data: userOrgs } = await adminSupabase
     .from('profiles')
-    .select('id, organization_id, role')
+    .select('id, organization_id, role, organization:organizations(auto_created)')
     .eq('user_id', user.id);
 
   if (userOrgs && userOrgs.length > 1) {
@@ -133,6 +136,12 @@ export async function POST(request: NextRequest) {
       if (orgProfile.organization_id === invitation.organization_id) continue;
       // Only clean up orgs where user is the owner
       if (orgProfile.role !== 'owner') continue;
+
+      // Only clean up auto-created (signup throwaway) orgs, never deliberate ones
+      const org = Array.isArray(orgProfile.organization)
+        ? orgProfile.organization[0]
+        : orgProfile.organization;
+      if (org && org.auto_created === false) continue;
 
       // Check if this org has any sites
       const { count: siteCount } = await adminSupabase
@@ -150,7 +159,7 @@ export async function POST(request: NextRequest) {
 
       if (memberCount && memberCount > 1) continue;
 
-      // Safe to delete — empty org with only this user
+      // Safe to delete — empty auto-created org with only this user
       await adminSupabase
         .from('profiles')
         .delete()

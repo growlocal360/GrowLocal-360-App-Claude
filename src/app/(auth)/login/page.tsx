@@ -98,8 +98,8 @@ function LoginForm() {
         <CardContent>
           {setupPending && (
             <div className="rounded-md bg-amber-50 border border-amber-200 p-4 mb-4 text-sm text-amber-800">
-              <p className="font-medium">Account setup incomplete</p>
-              <p className="mt-1">Your account was created but you haven&apos;t joined a team yet. If you received an invitation email, please click the link in that email to complete setup.</p>
+              <p className="font-medium">Finish setting up your account</p>
+              <p className="mt-1">Sign in below, then either accept a team invitation from your email or create your own business to get started.</p>
             </div>
           )}
           <form onSubmit={handleLogin} className="space-y-4">

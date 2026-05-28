@@ -50,7 +50,7 @@ export async function POST(
     // ── Org access check ──────────────────────────────────────────────────────
     const { data: site } = await adminClient
       .from('sites')
-      .select('slug, organization_id')
+      .select('slug, organization_id, settings')
       .eq('id', snap.site_id)
       .single();
 
@@ -68,15 +68,57 @@ export async function POST(
       );
     }
 
-    // ── Get GBP location IDs from the site's primary location ────────────────
+    // ── Resolve GBP target — fallback chain ──────────────────────────────────
+    // 1) Full GL360 sites: gbp_account_id/gbp_location_id on the primary location.
+    // 2) Job Snaps workspace sites: gbp_location_resource on sites.settings,
+    //    stashed by the Stripe webhook from the org connection captured at signup.
+    // 3) Last resort: org_google_connections.default_location_resource.
+    let gbpAccountResource: string | null = null;     // "accounts/{id}"
+    let gbpLocationResource: string | null = null;    // "locations/{id}"
+
     const { data: location } = await adminClient
       .from('locations')
       .select('gbp_account_id, gbp_location_id')
       .eq('site_id', snap.site_id)
       .eq('is_primary', true)
-      .single();
+      .maybeSingle();
 
-    if (!location?.gbp_account_id || !location?.gbp_location_id) {
+    if (location?.gbp_account_id && location?.gbp_location_id) {
+      gbpAccountResource = location.gbp_account_id.startsWith('accounts/')
+        ? location.gbp_account_id
+        : `accounts/${location.gbp_account_id}`;
+      gbpLocationResource = location.gbp_location_id.startsWith('locations/')
+        ? location.gbp_location_id
+        : `locations/${location.gbp_location_id}`;
+    } else {
+      // Try sites.settings.gbp_location_resource ("accounts/X/locations/Y")
+      const settings = (site.settings || {}) as { gbp_location_resource?: string | null };
+      let resourcePath = settings.gbp_location_resource || null;
+
+      if (!resourcePath) {
+        // Fall back to the org-level connection's default location
+        const { data: orgConn } = await adminClient
+          .from('org_google_connections')
+          .select('default_location_resource')
+          .eq('organization_id', site.organization_id)
+          .eq('is_active', true)
+          .maybeSingle();
+        resourcePath = orgConn?.default_location_resource || null;
+      }
+
+      if (resourcePath) {
+        // Format: "accounts/{accountId}/locations/{locationId}"
+        const parts = resourcePath.split('/');
+        const accIdx = parts.indexOf('accounts');
+        const locIdx = parts.indexOf('locations');
+        if (accIdx >= 0 && parts[accIdx + 1] && locIdx >= 0 && parts[locIdx + 1]) {
+          gbpAccountResource = `accounts/${parts[accIdx + 1]}`;
+          gbpLocationResource = `locations/${parts[locIdx + 1]}`;
+        }
+      }
+    }
+
+    if (!gbpAccountResource || !gbpLocationResource) {
       return NextResponse.json(
         { error: 'No Google Business Profile location linked. Connect GBP in site settings.' },
         { status: 422 }
@@ -121,17 +163,10 @@ export async function POST(
 
     // ── Post to GBP ─────────────────────────────────────────────────────────
     const gbpClient = new GBPClient(googleToken);
-    // Ensure account/location IDs have the correct prefix format
-    const accountName = location.gbp_account_id.startsWith('accounts/')
-      ? location.gbp_account_id
-      : `accounts/${location.gbp_account_id}`;
-    const locationName = location.gbp_location_id.startsWith('locations/')
-      ? location.gbp_location_id
-      : `locations/${location.gbp_location_id}`;
 
     const gbpPost = await gbpClient.createLocalPost(
-      accountName,
-      locationName,
+      gbpAccountResource,
+      gbpLocationResource,
       payload
     );
 

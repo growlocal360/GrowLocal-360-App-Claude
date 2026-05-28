@@ -28,9 +28,22 @@ export async function getGoogleToken(siteId: string): Promise<string | null> {
     .eq('site_id', siteId)
     .eq('platform', 'google_business')
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
 
-  if (!connection) return null;
+  // 2b. No per-site connection — fall back to the site's org connection.
+  // Lets a Job Snaps workspace publish to GBP even if the webhook clone
+  // failed, or a GL360 site never explicitly connected GBP.
+  if (!connection) {
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('organization_id')
+      .eq('id', siteId)
+      .maybeSingle();
+    if (siteRow?.organization_id) {
+      return getOrgGoogleToken(siteRow.organization_id);
+    }
+    return null;
+  }
 
   // 3. Check if stored token is still valid (with 5-minute buffer)
   if (connection.token_expires_at) {

@@ -50,7 +50,7 @@ export async function POST(
     // ── Org access check ──────────────────────────────────────────────────────
     const { data: site } = await adminClient
       .from('sites')
-      .select('slug, organization_id, settings')
+      .select('slug, organization_id, settings, custom_domain, custom_domain_verified')
       .eq('id', snap.site_id)
       .single();
 
@@ -132,9 +132,47 @@ export async function POST(
       .eq('id', typedSnap.work_item_id)
       .single();
 
+    // Resolve the public URL the GBP "Learn more" button should open.
+    // Workspace-only Job Snaps sites don't have a public goleadflow page, so
+    // posting the goleadflow URL leads to a 404. Look for the user's actual
+    // website in this order:
+    //   1) sites.settings.public_website_url (explicit override)
+    //   2) custom_domain (verified GL360 custom domain)
+    //   3) first active webhook_endpoint URL's origin (they already pointed
+    //      Job Snaps at their real site — reuse that domain)
+    //   4) fallback: goleadflow subdomain (works for GL360, 404s for workspace)
+    const settings = (site.settings || {}) as { public_website_url?: string | null; workspace_only?: boolean };
+    const siteRow = site as { custom_domain?: string | null; custom_domain_verified?: boolean | null };
+    let publicOrigin: string | null = null;
+
+    if (settings.public_website_url) {
+      publicOrigin = settings.public_website_url.replace(/\/+$/, '');
+    } else if (siteRow.custom_domain && siteRow.custom_domain_verified) {
+      publicOrigin = `https://${siteRow.custom_domain}`;
+    } else {
+      // Derive from an active webhook endpoint
+      const { data: hooks } = await adminClient
+        .from('webhook_endpoints')
+        .select('url')
+        .eq('site_id', snap.site_id)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      const hookUrl = hooks?.[0]?.url;
+      if (hookUrl) {
+        try {
+          publicOrigin = new URL(hookUrl).origin;
+        } catch { /* not a parsable URL — fall through */ }
+      }
+    }
+
+    if (!publicOrigin) {
+      publicOrigin = `https://${site.slug}.goleadflow.com`;
+    }
+
     const publicUrl = workItem?.slug
-      ? `https://${site.slug}.goleadflow.com/work/${workItem.slug}`
-      : `https://${site.slug}.goleadflow.com/work`;
+      ? `${publicOrigin}/work/${workItem.slug}`
+      : `${publicOrigin}/work`;
 
     // Get primary image URL for GBP post
     // For before/after snaps, prefer the 'after' image (shows the result)

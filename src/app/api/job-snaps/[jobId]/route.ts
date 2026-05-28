@@ -248,11 +248,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update job snap' }, { status: 500 });
     }
 
-    // Keep the linked work_item's slug in sync with the snap. Without this,
-    // an already-published snap's GBP "Learn more" URL + the external site's
-    // /work/{slug} path would silently keep using the OLD slug, leading to
-    // 404s after a SEO-slug edit.
-    if (snap.work_item_id && typeof update.slug === 'string' && update.slug !== snap.slug) {
+    // Keep the linked work_item's slug in sync with the snap. We unconditionally
+    // sync on every PATCH that includes a slug — comparing against snap.slug
+    // would miss the repair case where a previous edit changed job_snaps.slug
+    // but never synced work_items.slug (so they're already different and a
+    // second re-save would no-op the sync).
+    if (snap.work_item_id && typeof update.slug === 'string') {
       const { error: workItemUpdateError } = await adminClient
         .from('work_items')
         .update({ slug: update.slug })

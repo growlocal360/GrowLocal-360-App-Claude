@@ -20,15 +20,18 @@ export async function getGoogleToken(siteId: string): Promise<string | null> {
     return session.provider_token;
   }
 
-  // 2. Fall back to stored token in social_connections
+  // 2. Fall back to stored token in social_connections. Take the most recent
+  // active row — defensive against duplicates from older connect flows.
   const admin = createAdminClient();
-  const { data: connection } = await admin
+  const { data: connections } = await admin
     .from('social_connections')
     .select('access_token, refresh_token, token_expires_at')
     .eq('site_id', siteId)
     .eq('platform', 'google_business')
     .eq('is_active', true)
-    .maybeSingle();
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  const connection = connections?.[0] || null;
 
   // 2b. No per-site connection — fall back to the site's org connection.
   // Lets a Job Snaps workspace publish to GBP even if the webhook clone

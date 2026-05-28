@@ -10,12 +10,16 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // IMPORTANT: read the session from exchangeCodeForSession's return value, NOT
+    // a subsequent getSession() — Supabase doesn't persist provider_token /
+    // provider_refresh_token to cookies, so getSession() after this returns a
+    // session WITHOUT the Google tokens. Reading them here is the only chance.
+    const { data: exchangeData, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // If siteId was passed, persist the Google token to social_connections
       if (siteId) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const session = exchangeData?.session;
           if (session?.provider_token) {
             const admin = createAdminClient();
 

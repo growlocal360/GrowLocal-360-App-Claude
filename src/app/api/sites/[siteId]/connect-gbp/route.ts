@@ -198,12 +198,16 @@ export async function GET(
       .eq('is_primary', true)
       .maybeSingle();
 
-    const { data: connection } = await admin
+    // Take the most recent row — defensive against duplicates from older
+    // connect flows. .maybeSingle() would 406 if more than one row matched.
+    const { data: connections } = await admin
       .from('social_connections')
       .select('account_name, is_active, token_expires_at')
       .eq('site_id', siteId)
       .eq('platform', 'google_business')
-      .maybeSingle();
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    const connection = connections?.[0] || null;
 
     // Workspace sites store the GBP target on sites.settings instead of a
     // locations row — treat that as connected too.

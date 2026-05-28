@@ -29,7 +29,17 @@ import {
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { startGbpConnect } from '@/lib/google/start-connect';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+
+interface GbpListing {
+  name: string;
+  city?: string;
+  state?: string;
+  gbpLocationId?: string;
+  accountId?: string;
+  accountName?: string;
+}
 import type { JobStatus, JobSnapWithRelations } from '@/types/database';
 
 const statusConfig: Record<JobStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
@@ -56,6 +66,9 @@ export default function JobSnapDetailPage() {
   const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
   const [gbpStatus, setGbpStatus] = useState<{ isConnected: boolean; hasToken: boolean } | null>(null);
   const [connectingGbp, setConnectingGbp] = useState(false);
+  const [gbpListings, setGbpListings] = useState<GbpListing[] | null>(null);
+  const [pickedListingId, setPickedListingId] = useState<string>('');
+  const [savingListing, setSavingListing] = useState(false);
 
   const supabase = createClient();
 
@@ -176,6 +189,61 @@ export default function JobSnapDetailPage() {
       toast.error('Action failed. Please try again.');
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  // If the user has a fresh Google token but no GBP location is linked yet
+  // (common for workspace-only Job Snaps sites after a reconnect that didn't
+  // auto-pick), load their listings so they can choose one inline.
+  useEffect(() => {
+    if (!gbpStatus || gbpStatus.isConnected || !gbpStatus.hasToken) return;
+    if (gbpListings !== null) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/gbp/locations');
+        if (!res.ok) {
+          setGbpListings([]);
+          return;
+        }
+        const data = await res.json();
+        setGbpListings(data.locations || []);
+      } catch {
+        setGbpListings([]);
+      }
+    })();
+  }, [gbpStatus, gbpListings]);
+
+  async function handleSavePickedListing() {
+    if (!jobSnap || !pickedListingId || !gbpListings) return;
+    const picked = gbpListings.find((l) => l.gbpLocationId === pickedListingId);
+    if (!picked) return;
+
+    setSavingListing(true);
+    try {
+      const res = await fetch(`/api/sites/${jobSnap.site_id}/connect-gbp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountName: picked.accountId || '',
+          locationName: picked.gbpLocationId,
+          locationTitle: picked.name,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save listing');
+      }
+      // Refresh the status so the picker disappears + Push to GBP works.
+      const refreshed = await fetch(`/api/sites/${jobSnap.site_id}/connect-gbp`);
+      if (refreshed.ok) {
+        const status = await refreshed.json();
+        setGbpStatus({ isConnected: !!status.isConnected, hasToken: !!status.hasToken });
+      }
+      toast.success(`Linked to ${picked.name}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save listing');
+    } finally {
+      setSavingListing(false);
     }
   }
 
@@ -343,9 +411,13 @@ export default function JobSnapDetailPage() {
           </Button>
         </div>
 
-        {/* GBP-not-connected banner (so Push to GBP doesn't 422 silently) */}
+        {/* GBP setup banner — shows when push won't work yet. Two states:
+            (1) No token yet → show Connect/Reconnect button (triggers OAuth)
+            (2) Have token, no listing linked → show inline listing picker
+                (common for workspace-only Job Snaps sites after reconnect when
+                 auto-pick was skipped — multi-location accounts, etc.) */}
         {gbpStatus && (!gbpStatus.isConnected || !gbpStatus.hasToken) && (
-          <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
             <div className="flex items-start gap-3">
               <svg className="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="#d97706">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -354,18 +426,75 @@ export default function JobSnapDetailPage() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               <div className="text-sm text-amber-900">
-                <p className="font-medium">
-                  {gbpStatus.isConnected ? 'Google Business Profile token expired' : 'Google Business Profile isn’t connected for this site'}
-                </p>
-                <p className="text-amber-800">
-                  Reconnect once and Push to GBP will work for this snap and everything you publish from here on.
-                </p>
+                {!gbpStatus.hasToken ? (
+                  <>
+                    <p className="font-medium">Google Business Profile isn’t connected for this site</p>
+                    <p className="text-amber-800">
+                      Reconnect once and Push to GBP will work for this snap and everything you publish from here on.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium">Pick which Google Business Profile listing to post to</p>
+                    <p className="text-amber-800">
+                      You&apos;re connected to Google — choose the listing for this site below and Push to GBP will work.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
-            <Button onClick={handleConnectGbp} disabled={connectingGbp} className="bg-amber-600 text-white hover:bg-amber-700">
-              {connectingGbp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {gbpStatus.isConnected ? 'Reconnect Google' : 'Connect Google'}
-            </Button>
+
+            {/* State 1: no token → Connect button */}
+            {!gbpStatus.hasToken && (
+              <div className="sm:ml-8">
+                <Button
+                  onClick={handleConnectGbp}
+                  disabled={connectingGbp}
+                  className="bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  {connectingGbp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Connect Google
+                </Button>
+              </div>
+            )}
+
+            {/* State 2: have token, no listing → inline picker */}
+            {gbpStatus.hasToken && (
+              <div className="sm:ml-8 flex flex-col gap-2 sm:flex-row sm:items-center">
+                {gbpListings === null ? (
+                  <div className="flex items-center gap-2 text-sm text-amber-800">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading your Google listings…
+                  </div>
+                ) : gbpListings.length === 0 ? (
+                  <div className="text-sm text-amber-800">
+                    No Google Business Profile listings found on this account. <button onClick={handleConnectGbp} className="underline">Reconnect with a different Google account</button>
+                  </div>
+                ) : (
+                  <>
+                    <Select value={pickedListingId} onValueChange={setPickedListingId}>
+                      <SelectTrigger className="w-72 bg-white">
+                        <SelectValue placeholder="Choose your business listing…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gbpListings.map((l) => (
+                          <SelectItem key={l.gbpLocationId || l.name} value={l.gbpLocationId || l.name}>
+                            {l.name}{l.city ? ` — ${l.city}${l.state ? `, ${l.state}` : ''}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleSavePickedListing}
+                      disabled={savingListing || !pickedListingId}
+                      className="bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      {savingListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Link this listing
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 

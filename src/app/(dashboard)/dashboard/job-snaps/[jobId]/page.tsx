@@ -28,6 +28,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { startGbpConnect } from '@/lib/google/start-connect';
 import { toast } from 'sonner';
 import type { JobStatus, JobSnapWithRelations } from '@/types/database';
 
@@ -210,7 +211,19 @@ export default function JobSnapDetailPage() {
       if (res.status === 501) {
         toast.info('GBP posting is not yet available. Check back soon.');
       } else if (!res.ok) {
-        toast.error(data.error || 'Failed to push to GBP');
+        const needsConnect =
+          /no .*google business profile|connect gbp|google connection expired/i.test(data.error || '');
+        if (needsConnect) {
+          toast.error(data.error || 'Google Business Profile isn’t connected', {
+            duration: 10000,
+            action: {
+              label: 'Connect Google',
+              onClick: () => startGbpConnect(jobSnap.site_id, window.location.pathname),
+            },
+          });
+        } else {
+          toast.error(data.error || 'Failed to push to GBP');
+        }
       } else {
         setJobSnap((prev) => prev ? { ...prev, is_published_to_gbp: true } : prev);
         toast.success('Pushed to Google Business Profile');

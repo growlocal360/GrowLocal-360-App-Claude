@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { startGbpConnect } from '@/lib/google/start-connect';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -226,7 +227,20 @@ export default function SiteJobSnapsPage() {
       if (res.status === 501) {
         toast.info('GBP posting is not yet available. Check back soon.');
       } else if (!res.ok) {
-        toast.error(data.error || 'Failed to push to GBP');
+        // Missing connection → offer a one-click Connect action right in the toast.
+        const needsConnect =
+          /no .*google business profile|connect gbp|google connection expired/i.test(data.error || '');
+        if (needsConnect) {
+          toast.error(data.error || 'Google Business Profile isn’t connected', {
+            duration: 10000,
+            action: {
+              label: 'Connect Google',
+              onClick: () => startGbpConnect(siteId, window.location.pathname),
+            },
+          });
+        } else {
+          toast.error(data.error || 'Failed to push to GBP');
+        }
       } else {
         setJobSnaps((prev) =>
           prev.map((s) => (s.id === jobId ? { ...s, is_published_to_gbp: true } : s))

@@ -65,19 +65,49 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // ── Save GBP IDs to primary location ─────────────────────────────────────
-    const { error: locationError } = await admin
+    // ── Save GBP IDs ─────────────────────────────────────────────────────────
+    // Full GL360 sites: write to the primary location row (existing behavior).
+    // Job Snaps workspace sites have no locations row — so we ALSO write the
+    // GBP target onto sites.settings.gbp_location_resource. The publish-gbp
+    // route's fallback chain reads either source, so both site shapes work.
+    const { error: locationError, count: locationCount } = await admin
       .from('locations')
       .update({
         gbp_account_id: accountName,
         gbp_location_id: locationName,
-      })
+      }, { count: 'exact' })
       .eq('site_id', siteId)
       .eq('is_primary', true);
 
     if (locationError) {
       console.error('Failed to update location GBP IDs:', locationError);
       return NextResponse.json({ error: 'Failed to save GBP location' }, { status: 500 });
+    }
+
+    // Always stash on sites.settings too — single source of truth for workspaces,
+    // belt-and-suspenders for GL360 sites.
+    const { data: currentSite } = await admin
+      .from('sites')
+      .select('settings')
+      .eq('id', siteId)
+      .single();
+    const settings = (currentSite?.settings || {}) as Record<string, unknown>;
+    const accIdOnly = (accountName as string).replace(/^accounts\//, '');
+    const locIdOnly = (locationName as string).replace(/^locations\//, '');
+    const resourcePath = `accounts/${accIdOnly}/locations/${locIdOnly}`;
+    await admin
+      .from('sites')
+      .update({
+        settings: {
+          ...settings,
+          gbp_location_resource: resourcePath,
+          gbp_location: { name: locationTitle || null, gbpLocationId: resourcePath, accountId: `accounts/${accIdOnly}` },
+        },
+      })
+      .eq('id', siteId);
+
+    if ((locationCount ?? 0) === 0) {
+      console.log('[connect-gbp] No primary location row to update (workspace site); persisted to sites.settings instead.', { siteId });
     }
 
     // ── Persist token to social_connections ───────────────────────────────────
@@ -103,6 +133,32 @@ export async function POST(
     if (tokenError) {
       console.error('Failed to save social connection:', tokenError);
       // Non-fatal — GBP IDs are saved, token can be re-saved later
+    }
+
+    // ── Also upsert the org-level connection ─────────────────────────────────
+    // Repairs any org where the Job Snaps signup connect failed (e.g. before
+    // migration 052 was applied) and lets a future "Add a New Site" reuse it
+    // without re-authing. Non-fatal — site-level publishing still works without it.
+    try {
+      await admin
+        .from('org_google_connections')
+        .upsert(
+          {
+            organization_id: site.organization_id,
+            account_id: accountName,
+            account_name: locationTitle || accountName,
+            access_token: providerToken,
+            refresh_token: providerRefreshToken || null,
+            token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            default_location_resource: `accounts/${accIdOnly}/locations/${locIdOnly}`,
+            default_location_json: { name: locationTitle || null, gbpLocationId: `accounts/${accIdOnly}/locations/${locIdOnly}`, accountId: `accounts/${accIdOnly}` },
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'organization_id' }
+        );
+    } catch (e) {
+      console.warn('[connect-gbp] org_google_connections upsert skipped:', e);
     }
 
     return NextResponse.json({ success: true });
@@ -140,16 +196,27 @@ export async function GET(
       .select('gbp_account_id, gbp_location_id')
       .eq('site_id', siteId)
       .eq('is_primary', true)
-      .single();
+      .maybeSingle();
 
     const { data: connection } = await admin
       .from('social_connections')
       .select('account_name, is_active, token_expires_at')
       .eq('site_id', siteId)
       .eq('platform', 'google_business')
-      .single();
+      .maybeSingle();
 
-    const isConnected = !!(location?.gbp_account_id && location?.gbp_location_id);
+    // Workspace sites store the GBP target on sites.settings instead of a
+    // locations row — treat that as connected too.
+    const { data: site } = await admin
+      .from('sites')
+      .select('settings')
+      .eq('id', siteId)
+      .maybeSingle();
+    const settings = (site?.settings || {}) as { gbp_location_resource?: string | null };
+
+    const isConnected =
+      !!(location?.gbp_account_id && location?.gbp_location_id) ||
+      !!settings.gbp_location_resource;
     const hasToken = !!(connection?.is_active);
 
     return NextResponse.json({

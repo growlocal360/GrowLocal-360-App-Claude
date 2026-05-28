@@ -44,6 +44,33 @@ export async function GET(request: Request) {
                 },
                 { onConflict: 'site_id,platform,account_id' }
               );
+
+            // Also upsert the org-level connection so future "Add a New Site"
+            // can reuse it without re-authing, and so any org where the Job
+            // Snaps signup connect failed (e.g. before migration 052 was
+            // applied) gets repaired by this per-site reconnect.
+            const { data: orgRow } = await admin
+              .from('sites')
+              .select('organization_id')
+              .eq('id', siteId)
+              .maybeSingle();
+            if (orgRow?.organization_id) {
+              await admin
+                .from('org_google_connections')
+                .upsert(
+                  {
+                    organization_id: orgRow.organization_id,
+                    account_id: location?.gbp_account_id || null,
+                    account_name: 'Google Business Profile',
+                    access_token: session.provider_token,
+                    refresh_token: session.provider_refresh_token || null,
+                    token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                    is_active: true,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: 'organization_id' }
+                );
+            }
           }
         } catch (err) {
           // Non-fatal — token save failure shouldn't block the redirect

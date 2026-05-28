@@ -126,11 +126,18 @@ export async function POST(
     }
 
     // ── Build GBP payload ────────────────────────────────────────────────────
+    // Read slug from the snap itself (the SEO panel's source of truth). The
+    // work_items.slug is a snapshot from first publish and goes stale if the
+    // user edits the SEO slug afterward — that's why a re-push was sending
+    // the OLD URL to GBP. Fall back to work_items.slug if the snap somehow
+    // doesn't have one.
     const { data: workItem } = await adminClient
       .from('work_items')
       .select('slug')
       .eq('id', typedSnap.work_item_id)
       .single();
+
+    const activeSlug = (typedSnap as { slug?: string | null }).slug || workItem?.slug || null;
 
     // Resolve the public URL the GBP "Learn more" button should open.
     // Workspace-only Job Snaps sites don't have a public goleadflow page, so
@@ -170,8 +177,8 @@ export async function POST(
       publicOrigin = `https://${site.slug}.goleadflow.com`;
     }
 
-    const publicUrl = workItem?.slug
-      ? `${publicOrigin}/work/${workItem.slug}`
+    const publicUrl = activeSlug
+      ? `${publicOrigin}/work/${activeSlug}`
       : `${publicOrigin}/work`;
 
     // Get primary image URL for GBP post

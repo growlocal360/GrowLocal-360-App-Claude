@@ -248,6 +248,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update job snap' }, { status: 500 });
     }
 
+    // Keep the linked work_item's slug in sync with the snap. Without this,
+    // an already-published snap's GBP "Learn more" URL + the external site's
+    // /work/{slug} path would silently keep using the OLD slug, leading to
+    // 404s after a SEO-slug edit.
+    if (snap.work_item_id && typeof update.slug === 'string' && update.slug !== snap.slug) {
+      const { error: workItemUpdateError } = await adminClient
+        .from('work_items')
+        .update({ slug: update.slug })
+        .eq('id', snap.work_item_id);
+      if (workItemUpdateError) {
+        console.warn('PATCH job_snaps: failed to sync work_items.slug', workItemUpdateError);
+        // Non-fatal — snap update succeeded; publish-gbp now reads from
+        // job_snaps.slug so the GBP link is still correct.
+      }
+    }
+
     // ── Replace attachments when the patch body includes them ────────────
     // Omitted = don't touch existing attachments. Present (even if empty)
     // means the user is intentionally setting the new set, so we wipe + insert.

@@ -1,24 +1,12 @@
-import { createClient } from '@/lib/supabase/client';
-
 /**
- * Kicks off the per-site GBP OAuth flow. After Google consent, the callback
- * lands at /oauth2callback?siteId=X&next=<returnPath>, which persists the
- * per-site social_connections row AND upserts the org-level connection so
- * future sites can reuse it without re-authing.
- *
- * Use anywhere we need a one-click "Connect / Reconnect Google Business
- * Profile" action — most notably as a toast Action button after publish-gbp
- * fails with "No GBP location linked."
+ * Routes the user to the dedicated GBP connect page for a site. That page
+ * handles auth, location picking, and persistence in one canonical place.
+ * Returning to here was always meant to be "kick off OAuth," but doing OAuth
+ * in place from a toast/banner gave too many ways for the flow to silently
+ * fail (multi-location accounts, auto-pick misses, etc.). The dedicated page
+ * always shows a picker, so the user gets a clear, completable flow.
  */
-export async function startGbpConnect(siteId: string, returnPath: string): Promise<void> {
-  const supabase = createClient();
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      scopes:
-        'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
-      redirectTo: `${window.location.origin}/oauth2callback?siteId=${encodeURIComponent(siteId)}&next=${encodeURIComponent(returnPath)}`,
-      queryParams: { prompt: 'consent', access_type: 'offline' },
-    },
-  });
+export function startGbpConnect(siteId: string, returnPath: string): void {
+  const next = encodeURIComponent(returnPath);
+  window.location.href = `/dashboard/sites/${siteId}/connect-gbp?next=${next}`;
 }

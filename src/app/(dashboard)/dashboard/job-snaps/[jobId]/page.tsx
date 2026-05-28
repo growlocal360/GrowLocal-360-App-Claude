@@ -247,27 +247,12 @@ export default function JobSnapDetailPage() {
     }
   }
 
-  async function handleConnectGbp() {
+  function handleConnectGbp() {
     if (!jobSnap) return;
+    // Navigate to the dedicated connect page — single canonical place that
+    // always shows a picker (handles OAuth, multi-location picks, errors, etc.).
     setConnectingGbp(true);
-    try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
-          redirectTo: `${window.location.origin}/oauth2callback?siteId=${jobSnap.site_id}&next=${encodeURIComponent(window.location.pathname)}`,
-          queryParams: { prompt: 'consent', access_type: 'offline' },
-        },
-      });
-      if (oauthError) {
-        toast.error(oauthError.message);
-        setConnectingGbp(false);
-      }
-      // On success the browser navigates away to Google.
-    } catch {
-      toast.error('Failed to start Google connect');
-      setConnectingGbp(false);
-    }
+    startGbpConnect(jobSnap.site_id, window.location.pathname);
   }
 
   async function handlePushToGBP() {

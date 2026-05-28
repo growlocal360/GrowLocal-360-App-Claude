@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { emitJobSnapEvent } from '@/lib/webhooks/emit';
-import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
+import { computeJobSnapNaming, generateJobSnapUrlPath } from '@/lib/job-snaps/naming';
 import { getIndustryArchetype } from '@/lib/job-snaps/industry-config';
 
 // ─── Shared helpers ────────────────────────────────────────────────────────
@@ -229,7 +229,11 @@ export async function PATCH(
       street_name_public: naming.street_name_public,
       short_id: naming.short_id,
       slug: overrides.slug ?? naming.slug,
-      url_path: naming.url_path,
+      // url_path must follow the FINAL slug. naming.url_path is computed from
+      // the engine's slug (which may be the preserved/existing one) and won't
+      // reflect an override. Recompute from the final slug so /work/<slug>/
+      // always matches what the snap is actually saved as.
+      url_path: generateJobSnapUrlPath(overrides.slug ?? naming.slug),
       meta_title: overrides.meta_title ?? naming.meta_title,
       h1: overrides.h1 ?? naming.h1,
       meta_description: overrides.meta_description ?? naming.meta_description,

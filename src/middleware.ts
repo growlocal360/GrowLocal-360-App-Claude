@@ -6,6 +6,19 @@ import { createServerClient } from '@supabase/ssr';
 const MAIN_APP_SUBDOMAINS = ['www', 'admin', 'app', 'api'];
 const MAIN_APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
 
+// Explicit admin-dashboard hostnames. A request whose `host` is in this set
+// always routes to the main app (auth + dashboard), short-circuiting the
+// subdomain + custom-domain lookups below. This lets the admin live at a
+// completely different parent domain (app.growlocal360.com) than the public
+// site host (goleadflow.com), so client sites at {slug}.goleadflow.com keep
+// resolving while admin traffic on the new domain still finds the dashboard.
+const ADMIN_HOSTS = new Set(
+  (process.env.ADMIN_HOSTS || 'app.growlocal360.com')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 // Timeout wrapper: resolves to null if the promise doesn't settle in time
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
@@ -149,6 +162,15 @@ async function getSiteBySlug(slug: string, request: NextRequest): Promise<SiteLo
 export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
+
+  // Admin hostnames always go straight to the main app — never the subdomain
+  // or custom-domain lookup branches below. Without this an unknown admin
+  // host like app.growlocal360.com would fall into isCustomDomain() and
+  // rewrite to /temporarily-unavailable when no row matches.
+  const hostnameLower = host.split(':')[0].toLowerCase();
+  if (ADMIN_HOSTS.has(hostnameLower)) {
+    return await updateSession(request);
+  }
 
   // Skip domain routing for static files, API routes, and internal paths
   if (

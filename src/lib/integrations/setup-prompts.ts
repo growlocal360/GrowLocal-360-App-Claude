@@ -18,7 +18,7 @@ export type SetupPromptFramework = 'nextjs' | 'astro' | 'wordpress' | 'api';
 
 export interface SetupPromptParams {
   framework: SetupPromptFramework;
-  apiBase: string;                 // e.g. https://admin.goleadflow.com
+  apiBase: string;                 // e.g. https://app.growlocal360.com
   apiKey?: string | null;          // optional: actual API key OR prefix-only hint
   webhookUrl?: string | null;      // optional: customer's https://site.com/api/jobsnaps-webhook
   webhookSecret?: string | null;   // optional: actual whsec_... OR placeholder

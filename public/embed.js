@@ -6,7 +6,7 @@
  * Usage:
  *   <div id="jobsnaps-gallery"></div>
  *   <script
- *     src="https://admin.goleadflow.com/embed.js"
+ *     src="https://app.growlocal360.com/embed.js"
  *     data-api-key="js_live_xxx"
  *     data-target="#jobsnaps-gallery"
  *     data-limit="20"

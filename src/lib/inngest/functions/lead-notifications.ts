@@ -68,8 +68,12 @@ export const handleLeadCreated = inngest.createFunction(
       null;
 
     const brandColor = (typeof settings.brand_color === 'string' && settings.brand_color) || '#00ef99';
-    const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-    const dashboardUrl = `https://${appDomain}/dashboard/sites/${site.id}/leads`;
+    // Admin dashboard URL — must use NEXT_PUBLIC_APP_URL (the admin host,
+    // app.growlocal360.com), NOT NEXT_PUBLIC_APP_DOMAIN (the public-site
+    // host group, goleadflow.com). Concatenating against the public domain
+    // would produce a dead link since the dashboard lives at app.*.
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.growlocal360.com').replace(/\/+$/, '');
+    const dashboardUrl = `${appUrl}/dashboard/sites/${site.id}/leads`;
 
     // Email notification
     if (emailTo) {

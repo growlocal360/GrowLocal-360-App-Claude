@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Send invitation email
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://admin.goleadflow.com';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.growlocal360.com';
   const inviteUrl = `${appUrl}/invite/${invitation.token}`;
 
   try {

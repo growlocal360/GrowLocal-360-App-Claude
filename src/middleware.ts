@@ -4,7 +4,27 @@ import { createServerClient } from '@supabase/ssr';
 
 // Main app domains that should NOT be treated as site subdomains
 const MAIN_APP_SUBDOMAINS = ['www', 'admin', 'app', 'api'];
-const MAIN_APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+
+// Public site parent domains. Client sites live at {slug}.<one of these>.
+// Supports MULTIPLE so a domain migration (goleadflow.com → growlocal360.com)
+// can run with both resolving at once: existing {slug}.goleadflow.com sites keep
+// routing while new traffic on {slug}.growlocal360.com also routes. The primary
+// (canonical) domain comes from NEXT_PUBLIC_APP_DOMAIN; additional accepted
+// domains come from NEXT_PUBLIC_APP_DOMAIN_ALIASES (comma-separated).
+const MAIN_APP_DOMAINS = [
+  (process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com').trim().toLowerCase(),
+  ...(process.env.NEXT_PUBLIC_APP_DOMAIN_ALIASES || 'goleadflow.com')
+    .split(',')
+    .map((d) => d.trim().toLowerCase()),
+].filter((d, i, all) => d && all.indexOf(d) === i);
+
+// Return the matching parent domain for a hostname, or null if it isn't one of ours.
+function matchMainDomain(hostname: string): string | null {
+  return (
+    MAIN_APP_DOMAINS.find((d) => hostname === d || hostname.endsWith(`.${d}`)) ||
+    null
+  );
+}
 
 // Explicit admin-dashboard hostnames. A request whose `host` is in this set
 // always routes to the main app (auth + dashboard), short-circuiting the
@@ -30,18 +50,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
 // Check if this is a site subdomain request (e.g., bobshvac.growlocal360.com)
 function getSubdomainFromHost(host: string): string | null {
   // Remove port if present
-  const hostname = host.split(':')[0];
+  const hostname = host.split(':')[0].toLowerCase();
 
-  // Check if it's our main app domain
-  if (!hostname.endsWith(MAIN_APP_DOMAIN)) {
+  // Check if it's one of our main app domains
+  const base = matchMainDomain(hostname);
+  if (!base || hostname === base) {
     return null;
   }
 
-  // Extract subdomain
-  const subdomain = hostname.replace(`.${MAIN_APP_DOMAIN}`, '');
+  // Extract subdomain (everything before ".<base>")
+  const subdomain = hostname.slice(0, -(base.length + 1));
 
   // Ignore main app subdomains
-  if (!subdomain || MAIN_APP_SUBDOMAINS.includes(subdomain) || subdomain === MAIN_APP_DOMAIN) {
+  if (!subdomain || MAIN_APP_SUBDOMAINS.includes(subdomain)) {
     return null;
   }
 
@@ -50,10 +71,10 @@ function getSubdomainFromHost(host: string): string | null {
 
 // Check if this is a custom domain request (e.g., bobshvac.com)
 function isCustomDomain(host: string): boolean {
-  const hostname = host.split(':')[0];
+  const hostname = host.split(':')[0].toLowerCase();
 
-  // It's a custom domain if it's not our main app domain or a subdomain of it
-  return !hostname.endsWith(MAIN_APP_DOMAIN) &&
+  // It's a custom domain if it's not one of our main app domains (or a subdomain of one)
+  return !matchMainDomain(hostname) &&
          !hostname.endsWith('.vercel.app') &&
          hostname !== 'localhost' &&
          !hostname.match(/^127\.\d+\.\d+\.\d+$/) &&

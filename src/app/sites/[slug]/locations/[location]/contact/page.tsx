@@ -4,7 +4,7 @@ import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -70,8 +70,9 @@ export default async function MultiLocationContactPageRoute({ params }: MultiLoc
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).Contact;
   return (
-    <ContactPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}

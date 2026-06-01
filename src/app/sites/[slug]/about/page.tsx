@@ -5,7 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { AboutPage } from '@/components/templates/local-service-pro/about-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicTeamMember, toPublicServiceListing, toPublicWorkItem, toPublicReview, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -78,8 +78,9 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
   const teamMembers = teamProfiles.map(toPublicTeamMember);
   const reviews = (data.googleReviews || []).map(toPublicReview);
 
+  const TemplateComp = getTemplate(data.site.template_id).About;
   return (
-    <AboutPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={aboutContent ? toPublicPageContent(aboutContent) : null}

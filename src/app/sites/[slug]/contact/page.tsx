@@ -4,7 +4,7 @@ import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { ContactPage } from '@/components/templates/local-service-pro/contact-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicServiceListing, toPublicAreaListing, toPublicTeamMember, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
 import { getTeamMembersForSite } from '@/lib/sites/get-team';
@@ -76,8 +76,9 @@ export default async function ContactPageRoute({ params }: ContactPageProps) {
 
   const contactContent = data.sitePages?.find(p => p.page_type === 'contact') || null;
 
+  const TemplateComp = getTemplate(data.site.template_id).Contact;
   return (
-    <ContactPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={contactContent ? toPublicPageContent(contactContent) : null}

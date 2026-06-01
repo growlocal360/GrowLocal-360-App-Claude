@@ -5,7 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
-import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -64,8 +64,9 @@ export default async function MultiLocationWorkHubRoute({ params }: MultiLocatio
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).WorkHub;
   return (
-    <WorkHubPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       workItems={workItems.map(toPublicWorkItem)}

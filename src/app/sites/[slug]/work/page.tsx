@@ -5,7 +5,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { WorkHubPage } from '@/components/templates/local-service-pro/work-hub-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -70,8 +70,9 @@ export default async function WorkHubRoute({ params }: WorkHubProps) {
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).WorkHub;
   return (
-    <WorkHubPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       workItems={workItems.map(toPublicWorkItem)}

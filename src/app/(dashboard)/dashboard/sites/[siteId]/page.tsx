@@ -38,9 +38,10 @@ import {
   Camera,
   CalendarDays,
   Bell,
+  LayoutTemplate,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
-import type { SiteStatus, SiteBuildProgress } from '@/types/database';
+import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
 import { isBrandApplicable } from '@/lib/brands/brand-applicable';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { GBPConnectCard } from '@/components/sites/gbp-connect-card';
@@ -51,6 +52,7 @@ interface SiteData {
   name: string;
   slug: string;
   status: SiteStatus;
+  template_id: TemplateId | null;
   build_progress: SiteBuildProgress | null;
   status_message: string | null;
   settings: {
@@ -596,6 +598,31 @@ export default function SiteDashboardPage() {
 
           {/* Admin-only cards below */}
           {userRole !== 'user' && (<>
+
+          {/* Template */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <LayoutTemplate className="h-5 w-5 text-gray-700" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Template</h3>
+                  <p className="text-sm text-gray-500">Website design</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.template_id === 'premium' ? 'Premium' : 'Local Service Pro'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/template`}>
+                  Change Template
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Branding */}
           <Card className="hover:border-[#00ef99]/20 transition-colors">

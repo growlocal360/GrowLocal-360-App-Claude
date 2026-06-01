@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { LocalServiceProTemplate } from '@/components/templates/local-service-pro';
+import { getTemplate } from '@/lib/templates/registry';
 import { BrandHomepage } from '@/components/templates/local-service-pro/brand-homepage';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicRenderData, toPublicSite, toPublicLocation, toPublicServiceListing, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
@@ -125,23 +125,20 @@ export default async function SitePage({ params }: SitePageProps) {
     isPrimary: c.is_primary,
   }));
 
-  switch (site.template_id) {
-    case 'local-service-pro':
-    default:
-      return (
-        <LocalServiceProTemplate
-          data={toPublicRenderData(data)}
-          services={primaryCategoryServices.map(toPublicServiceListing)}
-          primaryCategorySlug={primaryCategorySlug}
-          primaryCategoryName={primaryCategory?.gbp_category?.display_name}
-          categories={navCategories}
-          secondaryCategories={secondaryCategories}
-          recentWorkItems={recentWorkItems.map(toPublicWorkItem)}
-          formCategories={categories.map(toPublicCategory)}
-          schedulingActive={schedulingConfig?.is_active || false}
-          showAvailabilityBadge={schedulingConfig?.show_availability_badge ?? true}
-          ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
-        />
-      );
-  }
+  const Template = getTemplate(site.template_id).Home;
+  return (
+    <Template
+      data={toPublicRenderData(data)}
+      services={primaryCategoryServices.map(toPublicServiceListing)}
+      primaryCategorySlug={primaryCategorySlug}
+      primaryCategoryName={primaryCategory?.gbp_category?.display_name}
+      categories={navCategories}
+      secondaryCategories={secondaryCategories}
+      recentWorkItems={recentWorkItems.map(toPublicWorkItem)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      showAvailabilityBadge={schedulingConfig?.show_availability_badge ?? true}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
+    />
+  );
 }

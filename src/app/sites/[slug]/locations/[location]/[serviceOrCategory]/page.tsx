@@ -4,8 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { ServicePage } from '@/components/templates/local-service-pro/service-page';
-import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
@@ -216,8 +215,9 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
       isPrimary: c.is_primary,
     }));
 
+    const SvcComp = getTemplate(serviceData.site.template_id).Service;
     return (
-      <ServicePage
+      <SvcComp
         data={{
           site: toPublicSite(serviceData.site, { hasBrands }),
           location: toPublicLocation(serviceData.location),
@@ -251,8 +251,9 @@ export default async function MultiLocationServiceOrCategoryPage({ params }: Mul
       siteHasActiveBrands(categoryData.site.id),
     ]);
 
+    const CatComp = getTemplate(categoryData.site.template_id).Category;
     return (
-      <CategoryPage
+      <CatComp
         data={{
           site: toPublicSite(categoryData.site, { hasBrands: categoryHasBrands }),
           location: toPublicLocation(categoryData.location),

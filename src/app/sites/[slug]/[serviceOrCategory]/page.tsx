@@ -4,8 +4,7 @@ import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCat
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
-import { ServicePage } from '@/components/templates/local-service-pro/service-page';
-import { CategoryPage } from '@/components/templates/local-service-pro/category-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
@@ -107,8 +106,9 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     const matched = matchReviewsToService(publicReviews, serviceData.service.name);
     const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
 
+    const SvcComp = getTemplate(serviceData.site.template_id).Service;
     return (
-      <ServicePage
+      <SvcComp
         data={{
           site: toPublicSite(serviceData.site, { hasBrands }),
           location: toPublicLocation(serviceData.location),
@@ -166,8 +166,9 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     const matchedCatReviews = matchReviewsToCategory(publicCatReviews, categoryName, serviceNames);
     const displayCatReviews = matchedCatReviews.length > 0 ? matchedCatReviews : publicCatReviews.slice(0, 10);
 
+    const CatComp = getTemplate(categoryData.site.template_id).Category;
     return (
-      <CategoryPage
+      <CatComp
         data={{
           site: toPublicSite(categoryData.site, { hasBrands: categoryHasBrands }),
           location: toPublicLocation(categoryData.location),

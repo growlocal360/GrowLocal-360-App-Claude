@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { ServicePage } from '@/components/templates/local-service-pro/service-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
@@ -149,8 +149,9 @@ export default async function MultiLocationNestedServicePage({ params }: MultiLo
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).Service;
   return (
-    <ServicePage
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

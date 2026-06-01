@@ -4,7 +4,7 @@ import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService } from '@/lib/sites/match-reviews';
 import { getCategoriesWithServices, getAllNestedServiceParams } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { ServicePage } from '@/components/templates/local-service-pro/service-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
@@ -173,8 +173,9 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
   const matched = matchReviewsToService(publicReviews, data.service.name);
   const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
 
+  const TemplateComp = getTemplate(data.site.template_id).Service;
   return (
-    <ServicePage
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

@@ -22,6 +22,10 @@ import { LocationPage } from '@/components/templates/local-service-pro/location-
 
 // ---- premium (overrides only what it has built; rest falls back) ----
 import { PremiumTemplate } from '@/components/templates/premium';
+import { PremiumServicePage } from '@/components/templates/premium/service-page';
+import { PremiumAboutPage } from '@/components/templates/premium/about-page';
+import { PremiumContactPage } from '@/components/templates/premium/contact-page';
+import { PremiumWorkHubPage } from '@/components/templates/premium/work-hub-page';
 
 /**
  * A TemplateComponents set maps each page "role" to the component that renders
@@ -82,8 +86,12 @@ const OVERRIDES: Record<TemplateId, Partial<TemplateComponents>> = {
   'local-service-pro': {},
   premium: {
     Home: PremiumTemplate,
-    // Inner pages (Service, About, Contact, WorkHub, …) plug in here as they're
-    // built; until then premium sites use the baseline for those pages.
+    Service: PremiumServicePage,
+    About: PremiumAboutPage,
+    Contact: PremiumContactPage,
+    WorkHub: PremiumWorkHubPage,
+    // Remaining inner pages (Category, Services, Area, Brand, FAQ, Reviews,
+    // Neighborhood, Location, JobSnaps, WorkDetail) fall back to local-service-pro.
   },
 };
 

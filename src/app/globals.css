@@ -308,3 +308,61 @@
 .tpl-premium .pm-footcol a:hover { color:var(--brand); }
 .tpl-premium .pm-footbottom { display:flex; justify-content:space-between; align-items:center; padding-top:26px; font-size:13px; flex-wrap:wrap; gap:12px; }
 .tpl-premium .pm-footbottom b{ color:#fff; }
+
+/* ---- premium inner pages ---- */
+.tpl-premium .pm-page-hero { position: relative; overflow: hidden; padding: 56px 0 60px; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+.tpl-premium .pm-page-hero::before { content:""; position:absolute; inset:0; background: radial-gradient(900px 360px at 80% -20%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 60%); }
+.tpl-premium .pm-crumbs { position:relative; font-size: 13.5px; color: var(--muted); font-weight:600; margin-bottom: 20px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; }
+.tpl-premium .pm-crumbs a:hover { color: var(--brand); }
+.tpl-premium .pm-crumbs .pm-sep { opacity:.5; }
+.tpl-premium .pm-page-hero h1 { position:relative; font-size: clamp(34px, 5vw, 56px); max-width: 820px; }
+.tpl-premium .pm-page-hero h1 .pm-accent { color: var(--brand); }
+
+.tpl-premium .pm-layout { display:grid; grid-template-columns: 1fr; gap: 40px; align-items:start; }
+@media (min-width:960px){ .tpl-premium .pm-layout { grid-template-columns: 1fr 360px; gap:56px; } }
+.tpl-premium .pm-prose > * + * { margin-top: 18px; }
+.tpl-premium .pm-prose h2 { font-size: 30px; margin-top: 40px; margin-bottom: 4px; }
+.tpl-premium .pm-prose h3 { font-size: 22px; margin-top: 30px; }
+.tpl-premium .pm-prose p { font-size: 17px; color: var(--ink-2); line-height: 1.7; }
+.tpl-premium .pm-prose ul { list-style:none; display:flex; flex-direction:column; gap:13px; margin-top: 8px; padding:0; }
+.tpl-premium .pm-prose ul li { display:flex; gap:13px; align-items:flex-start; font-size:16.5px; color: var(--ink-2); }
+.tpl-premium .pm-prose ul li .pm-chk { flex-shrink:0; width:24px; height:24px; border-radius:50%; border:1.5px solid color-mix(in srgb,var(--brand) 45%,var(--line)); color:var(--brand); display:grid; place-items:center; margin-top:3px; }
+.tpl-premium .pm-prose ul li .pm-chk svg { width:13px; height:13px; }
+
+.tpl-premium .pm-aside { position: sticky; top: 100px; background: var(--card); border:1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 26px; }
+.tpl-premium .pm-aside h3 { font-size: 21px; margin-bottom: 6px; }
+.tpl-premium .pm-aside .pm-asub { font-size:14px; color:var(--muted); margin-bottom: 18px; }
+.tpl-premium .pm-asidetrust { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:11px; }
+.tpl-premium .pm-asidetrust .pm-t { display:flex; gap:10px; align-items:center; font-size:14px; font-weight:600; color:var(--ink-2); }
+.tpl-premium .pm-asidetrust .pm-t .pm-ic { color:var(--brand); display:grid; place-items:center; } .tpl-premium .pm-asidetrust .pm-t .pm-ic svg{ width:18px; height:18px; }
+
+.tpl-premium .pm-faq { display:flex; flex-direction:column; margin-top: 16px; border-top:1px solid var(--line); }
+.tpl-premium .pm-faq details { border-bottom:1px solid var(--line); }
+.tpl-premium .pm-faq summary { cursor:pointer; list-style:none; padding:22px 0; font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:-.02em; display:flex; justify-content:space-between; align-items:center; gap:20px; color:var(--ink); }
+.tpl-premium .pm-faq summary::-webkit-details-marker { display:none; }
+.tpl-premium .pm-faq summary .pm-plus { flex-shrink:0; width:28px; height:28px; border-radius:50%; border:1.5px solid var(--line); display:grid; place-items:center; transition:.25s; color:var(--brand); }
+.tpl-premium .pm-faq details[open] summary .pm-plus { transform:rotate(45deg); border-color:var(--brand); }
+.tpl-premium .pm-faq .pm-ans { padding:0 0 24px; font-size:16px; color:var(--ink-2); line-height:1.7; max-width:760px; }
+
+/* about stats */
+.tpl-premium .pm-stats { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--line); border-radius:20px; overflow:hidden; background:var(--card); }
+@media (min-width:760px){ .tpl-premium .pm-stats { grid-template-columns:repeat(4,1fr); } }
+.tpl-premium .pm-stats .pm-st { padding:30px 24px; text-align:center; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+@media (min-width:760px){ .tpl-premium .pm-stats .pm-st { border-bottom:none; } .tpl-premium .pm-stats .pm-st:last-child{ border-right:none; } }
+.tpl-premium .pm-stats .pm-st .pm-n { font-family:var(--font-display); font-weight:800; font-size:40px; letter-spacing:-.04em; color:var(--ink); } .tpl-premium .pm-stats .pm-st .pm-n .pm-u{ color:var(--brand); }
+.tpl-premium .pm-stats .pm-st .pm-l { font-size:13.5px; color:var(--muted); font-weight:600; margin-top:4px; }
+
+/* contact */
+.tpl-premium .pm-contactgrid { display:grid; grid-template-columns:1fr; gap:36px; align-items:start; }
+@media (min-width:880px){ .tpl-premium .pm-contactgrid { grid-template-columns:1fr 1fr; gap:48px; } }
+.tpl-premium .pm-contactcard { background:var(--card); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow-lg); padding:30px; }
+.tpl-premium .pm-cinfo { display:flex; flex-direction:column; gap:12px; }
+.tpl-premium .pm-cirow { display:flex; gap:16px; align-items:flex-start; padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--card); transition:.2s; text-decoration:none; }
+.tpl-premium .pm-cirow:hover { border-color:var(--brand); box-shadow:var(--shadow-md); }
+.tpl-premium .pm-cirow .pm-lbl { font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.tpl-premium .pm-cirow .pm-val { font-family:var(--font-display); font-weight:700; font-size:19px; letter-spacing:-.02em; margin-top:3px; color:var(--ink); }
+.tpl-premium .pm-cirow .pm-val.sm { font-size:16px; }
+.tpl-premium .pm-hours { display:flex; flex-direction:column; margin-top:4px; }
+.tpl-premium .pm-hours .pm-h { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); font-size:15px; }
+.tpl-premium .pm-hours .pm-h:last-child{ border-bottom:none; }
+.tpl-premium .pm-hours .pm-h .pm-d { font-weight:600; color:var(--ink); } .tpl-premium .pm-hours .pm-h .pm-open { color:var(--brand); font-weight:700; }

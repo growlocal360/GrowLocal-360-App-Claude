@@ -8,8 +8,9 @@ import type {
 } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import { JsonLd, buildServiceSchema, buildBreadcrumbSchema, toBusinessInput, toLocationInput } from '@/lib/schema';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
-import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
+import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
 import { PmIconWrench, PmIconArrow, PmIconStar, PmIconShield, PmIconClock } from './icons';
 
 interface PremiumCategoryPageProps {
@@ -33,7 +34,7 @@ interface PremiumCategoryPageProps {
 }
 
 export function PremiumCategoryPage({
-  data, siteSlug, serviceAreas = [], locationSlug, formCategories,
+  data, siteSlug, serviceAreas = [], recentWorkItems, locationSlug, formCategories,
   schedulingActive = false, ctaStyle = 'booking',
 }: PremiumCategoryPageProps) {
   const { site, location, category, services, pageContent } = data;
@@ -41,7 +42,7 @@ export function PremiumCategoryPage({
   const phone = site.settings?.phone || location?.phone;
   const cityState = location?.city ? `${location.city}${location.state ? `, ${location.state}` : ''}` : '';
   const categoryName = category.gbp_category?.display_name || 'Services';
-  const categorySlug = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const categorySlug = normalizeCategorySlug(categoryName);
 
   const h1 = pageContent?.h1 || `${categoryName}${cityState ? ` in ${cityState}` : ''}`;
   const intro = pageContent?.hero_description || pageContent?.body_copy || `Professional ${categoryName.toLowerCase()}${cityState ? ` for ${location?.city} homeowners` : ''}.`;
@@ -95,6 +96,8 @@ export function PremiumCategoryPage({
           </aside>
         </div>
       </section>
+      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={`Recent ${categoryName.toLowerCase()} work`} />
+
       <PremiumFinalCta heading={`Need ${categoryName.toLowerCase()}${cityState ? ` in ${location?.city}` : ''}?`} sub="Fast response, upfront pricing, satisfaction guaranteed." ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>
   );

@@ -6,8 +6,9 @@
  * reusable final-CTA band. Keeps every inner page consistent + DRY.
  */
 import Link from 'next/link';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
+import * as paths from '@/lib/routing/paths';
 import { PremiumHeader } from './header';
 import { PremiumFooter } from './footer';
 import { PmIconPhone, PmIconArrow } from './icons';
@@ -87,6 +88,35 @@ export function PremiumFinalCta({ heading, sub, ctaStyle = 'booking', phone }: {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Premium "Recent Work" band — renders attached/recent job snaps as a full-width
+ * gallery grid. Shared by service, brand, service-area, and category pages so a
+ * published snap surfaces on every page it's attached to (matching local-service-pro).
+ * Renders nothing when there are no items.
+ */
+export function PremiumRecentWork({ items, locationSlug, title = 'Recent work' }: { items?: PublicRenderWorkItem[]; locationSlug?: string; title?: string }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <section className="pm-block pm-soft">
+      <div className="pm-wrap">
+        <div className="pm-sechead"><span className="pm-eyebrow">Recent Work</span><h2>{title}</h2></div>
+        <div className="pm-work">
+          {items.slice(0, 6).map((w) => {
+            const img = w.images?.[0]?.url;
+            return (
+              <Link key={w.id} className="pm-workcard" href={paths.workDetail(w.slug, locationSlug)}>
+                {img ? <img src={img} alt={w.images?.[0]?.alt || w.title} /> : <span className="pm-imgph" />}
+                {w.service?.name && <span className="pm-tag">{w.service.name}</span>}
+                <span className="pm-ov"><span className="pm-ovt">{w.title}</span></span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 

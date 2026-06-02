@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getLocationBySlug } from '@/lib/sites/get-site';
-import { LocationPage } from '@/components/templates/local-service-pro/location-page';
+import { getTemplate } from '@/lib/templates/registry';
 import {
   toPublicSite,
   toPublicLocation,
@@ -65,8 +65,9 @@ export default async function LocationRoute({ params }: LocationPageProps) {
     siteHasActiveBrands(data.site.id),
   ]);
 
+  const TemplateComp = getTemplate(data.site.template_id).Location;
   return (
-    <LocationPage
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

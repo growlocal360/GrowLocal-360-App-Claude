@@ -4,7 +4,7 @@ import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ServiceAreasListingPage } from '@/components/templates/local-service-pro/service-areas-listing-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -63,8 +63,9 @@ export default async function MultiLocationAreasPageRoute({ params }: MultiLocat
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).AreasListing;
   return (
-    <ServiceAreasListingPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       serviceAreas={data.serviceAreas.map(toPublicAreaListing)}

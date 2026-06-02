@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getLocationBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
-import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
+import { getTemplate } from '@/lib/templates/registry';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Service } from '@/types/database';
 import {
@@ -67,8 +67,9 @@ export default async function MultiLocationServicesPageRoute({ params }: MultiLo
     mappedServicesByCategory[catId] = svcs.map(toPublicServiceListing);
   }
 
+  const TemplateComp = getTemplate(data.site.template_id).Services;
   return (
-    <ServicesPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.location)}
       categories={categories.map(toPublicCategory)}

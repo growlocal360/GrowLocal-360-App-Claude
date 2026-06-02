@@ -17,7 +17,6 @@ import { BrandsListingPage } from '@/components/templates/local-service-pro/bran
 import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-detail-page';
 import { FAQHubPage } from '@/components/templates/local-service-pro/faq-hub-page';
 import { ReviewsPage } from '@/components/templates/local-service-pro/reviews-page';
-import { JobSnapsPage } from '@/components/templates/local-service-pro/job-snaps-page';
 import { LocationPage } from '@/components/templates/local-service-pro/location-page';
 
 // ---- premium (overrides only what it has built; rest falls back) ----
@@ -26,6 +25,18 @@ import { PremiumServicePage } from '@/components/templates/premium/service-page'
 import { PremiumAboutPage } from '@/components/templates/premium/about-page';
 import { PremiumContactPage } from '@/components/templates/premium/contact-page';
 import { PremiumWorkHubPage } from '@/components/templates/premium/work-hub-page';
+import { PremiumCategoryPage } from '@/components/templates/premium/category-page';
+import { PremiumServicesPage } from '@/components/templates/premium/services-page';
+import { PremiumServiceAreasListingPage } from '@/components/templates/premium/service-areas-listing-page';
+import { PremiumServiceAreaPage } from '@/components/templates/premium/service-area-page';
+import { PremiumBrandsListingPage } from '@/components/templates/premium/brands-listing-page';
+import { PremiumBrandDetailPage } from '@/components/templates/premium/brand-detail-page';
+import { PremiumFAQHubPage } from '@/components/templates/premium/faq-hub-page';
+import { PremiumReviewsPage } from '@/components/templates/premium/reviews-page';
+import { PremiumNeighborhoodPage } from '@/components/templates/premium/neighborhood-page';
+import { PremiumNeighborhoodPageSingleLocation } from '@/components/templates/premium/neighborhood-page-single';
+import { PremiumLocationPage } from '@/components/templates/premium/location-page';
+import { PremiumWorkDetailPage } from '@/components/templates/premium/work-detail-page';
 
 /**
  * A TemplateComponents set maps each page "role" to the component that renders
@@ -52,7 +63,6 @@ export interface TemplateComponents {
   BrandDetail: typeof BrandDetailPage;
   FAQ: typeof FAQHubPage;
   Reviews: typeof ReviewsPage;
-  JobSnaps: typeof JobSnapsPage;
   Location: typeof LocationPage;
 }
 
@@ -73,7 +83,6 @@ const BASELINE: TemplateComponents = {
   BrandDetail: BrandDetailPage,
   FAQ: FAQHubPage,
   Reviews: ReviewsPage,
-  JobSnaps: JobSnapsPage,
   Location: LocationPage,
 };
 
@@ -90,8 +99,19 @@ const OVERRIDES: Record<TemplateId, Partial<TemplateComponents>> = {
     About: PremiumAboutPage,
     Contact: PremiumContactPage,
     WorkHub: PremiumWorkHubPage,
-    // Remaining inner pages (Category, Services, Area, Brand, FAQ, Reviews,
-    // Neighborhood, Location, JobSnaps, WorkDetail) fall back to local-service-pro.
+    Category: PremiumCategoryPage,
+    Services: PremiumServicesPage,
+    AreasListing: PremiumServiceAreasListingPage,
+    Area: PremiumServiceAreaPage,
+    BrandsListing: PremiumBrandsListingPage,
+    BrandDetail: PremiumBrandDetailPage,
+    FAQ: PremiumFAQHubPage,
+    Reviews: PremiumReviewsPage,
+    Neighborhood: PremiumNeighborhoodPage,
+    NeighborhoodSingle: PremiumNeighborhoodPageSingleLocation,
+    Location: PremiumLocationPage,
+    WorkDetail: PremiumWorkDetailPage,
+    // Full coverage — every page type now has a premium component.
   },
 };
 

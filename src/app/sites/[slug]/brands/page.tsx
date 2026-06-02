@@ -4,7 +4,7 @@ import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { BrandsListingPage } from '@/components/templates/local-service-pro/brands-listing-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicBrandListing, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -74,8 +74,9 @@ export default async function BrandsPageRoute({ params }: BrandsPageProps) {
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).BrandsListing;
   return (
-    <BrandsListingPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       brands={data.brands.map(toPublicBrandListing)}

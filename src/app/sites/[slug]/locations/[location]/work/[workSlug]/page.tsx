@@ -4,7 +4,7 @@ import { getWorkItemBySlug, getRelatedWorkItems } from '@/lib/sites/get-work-ite
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -96,8 +96,9 @@ export default async function MultiLocationWorkDetailRoute({ params }: MultiLoca
     location: data.itemLocation || null,
   };
 
+  const TemplateComp = getTemplate(data.site.template_id).WorkDetail;
   return (
-    <WorkDetailPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.primaryLocation)}
       workItem={toPublicWorkItem(workItemWithRelations)}

@@ -4,7 +4,7 @@ import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { getFAQHubData } from '@/lib/sites/get-faq-hub';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { FAQHubPage } from '@/components/templates/local-service-pro/faq-hub-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicPageContent, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -83,8 +83,9 @@ export default async function FAQPageRoute({ params }: FAQPageProps) {
 
   const faqContent = data.sitePages?.find(p => p.page_type === 'faq') || null;
 
+  const TemplateComp = getTemplate(data.site.template_id).FAQ;
   return (
-    <FAQHubPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       pageContent={faqContent ? toPublicPageContent(faqContent) : null}

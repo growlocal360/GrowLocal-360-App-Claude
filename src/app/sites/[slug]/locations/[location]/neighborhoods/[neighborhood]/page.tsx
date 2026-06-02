@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getNeighborhoodBySlug } from '@/lib/sites/get-site';
-import { NeighborhoodPage } from '@/components/templates/local-service-pro/neighborhood-page';
+import { getTemplate } from '@/lib/templates/registry';
 import {
   toPublicSite,
   toPublicLocation,
@@ -59,8 +59,9 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
 
   const hasBrands = await siteHasActiveBrands(data.site.id);
 
+  const TemplateComp = getTemplate(data.site.template_id).Neighborhood;
   return (
-    <NeighborhoodPage
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

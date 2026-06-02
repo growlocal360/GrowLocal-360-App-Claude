@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
-import { ServicesPage } from '@/components/templates/local-service-pro/services-page';
+import { getTemplate } from '@/lib/templates/registry';
 import {
   toPublicSite, toPublicLocation, toPublicCategory, toPublicServiceListing, toPublicAreaListing,
 } from '@/lib/sites/public-render-model';
@@ -79,8 +79,9 @@ export default async function ServicesPageRoute({ params }: ServicesPageProps) {
     }
   }
 
+  const TemplateComp = getTemplate(data.site.template_id).Services;
   return (
-    <ServicesPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       categories={categories.map(toPublicCategory)}

@@ -7,7 +7,7 @@ import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToBrand } from '@/lib/sites/match-reviews';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { BrandDetailPage } from '@/components/templates/local-service-pro/brand-detail-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite, toPublicLocation, toPublicBrandDetail, toPublicBrandListing,
@@ -136,8 +136,9 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
     };
   });
 
+  const TemplateComp = getTemplate(site.template_id).BrandDetail;
   return (
-    <BrandDetailPage
+    <TemplateComp
       site={toPublicSite(site, { hasBrands: brands.length > 0 })}
       brand={toPublicBrandDetail(brand)}
       primaryLocation={primaryLocation ? toPublicLocation(primaryLocation) : null}

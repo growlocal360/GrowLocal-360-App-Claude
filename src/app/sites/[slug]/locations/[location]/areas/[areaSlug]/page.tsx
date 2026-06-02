@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { ServiceAreaPage } from '@/components/templates/local-service-pro/service-area-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type {
   SiteWithRelations,
   Location,
@@ -124,8 +124,9 @@ export default async function MultiLocationAreaDetailRoute({ params }: MultiLoca
     siteHasActiveBrands(data.site.id),
   ]);
 
+  const TemplateComp = getTemplate(data.site.template_id).Area;
   return (
-    <ServiceAreaPage
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

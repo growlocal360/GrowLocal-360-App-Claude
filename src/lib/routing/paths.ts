@@ -90,11 +90,6 @@ export function contactPage(locationSlug?: string): string {
   return `${base(locationSlug)}/contact`;
 }
 
-/** /job-snaps or /{locationSlug}/job-snaps */
-export function jobSnapsPage(locationSlug?: string): string {
-  return `${base(locationSlug)}/job-snaps`;
-}
-
 /** /work or /{locationSlug}/work */
 export function workHub(locationSlug?: string): string {
   return `${base(locationSlug)}/work`;

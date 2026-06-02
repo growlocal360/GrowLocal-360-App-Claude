@@ -5,7 +5,7 @@ import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
-import { ReviewsPage } from '@/components/templates/local-service-pro/reviews-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicReview, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -83,8 +83,9 @@ export default async function ReviewsPageRoute({ params }: ReviewsPageProps) {
   const averageRating = data.site.settings?.google_average_rating as number | null;
   const totalReviewCount = data.site.settings?.google_total_reviews as number | null;
 
+  const TemplateComp = getTemplate(data.site.template_id).Reviews;
   return (
-    <ReviewsPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
       reviews={allReviews.map(toPublicReview)}

@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { getWorkItemBySlug, getRelatedWorkItems, getAllPublishedWorkSlugs } from '@/lib/sites/get-work-items';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { WorkDetailPage } from '@/components/templates/local-service-pro/work-detail-page';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { toPublicSite, toPublicLocation, toPublicWorkItem, toPublicAreaListing, toPublicCategory } from '@/lib/sites/public-render-model';
@@ -83,8 +83,9 @@ export default async function WorkDetailRoute({ params }: WorkDetailProps) {
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).WorkDetail;
   return (
-    <WorkDetailPage
+    <TemplateComp
       site={toPublicSite(data.site, { hasBrands })}
       primaryLocation={toPublicLocation(data.primaryLocation)}
       workItem={toPublicWorkItem(data.workItem)}

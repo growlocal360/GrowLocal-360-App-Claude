@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { getNeighborhoodBySlugSingleLocation } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { NeighborhoodPageSingleLocation } from '@/components/templates/local-service-pro/neighborhood-page-single';
+import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
@@ -75,8 +75,9 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     isPrimary: c.is_primary,
   }));
 
+  const TemplateComp = getTemplate(data.site.template_id).NeighborhoodSingle;
   return (
-    <NeighborhoodPageSingleLocation
+    <TemplateComp
       data={{
         site: toPublicSite(data.site, { hasBrands }),
         location: toPublicLocation(data.location),

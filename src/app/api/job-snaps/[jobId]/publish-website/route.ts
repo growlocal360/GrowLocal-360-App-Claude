@@ -65,7 +65,7 @@ export async function POST(
     // ── Org access check ──────────────────────────────────────────────────────
     const { data: site } = await adminClient
       .from('sites')
-      .select('slug, organization_id')
+      .select('slug, organization_id, custom_domain, custom_domain_verified')
       .eq('id', snap.site_id)
       .single();
 
@@ -192,7 +192,11 @@ export async function POST(
     // Also revalidate home page (Recent Work section)
     revalidatePath(base, 'layout');
 
-    const publicUrl = `https://${site.slug}.goleadflow.com/work/${workSlug}`;
+    const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
+    const publicDomain = (site.custom_domain_verified && site.custom_domain)
+      ? site.custom_domain
+      : `${site.slug}.${appDomain}`;
+    const publicUrl = `https://${publicDomain}/work/${workSlug}`;
 
     // Fire webhook to any external sites listening (WP plugin, Next.js, embed, etc.)
     await emitJobSnapEvent(

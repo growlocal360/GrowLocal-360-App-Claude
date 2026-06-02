@@ -13,7 +13,7 @@ import type { GenerationScope } from '@/types/database';
  * a regeneration.
  *
  * Covers: root listings, every category/service/area/neighborhood/brand/work
- * detail page, the home page, /about, /contact, /faq, /reviews, /job-snaps,
+ * detail page, the home page, /about, /contact, /faq, /reviews,
  * and the full /locations/{loc}/* multi-location subtree.
  */
 export async function revalidateSite(siteId: string) {
@@ -64,7 +64,7 @@ export async function revalidateSite(siteId: string) {
 
   // -------- Root paths (single-location + multi-location root) --------
   revalidatePath(base, 'page'); // home
-  for (const path of ['/about', '/contact', '/faq', '/services', '/areas', '/brands', '/work', '/reviews', '/job-snaps']) {
+  for (const path of ['/about', '/contact', '/faq', '/services', '/areas', '/brands', '/work', '/reviews']) {
     revalidatePath(`${base}${path}`, 'page');
   }
 
@@ -108,7 +108,7 @@ export async function revalidateSite(siteId: string) {
   for (const loc of locations || []) {
     const locBase = `${base}/locations/${loc.slug}`;
     revalidatePath(locBase, 'page'); // location home
-    for (const path of ['/about', '/contact', '/services', '/areas', '/work', '/job-snaps']) {
+    for (const path of ['/about', '/contact', '/services', '/areas', '/work']) {
       revalidatePath(`${locBase}${path}`, 'page');
     }
     for (const [, cat] of catSlugMap) {

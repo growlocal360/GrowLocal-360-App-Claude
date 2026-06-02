@@ -90,11 +90,6 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                 </Link>
               </li>
               <li>
-                <Link href={paths.jobSnapsPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
-                  Job Snaps
-                </Link>
-              </li>
-              <li>
                 <Link href={paths.contactPage(locationSlug)} className="transition-colors duration-300 hover:text-white">
                   Contact
                 </Link>

@@ -7,6 +7,7 @@ import type {
 } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
 import { PmIconWrench, PmIconArrow } from './icons';
 
@@ -49,7 +50,7 @@ export function PremiumServicesPage({
         <div className="pm-wrap">
           {categories.map(cat => {
             const catName = cat.gbp_category?.display_name || 'Services';
-            const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            const catSlug = normalizeCategorySlug(catName);
             const svcs = servicesByCategory[cat.id] || [];
             if (svcs.length === 0) return null;
             return (

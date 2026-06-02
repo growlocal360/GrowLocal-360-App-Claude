@@ -8,8 +8,9 @@ import type {
 } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
-import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
+import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
 import { PmIconWrench, PmIconArrow, PmIconStar, PmIconShield, PmIconClock, PmIconPin } from './icons';
 
 interface PremiumServiceAreaPageProps {
@@ -31,14 +32,14 @@ interface PremiumServiceAreaPageProps {
 }
 
 export function PremiumServiceAreaPage({
-  data, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking',
+  data, siteSlug, locationSlug, recentWorkItems, formCategories, schedulingActive = false, ctaStyle = 'booking',
 }: PremiumServiceAreaPageProps) {
   const { site, location, serviceArea, allServiceAreas, services, categories } = data;
   const ctaColor = site.settings?.cta_color || site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || location?.phone;
   const areaName = serviceArea.state ? `${serviceArea.name}, ${serviceArea.state}` : serviceArea.name;
   const primaryCategory = categories.find(c => c.is_primary) || categories[0];
-  const primaryCatSlug = primaryCategory ? (primaryCategory.gbp_category?.display_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : undefined;
+  const primaryCatSlug = primaryCategory ? normalizeCategorySlug(primaryCategory.gbp_category?.display_name || '') : undefined;
 
   const h1 = serviceArea.h1 || `Service in ${areaName}`;
   const intro = serviceArea.body_copy || `${site.name} proudly serves ${areaName} and the surrounding area.`;
@@ -101,6 +102,8 @@ export function PremiumServiceAreaPage({
           </aside>
         </div>
       </section>
+      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={`Recent work in ${serviceArea.name}`} />
+
       <PremiumFinalCta heading={`Serving ${areaName}`} sub={`Book your appointment with ${site.name} today.`} ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>
   );

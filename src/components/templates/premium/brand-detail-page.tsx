@@ -10,7 +10,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import * as paths from '@/lib/routing/paths';
 import { JsonLd, buildFAQPageSchema, buildBreadcrumbSchema } from '@/lib/schema';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
-import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
+import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
 import { PmIconCheck, PmIconWrench, PmIconArrow, PmIconStar, PmIconShield, PmIconClock } from './icons';
 
 interface BrandService { id: string; name: string; slug: string; categoryName: string; categorySlug: string; isPrimaryCategory: boolean; }
@@ -34,7 +34,7 @@ interface PremiumBrandDetailPageProps {
 
 export function PremiumBrandDetailPage({
   site, brand, primaryLocation, services, serviceAreas, siteSlug, locationSlug,
-  formCategories, schedulingActive = false, ctaStyle = 'booking',
+  recentWorkItems, formCategories, schedulingActive = false, ctaStyle = 'booking',
 }: PremiumBrandDetailPageProps) {
   const ctaColor = site.settings?.cta_color || site.settings?.brand_color || '#00ef99';
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -111,6 +111,8 @@ export function PremiumBrandDetailPage({
           </aside>
         </div>
       </section>
+      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={`Recent ${brand.name} work`} />
+
       <PremiumFinalCta heading={brand.cta_heading || `Need ${brand.name} service?`} sub={brand.cta_description || 'Book your appointment today.'} ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>
   );

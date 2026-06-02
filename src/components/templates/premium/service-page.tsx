@@ -11,8 +11,9 @@ import * as paths from '@/lib/routing/paths';
 import {
   JsonLd, buildServiceSchema, buildFAQPageSchema, buildBreadcrumbSchema, toBusinessInput, toLocationInput,
 } from '@/lib/schema';
+import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
-import { PremiumShell, PremiumPageHero, PremiumFinalCta, ctaLabelFor } from './shell';
+import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
 import { PmIconCheck, PmIconStar, PmIconShield, PmIconClock, PmIconWrench, PmIconArrow } from './icons';
 
 interface PremiumServicePageProps {
@@ -37,7 +38,7 @@ interface PremiumServicePageProps {
 
 export function PremiumServicePage({
   data, siteSlug, isPrimaryCategory, serviceAreas = [], locationSlug,
-  formCategories, schedulingActive = false, ctaStyle = 'booking',
+  recentWorkItems, formCategories, schedulingActive = false, ctaStyle = 'booking',
 }: PremiumServicePageProps) {
   const { site, location, service, category, siblingServices } = data;
   const brandColor = site.settings?.brand_color || '#00ef99';
@@ -45,7 +46,7 @@ export function PremiumServicePage({
   const phone = site.settings?.phone || location?.phone;
   const cityState = location?.city ? `${location.city}${location.state ? `, ${location.state}` : ''}` : '';
   const categoryName = category?.gbp_category?.display_name || '';
-  const categorySlug = categoryName ? categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : undefined;
+  const categorySlug = categoryName ? normalizeCategorySlug(categoryName) : undefined;
 
   const h1 = service.h1 || `${service.name}${cityState ? ` in ${cityState}` : ''}`;
   const intro = service.intro_copy || service.body_copy || service.description || '';
@@ -129,6 +130,8 @@ export function PremiumServicePage({
           </aside>
         </div>
       </section>
+
+      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={`Recent ${service.name.toLowerCase()} work`} />
 
       {siblingServices.length > 0 && (
         <section className="pm-block pm-soft">

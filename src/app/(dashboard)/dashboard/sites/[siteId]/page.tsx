@@ -97,7 +97,7 @@ export default function SiteDashboardPage() {
 
   const router = useRouter();
   const supabase = createClient();
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
 
   useEffect(() => {
     async function loadData() {

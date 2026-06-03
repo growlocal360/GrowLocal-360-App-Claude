@@ -63,6 +63,12 @@ export function PremiumTemplate({
 
   const homePageContent = sitePages?.[0] || null;
 
+  // Hero background image — prefer the generated prompt_index 0 image (same
+  // selection the local-service-pro hero uses), fall back to the first available.
+  const heroImage = homePageContent?.generated_images?.find((img) => img.prompt_index === 0)
+    || homePageContent?.generated_images?.[0]
+    || null;
+
   // brand-ink: readable text color on top of the brand fill
   const brandInk = readableInk(brandColor);
 
@@ -116,9 +122,15 @@ export function PremiumTemplate({
 
       <main>
         {/* HERO */}
-        <section className="pm-hero">
+        <section className={`pm-hero${heroImage ? ' pm-hero--photo' : ''}`}>
           <div className="pm-hero-bg" />
           <div className="pm-hero-grid" />
+          {heroImage && (
+            <>
+              <div className="pm-hero-photo" style={{ backgroundImage: `url(${heroImage.url})` }} />
+              <div className="pm-hero-photo-veil" />
+            </>
+          )}
           <div className="pm-wrap pm-hero-inner">
             <div>
               <div className="pm-ratingpill">

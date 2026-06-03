@@ -42,6 +42,8 @@ interface SiteWithLocations {
   build_progress: SiteBuildProgress | null;
   status_message: string | null;
   created_at: string;
+  custom_domain: string | null;
+  custom_domain_verified: boolean | null;
   locations: { id: string }[];
 }
 
@@ -100,7 +102,7 @@ export default function SitesPage() {
 
       let sitesQuery = supabase
         .from('sites')
-        .select('id, name, slug, status, build_progress, status_message, created_at, settings, locations(id)')
+        .select('id, name, slug, status, build_progress, status_message, created_at, settings, custom_domain, custom_domain_verified, locations(id)')
         .eq('organization_id', profile?.organization_id);
       if (accessibleSiteIds) sitesQuery = sitesQuery.in('id', accessibleSiteIds);
       const { data: sitesData } = await sitesQuery.order('created_at', { ascending: false });
@@ -259,7 +261,13 @@ export default function SitesPage() {
     { value: 'archived', label: 'Archived' },
   ];
 
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
+
+  // Public URL for a site: prefer a verified custom domain, else the subdomain.
+  const publicSiteUrl = (site: SiteWithLocations) =>
+    (site.custom_domain_verified && site.custom_domain)
+      ? `https://${site.custom_domain}`
+      : `https://${site.slug}.${appDomain}`;
 
   return (
     <div className="flex flex-col">
@@ -371,7 +379,7 @@ export default function SitesPage() {
                           asChild
                         >
                           <a
-                            href={`https://${site.slug}.${appDomain}`}
+                            href={publicSiteUrl(site)}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

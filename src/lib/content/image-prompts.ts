@@ -113,7 +113,7 @@ export async function generateImagePromptsForPage(
 ): Promise<ImagePrompt[]> {
   const result = await withRetry(async () => {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: IMAGE_STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: buildUserMessage(ctx) }],

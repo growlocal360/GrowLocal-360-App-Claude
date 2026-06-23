@@ -30,6 +30,7 @@ interface DomainConfig {
   subdomain: string;
   customDomain: string | null;
   customDomainVerified: boolean;
+  publicWebsiteUrl: string | null;
   dnsInstructions: {
     configured: boolean;
     records: DNSRecord[];
@@ -55,6 +56,11 @@ export default function DomainSettingsPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
+
+  // Public Website URL (external-site clients)
+  const [publicUrl, setPublicUrl] = useState('');
+  const [isSavingPublicUrl, setIsSavingPublicUrl] = useState(false);
+  const [publicUrlSaved, setPublicUrlSaved] = useState(false);
 
   // Fetch current domain configuration
   useEffect(() => {
@@ -96,10 +102,33 @@ export default function DomainSettingsPage() {
 
       const data = await response.json();
       setConfig(data);
+      setPublicUrl(data.publicWebsiteUrl || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load domain settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePublicUrl = async () => {
+    try {
+      setIsSavingPublicUrl(true);
+      setError(null);
+      setPublicUrlSaved(false);
+      const response = await fetch(`/api/sites/${siteId}/domain`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicWebsiteUrl: publicUrl.trim() || null }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to save');
+      setPublicUrl(data.publicWebsiteUrl || '');
+      setPublicUrlSaved(true);
+      setTimeout(() => setPublicUrlSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save public website URL');
+    } finally {
+      setIsSavingPublicUrl(false);
     }
   };
 
@@ -426,6 +455,45 @@ export default function DomainSettingsPage() {
                 </div>
               </div>
             </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Public Website URL (external-site clients) */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ExternalLink className="h-5 w-5 text-gray-600" />
+            <h2 className="font-semibold">Public Website URL</h2>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Use this only if your website is hosted somewhere else (not the GrowLocal site).
+            Job Snap and Google Business Profile links will point here instead of your GrowLocal site.
+            Leave blank if you use your GrowLocal website.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="public-website-url" className="text-sm font-medium">
+            Your website address
+          </Label>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+            <Input
+              id="public-website-url"
+              type="url"
+              inputMode="url"
+              placeholder="https://www.yoursite.com"
+              value={publicUrl}
+              onChange={(e) => setPublicUrl(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleSavePublicUrl} disabled={isSavingPublicUrl}>
+              {isSavingPublicUrl ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+          {publicUrlSaved && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-green-600">
+              <Check className="h-4 w-4" /> Saved — your Job Snap &amp; Google links now point here.
+            </p>
           )}
         </CardContent>
       </Card>

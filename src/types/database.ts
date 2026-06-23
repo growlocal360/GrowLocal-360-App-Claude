@@ -159,6 +159,9 @@ export interface SiteSettings {
   email?: string;
   core_industry?: string;
   cta_text?: string;
+  // External website — when the client's real site is hosted elsewhere (not the
+  // GL360-generated site). Job Snap / GBP "Learn more" links point here.
+  public_website_url?: string;
   // Review Data
   google_average_rating?: number;
   google_total_reviews?: number;

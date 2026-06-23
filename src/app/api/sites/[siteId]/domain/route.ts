@@ -33,13 +33,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Fetch site data (no org join needed — access already verified)
     const { data: site, error: siteError } = await adminSupabase
       .from('sites')
-      .select('id, slug, custom_domain, custom_domain_verified, vercel_domain_config')
+      .select('id, slug, custom_domain, custom_domain_verified, vercel_domain_config, settings')
       .eq('id', siteId)
       .single();
 
     if (siteError || !site) {
       return NextResponse.json({ error: 'Site not found' }, { status: 404 });
     }
+
+    const publicWebsiteUrl =
+      ((site.settings || {}) as { public_website_url?: string | null }).public_website_url || null;
 
     // Get subdomain (always available)
     const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
@@ -58,6 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       subdomain,
       customDomain: site.custom_domain,
       customDomainVerified: site.custom_domain_verified,
+      publicWebsiteUrl,
       dnsInstructions,
       vercelConfigured: isVercelConfigured(),
     });
@@ -67,6 +71,72 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { error: 'Failed to get domain configuration' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * PATCH /api/sites/[siteId]/domain
+ * Update the "Public Website URL" — for clients whose real site is hosted
+ * elsewhere (not the GL360-generated site). Job Snap / GBP links point here.
+ * Stored in settings.public_website_url. Send null/empty to clear it.
+ */
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { siteId } = await params;
+    const supabase = await createClient();
+
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const raw = body.publicWebsiteUrl;
+
+    // Normalize: null/empty clears the field; otherwise must be a valid http(s) URL.
+    let value: string | null = null;
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+      const trimmed = String(raw).trim().replace(/\/+$/, '');
+      if (!/^https?:\/\/.+/i.test(trimmed)) {
+        return NextResponse.json(
+          { error: 'Public website URL must be a full URL starting with http:// or https://' },
+          { status: 400 }
+        );
+      }
+      value = trimmed;
+    }
+
+    const adminSupabase = createAdminClient();
+    const { data: site, error: siteError } = await adminSupabase
+      .from('sites')
+      .select('id, settings')
+      .eq('id', siteId)
+      .single();
+
+    if (siteError || !site) {
+      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentSettings = (site.settings || {}) as any;
+    const updatedSettings = { ...currentSettings, public_website_url: value };
+
+    const { error: updateError } = await adminSupabase
+      .from('sites')
+      .update({ settings: updatedSettings, updated_at: new Date().toISOString() })
+      .eq('id', siteId);
+
+    if (updateError) {
+      console.error('Failed to update public website URL:', updateError);
+      return NextResponse.json({ error: 'Failed to update setting' }, { status: 500 });
+    }
+
+    await revalidateSite(siteId);
+
+    return NextResponse.json({ publicWebsiteUrl: value });
+  } catch (error) {
+    console.error('Error updating public website URL:', error);
+    return NextResponse.json({ error: 'Failed to update setting' }, { status: 500 });
   }
 }
 

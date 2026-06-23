@@ -65,7 +65,7 @@ export async function POST(
     // ── Org access check ──────────────────────────────────────────────────────
     const { data: site } = await adminClient
       .from('sites')
-      .select('slug, organization_id, custom_domain, custom_domain_verified')
+      .select('slug, organization_id, custom_domain, custom_domain_verified, settings')
       .eq('id', snap.site_id)
       .single();
 
@@ -192,11 +192,19 @@ export async function POST(
     // Also revalidate home page (Recent Work section)
     revalidatePath(base, 'layout');
 
+    // Resolve the public origin the same way publish-gbp does, so the URL returned
+    // here matches the GBP "Learn more" link:
+    //   1) settings.public_website_url (external-site clients)
+    //   2) verified custom_domain (GL360-hosted custom domain)
+    //   3) {slug}.NEXT_PUBLIC_APP_DOMAIN (default subdomain)
     const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
-    const publicDomain = (site.custom_domain_verified && site.custom_domain)
-      ? site.custom_domain
-      : `${site.slug}.${appDomain}`;
-    const publicUrl = `https://${publicDomain}/work/${workSlug}`;
+    const publicWebsiteUrl = ((site.settings || {}) as { public_website_url?: string | null }).public_website_url;
+    const publicOrigin = publicWebsiteUrl
+      ? publicWebsiteUrl.replace(/\/+$/, '')
+      : (site.custom_domain_verified && site.custom_domain)
+        ? `https://${site.custom_domain}`
+        : `https://${site.slug}.${appDomain}`;
+    const publicUrl = `${publicOrigin}/work/${workSlug}`;
 
     // Fire webhook to any external sites listening (WP plugin, Next.js, embed, etc.)
     await emitJobSnapEvent(

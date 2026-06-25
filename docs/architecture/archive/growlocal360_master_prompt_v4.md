@@ -1,3 +1,11 @@
+> **⚠️ SUPERSEDED by v5. Kept for reference.**
+> This v4 master prompt has been replaced by
+> `docs/architecture/growlocal360_master_prompt_v5.md`, which adopts the
+> **Primary Market** model (replacing "anchor city" / the 9-scenario framing),
+> adds Travel Strategy as a first-class input, and updates the URL structure
+> rules (flat structure, `/locations/` removed, city-first GBP hubs, Top 2-3
+> services rule). Do not build against this document.
+
 # Master Prompt — GrowLocal 360 Onboarding Analysis & Build Spec (v4 — Final with GSC Scoping)
 
 **Purpose:** v4 of the GrowLocal 360 master prompt. Includes proper handling of multi-location GSC data so that microsites and city-specific builds use only the search data relevant to THEIR geographic scope.

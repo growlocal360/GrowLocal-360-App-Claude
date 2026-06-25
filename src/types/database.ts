@@ -162,6 +162,11 @@ export interface SiteSettings {
   // External website — when the client's real site is hosted elsewhere (not the
   // GL360-generated site). Job Snap / GBP "Learn more" links point here.
   public_website_url?: string;
+  // v5 Primary Market model (see docs/architecture/growlocal360_master_prompt_v5.md)
+  travel_strategy?: 'local' | 'regional' | 'metro' | 'multi-market';
+  primary_market_city?: string;
+  primary_market_state?: string;
+  primary_market_source?: 'user_input' | 'ai_recommendation' | 'gbp_address';
   // Review Data
   google_average_rating?: number;
   google_total_reviews?: number;

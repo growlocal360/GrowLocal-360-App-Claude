@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand, WizardGSCQuery, MicrositeConfig } from '@/types/wizard';
+import type { WizardState, WizardStep, WizardLocation, ServiceArea, WizardNeighborhood, WizardService, WizardBrand, WizardGSCQuery, MicrositeConfig, TravelStrategy, PrimaryMarket } from '@/types/wizard';
 import type { SiteScope } from '@/lib/onboarding/site-scope';
 import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
@@ -28,6 +28,9 @@ interface WizardStore extends WizardState {
   removeServiceArea: (id: string) => void;
   toggleServiceArea: (area: ServiceArea) => void;
   setServiceAreaRadius: (radius: number) => void;
+  setTravelStrategy: (strategy: TravelStrategy | null) => void;
+  setPrimaryMarket: (market: PrimaryMarket | null) => void;
+  setAdditionalMarkets: (markets: PrimaryMarket[]) => void;
   setNeighborhoods: (neighborhoods: WizardNeighborhood[]) => void;
   addNeighborhood: (neighborhood: WizardNeighborhood) => void;
   removeNeighborhood: (id: string) => void;
@@ -200,6 +203,10 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
     }),
 
   setServiceAreaRadius: (radius) => set({ serviceAreaRadius: radius }),
+
+  setTravelStrategy: (strategy) => set({ travelStrategy: strategy }),
+  setPrimaryMarket: (market) => set({ primaryMarket: market }),
+  setAdditionalMarkets: (markets) => set({ additionalMarkets: markets }),
 
   setNeighborhoods: (neighborhoods) => set({ neighborhoods }),
 

@@ -1,7 +1,7 @@
 import { createStaticClient } from '@/lib/supabase/static';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebsiteType } from '@/types/database';
-import type { MicrositeConfig } from '@/types/wizard';
+import type { MicrositeConfig, TravelStrategy, PrimaryMarket } from '@/types/wizard';
 import type { SiteScope } from '@/lib/onboarding/site-scope';
 import { FULL_BUSINESS_SCOPE } from '@/lib/onboarding/site-scope';
 import { filterGscByScope, type GscQueryForFilter } from '@/lib/onboarding/gsc-scope-filter';
@@ -96,6 +96,9 @@ export interface WizardSiteData {
   // v4 SITE_SCOPE — collected in the site-scope wizard step. Drives the
   // GSC scope filter + the Phase 2 onboarding analysis. Null = FULL_BUSINESS.
   siteScope?: SiteScope | null;
+  // v5 Primary Market model — collected in the primary-market wizard step.
+  travelStrategy?: TravelStrategy | null;
+  primaryMarket?: PrimaryMarket | null;
 }
 
 export interface CreateSiteResult {
@@ -180,6 +183,21 @@ export async function createSiteFromWizardData(
   // FULL_BUSINESS.
   const effectiveScope: SiteScope = data.siteScope ?? deriveDefaultScope(data);
 
+  // Resolve the v5 Primary Market. Prefer what the wizard collected; otherwise
+  // fall back to the primary location's city so the field is always populated
+  // (backwards-compat: pre-v5 flows + any caller that skips the step).
+  const primaryLoc = locations.find((l) => l.isPrimary) || locations[0];
+  const fallbackCity = primaryLoc?.representativeCity || primaryLoc?.city || '';
+  const fallbackState = primaryLoc?.representativeState || primaryLoc?.state || '';
+  const v5Market = (data.primaryMarket?.city || fallbackCity)
+    ? {
+        travelStrategy: (data.travelStrategy ?? 'regional') as TravelStrategy,
+        city: data.primaryMarket?.city || fallbackCity,
+        state: data.primaryMarket?.state || fallbackState,
+        source: (data.primaryMarket?.source ?? (data.primaryMarket ? 'user_input' : 'gbp_address')) as PrimaryMarket['source'],
+      }
+    : null;
+
   // Create the site with building status
   const { data: site, error: siteError } = await supabase
     .from('sites')
@@ -209,6 +227,14 @@ export async function createSiteFromWizardData(
       status_updated_at: new Date().toISOString(),
       settings: {
         core_industry: coreIndustry,
+        // v5 Primary Market model. Falls back to the primary location's city so
+        // even sites created before this step shipped have a sensible value.
+        ...(v5Market ? {
+          travel_strategy: v5Market.travelStrategy,
+          primary_market_city: v5Market.city,
+          primary_market_state: v5Market.state,
+          primary_market_source: v5Market.source,
+        } : {}),
         ...(data.micrositeConfig ? {
           microsite_target_city: data.micrositeConfig.targetCity,
           microsite_target_city_state: data.micrositeConfig.targetCityState,

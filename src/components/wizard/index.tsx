@@ -9,6 +9,7 @@ import { StepCategories } from './step-categories';
 import { StepBrands } from './step-brands';
 import { StepServices } from './step-services';
 import { StepServiceAreas } from './step-service-areas';
+import { StepPrimaryMarket } from './step-primary-market';
 import { StepNeighborhoods } from './step-neighborhoods';
 import { StepWebsiteType } from './step-website-type';
 import { StepSiteScope } from './step-site-scope';
@@ -33,6 +34,8 @@ export function SiteWizard() {
         return <StepServices />;
       case 'service-areas':
         return <StepServiceAreas />;
+      case 'primary-market':
+        return <StepPrimaryMarket />;
       case 'neighborhoods':
         return <StepNeighborhoods />;
       case 'website-type':
@@ -57,6 +60,7 @@ export { StepCategories } from './step-categories';
 export { StepBrands } from './step-brands';
 export { StepServices } from './step-services';
 export { StepServiceAreas } from './step-service-areas';
+export { StepPrimaryMarket } from './step-primary-market';
 export { StepNeighborhoods } from './step-neighborhoods';
 export { StepWebsiteType } from './step-website-type';
 export { StepSiteScope } from './step-site-scope';

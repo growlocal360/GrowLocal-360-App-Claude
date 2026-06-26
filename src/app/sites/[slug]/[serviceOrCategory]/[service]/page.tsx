@@ -5,6 +5,7 @@ import { matchReviewsToService } from '@/lib/sites/match-reviews';
 import { getCategoriesWithServices, getAllNestedServiceParams, getServiceBySlugSingleLocation } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { resolveCity, isServiceSlug } from '@/lib/routing/resolve-segment';
+import { isPlannedCityPath } from '@/lib/sites/site-plan-store';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -224,6 +225,13 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
     serviceSlug = seg2;
     citySeg = seg1;
   } else {
+    return null;
+  }
+
+  // v5 gate: only render this city/service combo if the Site Plan says it exists.
+  // Keeps proximity-covered cities and non-top services from rendering thin pages.
+  // (Pre-v5 sites have no plan → isPlannedCityPath is permissive.)
+  if (!(await isPlannedCityPath(siteId, `/${seg1}/${seg2}/`))) {
     return null;
   }
 

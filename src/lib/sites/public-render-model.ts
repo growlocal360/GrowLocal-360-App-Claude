@@ -115,6 +115,13 @@ export interface PublicRenderAreaListing {
   name: string;
   slug: string;
   state: string | null;
+  /**
+   * v5: the public URL of this city's dedicated page (Pattern 1 or city hub), or
+   * null when the city is text-only on /service-areas/. Populated only by the
+   * /service-areas/ route from the persisted Site Plan; left undefined elsewhere
+   * (callers that don't set it render the area as before).
+   */
+  pageUrl?: string | null;
 }
 
 export interface PublicRenderAreaDetail extends PublicRenderAreaListing {

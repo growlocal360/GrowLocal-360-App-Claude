@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import { getStoredSitePlan, cityTreatmentByName } from '@/lib/sites/site-plan-store';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
@@ -52,13 +53,14 @@ export default async function ServiceAreasPageRoute({ params }: ServiceAreasPage
   if (!data) notFound();
 
   const supabase = createAdminClient();
-  const [{ categories }, { data: schedulingConfig }] = await Promise.all([
+  const [{ categories }, { data: schedulingConfig }, sitePlan] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     supabase
       .from('scheduling_configs')
       .select('is_active, cta_style')
       .eq('site_id', data.site.id)
       .single(),
+    getStoredSitePlan(data.site.id),
   ]);
 
   const navCategories: NavCategory[] = categories.map((c) => ({
@@ -68,12 +70,25 @@ export default async function ServiceAreasPageRoute({ params }: ServiceAreasPage
     isPrimary: c.is_primary,
   }));
 
+  // v5: a city links to its dedicated page (Pattern 1 / city hub) when the Site
+  // Plan says it has one; otherwise it's a text-only mention. Pre-v5 sites (no
+  // plan) leave pageUrl undefined → templates render them as before.
+  const treatment = sitePlan ? cityTreatmentByName(sitePlan) : null;
+  const serviceAreas = data.serviceAreas.map((area) => {
+    const base = toPublicAreaListing(area);
+    if (treatment) {
+      const c = treatment.get(area.name.trim().toLowerCase());
+      return { ...base, pageUrl: c?.has_page ? c.page_url : null };
+    }
+    return base;
+  });
+
   const TemplateComp = getTemplate(data.site.template_id).AreasListing;
   return (
     <TemplateComp
       site={toPublicSite(data.site, { hasBrands: (data.brands || []).length > 0 })}
       primaryLocation={data.primaryLocation ? toPublicLocation(data.primaryLocation) : null}
-      serviceAreas={data.serviceAreas.map(toPublicAreaListing)}
+      serviceAreas={serviceAreas}
       neighborhoods={data.neighborhoods.map(toPublicNeighborhoodListing)}
       categories={navCategories}
       siteSlug={slug}

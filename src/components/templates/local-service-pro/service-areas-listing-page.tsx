@@ -67,9 +67,12 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
                 Cities We Serve
               </h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {serviceAreas.map((area) => (
-                  <Link key={area.id} href={paths.areaPage(area.slug, locationSlug)}>
-                    <Card className="h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+                {serviceAreas.map((area) => {
+                  // v5: link only when the city has a dedicated page (Pattern 1 /
+                  // city hub); otherwise render a static, text-only card.
+                  const linked = !!area.pageUrl;
+                  const card = (
+                    <Card className={`h-full rounded-2xl border-gray-200 transition-all duration-300 ${linked ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg' : ''}`}>
                       <CardContent className="p-5">
                         <div
                           className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg"
@@ -80,17 +83,24 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
                         <h3 className="font-bold text-gray-900">
                           {area.name}{area.state ? `, ${area.state}` : ''}
                         </h3>
-                        <span
-                          className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
-                          style={{ color: brandColor }}
-                        >
-                          Learn More
-                          <ArrowRight className="h-3 w-3" />
-                        </span>
+                        {linked && (
+                          <span
+                            className="mt-2 inline-flex items-center gap-1 text-sm font-medium"
+                            style={{ color: brandColor }}
+                          >
+                            Learn More
+                            <ArrowRight className="h-3 w-3" />
+                          </span>
+                        )}
                       </CardContent>
                     </Card>
-                  </Link>
-                ))}
+                  );
+                  return linked ? (
+                    <Link key={area.id} href={area.pageUrl!}>{card}</Link>
+                  ) : (
+                    <div key={area.id}>{card}</div>
+                  );
+                })}
               </div>
             </div>
           </section>

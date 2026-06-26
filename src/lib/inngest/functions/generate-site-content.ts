@@ -7,6 +7,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
 import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content/image-prompts';
 import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
+import { computeSitePlan, toStoredSitePlan } from '@/lib/sites/site-plan-store';
 import type { SiteSettings, GenerationScope, GeneratedImage } from '@/types/database';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -376,6 +377,64 @@ export const generateSiteContent = inngest.createFunction(
         metadata,
       });
     };
+
+    // Step 2b: v5 Site Plan — compute the Primary Market page inventory and
+    // persist it so the sitemap, routing gate, and /service-areas/ page agree on
+    // which v5 URLs exist. Full builds only (selective scopes keep the plan).
+    if (isFullBuild) {
+      await step.run('plan-site', async () => {
+        // GBP category display names, primary first.
+        const orderedCats = [...siteCategories].sort(
+          (a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0),
+        );
+        const gbpCategories = orderedCats.map((c) => getCategoryName(c));
+
+        const { plan, primaryMarket, travelStrategy, needsReview } = computeSitePlan({
+          settings,
+          primaryLocation: {
+            city: primaryLocation.city,
+            state: primaryLocation.state,
+            address: primaryLocation.address_line1 ?? null,
+          },
+          gbpCategories,
+          serviceAreas: allServiceAreas,
+        });
+
+        // Sync is_anchor on service_areas with a city-hub treatment (match by name).
+        const anchoredCityNames = new Set(
+          plan.cities.filter((c) => c.treatment === 'has_city_hub').map((c) => c.city.trim().toLowerCase()),
+        );
+        for (const area of allServiceAreas) {
+          const shouldAnchor = anchoredCityNames.has(area.name.trim().toLowerCase());
+          if (!!area.is_anchor !== shouldAnchor) {
+            await supabase.from('service_areas').update({ is_anchor: shouldAnchor }).eq('id', area.id);
+          }
+        }
+
+        // Persist the plan + GBP-link recommendation into settings JSON.
+        const stored = toStoredSitePlan(plan, {
+          travelStrategy,
+          primaryMarket,
+          generatedAt: new Date().toISOString(),
+        });
+        const { data: fresh } = await supabase.from('sites').select('settings').eq('id', siteId).single();
+        const mergedSettings = {
+          ...((fresh?.settings as Record<string, unknown>) || {}),
+          site_plan: stored,
+          gbp_website_link_recommendation: plan.gbpWebsiteLinkRecommendation,
+        };
+        await supabase.from('sites').update({ settings: mergedSettings }).eq('id', siteId);
+
+        const cityPages = plan.cities.filter((c) => c.hasPage).length;
+        await log(
+          `Site plan: ${plan.pages.length} pages, ${cityPages}/${plan.cities.length} cities with a page (${travelStrategy}). ` +
+            `GBP link → ${plan.gbpWebsiteLinkRecommendation}${needsReview ? ' [primary market inferred — review]' : ''}`,
+          'plan-site',
+          needsReview ? 'warn' : 'info',
+          { travelStrategy, primaryMarket, gbpLink: plan.gbpWebsiteLinkRecommendation, doNotBuild: plan.doNotBuild },
+        );
+      });
+    }
 
     // Step 3: Fetch Google Reviews (non-fatal) — only for full builds or reviews scope
     if (isFullBuild || scope.type === 'reviews') {

@@ -71,9 +71,13 @@ export async function GET(
     }
   }
 
-  // Service areas
+  // v5: the single Service Areas page (no per-area detail pages).
+  entries.push({ url: `${baseUrl}/service-areas`, lastmod, changefreq: 'weekly', priority: 0.7 });
+  // GBP-anchored cities get a city-first hub at root (/{city}/).
   for (const area of serviceAreas || []) {
-    entries.push({ url: `${baseUrl}/areas/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.6 });
+    if ((area as { is_anchor?: boolean }).is_anchor) {
+      entries.push({ url: `${baseUrl}/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.7 });
+    }
   }
 
   // Neighborhoods

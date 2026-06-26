@@ -14,6 +14,10 @@ import {
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
+// v5: the single Service Areas page (replaces the old /areas/ folder + per-area
+// detail pages). Lists every city — linked when it has a hub/Pattern-1 page,
+// text-only otherwise. See docs/architecture/growlocal360_master_prompt_v5.md.
+
 export const revalidate = 60;
 
 export async function generateStaticParams() {
@@ -21,41 +25,31 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
-interface AreasPageProps {
+interface ServiceAreasPageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateMetadata({ params }: AreasPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: ServiceAreasPageProps): Promise<Metadata> {
   const { slug } = await params;
   const data = await getSiteBySlug(slug);
-
-  if (!data) {
-    return { title: 'Site Not Found' };
-  }
+  if (!data) return { title: 'Site Not Found' };
 
   const { site, primaryLocation } = data;
   const city = primaryLocation?.city;
-
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
   const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
-  const canonicalUrl = `https://${domain}/areas`;
 
   return {
-    title: `Areas We Serve${city ? ` in ${city}` : ''} | ${site.name}`,
-    description: `${site.name} proudly serves${city ? ` ${city} and` : ''} surrounding communities. See all the areas we cover and contact us for service.`,
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    title: `Service Areas${city ? ` in ${city}` : ''} | ${site.name}`,
+    description: `${site.name} serves${city ? ` ${city} and` : ''} surrounding communities. See every area we cover and contact us for service.`,
+    alternates: { canonical: `https://${domain}/service-areas` },
   };
 }
 
-export default async function AreasPageRoute({ params }: AreasPageProps) {
+export default async function ServiceAreasPageRoute({ params }: ServiceAreasPageProps) {
   const { slug } = await params;
   const data = await getSiteBySlug(slug);
-
-  if (!data) {
-    notFound();
-  }
+  if (!data) notFound();
 
   const supabase = createAdminClient();
   const [{ categories }, { data: schedulingConfig }] = await Promise.all([
@@ -67,7 +61,7 @@ export default async function AreasPageRoute({ params }: AreasPageProps) {
       .single(),
   ]);
 
-  const navCategories: NavCategory[] = categories.map(c => ({
+  const navCategories: NavCategory[] = categories.map((c) => ({
     id: c.id,
     name: c.gbp_category.display_name,
     slug: normalizeCategorySlug(c.gbp_category.display_name),

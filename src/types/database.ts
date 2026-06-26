@@ -216,6 +216,8 @@ export interface ServiceAreaDB {
   distance_miles: number | null;
   is_custom: boolean;
   sort_order: number;
+  // v5: GBP-anchored city → gets a /{city}/ hub instead of Pattern 1.
+  is_anchor: boolean;
   // SEO fields (added for Phase 2)
   meta_title: string | null;
   meta_description: string | null;

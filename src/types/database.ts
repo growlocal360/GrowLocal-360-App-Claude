@@ -149,6 +149,39 @@ export interface OnboardingAnalysis {
   created_at: string;
 }
 
+/**
+ * v5 site plan persisted to SiteSettings.site_plan at build time. A pared-down,
+ * JSON-stable projection of the planSite() result (the per-page `links` map is
+ * intentionally omitted to keep settings lean — it's derivable on demand).
+ */
+export interface StoredSitePlan {
+  generated_at: string;
+  travel_strategy: 'local' | 'regional' | 'metro' | 'multi-market';
+  primary_market: { city: string; state: string };
+  gbp_website_link_recommendation: string;
+  pages: Array<{
+    url: string;
+    page_type: string;
+    associated_city: string | null;
+    associated_service: string | null;
+  }>;
+  cities: Array<{
+    city: string;
+    state: string;
+    treatment:
+      | 'primary_market'
+      | 'proximity_covered'
+      | 'has_pattern_1_page'
+      | 'has_city_hub'
+      | 'text_mention_only'
+      | 'excluded';
+    has_page: boolean;
+    page_url: string | null;
+    distance_from_primary_market: number | null;
+  }>;
+  do_not_build: Array<{ what: string; reason: string }>;
+}
+
 export interface SiteSettings {
   // Branding & Contact
   brand_color?: string;
@@ -162,6 +195,18 @@ export interface SiteSettings {
   // External website — when the client's real site is hosted elsewhere (not the
   // GL360-generated site). Job Snap / GBP "Learn more" links point here.
   public_website_url?: string;
+  // v5 Primary Market model (see docs/architecture/growlocal360_master_prompt_v5.md)
+  travel_strategy?: 'local' | 'regional' | 'metro' | 'multi-market';
+  primary_market_city?: string;
+  primary_market_state?: string;
+  primary_market_source?: 'user_input' | 'ai_recommendation' | 'gbp_address';
+  // v5 site plan — the page inventory + city treatments produced by planSite()
+  // at build time. The sitemap, routing gate, and /service-areas/ page read this
+  // as the source of truth for which v5 URLs exist (vs thin/text-only cities).
+  site_plan?: StoredSitePlan;
+  // GBP "website" link recommendation surfaced after a v5 build (the Primary
+  // Market hub path, e.g. "/surprise/"). A recommendation, not an auto-action.
+  gbp_website_link_recommendation?: string;
   // Review Data
   google_average_rating?: number;
   google_total_reviews?: number;
@@ -211,6 +256,8 @@ export interface ServiceAreaDB {
   distance_miles: number | null;
   is_custom: boolean;
   sort_order: number;
+  // v5: GBP-anchored city → gets a /{city}/ hub instead of Pattern 1.
+  is_anchor: boolean;
   // SEO fields (added for Phase 2)
   meta_title: string | null;
   meta_description: string | null;

@@ -65,6 +65,8 @@ export function StepReview() {
     websiteType,
     micrositeConfig,
     siteScope,
+    travelStrategy,
+    primaryMarket,
     gscPropertyUrl,
     gscQueries,
     prevStep,
@@ -149,6 +151,9 @@ export function StepReview() {
         // v4 SITE_SCOPE — collected in the new site-scope wizard step.
         // create-site.ts derives a sensible default if this is missing.
         siteScope: siteScope ?? undefined,
+        // v5 Primary Market model
+        travelStrategy: travelStrategy ?? undefined,
+        primaryMarket: primaryMarket ?? undefined,
       };
 
       // Create Stripe checkout session

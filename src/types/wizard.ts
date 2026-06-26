@@ -12,10 +12,21 @@ export type WizardStep =
   | 'brands'         // Step 3.5: Brands (conditional — brand-applicable categories only)
   | 'services'       // Step 4: Services offered
   | 'service-areas'  // Step 5: Service Areas (cities you travel to)
+  | 'primary-market' // Step 5.5: v5 — Travel Strategy + Primary Market
   | 'neighborhoods'  // Step 6: Neighborhoods (hyper-local within GBP city)
   | 'website-type'   // Step 7: Website Type Selection
   | 'site-scope'     // Step 7.5: v4 SITE_SCOPE — collect target geography for GSC filtering
   | 'review';        // Step 8: Review & Generate
+
+// v5 Primary Market model — see docs/architecture/growlocal360_master_prompt_v5.md
+export type TravelStrategy = 'local' | 'regional' | 'metro' | 'multi-market';
+
+export interface PrimaryMarket {
+  city: string;
+  state: string;
+  /** How the Primary Market was determined. */
+  source: 'user_input' | 'ai_recommendation' | 'gbp_address';
+}
 
 export interface WizardLocation {
   id?: string;
@@ -136,6 +147,12 @@ export interface WizardState {
   serviceAreas: ServiceArea[];
   serviceAreaRadius: number; // in miles
 
+  // Step 5.5: v5 Primary Market model
+  travelStrategy: TravelStrategy | null;
+  primaryMarket: PrimaryMarket | null;
+  // For multi-market sites — additional market hubs beyond the primary
+  additionalMarkets: PrimaryMarket[];
+
   // Step 6: Neighborhoods (hyper-local within GBP city)
   neighborhoods: WizardNeighborhood[];
 
@@ -170,6 +187,9 @@ export const initialWizardState: WizardState = {
   services: [],
   serviceAreas: [],
   serviceAreaRadius: 25,
+  travelStrategy: null,
+  primaryMarket: null,
+  additionalMarkets: [],
   neighborhoods: [],
   websiteType: null,
   micrositeConfig: null,
@@ -189,6 +209,7 @@ export const WIZARD_STEPS: { id: WizardStep; title: string; description: string 
   { id: 'brands', title: 'Brands', description: 'Brands you service' },
   { id: 'services', title: 'Services', description: 'Services you offer' },
   { id: 'service-areas', title: 'Areas', description: 'Cities you travel to' },
+  { id: 'primary-market', title: 'Market', description: 'Travel strategy & primary market' },
   { id: 'neighborhoods', title: 'Local', description: 'Neighborhoods in your city' },
   { id: 'website-type', title: 'Type', description: 'Choose structure' },
   { id: 'site-scope', title: 'Scope', description: 'Geographic focus for analysis' },
@@ -207,6 +228,6 @@ export const getStepsForFlow = (
 
   if (options?.includeBrands) base.push('brands');
 
-  base.push('services', 'service-areas', 'neighborhoods', 'website-type', 'site-scope', 'review');
+  base.push('services', 'service-areas', 'primary-market', 'neighborhoods', 'website-type', 'site-scope', 'review');
   return base;
 };

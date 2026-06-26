@@ -50,9 +50,14 @@ export function PremiumServiceAreasListingPage({
             <>
               <div className="pm-sechead"><span className="pm-eyebrow">Cities</span><h2>Cities we serve</h2></div>
               <div className="pm-areas" style={{ marginBottom: 48 }}>
-                {serviceAreas.map(a => (
-                  <Link key={a.id} className="pm-chip" href={paths.areaPage(a.slug, locationSlug)}><span className="pm-pin"><PmIconPin /></span>{a.state ? `${a.name}, ${a.state}` : a.name}</Link>
-                ))}
+                {serviceAreas.map(a => {
+                  const label = <>{<span className="pm-pin"><PmIconPin /></span>}{a.state ? `${a.name}, ${a.state}` : a.name}</>;
+                  // v5: link only when the city has a dedicated page (Pattern 1 /
+                  // city hub); otherwise it's a plain text mention.
+                  return a.pageUrl
+                    ? <Link key={a.id} className="pm-chip" href={a.pageUrl}>{label}</Link>
+                    : <span key={a.id} className="pm-chip pm-chip-static">{label}</span>;
+                })}
               </div>
             </>
           )}

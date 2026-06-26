@@ -243,20 +243,9 @@ export async function middleware(request: NextRequest) {
 
       case 'active':
       default:
-        // For multi-location sites, check if first path segment is a location slug
-        if (site.websiteType === 'multi_location' && site.locationSlugs.length > 0) {
-          const segments = pathname.split('/').filter(Boolean);
-          const firstSegment = segments[0];
-
-          if (firstSegment && site.locationSlugs.includes(firstSegment)) {
-            // Rewrite /{locationSlug}/rest → /sites/{siteSlug}/locations/{locationSlug}/rest
-            const rest = segments.slice(1).join('/');
-            url.pathname = `/sites/${site.slug}/locations/${firstSegment}${rest ? `/${rest}` : ''}`;
-            return NextResponse.rewrite(url);
-          }
-        }
-
-        // Normal routing: single-location or non-location path
+        // v5: flat URL structure — GBP-anchored city hubs ("/{city}/") live at
+        // ROOT and are resolved at request time by the /{seg1} route, so there's
+        // no /locations/ rewrite anymore. Every public path maps straight through.
         url.pathname = `/sites/${site.slug}${pathname}`;
         return NextResponse.rewrite(url);
     }

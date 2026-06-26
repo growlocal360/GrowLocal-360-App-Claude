@@ -14,7 +14,7 @@ import type { GenerationScope } from '@/types/database';
  *
  * Covers: root listings, every category/service/area/neighborhood/brand/work
  * detail page, the home page, /about, /contact, /faq, /reviews,
- * and the full /locations/{loc}/* multi-location subtree.
+ * and v5 city hubs (/{city}/) + Pattern 1 (/{service}/{city}/) pages.
  */
 export async function revalidateSite(siteId: string) {
   console.log('[revalidateSite] start', { siteId });
@@ -62,9 +62,9 @@ export async function revalidateSite(siteId: string) {
     }
   }
 
-  // -------- Root paths (single-location + multi-location root) --------
+  // -------- Root paths (v5 flat structure) --------
   revalidatePath(base, 'page'); // home
-  for (const path of ['/about', '/contact', '/faq', '/services', '/areas', '/brands', '/work', '/reviews']) {
+  for (const path of ['/about', '/contact', '/faq', '/services', '/service-areas', '/brands', '/work', '/reviews']) {
     revalidatePath(`${base}${path}`, 'page');
   }
 
@@ -90,9 +90,24 @@ export async function revalidateSite(siteId: string) {
     revalidatePath(`${base}/${service.slug}`, 'page');
   }
 
-  // Service areas + neighborhoods
+  // v5: GBP-anchored city hubs (/{city}/ + /{city}/{service}/) + Pattern 1
+  // (/{service}/{city}/). Neighborhoods unchanged.
+  const primaryServiceSlugs = (services || [])
+    .filter((s) => { const c = s.site_category_id ? catSlugMap.get(s.site_category_id) : null; return c?.isPrimary; })
+    .map((s) => s.slug);
   for (const area of serviceAreas || []) {
-    revalidatePath(`${base}/areas/${area.slug}`, 'page');
+    if ((area as { is_anchor?: boolean }).is_anchor) {
+      revalidatePath(`${base}/${area.slug}`, 'page'); // city hub
+      for (const sslug of primaryServiceSlugs) {
+        revalidatePath(`${base}/${area.slug}/${sslug}`, 'page'); // city-hub service
+      }
+    } else {
+      // Pattern 1 pages for primary services × this city (built only for top
+      // services; revalidating extras is harmless — non-existent paths no-op).
+      for (const sslug of primaryServiceSlugs) {
+        revalidatePath(`${base}/${sslug}/${area.slug}`, 'page');
+      }
+    }
   }
   for (const n of neighborhoods || []) {
     revalidatePath(`${base}/neighborhoods/${n.slug}`, 'page');
@@ -101,37 +116,6 @@ export async function revalidateSite(siteId: string) {
   // Work detail pages
   for (const w of workItems || []) {
     revalidatePath(`${base}/work/${w.slug}`, 'page');
-  }
-
-  // -------- Multi-location subtree --------
-  // Every location mirrors most of the root paths under /locations/{loc}/
-  for (const loc of locations || []) {
-    const locBase = `${base}/locations/${loc.slug}`;
-    revalidatePath(locBase, 'page'); // location home
-    for (const path of ['/about', '/contact', '/services', '/areas', '/work']) {
-      revalidatePath(`${locBase}${path}`, 'page');
-    }
-    for (const [, cat] of catSlugMap) {
-      revalidatePath(`${locBase}/${cat.slug}`, 'page');
-    }
-    for (const service of services || []) {
-      const cat = service.site_category_id ? catSlugMap.get(service.site_category_id) : null;
-      if (cat?.isPrimary) {
-        revalidatePath(`${locBase}/${service.slug}`, 'page');
-      } else if (cat) {
-        revalidatePath(`${locBase}/${cat.slug}/${service.slug}`, 'page');
-      }
-      revalidatePath(`${locBase}/${service.slug}`, 'page');
-    }
-    for (const area of serviceAreas || []) {
-      revalidatePath(`${locBase}/areas/${area.slug}`, 'page');
-    }
-    for (const n of neighborhoods || []) {
-      revalidatePath(`${locBase}/neighborhoods/${n.slug}`, 'page');
-    }
-    for (const w of workItems || []) {
-      revalidatePath(`${locBase}/work/${w.slug}`, 'page');
-    }
   }
 
   console.log('[revalidateSite] done', {
@@ -229,15 +213,18 @@ export async function revalidatePages(siteId: string, scope: GenerationScope) {
     }
 
     case 'service-areas': {
+      // v5: single /service-areas/ page; anchored cities also get a /{city}/ hub.
       const { data: areas } = await supabase
         .from('service_areas')
-        .select('slug')
+        .select('slug, is_anchor')
         .in('id', scope.serviceAreaIds);
 
       for (const area of areas || []) {
-        revalidatePath(`${base}/areas/${area.slug}`, 'page');
+        if ((area as { is_anchor?: boolean }).is_anchor) {
+          revalidatePath(`${base}/${area.slug}`, 'page');
+        }
       }
-      revalidatePath(`${base}/areas`, 'page');
+      revalidatePath(`${base}/service-areas`, 'page');
       break;
     }
 

@@ -3,6 +3,7 @@ import { getSiteBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import type { SiteSettings } from '@/types/database';
 
 interface SitemapImage {
   url: string;
@@ -71,9 +72,35 @@ export async function GET(
     }
   }
 
-  // Service areas
-  for (const area of serviceAreas || []) {
-    entries.push({ url: `${baseUrl}/areas/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.6 });
+  // v5: the single Service Areas page (no per-area detail pages).
+  entries.push({ url: `${baseUrl}/service-areas`, lastmod, changefreq: 'weekly', priority: 0.7 });
+
+  // v5 city pages come from the persisted Site Plan (the source of truth for
+  // which Primary Market / Pattern 1 / city-hub URLs actually exist). This is
+  // what keeps thin/proximity-covered cities OUT of the sitemap. Pre-v5 sites
+  // have no plan → fall back to emitting anchored hubs only.
+  const sitePlan = (site.settings as SiteSettings | null)?.site_plan;
+  if (sitePlan) {
+    const cityPageTypes = new Set([
+      'primary_market_hub',
+      'primary_market_service',
+      'pattern_1_city',
+      'city_hub',
+      'city_hub_service',
+    ]);
+    for (const p of sitePlan.pages) {
+      if (!cityPageTypes.has(p.page_type)) continue;
+      const path = p.url.replace(/\/+$/, ''); // strip trailing slash for canonical form
+      const priority = p.page_type === 'primary_market_hub' ? 0.8 : 0.7;
+      entries.push({ url: `${baseUrl}${path}`, lastmod, changefreq: 'monthly', priority });
+    }
+  } else {
+    // Pre-v5 fallback: GBP-anchored cities get a city-first hub at root (/{city}/).
+    for (const area of serviceAreas || []) {
+      if ((area as { is_anchor?: boolean }).is_anchor) {
+        entries.push({ url: `${baseUrl}/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.7 });
+      }
+    }
   }
 
   // Neighborhoods
@@ -110,11 +137,19 @@ export async function GET(
     });
   }
 
+  // Dedupe by URL (the Site Plan can overlap entries emitted above) — keep first.
+  const seenUrls = new Set<string>();
+  const dedupedEntries = entries.filter((e) => {
+    if (seenUrls.has(e.url)) return false;
+    seenUrls.add(e.url);
+    return true;
+  });
+
   // Build XML
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
-    ...entries.map(e => [
+    ...dedupedEntries.map(e => [
       '  <url>',
       `    <loc>${escapeXml(e.url)}</loc>`,
       e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>` : '',

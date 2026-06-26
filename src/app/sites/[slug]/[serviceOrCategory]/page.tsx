@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
+import { getSiteBySlug } from '@/lib/sites/get-site';
+import { resolveCity } from '@/lib/routing/resolve-segment';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
@@ -69,6 +71,24 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
         canonical: canonicalUrl,
       },
     }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
+  }
+
+  // v5: a GBP-anchored city hub or the Primary Market hub (/{city}/).
+  const baseForCity = await getSiteBySlug(slug);
+  if (baseForCity) {
+    const city = await resolveCity(baseForCity.site.id, serviceOrCategory);
+    if (city) {
+      const site = baseForCity.site;
+      const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
+      const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
+      const cityLabel = city.state ? `${city.name}, ${city.state}` : city.name;
+      const ogImage = getSiteOgImage(site.settings);
+      return withOpenGraph({
+        title: `${site.name} in ${cityLabel}`,
+        description: `${site.name} serves ${city.name} and nearby communities. See the services we offer and contact us for fast, reliable local service.`,
+        alternates: { canonical: canonicalUrl },
+      }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
+    }
   }
 
   return { title: 'Page Not Found' };
@@ -189,6 +209,43 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     );
   }
 
-  // Neither service nor category found
+  // v5: not a service or category — try a GBP-anchored CITY hub ("/{city}/").
+  // Reuses the Location template component to render the city landing page.
+  const baseData = await getSiteBySlug(slug);
+  if (baseData) {
+    const city = await resolveCity(baseData.site.id, serviceOrCategory);
+    if (city) {
+      const admin = createAdminClient();
+      const [{ data: schedulingConfig }, recentWork] = await Promise.all([
+        admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', baseData.site.id).single(),
+        getPublishedWorkItems(baseData.site.id, { limit: 3 }),
+      ]);
+      void schedulingConfig;
+      const LocComp = getTemplate(baseData.site.template_id).Location;
+      // Synthesize a location object for the anchored city from the service-area row.
+      const cityLocation = {
+        ...toPublicLocation(baseData.primaryLocation!),
+        city: city.name,
+        state: city.state || baseData.primaryLocation?.state || '',
+        slug: city.slug,
+      };
+      return (
+        <LocComp
+          data={{
+            site: toPublicSite(baseData.site, { hasBrands: (baseData.brands || []).length > 0 }),
+            location: cityLocation,
+            allLocations: [cityLocation],
+            neighborhoods: baseData.neighborhoods.map(toPublicNeighborhoodListing),
+            serviceAreas: baseData.serviceAreas.map(toPublicAreaListing),
+          }}
+          siteSlug={slug}
+          locationSlug={city.slug}
+          recentWorkItems={recentWork.map(toPublicWorkItem)}
+        />
+      );
+    }
+  }
+
+  // Neither service, category, nor anchored city found
   notFound();
 }

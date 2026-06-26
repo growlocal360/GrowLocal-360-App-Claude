@@ -13,7 +13,7 @@ import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } 
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
   toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
-  toPublicPageContent, toPublicWorkItem,
+  toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
@@ -264,15 +264,18 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
   // Decide which segment is the GBP category and which is the city.
   // Prefer category-first (Pattern 1) when seg1 is a known category slug.
   let categorySlug: string | null = null;
+  let citySeg: string | null = null;
   let cityResolved: { name: string; state: string | null } | null = null;
   if (await matchCategorySlug(siteId, seg1)) {
     categorySlug = seg1;
+    citySeg = seg2;
     cityResolved = await resolveCityLoose(siteId, seg2);
   } else if (await matchCategorySlug(siteId, seg2)) {
     categorySlug = seg2;
+    citySeg = seg1;
     cityResolved = await resolveCityLoose(siteId, seg1);
   }
-  if (!categorySlug || !cityResolved) return null;
+  if (!categorySlug || !citySeg || !cityResolved) return null;
 
   // v5 gate: only render this category/city combo if the Site Plan says it
   // exists. Keeps proximity-covered cities and non-top services from rendering
@@ -286,12 +289,16 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
 
   const admin = createAdminClient();
   const categoryServiceIds = categoryData.services.map((s) => s.id);
-  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, ...workItemResults] = await Promise.all([
+  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, { data: cityArea }, ...workItemResults] = await Promise.all([
     getAllGoogleReviewsForSite(siteId),
     admin.from('service_areas').select('*').eq('site_id', siteId).order('sort_order'),
     admin.from('neighborhoods').select('*').eq('site_id', siteId).eq('is_active', true).order('sort_order'),
     admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', siteId).single(),
     siteHasActiveBrands(siteId),
+    // The resolved city's OWN generated content (the service_areas row is written
+    // specifically about this city) — used so the page reads about the right city
+    // instead of inheriting the primary market's H1/body.
+    admin.from('service_areas').select('h1, body_copy, meta_title, meta_description').eq('site_id', siteId).eq('slug', citySeg).maybeSingle(),
     ...categoryServiceIds.map((sid) => getPublishedWorkItems(siteId, { serviceId: sid, limit: 6 })),
   ]);
 
@@ -316,6 +323,24 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
     state: cityResolved.state || categoryData.location.state,
   };
 
+  // Page content for the city page. The H1 is left null so the template builds
+  // "{category} in {city}" from the overridden location.city — correct on BOTH
+  // axes (category + city), unlike the primary market's stored H1 or the area's
+  // primary-category-themed H1. The body borrows the CITY's own generated copy
+  // (service_areas row) when available so the page reads about the right city.
+  const cityPageContent = cityArea?.body_copy
+    ? {
+        h1: null,
+        h2: null,
+        hero_description: null,
+        body_copy: cityArea.body_copy,
+        body_copy_2: null,
+        faqs: null,
+        sections: null,
+        generated_images: null,
+      }
+    : null;
+
   const CatComp = getTemplate(base.site.template_id).Category;
   return (
     <CatComp
@@ -325,7 +350,7 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
         category: toPublicCategory(categoryData.category),
         services: categoryData.services.map(toPublicServiceListing),
         allCategories: categoryData.allCategories.map(toPublicCategory),
-        pageContent: categoryData.pageContent ? toPublicPageContent(categoryData.pageContent) : null,
+        pageContent: cityPageContent,
       }}
       siteSlug={slug}
       googleReviews={displayReviews}

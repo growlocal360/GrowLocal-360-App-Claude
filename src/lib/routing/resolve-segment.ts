@@ -17,9 +17,15 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
+import type { SiteSettings } from '@/types/database';
 
 export type SingleSegmentKind = 'service' | 'category' | 'city' | 'none';
 export type DoubleSegmentKind = 'category_service' | 'city_service' | 'service_city' | 'none';
+
+/** Slugify a city name the same way the planner (site-plan.ts citySlug) does. */
+export function citySlugify(city: string): string {
+  return city.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
 
 /**
  * Is this root segment a GBP-anchored CITY? A city is "anchored" when it has a
@@ -63,7 +69,49 @@ export async function resolveCity(
     return { slug: loc.slug, name: loc.city, state: loc.state };
   }
 
+  // 3) the Primary Market city — it gets a city-first hub at root (/{pm}/) even
+  // when it isn't a separate GBP listing (so not flagged is_anchor). Match the
+  // stored primary_market_city by slug.
+  const { data: siteRow } = await supabase
+    .from('sites')
+    .select('settings')
+    .eq('id', siteId)
+    .maybeSingle();
+  const settings = (siteRow?.settings as SiteSettings | null) || null;
+  if (settings?.primary_market_city && citySlugify(settings.primary_market_city) === segment) {
+    return {
+      slug: segment,
+      name: settings.primary_market_city,
+      state: settings.primary_market_state || null,
+    };
+  }
+
   return null;
+}
+
+/**
+ * Loosely resolve a segment to a city for the v5 two-segment routes (Pattern 1
+ * "/{category}/{city}/" and city hub "/{city}/{category}/"). Unlike resolveCity
+ * (anchored-only for the single-segment hub), this matches ANY known city: a
+ * service-area row by slug, a location by slug, or the Primary Market. Safe to be
+ * permissive because the caller gates the path against the Site Plan first.
+ */
+export async function resolveCityLoose(
+  siteId: string,
+  segment: string,
+): Promise<{ slug: string; name: string; state: string | null } | null> {
+  const supabase = createAdminClient();
+
+  const { data: area } = await supabase
+    .from('service_areas')
+    .select('slug, name, state')
+    .eq('site_id', siteId)
+    .eq('slug', segment)
+    .maybeSingle();
+  if (area) return { slug: area.slug, name: area.name, state: area.state };
+
+  // Falls back to anchored/location/PM resolution.
+  return resolveCity(siteId, segment);
 }
 
 /**

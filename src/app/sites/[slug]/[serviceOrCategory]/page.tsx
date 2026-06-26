@@ -73,6 +73,24 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
   }
 
+  // v5: a GBP-anchored city hub or the Primary Market hub (/{city}/).
+  const baseForCity = await getSiteBySlug(slug);
+  if (baseForCity) {
+    const city = await resolveCity(baseForCity.site.id, serviceOrCategory);
+    if (city) {
+      const site = baseForCity.site;
+      const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
+      const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
+      const cityLabel = city.state ? `${city.name}, ${city.state}` : city.name;
+      const ogImage = getSiteOgImage(site.settings);
+      return withOpenGraph({
+        title: `${site.name} in ${cityLabel}`,
+        description: `${site.name} serves ${city.name} and nearby communities. See the services we offer and contact us for fast, reliable local service.`,
+        alternates: { canonical: canonicalUrl },
+      }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
+    }
+  }
+
   return { title: 'Page Not Found' };
 }
 

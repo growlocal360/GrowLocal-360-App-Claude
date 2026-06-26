@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { matchReviewsToService } from '@/lib/sites/match-reviews';
-import { getCategoriesWithServices, getAllNestedServiceParams, getServiceBySlugSingleLocation } from '@/lib/sites/get-services';
+import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
+import { getCategoriesWithServices, getAllNestedServiceParams, getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
-import { resolveCity, isServiceSlug } from '@/lib/routing/resolve-segment';
+import { matchCategorySlug, resolveCityLoose } from '@/lib/routing/resolve-segment';
 import { isPlannedCityPath } from '@/lib/sites/site-plan-store';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
@@ -12,7 +12,8 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
-  toPublicCategory, toPublicReview, toPublicAreaListing, toPublicWorkItem,
+  toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
+  toPublicPageContent, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
@@ -119,7 +120,9 @@ export async function generateMetadata({ params }: NestedServicePageProps) {
 
   const data = await getNestedServiceData(slug, serviceOrCategory, service);
   if (!data) {
-    return { title: 'Page Not Found' };
+    // v5 category × city combo (Pattern 1 / city-hub service)
+    const v5 = await v5TwoSegmentMetadata(slug, serviceOrCategory, service);
+    return v5 ?? { title: 'Page Not Found' };
   }
 
   const { service: svc, location, site } = data;
@@ -205,95 +208,131 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
 }
 
 /**
- * v5 two-segment resolution for "/{service}/{city}/" (Pattern 1) and
- * "/{city}/{service}/" (city hub service). Renders the Service template with the
- * resolved city as the location context. Returns null if it isn't either pattern.
+ * Metadata for the v5 category × city combos. Resolves the same way as
+ * renderV5TwoSegment and gates on the Site Plan, so unplanned combos return null
+ * (→ "Page Not Found", matching the 404 the page itself returns).
+ */
+async function v5TwoSegmentMetadata(slug: string, seg1: string, seg2: string) {
+  const base = await getSiteBySlug(slug);
+  if (!base) return null;
+  const siteId = base.site.id;
+
+  let categorySlug: string | null = null;
+  let cityResolved: { name: string; state: string | null } | null = null;
+  if (await matchCategorySlug(siteId, seg1)) {
+    categorySlug = seg1;
+    cityResolved = await resolveCityLoose(siteId, seg2);
+  } else if (await matchCategorySlug(siteId, seg2)) {
+    categorySlug = seg2;
+    cityResolved = await resolveCityLoose(siteId, seg1);
+  }
+  if (!categorySlug || !cityResolved) return null;
+  if (!(await isPlannedCityPath(siteId, `/${seg1}/${seg2}/`))) return null;
+
+  const categoryData = await getCategoryBySlugSingleLocation(slug, categorySlug);
+  if (!categoryData) return null;
+
+  const categoryName = categoryData.category.gbp_category.display_name;
+  const { site } = categoryData;
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
+  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
+  const cityLabel = cityResolved.state ? `${cityResolved.name}, ${cityResolved.state}` : cityResolved.name;
+
+  return {
+    title: `${categoryName} in ${cityLabel} | ${site.name}`,
+    description: `Professional ${categoryName.toLowerCase()} in ${cityResolved.name}. Contact ${site.name} for fast, reliable service.`,
+    alternates: { canonical: `https://${domain}/${seg1}/${seg2}` },
+  };
+}
+
+/**
+ * v5 two-segment resolution for the GBP-category × city combos:
+ *   Pattern 1   → "/{category}/{city}/"  (seg1=category, seg2=city)
+ *   City hub    → "/{city}/{category}/"  (seg1=city,     seg2=category)
+ *
+ * NOTE: "service" in the v5 URL rules means a GBP CATEGORY (appliance-repair,
+ * refrigerator-repair), NOT an individual service row. So these resolve a
+ * category + a city and render the Category template localized to that city.
+ * Returns null if it isn't either pattern. Individual category/service-row nested
+ * pages are handled earlier by getNestedServiceData().
  */
 async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
   const base = await getSiteBySlug(slug);
   if (!base) return null;
   const siteId = base.site.id;
 
-  // Decide which segment is the service and which is the city.
-  // Prefer service-first (Pattern 1) when seg1 is a known service slug.
-  let serviceSlug: string | null = null;
-  let citySeg: string | null = null;
-  if (await isServiceSlug(siteId, seg1)) {
-    serviceSlug = seg1;
-    citySeg = seg2;
-  } else if (await isServiceSlug(siteId, seg2)) {
-    serviceSlug = seg2;
-    citySeg = seg1;
-  } else {
-    return null;
+  // Decide which segment is the GBP category and which is the city.
+  // Prefer category-first (Pattern 1) when seg1 is a known category slug.
+  let categorySlug: string | null = null;
+  let cityResolved: { name: string; state: string | null } | null = null;
+  if (await matchCategorySlug(siteId, seg1)) {
+    categorySlug = seg1;
+    cityResolved = await resolveCityLoose(siteId, seg2);
+  } else if (await matchCategorySlug(siteId, seg2)) {
+    categorySlug = seg2;
+    cityResolved = await resolveCityLoose(siteId, seg1);
   }
+  if (!categorySlug || !cityResolved) return null;
 
-  // v5 gate: only render this city/service combo if the Site Plan says it exists.
-  // Keeps proximity-covered cities and non-top services from rendering thin pages.
-  // (Pre-v5 sites have no plan → isPlannedCityPath is permissive.)
+  // v5 gate: only render this category/city combo if the Site Plan says it
+  // exists. Keeps proximity-covered cities and non-top services from rendering
+  // thin pages. (Pre-v5 sites have no plan → isPlannedCityPath is permissive.)
   if (!(await isPlannedCityPath(siteId, `/${seg1}/${seg2}/`))) {
     return null;
   }
 
-  const city = await resolveCity(siteId, citySeg);
-  // For Pattern 1 the city need not be GBP-anchored, so fall back to a plain
-  // service-area match when resolveCity() (anchored-only) returns null.
-  let cityName = city?.name ?? null;
-  let cityState = city?.state ?? null;
-  if (!cityName) {
-    const admin = createAdminClient();
-    const { data: area } = await admin
-      .from('service_areas')
-      .select('name, state')
-      .eq('site_id', siteId)
-      .eq('slug', citySeg)
-      .maybeSingle();
-    if (!area) return null;
-    cityName = area.name;
-    cityState = area.state;
-  }
-
-  // Load the service (primary-category services live at root).
-  const svc = await getServiceBySlugSingleLocation(slug, serviceSlug);
-  if (!svc) return null;
+  const categoryData = await getCategoryBySlugSingleLocation(slug, categorySlug);
+  if (!categoryData) return null;
 
   const admin = createAdminClient();
-  const [allReviews, { categories }, { data: serviceAreas }, workItems, { data: schedulingConfig }, hasBrands] = await Promise.all([
+  const categoryServiceIds = categoryData.services.map((s) => s.id);
+  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, ...workItemResults] = await Promise.all([
     getAllGoogleReviewsForSite(siteId),
-    getCategoriesWithServices(siteId),
     admin.from('service_areas').select('*').eq('site_id', siteId).order('sort_order'),
-    getPublishedWorkItems(siteId, { serviceId: svc.service.id, attachmentTarget: { type: 'service', id: svc.service.id }, limit: 6 }),
+    admin.from('neighborhoods').select('*').eq('site_id', siteId).eq('is_active', true).order('sort_order'),
     admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', siteId).single(),
     siteHasActiveBrands(siteId),
+    ...categoryServiceIds.map((sid) => getPublishedWorkItems(siteId, { serviceId: sid, limit: 6 })),
   ]);
 
-  const navCategories: NavCategory[] = categories.map((c) => ({
-    id: c.id, name: c.gbp_category.display_name, slug: normalizeCategorySlug(c.gbp_category.display_name), isPrimary: c.is_primary,
-  }));
+  const seenIds = new Set<string>();
+  const categoryWorkItems = workItemResults.flat().filter((item) => {
+    if (seenIds.has(item.id)) return false;
+    seenIds.add(item.id);
+    return true;
+  }).slice(0, 6);
+
+  const categoryName = categoryData.category.gbp_category.display_name;
+  const serviceNames = categoryData.services.map((s) => s.name);
   const publicReviews = allReviews.map(toPublicReview);
-  const matched = matchReviewsToService(publicReviews, `${svc.service.name} ${cityName}`);
+  const matched = matchReviewsToCategory(publicReviews, `${categoryName} ${cityResolved.name}`, serviceNames);
   const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
 
-  // City context: override the location's city so the page reads as "{service} in {city}".
-  const cityLocation = { ...toPublicLocation(svc.location), city: cityName!, state: cityState || svc.location.state };
+  // City context: override the location's city so the page reads as
+  // "{category} in {city}" rather than the base location.
+  const cityLocation = {
+    ...toPublicLocation(categoryData.location),
+    city: cityResolved.name,
+    state: cityResolved.state || categoryData.location.state,
+  };
 
-  const TemplateComp = getTemplate(base.site.template_id).Service;
+  const CatComp = getTemplate(base.site.template_id).Category;
   return (
-    <TemplateComp
+    <CatComp
       data={{
         site: toPublicSite(base.site, { hasBrands }),
         location: cityLocation,
-        service: toPublicServiceDetail(svc.service),
-        category: toPublicCategory(svc.category),
-        siblingServices: svc.siblingServices.map(toPublicServiceListing),
+        category: toPublicCategory(categoryData.category),
+        services: categoryData.services.map(toPublicServiceListing),
+        allCategories: categoryData.allCategories.map(toPublicCategory),
+        pageContent: categoryData.pageContent ? toPublicPageContent(categoryData.pageContent) : null,
       }}
       siteSlug={slug}
-      isPrimaryCategory={svc.category.is_primary}
       googleReviews={displayReviews}
-      categories={navCategories}
       serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
-      recentWorkItems={workItems.map(toPublicWorkItem)}
-      formCategories={categories.map(toPublicCategory)}
+      neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
+      recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
+      formCategories={categoryData.allCategories.map(toPublicCategory)}
       schedulingActive={schedulingConfig?.is_active || false}
       ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />

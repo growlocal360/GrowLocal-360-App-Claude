@@ -80,11 +80,13 @@ export function buildPlanInputs(args: {
   const gbpCategories = args.gbpCategories.filter(Boolean);
 
   // Top-services policy (which services get Pattern 1 city-page depth). The v5
-  // rule is "top 2-3 services only" to prevent thin-page bloat. With no revenue
-  // or GSC evidence wired in yet, we default to the top 2 GBP categories
-  // (primary + first secondary) — the conservative, quality-over-quantity end of
-  // the range. This is a deliberate heuristic; revisit once evidence is available.
-  const TOP_SERVICES_COUNT = 2;
+  // rule is "top 2-3 services only" to prevent thin-page bloat. Until services
+  // are ranked by real demand (GSC/keyword volume — see the GSC feedback loop),
+  // we default to the top 3 GBP categories by list order. Top 3 (not 2) so a
+  // high-demand service like washer/dryer repair isn't dropped just for being
+  // listed third. This is a deliberate heuristic; the proper fix ranks by
+  // evidence rather than order.
+  const TOP_SERVICES_COUNT = 3;
   const topServices = gbpCategories.slice(0, TOP_SERVICES_COUNT);
 
   const inputs: PlanInputs = {

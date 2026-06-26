@@ -39,13 +39,14 @@ describe('site-plan-store — generator wiring', () => {
     expect(stored.gbp_website_link_recommendation).toBe('/surprise/');
   });
 
-  it('defaults Pattern 1 depth to the top 2 GBP categories (no washer-dryer city pages)', () => {
+  it('defaults Pattern 1 depth to the top 3 GBP categories (washer/dryer included)', () => {
     const { stored } = buildPlan();
     const paths = plannedCityPathSet(stored);
     expect(paths.has('appliance-repair/peoria')).toBe(true);
     expect(paths.has('refrigerator-repair/phoenix')).toBe(true);
-    // washer-dryer is the 3rd category → no Pattern 1 city pages
-    expect([...paths].some((p) => p.startsWith('washer-dryer-repair/'))).toBe(false);
+    // washer-dryer is the 3rd category → still gets Pattern 1 under the top-3
+    // default (so a high-demand service isn't dropped for being listed last).
+    expect(paths.has('washer-dryer-repair/glendale')).toBe(true);
   });
 
   it('proximity-covered cities are text-only (no page, excluded from the planned path set)', () => {
@@ -63,8 +64,8 @@ describe('site-plan-store — generator wiring', () => {
     // PM hub + PM service for every category are valid (incl. washer-dryer PM service)
     expect(paths.has(normalizePublicPath('/surprise/'))).toBe(true);
     expect(paths.has(normalizePublicPath('/surprise/washer-dryer-repair/'))).toBe(true);
-    // a non-top-service Pattern 1 combo is NOT planned → would 404
-    expect(paths.has(normalizePublicPath('/washer-dryer-repair/peoria/'))).toBe(false);
+    // a proximity-covered city is NOT planned for any service → would 404
+    expect(paths.has(normalizePublicPath('/appliance-repair/sun-city/'))).toBe(false);
   });
 
   it('infers + flags Primary Market when settings are missing (pre-v5 site)', () => {

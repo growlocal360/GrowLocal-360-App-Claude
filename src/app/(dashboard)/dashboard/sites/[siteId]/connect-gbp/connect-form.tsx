@@ -47,7 +47,7 @@ export function ConnectGbpForm({ siteId, siteName, nextPath }: Props) {
           // No session token — but the org may have a saved token. /api/gbp/locations
           // will fall back to it. Try once; if it fails, we'll prompt for OAuth.
         }
-        const res = await fetch('/api/gbp/locations');
+        const res = await fetch(`/api/gbp/locations?siteId=${encodeURIComponent(siteId)}`);
         if (res.ok) {
           const data = await res.json();
           const locs: GbpListing[] = data.locations || [];

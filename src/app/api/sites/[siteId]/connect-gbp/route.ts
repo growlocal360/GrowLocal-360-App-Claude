@@ -218,13 +218,23 @@ export async function GET(
       .maybeSingle();
     const settings = (site?.settings || {}) as { gbp_location_resource?: string | null };
 
-    const isConnected =
-      !!(location?.gbp_account_id && location?.gbp_location_id) ||
-      !!settings.gbp_location_resource;
+    // "Connected" must mean the thing downstream features (reviews, content
+    // generation, GBP posting) actually use is in place: the LOCATION's GBP IDs.
+    // If a site has a location row, require it to be linked — don't let an
+    // account-level token or a stale settings resource paint a green badge while
+    // the location is unlinked (that's what silently blocked review fetching).
+    // Workspace sites (no locations row) legitimately fall back to the settings
+    // resource.
+    const hasLocationRow = !!location;
+    const locationLinked = !!(location?.gbp_account_id && location?.gbp_location_id);
+    const isConnected = hasLocationRow
+      ? locationLinked
+      : !!settings.gbp_location_resource;
     const hasToken = !!(connection?.is_active);
 
     return NextResponse.json({
       isConnected,
+      locationLinked,
       hasToken,
       accountName: connection?.account_name || null,
       gbpAccountId: location?.gbp_account_id || null,

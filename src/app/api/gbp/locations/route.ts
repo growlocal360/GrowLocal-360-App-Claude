@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActiveOrgId } from '@/lib/auth/active-org';
-import { getOrgGoogleToken } from '@/lib/google/get-google-token';
+import { getOrgGoogleToken, getGoogleToken } from '@/lib/google/get-google-token';
 import { GBPClient, gbpLocationToAppLocation } from '@/lib/google/gbp-client';
 
 export async function GET(request: Request) {
@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
+    const siteId = searchParams.get('siteId');
 
     // Get current user session
     const {
@@ -24,26 +25,32 @@ export async function GET(request: Request) {
       );
     }
 
-    // Prefer a fresh session provider_token; otherwise fall back to the
-    // org-level stored connection (captured at Job Snaps signup) so a returning
-    // user can list locations without re-authing.
-    let providerToken = session.provider_token || null;
-
-    if (!providerToken) {
-      const cookieOrg = await getActiveOrgId();
-      let orgId = cookieOrg;
-      if (!orgId) {
-        const admin = createAdminClient();
-        const { data: profile } = await admin
-          .from('profiles')
-          .select('organization_id')
-          .eq('user_id', session.user.id)
-          .limit(1)
-          .maybeSingle();
-        orgId = profile?.organization_id || null;
-      }
-      if (orgId) {
-        providerToken = await getOrgGoogleToken(orgId);
+    // Resolve a Google token. When a siteId is provided, use the full resolver
+    // (fresh session token → site-level connection WITH auto-refresh → org
+    // fallback) so a returning user whose stored token merely EXPIRED is silently
+    // refreshed instead of getting stuck. Without a siteId, fall back to the
+    // session token then the org-level connection.
+    let providerToken: string | null = null;
+    if (siteId) {
+      providerToken = await getGoogleToken(siteId);
+    } else {
+      providerToken = session.provider_token || null;
+      if (!providerToken) {
+        const cookieOrg = await getActiveOrgId();
+        let orgId = cookieOrg;
+        if (!orgId) {
+          const admin = createAdminClient();
+          const { data: profile } = await admin
+            .from('profiles')
+            .select('organization_id')
+            .eq('user_id', session.user.id)
+            .limit(1)
+            .maybeSingle();
+          orgId = profile?.organization_id || null;
+        }
+        if (orgId) {
+          providerToken = await getOrgGoogleToken(orgId);
+        }
       }
     }
 

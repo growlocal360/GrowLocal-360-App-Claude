@@ -50,16 +50,19 @@ export function GBPConnectCard({ siteId }: GBPConnectCardProps) {
   }, [siteId]);
 
   const handleConnect = async () => {
-    // First check if we have a valid Google session
+    // First try to list locations using any token we already have for THIS site
+    // (session token, or the stored site-level connection which is auto-refreshed
+    // if merely expired). Passing siteId is what lets a returning user skip
+    // re-auth entirely.
     setLoadingLocations(true);
     try {
-      const res = await fetch('/api/gbp/locations');
-      const data = await res.json();
+      const res = await fetch(`/api/gbp/locations?siteId=${encodeURIComponent(siteId)}`);
+      const data = await res.json().catch(() => ({}));
 
       if (res.status === 400 || !data.locations) {
-        // No token — need to re-authenticate with Google
+        // No usable token — re-authenticate with Google (full-page redirect).
         const supabase = createClient();
-        await supabase.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
@@ -70,14 +73,27 @@ export function GBPConnectCard({ siteId }: GBPConnectCardProps) {
             },
           },
         });
+        // signInWithOAuth normally navigates away. If it returns an error, it
+        // did NOT redirect — surface it instead of leaving the user staring at a
+        // dead spinner.
+        if (error) {
+          toast.error(`Google sign-in couldn't start: ${error.message}`);
+          setLoadingLocations(false);
+        }
+        return;
+      }
+
+      if (data.locations.length === 0) {
+        toast.error('No Google Business listings found. Make sure you are signed into the Google account that manages this business.');
+        setLoadingLocations(false);
         return;
       }
 
       // We have locations — show the picker
-      setLocations(data.locations || []);
+      setLocations(data.locations);
       setShowPicker(true);
-    } catch {
-      toast.error('Failed to load GBP locations');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load GBP locations');
     } finally {
       setLoadingLocations(false);
     }
@@ -243,9 +259,16 @@ export function GBPConnectCard({ siteId }: GBPConnectCardProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600">
-              Connect to push Job Snaps as GBP posts
-            </p>
+            {status?.hasToken ? (
+              <div className="flex items-start gap-1.5 text-sm text-amber-600">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>Your Google account is connected, but no business listing is linked yet. Select your listing to enable reviews and GBP posts.</span>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">
+                Connect to push Job Snaps as GBP posts
+              </p>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -255,7 +278,7 @@ export function GBPConnectCard({ siteId }: GBPConnectCardProps) {
               {loadingLocations ? (
                 <Loader2 className="mr-2 h-3 w-3 animate-spin" />
               ) : null}
-              Connect GBP
+              {status?.hasToken ? 'Select your listing' : 'Connect GBP'}
             </Button>
           </div>
         )}

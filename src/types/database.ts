@@ -207,6 +207,14 @@ export interface SiteSettings {
   // GBP "website" link recommendation surfaced after a v5 build (the Primary
   // Market hub path, e.g. "/surprise/"). A recommendation, not an auto-action.
   gbp_website_link_recommendation?: string;
+  // v5 rule 11 opt-out: when true, a single-location site's HOME page is the
+  // Primary Market page (city-specific H1) instead of a brand-level home. Default
+  // (unset/false) = brand-level home + separate /{primary-market}/ hub.
+  homepage_is_primary_market?: boolean;
+  // v5 anti-doorway: short, page-specific intros for each category×city page,
+  // keyed canonically by "{categorySlug}/{citySlug}". Rendered as the hero lede
+  // so Pattern 1 / city pages don't reuse the same body with the city swapped.
+  city_page_intros?: Record<string, string>;
   // Review Data
   google_average_rating?: number;
   google_total_reviews?: number;

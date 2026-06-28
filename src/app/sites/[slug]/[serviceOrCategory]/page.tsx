@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { resolveCity } from '@/lib/routing/resolve-segment';
+import { renderCategoryInCity } from '@/lib/sites/render-city-category';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
@@ -209,40 +210,35 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     );
   }
 
-  // v5: not a service or category — try a GBP-anchored CITY hub ("/{city}/").
-  // Reuses the Location template component to render the city landing page.
+  // v5: not a service or category — try a CITY hub ("/{city}/"): the GBP-anchored
+  // city hub, or the Primary Market hub. Render it as the PRIMARY category
+  // localized to that city, so the Primary Market page OWNS "{category} in {city}"
+  // (instead of a thin Location page that would under-serve the geo keyword).
   const baseData = await getSiteBySlug(slug);
   if (baseData) {
     const city = await resolveCity(baseData.site.id, serviceOrCategory);
     if (city) {
       const admin = createAdminClient();
-      const [{ data: schedulingConfig }, recentWork] = await Promise.all([
-        admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', baseData.site.id).single(),
-        getPublishedWorkItems(baseData.site.id, { limit: 3 }),
-      ]);
-      void schedulingConfig;
-      const LocComp = getTemplate(baseData.site.template_id).Location;
-      // Synthesize a location object for the anchored city from the service-area row.
-      const cityLocation = {
-        ...toPublicLocation(baseData.primaryLocation!),
-        city: city.name,
-        state: city.state || baseData.primaryLocation?.state || '',
-        slug: city.slug,
-      };
-      return (
-        <LocComp
-          data={{
-            site: toPublicSite(baseData.site, { hasBrands: (baseData.brands || []).length > 0 }),
-            location: cityLocation,
-            allLocations: [cityLocation],
-            neighborhoods: baseData.neighborhoods.map(toPublicNeighborhoodListing),
-            serviceAreas: baseData.serviceAreas.map(toPublicAreaListing),
-          }}
-          siteSlug={slug}
-          locationSlug={city.slug}
-          recentWorkItems={recentWork.map(toPublicWorkItem)}
-        />
-      );
+      const { data: primaryCat } = await admin
+        .from('site_categories')
+        .select('gbp_category:gbp_categories(display_name)')
+        .eq('site_id', baseData.site.id)
+        .eq('is_primary', true)
+        .maybeSingle();
+      const pc = primaryCat?.gbp_category as { display_name?: string } | { display_name?: string }[] | null | undefined;
+      const primaryDisplayName = Array.isArray(pc) ? pc[0]?.display_name : pc?.display_name;
+      if (primaryDisplayName) {
+        const pmCity = (baseData.site.settings as { primary_market_city?: string } | null)?.primary_market_city;
+        const isPrimaryMarket = !!pmCity && pmCity.trim().toLowerCase() === city.name.trim().toLowerCase();
+        const rendered = await renderCategoryInCity({
+          siteSlug: slug,
+          categorySlug: normalizeCategorySlug(primaryDisplayName),
+          citySeg: city.slug,
+          city: { name: city.name, state: city.state },
+          allowPrimaryContentFallback: isPrimaryMarket,
+        });
+        if (rendered) return rendered;
+      }
     }
   }
 

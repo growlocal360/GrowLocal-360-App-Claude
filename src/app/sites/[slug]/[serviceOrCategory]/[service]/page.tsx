@@ -1,18 +1,19 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
-import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
+import { matchReviewsToService } from '@/lib/sites/match-reviews';
 import { getCategoriesWithServices, getAllNestedServiceParams, getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { matchCategorySlug, resolveCityLoose } from '@/lib/routing/resolve-segment';
 import { isPlannedCityPath } from '@/lib/sites/site-plan-store';
+import { renderCategoryInCity } from '@/lib/sites/render-city-category';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import type { SiteWithRelations, Location, Service, SiteCategory, GBPCategory } from '@/types/database';
 import {
   toPublicSite, toPublicLocation, toPublicServiceDetail, toPublicServiceListing,
-  toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
+  toPublicCategory, toPublicReview, toPublicAreaListing,
   toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
@@ -284,82 +285,5 @@ async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
     return null;
   }
 
-  const categoryData = await getCategoryBySlugSingleLocation(slug, categorySlug);
-  if (!categoryData) return null;
-
-  const admin = createAdminClient();
-  const categoryServiceIds = categoryData.services.map((s) => s.id);
-  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, { data: cityArea }, ...workItemResults] = await Promise.all([
-    getAllGoogleReviewsForSite(siteId),
-    admin.from('service_areas').select('*').eq('site_id', siteId).order('sort_order'),
-    admin.from('neighborhoods').select('*').eq('site_id', siteId).eq('is_active', true).order('sort_order'),
-    admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', siteId).single(),
-    siteHasActiveBrands(siteId),
-    // The resolved city's OWN generated content (the service_areas row is written
-    // specifically about this city) — used so the page reads about the right city
-    // instead of inheriting the primary market's H1/body.
-    admin.from('service_areas').select('h1, body_copy, meta_title, meta_description').eq('site_id', siteId).eq('slug', citySeg).maybeSingle(),
-    ...categoryServiceIds.map((sid) => getPublishedWorkItems(siteId, { serviceId: sid, limit: 6 })),
-  ]);
-
-  const seenIds = new Set<string>();
-  const categoryWorkItems = workItemResults.flat().filter((item) => {
-    if (seenIds.has(item.id)) return false;
-    seenIds.add(item.id);
-    return true;
-  }).slice(0, 6);
-
-  const categoryName = categoryData.category.gbp_category.display_name;
-  const serviceNames = categoryData.services.map((s) => s.name);
-  const publicReviews = allReviews.map(toPublicReview);
-  const matched = matchReviewsToCategory(publicReviews, `${categoryName} ${cityResolved.name}`, serviceNames);
-  const displayReviews = matched.length > 0 ? matched : publicReviews.slice(0, 10);
-
-  // City context: override the location's city so the page reads as
-  // "{category} in {city}" rather than the base location.
-  const cityLocation = {
-    ...toPublicLocation(categoryData.location),
-    city: cityResolved.name,
-    state: cityResolved.state || categoryData.location.state,
-  };
-
-  // Page content for the city page. The H1 is left null so the template builds
-  // "{category} in {city}" from the overridden location.city — correct on BOTH
-  // axes (category + city), unlike the primary market's stored H1 or the area's
-  // primary-category-themed H1. The body borrows the CITY's own generated copy
-  // (service_areas row) when available so the page reads about the right city.
-  const cityPageContent = cityArea?.body_copy
-    ? {
-        h1: null,
-        h2: null,
-        hero_description: null,
-        body_copy: cityArea.body_copy,
-        body_copy_2: null,
-        faqs: null,
-        sections: null,
-        generated_images: null,
-      }
-    : null;
-
-  const CatComp = getTemplate(base.site.template_id).Category;
-  return (
-    <CatComp
-      data={{
-        site: toPublicSite(base.site, { hasBrands }),
-        location: cityLocation,
-        category: toPublicCategory(categoryData.category),
-        services: categoryData.services.map(toPublicServiceListing),
-        allCategories: categoryData.allCategories.map(toPublicCategory),
-        pageContent: cityPageContent,
-      }}
-      siteSlug={slug}
-      googleReviews={displayReviews}
-      serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
-      neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
-      recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
-      formCategories={categoryData.allCategories.map(toPublicCategory)}
-      schedulingActive={schedulingConfig?.is_active || false}
-      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
-    />
-  );
+  return renderCategoryInCity({ siteSlug: slug, categorySlug, citySeg, city: cityResolved });
 }

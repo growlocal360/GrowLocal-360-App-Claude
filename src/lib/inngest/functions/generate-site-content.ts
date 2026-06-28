@@ -542,6 +542,18 @@ export const generateSiteContent = inngest.createFunction(
 
           await updateProgress(supabase, siteId, totalTasks, completed, 'Generating core pages...');
 
+          // v5: build a brand-home "area context" (region + a few served cities)
+          // so the single-location home reads brand+region without targeting the
+          // primary city's keyword (which the Primary Market hub owns).
+          const pmCity = settings.primary_market_city || primaryLocation.city;
+          const otherCities = allServiceAreas
+            .map((a) => a.name)
+            .filter((n) => n.toLowerCase() !== pmCity.toLowerCase())
+            .slice(0, 4);
+          const areaContext = otherCities.length
+            ? `serving ${pmCity} and nearby communities including ${otherCities.join(', ')}`
+            : `serving ${pmCity} and the surrounding area`;
+
           const coreContent = await generateCorePages(
             anthropic,
             site.name,
@@ -550,7 +562,8 @@ export const generateSiteContent = inngest.createFunction(
             categoryName,
             site.website_type,
             contentDirectives,
-            isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined
+            isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined,
+            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext }
           );
 
           // Filter to only the requested pages
@@ -1174,6 +1187,58 @@ export const generateSiteContent = inngest.createFunction(
       });
     }
 
+    // Step 9.5: Generate anti-doorway intros for each category × city page.
+    // Pattern 1 / city-hub / PM-service pages otherwise reuse the city's single
+    // body across all categories (same copy, swapped H1) — a doorway-page risk.
+    // This generates ONE short, page-specific intro per planned combo so each
+    // page reads distinctly. Full builds only; reads the persisted Site Plan.
+    if (isFullBuild) {
+      await step.run('generate-city-page-intros', async () => {
+        const { data: freshSite } = await supabase.from('sites').select('settings').eq('id', siteId).single();
+        const plan = (freshSite?.settings as SiteSettings | null)?.site_plan;
+        if (!plan) return;
+
+        const catSlugs = new Set(siteCategories.map((c) => normalizeCategorySlug(getCategoryName(c))));
+        const primarySlug = normalizeCategorySlug(categoryName);
+        const cityPageTypes = new Set(['primary_market_hub', 'primary_market_service', 'pattern_1_city', 'city_hub', 'city_hub_service']);
+
+        // Build the unique set of (categorySlug, citySlug) combos to introduce.
+        const combos = new Map<string, { categorySlug: string; citySlug: string; categoryName: string; cityName: string }>();
+        for (const p of plan.pages) {
+          if (!cityPageTypes.has(p.page_type)) continue;
+          const segs = p.url.split('/').filter(Boolean);
+          let categorySlug: string, citySlug: string;
+          if (segs.length === 2) {
+            if (catSlugs.has(segs[0])) { categorySlug = segs[0]; citySlug = segs[1]; }
+            else { categorySlug = segs[1]; citySlug = segs[0]; }
+          } else if (segs.length === 1) {
+            categorySlug = primarySlug; citySlug = segs[0];
+          } else { continue; }
+          const key = `${categorySlug}/${citySlug}`.toLowerCase();
+          if (combos.has(key)) continue;
+          combos.set(key, {
+            categorySlug, citySlug,
+            categoryName: p.associated_service || categoryName,
+            cityName: p.associated_city || citySlug,
+          });
+        }
+        if (combos.size === 0) return;
+
+        await updateProgress(supabase, siteId, totalTasks, completedTasks, 'Generating city page intros...');
+
+        const anthropic = createAnthropicClient();
+        const comboList = [...combos.entries()].map(([key, c]) => ({ key, categoryName: c.categoryName, cityName: c.cityName }));
+        const intros = await generateCityPageIntros(anthropic, site.name, categoryName, comboList, contentDirectives);
+
+        if (intros && Object.keys(intros).length > 0) {
+          const { data: latest } = await supabase.from('sites').select('settings').eq('id', siteId).single();
+          const merged = { ...((latest?.settings as Record<string, unknown>) || {}), city_page_intros: intros };
+          await supabase.from('sites').update({ settings: merged }).eq('id', siteId);
+          await log(`Generated ${Object.keys(intros).length} city page intros`, 'generate-city-page-intros');
+        }
+      });
+    }
+
     // Step 10: Mark complete
     await step.run('mark-complete', async () => {
       await supabase
@@ -1285,13 +1350,22 @@ async function generateCorePages(
   primaryCategory: string,
   websiteType: string,
   directives: string = '',
-  micrositeContext?: { service?: string; brand?: string }
+  micrositeContext?: { service?: string; brand?: string },
+  opts?: { homepageIsPrimaryMarket?: boolean; areaContext?: string }
 ) {
+  // v5 rule 11: a single-location business's home page stays BRAND-LEVEL (no city
+  // in the H1) so it doesn't cannibalize the Primary Market page — UNLESS the
+  // owner explicitly designates the home page as the Primary Market page.
+  const brandHome = websiteType === 'single_location' && !opts?.homepageIsPrimaryMarket;
+  const areaPhrase = opts?.areaContext ? ` (${opts.areaContext})` : '';
+
   const homePageFocus =
     websiteType === 'microsite' && micrositeContext?.service
       ? `This is a MICROSITE (EMD). The home page is the primary landing page for "${micrositeContext.service}" in ${city}, ${state}.${micrositeContext.brand ? ` This site focuses specifically on ${micrositeContext.brand} products/services.` : ' Mention all major brands served.'} The H1 MUST be the exact-match keyword: "${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service} in ${city}, ${state}". Every element should reinforce this niche.`
+      : brandHome
+      ? `This is a single-location service-area business. The home page is the BRAND home — it must read brand-first and must NOT target a single city. A separate Primary Market page owns the "${primaryCategory} in ${city}" geo keyword, so the home page must NOT compete with it. Establish ${businessName} as the trusted ${primaryCategory} provider across its whole service area${areaPhrase}. Talk about the brand, the breadth of services, and the region served — not one city.`
       : websiteType === 'single_location'
-      ? `The home page IS the primary category page. It should focus on "${primaryCategory}" in ${city}, ${state} since this is a single-location business.`
+      ? `The home page IS the Primary Market page (the owner designated it so). Focus on "${primaryCategory}" in ${city}, ${state}.`
       : `The home page should be brand-focused for ${businessName} since this is a multi-location business.`;
 
   const prompt = `You are an SEO expert generating core page content for a local service business website.
@@ -1309,10 +1383,13 @@ Generate content for these core pages: home, contact
 NOTE: The about page is generated separately with enhanced EEAT content. Do NOT generate an about page here.
 
 CRITICAL FORMATTING RULES:
-- meta_title for home MUST follow this exact pattern: "${primaryCategory} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the category or city)
+${brandHome ? `- meta_title for home: BRAND-forward, e.g. "${businessName} | ${primaryCategory}" (max 60 chars). Do NOT use the pattern "${primaryCategory} in ${city}" — that belongs to the Primary Market page.
+- h1 for home: BRAND-LEVEL — it must NOT contain any city name. Establish the brand + service category. Good examples: "${businessName}: Expert ${primaryCategory}", "Trusted ${primaryCategory} from ${businessName}", "${primaryCategory} Done Right — ${businessName}". NEVER "${primaryCategory} in ${city}" and NEVER generic "Professional Services".
+- meta_description for home: mention ${businessName}, the primary category, the BROAD service area (the region/multiple cities — not a single city), and a CTA.
+- hero_description: a brand value proposition spanning the whole service area; mention specific services, not a single city.` : `- meta_title for home MUST follow this exact pattern: "${primaryCategory} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the category or city)
 - meta_description for home MUST mention the primary category, city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${primaryCategory.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"
 - h1 for home MUST include the primary category and location. Pattern: "${primaryCategory} in ${city}, ${state}" or "Your Trusted ${primaryCategory} in ${city}, ${state}" — NEVER use generic phrases like "Professional Services"
-- hero_description MUST mention specific services or capabilities, NOT generic "professional services" language
+- hero_description MUST mention specific services or capabilities, NOT generic "professional services" language`}
 - Contact page meta_title: "Contact ${businessName} | ${city}, ${state}"
 
 BANNED PHRASES (never use these):
@@ -1330,7 +1407,7 @@ For EACH page, provide:
 4. h2: Supporting subheading (for home page: something action-oriented like "Expert ${primaryCategory} You Can Count On" or a value proposition mentioning 2-3 specific services)
 5. hero_description: 1-2 sentence hero subheading (compelling value proposition with specific services mentioned, used below the H1)
 6. body_copy: Main content block:
-   - Home: 2-3 paragraphs about the business, specific services offered, and why customers trust them (300-500 words). Write naturally — mention real services, not generic platitudes.
+   - Home: 2-3 paragraphs about the business, the specific services offered, and why customers trust them (300-500 words). Write naturally — mention real services, not generic platitudes.${brandHome ? ' Frame the coverage around the WHOLE service area / region (reference multiple communities served), not a single city.' : ''}
    - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
 7. body_copy_2: Secondary content block (used in alternating layout sections):
    - Home: 1-2 paragraphs about community commitment, certifications, or experience (150-250 words)
@@ -1738,6 +1815,58 @@ Return ONLY valid JSON.`;
   }>(message);
 
   return result?.brands || [];
+}
+
+/**
+ * Generates ONE short, page-specific intro per category × city page, in a single
+ * batched call, so Pattern 1 / city pages don't read like doorway pages (the same
+ * body with the city swapped). Returns a map of "{categorySlug}/{citySlug}" → intro.
+ */
+async function generateCityPageIntros(
+  anthropic: Anthropic,
+  businessName: string,
+  primaryCategory: string,
+  combos: { key: string; categoryName: string; cityName: string }[],
+  directives: string = ''
+): Promise<Record<string, string>> {
+  if (combos.length === 0) return {};
+
+  const list = combos
+    .map((c, i) => `${i + 1}. key="${c.key}" — ${c.categoryName} in ${c.cityName}`)
+    .join('\n');
+
+  const prompt = `You are a local SEO copywriter for ${businessName} (${primaryCategory}). Write ONE short intro paragraph for EACH page listed below.
+${directives}
+Pages (each is a specific service in a specific city):
+${list}
+
+CRITICAL — these pages must NOT read like doorway pages (the same paragraph with the city name swapped):
+- 2-3 sentences each, ~35-60 words. Short, specific, to the point. No fluff.
+- Each intro must be specifically about THAT service in THAT city — name the actual service and city.
+- VARY the structure and opening across pages: a question, a local scenario, a homeowner pain point, a seasonal angle, a direct value statement. Never start two intros the same way and never reuse the same sentence skeleton.
+- Natural and human. NEVER use: "proudly serves", "look no further", "your go-to", "one-stop shop", "unique needs", "trusted provider", "we take pride", "second to none".
+- Just the intro prose — no headings, no H1.
+
+Return ONLY valid JSON:
+{ "intros": [ { "key": "exact key from the list", "intro": "..." } ] }`;
+
+  const message = await withRetry((signal) =>
+    anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 6144,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      { signal }
+    )
+  );
+
+  const result = parseJsonResponse<{ intros: { key: string; intro: string }[] }>(message);
+  const out: Record<string, string> = {};
+  for (const r of result?.intros || []) {
+    if (r.key && r.intro) out[r.key.trim().toLowerCase()] = r.intro.trim();
+  }
+  return out;
 }
 
 async function generateFAQPage(

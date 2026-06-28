@@ -73,6 +73,13 @@ export interface PlanInputs {
   }>;
   /** Explicit top revenue services (names). If omitted, first 2-3 GBP categories are used. */
   topServices?: string[];
+  /**
+   * v5 rule 11 (Model B): the home page IS the Primary Market page. When true, the
+   * planner does NOT build a separate /{primary-market}/ hub (it would duplicate
+   * the home), and the GBP website link points to "/". Default false (Model A:
+   * brand home + separate PM hub).
+   */
+  homepageIsPrimaryMarket?: boolean;
 }
 
 export interface SitePlan {
@@ -118,42 +125,54 @@ export function planSite(input: PlanInputs): SitePlan {
   const pages: PlannedPage[] = [];
   const doNotBuild: SitePlan['doNotBuild'] = [];
 
+  // Model B (v5 rule 11): the home page IS the Primary Market page. No separate
+  // /{primary-market}/ hub (it would duplicate the home / cannibalize the keyword).
+  const modelB = !!input.homepageIsPrimaryMarket;
+
   // ── URLs we know up-front (for linking) ──────────────────────────────────
   const homeUrl = '/';
   const pmHubUrl = `/${pmSlug}/`;
+  // The URL that "the primary market" resolves to: the dedicated hub (Model A) or
+  // the home page itself (Model B). Used for linking + the GBP recommendation.
+  const pmTarget = modelB ? homeUrl : pmHubUrl;
   const serviceAreasUrl = '/service-areas/';
   const brandHubUrls = services.map((s) => `/${svcSlug(s)}/`);
   const pmServiceUrls = services.map((s) => `/${pmSlug}/${svcSlug(s)}/`);
 
-  // ── ALWAYS: homepage (brand-level) ───────────────────────────────────────
+  // ── ALWAYS: homepage ─────────────────────────────────────────────────────
   pages.push({
     url: homeUrl,
     pageType: 'homepage',
     title: 'Home',
-    associatedCity: null,
+    associatedCity: modelB ? primaryMarket.city : null,
     associatedService: null,
-    links: [...brandHubUrls, pmHubUrl, serviceAreasUrl, '/about/', '/contact/', '/reviews/', '/work/'],
+    // Model A links to the separate PM hub; Model B is the PM page itself.
+    links: [...brandHubUrls, ...(modelB ? [] : [pmHubUrl]), serviceAreasUrl, '/about/', '/contact/', '/reviews/', '/work/'],
   });
 
-  // ── ALWAYS: Primary Market hub + its per-service pages ───────────────────
-  pages.push({
-    url: pmHubUrl,
-    pageType: 'primary_market_hub',
-    title: `${primaryMarket.city} ${coreService || 'Services'}`,
-    associatedCity: primaryMarket.city,
-    associatedService: null,
-    links: [homeUrl, ...pmServiceUrls, ...brandHubUrls, serviceAreasUrl],
-  });
-  services.forEach((s) => {
+  // ── Primary Market hub + its per-service pages (Model A only) ─────────────
+  if (!modelB) {
     pages.push({
-      url: `/${pmSlug}/${svcSlug(s)}/`,
-      pageType: 'primary_market_service',
-      title: `${s} in ${primaryMarket.city}`,
+      url: pmHubUrl,
+      pageType: 'primary_market_hub',
+      title: `${primaryMarket.city} ${coreService || 'Services'}`,
       associatedCity: primaryMarket.city,
-      associatedService: s,
-      links: [pmHubUrl, `/${svcSlug(s)}/`, serviceAreasUrl],
+      associatedService: null,
+      links: [homeUrl, ...pmServiceUrls, ...brandHubUrls, serviceAreasUrl],
     });
-  });
+    services.forEach((s) => {
+      pages.push({
+        url: `/${pmSlug}/${svcSlug(s)}/`,
+        pageType: 'primary_market_service',
+        title: `${s} in ${primaryMarket.city}`,
+        associatedCity: primaryMarket.city,
+        associatedService: s,
+        links: [pmHubUrl, `/${svcSlug(s)}/`, serviceAreasUrl],
+      });
+    });
+  } else {
+    doNotBuild.push({ what: `/${pmSlug}/ Primary Market hub`, reason: 'Home page is the Primary Market page (Model B) — a separate hub would duplicate it.' });
+  }
 
   // ── ALWAYS: brand service hubs + their sub-services ──────────────────────
   services.forEach((s) => {
@@ -166,8 +185,9 @@ export function planSite(input: PlanInputs): SitePlan {
       title: s,
       associatedCity: null,
       associatedService: s,
-      // brand hub links DOWN to sub-services + PM service page; SIDEWAYS to other hubs + service-areas
-      links: [...subUrls, `/${pmSlug}/${svcSlug(s)}/`, ...brandHubUrls.filter((u) => u !== hub), serviceAreasUrl],
+      // brand hub links DOWN to sub-services (+ PM service page in Model A);
+      // SIDEWAYS to other hubs + service-areas
+      links: [...subUrls, ...(modelB ? [] : [`/${pmSlug}/${svcSlug(s)}/`]), ...brandHubUrls.filter((u) => u !== hub), serviceAreasUrl],
     });
     subs.forEach((sub) => {
       pages.push({
@@ -188,13 +208,14 @@ export function planSite(input: PlanInputs): SitePlan {
   let pattern1Count = 0;
   const builtCityPageUrls: string[] = [];
 
-  // Primary market itself is its own treatment (hub already built above).
+  // Primary market itself is its own treatment. Its page is the dedicated hub
+  // (Model A) or the home page (Model B).
   cities.push({
     city: primaryMarket.city,
     state: primaryMarket.state,
     treatment: 'primary_market',
     hasPage: true,
-    pageUrl: pmHubUrl,
+    pageUrl: pmTarget,
     distanceFromPrimaryMarket: 0,
   });
 
@@ -278,7 +299,7 @@ export function planSite(input: PlanInputs): SitePlan {
     title: 'Service Areas',
     associatedCity: null,
     associatedService: null,
-    links: [pmHubUrl, ...builtCityPageUrls, ...brandHubUrls, homeUrl],
+    links: [pmTarget, ...builtCityPageUrls, ...brandHubUrls, homeUrl],
   });
 
   // ── ALWAYS: utility pages ────────────────────────────────────────────────
@@ -289,7 +310,8 @@ export function planSite(input: PlanInputs): SitePlan {
   return {
     pages,
     cities,
-    gbpWebsiteLinkRecommendation: pmHubUrl,
+    // Model A → the dedicated PM hub; Model B → the home page (it IS the PM page).
+    gbpWebsiteLinkRecommendation: pmTarget,
     doNotBuild,
   };
 }

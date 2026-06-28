@@ -266,6 +266,10 @@ export interface ServiceAreaDB {
   sort_order: number;
   // v5: GBP-anchored city → gets a /{city}/ hub instead of Pattern 1.
   is_anchor: boolean;
+  // v5: owner-forced "priority" city → guaranteed a dedicated page (Pattern 1,
+  // or city hub if also anchored), bypassing proximity coverage + the Pattern 1
+  // cap. The manual override for markets the automated plan wouldn't pick.
+  is_priority: boolean;
   // SEO fields (added for Phase 2)
   meta_title: string | null;
   meta_description: string | null;

@@ -13,12 +13,12 @@ const SETTINGS: SiteSettings = {
 };
 
 const AREAS = [
-  { name: 'Peoria', state: 'AZ', is_anchor: false, distance_miles: 18 },
-  { name: 'Glendale', state: 'AZ', is_anchor: false, distance_miles: 22 },
-  { name: 'Phoenix', state: 'AZ', is_anchor: false, distance_miles: 28 },
-  { name: 'Sun City', state: 'AZ', is_anchor: false, distance_miles: 6 },
-  { name: 'El Mirage', state: 'AZ', is_anchor: false, distance_miles: 8 },
-] as Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles'>[];
+  { name: 'Peoria', state: 'AZ', is_anchor: false, distance_miles: 18, is_priority: false },
+  { name: 'Glendale', state: 'AZ', is_anchor: false, distance_miles: 22, is_priority: false },
+  { name: 'Phoenix', state: 'AZ', is_anchor: false, distance_miles: 28, is_priority: false },
+  { name: 'Sun City', state: 'AZ', is_anchor: false, distance_miles: 6, is_priority: false },
+  { name: 'El Mirage', state: 'AZ', is_anchor: false, distance_miles: 8, is_priority: false },
+] as Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles' | 'is_priority'>[];
 
 function buildPlan() {
   const { inputs, primaryMarket, travelStrategy } = buildPlanInputs({

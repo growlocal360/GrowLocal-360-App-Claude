@@ -95,6 +95,7 @@ export function buildPlanInputs(args: {
     primaryMarket: { city: resolved.city, state: resolved.state },
     gbpCategories,
     topServices,
+    homepageIsPrimaryMarket: args.settings?.homepage_is_primary_market === true,
     subServicesByService: args.subServicesByService,
     serviceAreaCities: args.serviceAreas.map((a) => ({
       city: a.name,

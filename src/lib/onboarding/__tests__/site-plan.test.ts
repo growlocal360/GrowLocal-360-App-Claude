@@ -104,3 +104,26 @@ describe('planSite — GBP-anchored city gets a city-first hub', () => {
     expect(plan.cities.find((c) => c.city === 'Peoria')?.treatment).toBe('has_city_hub');
   });
 });
+
+describe('planSite — Model B (home IS the Primary Market page)', () => {
+  const plan = planSite({ ...SURPRISE, travelStrategy: 'local', homepageIsPrimaryMarket: true });
+  const urls = new Set(plan.pages.map((p) => p.url));
+
+  it('does NOT build a separate /{primary-market}/ hub (no duplicate of home)', () => {
+    expect(urls.has('/surprise/')).toBe(false);
+    expect(plan.pages.some((p) => p.pageType === 'primary_market_hub')).toBe(false);
+    expect(plan.pages.some((p) => p.pageType === 'primary_market_service')).toBe(false);
+    expect(plan.doNotBuild.some((d) => /Primary Market hub/.test(d.what))).toBe(true);
+  });
+
+  it('points the GBP website link at the home page, and the PM city page is "/"', () => {
+    expect(plan.gbpWebsiteLinkRecommendation).toBe('/');
+    expect(plan.cities.find((c) => c.city === 'Surprise')?.pageUrl).toBe('/');
+  });
+
+  it('still builds brand service hubs + /service-areas/ + utility', () => {
+    expect(urls.has('/appliance-repair/')).toBe(true);
+    expect(urls.has('/service-areas/')).toBe(true);
+    expect(urls.has('/about/')).toBe(true);
+  });
+});

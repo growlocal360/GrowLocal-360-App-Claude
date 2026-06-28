@@ -228,8 +228,14 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
       const pc = primaryCat?.gbp_category as { display_name?: string } | { display_name?: string }[] | null | undefined;
       const primaryDisplayName = Array.isArray(pc) ? pc[0]?.display_name : pc?.display_name;
       if (primaryDisplayName) {
-        const pmCity = (baseData.site.settings as { primary_market_city?: string } | null)?.primary_market_city;
+        const siteSettings = baseData.site.settings as { primary_market_city?: string; homepage_is_primary_market?: boolean } | null;
+        const pmCity = siteSettings?.primary_market_city;
         const isPrimaryMarket = !!pmCity && pmCity.trim().toLowerCase() === city.name.trim().toLowerCase();
+        // Model B: the home page IS the Primary Market page, so /{primary-market}/
+        // would duplicate it — send it to the canonical home instead.
+        if (isPrimaryMarket && siteSettings?.homepage_is_primary_market === true) {
+          redirect('/');
+        }
         const rendered = await renderCategoryInCity({
           siteSlug: slug,
           categorySlug: normalizeCategorySlug(primaryDisplayName),

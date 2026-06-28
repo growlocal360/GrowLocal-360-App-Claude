@@ -923,6 +923,31 @@ export default function SiteDashboardPage() {
             </CardContent>
           </Card>
 
+          {/* Primary Market */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <MapPinned className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Primary Market</h3>
+                  <p className="text-sm text-gray-500">Target city &amp; site structure</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                Set your main city, travel strategy, and homepage structure as your business grows
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/primary-market`}>
+                  Manage Market
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Search Performance */}
           <Card className="hover:border-[#00ef99]/20 transition-colors">
             <CardHeader>

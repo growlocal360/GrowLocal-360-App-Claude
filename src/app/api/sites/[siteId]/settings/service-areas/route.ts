@@ -106,6 +106,47 @@ export async function POST(
   return NextResponse.json({ success: true, serviceArea: newArea });
 }
 
+// PATCH - Update a service area (currently the priority-page override)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ siteId: string }> }
+) {
+  const { siteId } = await params;
+  const supabase = await createClient();
+
+  const access = await verifySiteAccess(supabase, siteId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const { id, isPriority } = body as { id?: string; isPriority?: boolean };
+
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+  if (typeof isPriority !== 'boolean') {
+    return NextResponse.json({ error: 'isPriority must be a boolean' }, { status: 400 });
+  }
+
+  const adminSupabase = createAdminClient();
+  const { error: updateError } = await adminSupabase
+    .from('service_areas')
+    .update({ is_priority: isPriority })
+    .eq('id', id)
+    .eq('site_id', siteId);
+
+  if (updateError) {
+    console.error('Failed to update service area:', updateError);
+    return NextResponse.json({ error: 'Failed to update service area' }, { status: 500 });
+  }
+
+  await revalidateSite(siteId);
+
+  // The dedicated page is built on the next regenerate.
+  return NextResponse.json({ success: true, requiresRegenerate: true });
+}
+
 // DELETE - Remove a service area
 export async function DELETE(
   request: NextRequest,

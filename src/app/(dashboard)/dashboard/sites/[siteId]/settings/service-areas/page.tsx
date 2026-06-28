@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ interface ServiceArea {
   is_custom: boolean;
   sort_order: number;
   h1: string | null;
+  is_priority?: boolean;
 }
 
 interface SiteLocation {
@@ -232,6 +234,28 @@ export default function ServiceAreasPage() {
       setSuggestions((prev) => prev.filter((s) => s.name !== suggestion.name));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add area');
+    }
+  };
+
+  const handleTogglePriority = async (areaId: string, next: boolean) => {
+    // Optimistic — flip immediately, revert on failure.
+    setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, is_priority: next } : a)));
+    try {
+      setError(null);
+      const response = await fetch(`/api/sites/${siteId}/settings/service-areas`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: areaId, isPriority: next }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update');
+      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setAreas((prev) => prev.map((a) => (a.id === areaId ? { ...a, is_priority: !next } : a)));
+      setError(err instanceof Error ? err.message : 'Failed to update priority');
     }
   };
 
@@ -497,7 +521,14 @@ export default function ServiceAreasPage() {
                       <span className="inline-flex h-2 w-2 rounded-full bg-gray-300 shrink-0" title="No content" />
                     )}
                   </div>
-                  <div className="flex items-center gap-1 ml-4">
+                  <div className="flex items-center gap-3 ml-4">
+                    <label className="flex items-center gap-1.5 cursor-pointer" title="Force a dedicated page for this city, even if the automated plan wouldn't build one (great for low-competition markets with no data yet). Takes effect on the next regenerate.">
+                      <span className="text-xs text-gray-500 hidden sm:inline">Dedicated page</span>
+                      <Switch
+                        checked={!!area.is_priority}
+                        onCheckedChange={(v) => handleTogglePriority(area.id, v)}
+                      />
+                    </label>
                     <Button
                       variant="ghost"
                       size="sm"

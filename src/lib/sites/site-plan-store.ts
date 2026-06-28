@@ -61,7 +61,7 @@ export function buildPlanInputs(args: {
   primaryLocation: { city: string | null; state: string | null; address?: string | null } | null | undefined;
   /** GBP category display names, primary first. */
   gbpCategories: string[];
-  serviceAreas: Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles'>[];
+  serviceAreas: Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles' | 'is_priority'>[];
   subServicesByService?: Record<string, string[]>;
 }): { inputs: PlanInputs; primaryMarket: { city: string; state: string }; travelStrategy: PlanInputs['travelStrategy']; needsReview: boolean } {
   const resolved = resolvePrimaryMarket(args.settings, {
@@ -102,6 +102,7 @@ export function buildPlanInputs(args: {
       state: a.state || resolved.state,
       anchored: !!a.is_anchor,
       distanceMiles: a.distance_miles,
+      priority: !!a.is_priority,
     })),
   };
 

@@ -105,6 +105,44 @@ describe('planSite — GBP-anchored city gets a city-first hub', () => {
   });
 });
 
+describe('planSite — Priority city override', () => {
+  it('forces a Pattern 1 page for a proximity-covered city when marked priority', () => {
+    const plan = planSite({
+      ...SURPRISE,
+      serviceAreaCities: [{ city: 'Sun City', state: 'AZ', distanceMiles: 6, priority: true }],
+    });
+    const sunCity = plan.cities.find((c) => c.city === 'Sun City');
+    expect(sunCity?.treatment).toBe('has_pattern_1_page');
+    expect(sunCity?.hasPage).toBe(true);
+    const urls = new Set(plan.pages.map((p) => p.url));
+    expect(urls.has('/appliance-repair/sun-city/')).toBe(true);
+  });
+
+  it('forces a page even under a Local strategy (cap 0)', () => {
+    const plan = planSite({
+      ...SURPRISE,
+      travelStrategy: 'local',
+      serviceAreaCities: [{ city: 'Wittmann', state: 'AZ', distanceMiles: 12, priority: true }],
+    });
+    expect(plan.pages.some((p) => p.pageType === 'pattern_1_city' && p.url.includes('wittmann'))).toBe(true);
+  });
+
+  it('priority pages bypass the per-strategy cap (extra, not counted against it)', () => {
+    // 9 auto Pattern-1 (3 cities x 3 top services hits regional cap) + a priority city on top.
+    const plan = planSite({
+      ...SURPRISE,
+      topServices: ['Appliance repair', 'Refrigerator repair', 'Washer and dryer repair'],
+      serviceAreaCities: [
+        { city: 'Peoria', state: 'AZ', distanceMiles: 18 },
+        { city: 'Glendale', state: 'AZ', distanceMiles: 22 },
+        { city: 'Phoenix', state: 'AZ', distanceMiles: 28 },
+        { city: 'Buckeye', state: 'AZ', distanceMiles: 40, priority: true },
+      ],
+    });
+    expect(plan.cities.find((c) => c.city === 'Buckeye')?.treatment).toBe('has_pattern_1_page');
+  });
+});
+
 describe('planSite — Model B (home IS the Primary Market page)', () => {
   const plan = planSite({ ...SURPRISE, travelStrategy: 'local', homepageIsPrimaryMarket: true });
   const urls = new Set(plan.pages.map((p) => p.url));

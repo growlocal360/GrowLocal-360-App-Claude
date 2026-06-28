@@ -70,6 +70,9 @@ export interface PlanInputs {
     state: string;
     anchored?: boolean;
     distanceMiles?: number | null;
+    /** Owner-forced priority city: guaranteed a dedicated page regardless of
+     *  proximity coverage or the Pattern 1 cap. */
+    priority?: boolean;
   }>;
   /** Explicit top revenue services (names). If omitted, first 2-3 GBP categories are used. */
   topServices?: string[];
@@ -251,7 +254,33 @@ export function planSite(input: PlanInputs): SitePlan {
       continue;
     }
 
-    // 2) Within proximity of Primary Market → covered, text-only on service-areas
+    // 2) Owner-forced PRIORITY city → guaranteed Pattern 1 for the top services,
+    //    bypassing proximity coverage AND the per-strategy cap. The manual escape
+    //    hatch for markets the automation wouldn't pick (e.g. a new business
+    //    already winning work in a smaller, low-competition city with no data yet).
+    if (c.priority) {
+      const built: string[] = [];
+      for (const s of services) {
+        if (!topServices.includes(svcSlug(s))) continue; // top services only
+        const url = `/${svcSlug(s)}/${citySlug(c.city)}/`;
+        pages.push({
+          url,
+          pageType: 'pattern_1_city',
+          title: `${s} in ${titleCity(c.city, c.state)}`,
+          associatedCity: c.city,
+          associatedService: s,
+          links: [`/${svcSlug(s)}/`, serviceAreasUrl],
+        });
+        built.push(url);
+      }
+      if (built.length > 0) {
+        builtCityPageUrls.push(...built);
+        cities.push({ city: c.city, state: c.state, treatment: 'has_pattern_1_page', hasPage: true, pageUrl: built[0], distanceFromPrimaryMarket: dist });
+        continue;
+      }
+    }
+
+    // 3) Within proximity of Primary Market → covered, text-only on service-areas
     if (dist !== null && dist <= PROXIMITY_MILES) {
       cities.push({ city: c.city, state: c.state, treatment: 'proximity_covered', hasPage: false, pageUrl: null, distanceFromPrimaryMarket: dist });
       continue;

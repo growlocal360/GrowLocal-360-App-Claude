@@ -172,9 +172,10 @@ const APPLIANCE_FORM: NicheFormConfig = {
       fields: [
         { name: 'name', label: 'Name', type: 'text', required: true, reserved: true, placeholder: 'Your full name' },
         { name: 'phone', label: 'Phone', type: 'tel', required: true, reserved: true, placeholder: '(555) 123-4567' },
-        { name: 'zip', label: 'ZIP Code', type: 'text', required: true, numeric: true, placeholder: '44146' },
         { name: 'email', label: 'Email (optional)', type: 'email', reserved: true, placeholder: 'you@example.com' },
-        { name: 'address', label: 'Address (optional)', type: 'address', reserved: true, placeholder: 'Start typing your address...' },
+        // Required: exact dispatch location. ZIP + city are auto-extracted from the
+        // selected place (see UnifiedLeadForm) into metadata — no separate ZIP field.
+        { name: 'address', label: 'Service Address', type: 'address', required: true, reserved: true, placeholder: 'Start typing your address...' },
       ],
     },
   ],

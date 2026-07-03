@@ -271,9 +271,20 @@ interface NewLeadEmailParams {
   message?: string | null;
   address?: string | null;
   sourcePage?: string | null;
+  /** Niche-specific intake answers (e.g. appliance repair: brand, symptom, zip). */
+  metadata?: Record<string, unknown> | null;
   dashboardUrl: string;
   brandColor?: string;
   isTest?: boolean;
+}
+
+/** Turn a metadata key like "zip" or "serviceArea" into "Zip" / "Service Area". */
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
 }
 
 /**
@@ -282,12 +293,20 @@ interface NewLeadEmailParams {
  */
 export async function sendNewLeadNotificationEmail({
   to, businessName, leadName, leadPhone, leadEmail,
-  serviceType, message, address, sourcePage, dashboardUrl,
+  serviceType, message, address, sourcePage, metadata, dashboardUrl,
   brandColor = '#00ef99', isTest = false,
 }: NewLeadEmailParams) {
   const resend = getResendClient();
 
   const subjectPrefix = isTest ? '[TEST] ' : '';
+
+  // Render niche-specific answers (brand, symptom, zip, …) as extra rows.
+  const metadataRows = metadata && typeof metadata === 'object'
+    ? Object.entries(metadata)
+        .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+        .map(([k, v]) => `<p style="margin: 4px 0; color: #374151;"><strong>${humanizeKey(k)}:</strong> ${String(v)}</p>`)
+        .join('')
+    : '';
   const testBanner = isTest
     ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: #92400e; font-size: 14px;">
          <strong>This is a test lead.</strong> No real customer submitted this form — you can ignore it.
@@ -309,6 +328,7 @@ export async function sendNewLeadNotificationEmail({
           ${leadEmail ? `<p style="margin: 4px 0; color: #374151;"><strong>Email:</strong> <a href="mailto:${leadEmail}" style="color: ${brandColor}; text-decoration: none;">${leadEmail}</a></p>` : ''}
           ${serviceType ? `<p style="margin: 4px 0; color: #374151;"><strong>Service:</strong> ${serviceType}</p>` : ''}
           ${address ? `<p style="margin: 4px 0; color: #374151;"><strong>Address:</strong> ${address}</p>` : ''}
+          ${metadataRows}
           ${message ? `<p style="margin: 8px 0 4px; color: #374151;"><strong>Message:</strong></p><p style="margin: 4px 0; color: #4b5563; font-style: italic;">${message}</p>` : ''}
           ${sourcePage ? `<p style="margin: 12px 0 4px; color: #9ca3af; font-size: 12px;">Submitted from: ${sourcePage}</p>` : ''}
         </div>

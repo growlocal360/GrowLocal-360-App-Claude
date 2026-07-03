@@ -464,6 +464,9 @@ export interface Lead {
   address: string | null;
   source_page: string | null;
   status: LeadStatus;
+  // Niche-specific intake answers (e.g. appliance repair: brand, symptom, zip).
+  // Populated by the config-driven intake form; see src/lib/forms/niche-forms.ts.
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

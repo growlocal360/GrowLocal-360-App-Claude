@@ -87,6 +87,7 @@ export const handleLeadCreated = inngest.createFunction(
           serviceType: lead.service_type,
           message: lead.message,
           address: lead.address,
+          metadata: lead.metadata,
           sourcePage: lead.source_page,
           dashboardUrl,
           brandColor,

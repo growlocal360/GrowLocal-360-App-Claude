@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    const { name, email, phone, service_type, message, address, source_page } = body;
+    const { name, email, phone, service_type, message, address, source_page, metadata } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -39,37 +39,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     console.log('[leads] Inserting new lead', { siteId, name, service_type, source_page });
 
-    const buildPayload = (includeAddress: boolean) => ({
+    const payload: Record<string, unknown> = {
       site_id: siteId,
       name,
       email: email || null,
       phone: phone || null,
       service_type: service_type || null,
       message: message || null,
-      ...(includeAddress ? { address: address || null } : {}),
+      address: address || null,
+      metadata: metadata && typeof metadata === 'object' ? metadata : {},
       source_page: source_page || null,
       status: 'new',
-    });
+    };
 
-    let { data: lead, error } = await supabase
-      .from('leads')
-      .insert(buildPayload(true))
-      .select()
-      .single();
-
-    // Graceful fallback: if migration 038 hasn't been applied yet, the
-    // address column doesn't exist — retry without it so the lead still
+    // Insert with graceful fallback: if an optional column hasn't been migrated
+    // yet (address → migration 038, metadata → migration 055), Postgres reports
+    // "column X does not exist" — strip that column and retry so the lead still
     // captures rather than 500ing.
-    if (error && /column .*address.* does not exist/i.test(error.message)) {
-      console.warn('[leads] address column missing — retrying without it (apply migration 038 to enable address capture)');
-      const retry = await supabase
-        .from('leads')
-        .insert(buildPayload(false))
-        .select()
-        .single();
-      lead = retry.data;
-      error = retry.error;
+    let result = await supabase.from('leads').insert(payload).select().single();
+    for (let attempt = 0; attempt < 2 && result.error; attempt++) {
+      const missing = result.error.message.match(/column .*?"?(address|metadata)"? .*does not exist/i);
+      if (!missing) break;
+      console.warn(`[leads] ${missing[1]} column missing — retrying without it (apply the pending migration to enable it)`);
+      delete payload[missing[1]];
+      result = await supabase.from('leads').insert(payload).select().single();
     }
+    const { data: lead, error } = result;
 
     if (error) {
       console.error('[leads] Failed to insert lead:', error);

@@ -14,8 +14,14 @@ export async function POST(request: NextRequest) {
       siteId, customer_name, customer_email, customer_phone,
       customer_city, customer_zip, service_type, notes, address,
       scheduled_date, scheduled_time, time_window_start, time_window_end,
-      source_page,
+      source_page, metadata,
     } = body;
+
+    // Niche intake forms carry zip/city inside metadata; surface them onto the
+    // appointment's first-class columns when not passed explicitly.
+    const meta = metadata && typeof metadata === 'object' ? metadata : {};
+    const resolvedZip = customer_zip || (meta as Record<string, unknown>).zip || null;
+    const resolvedCity = customer_city || (meta as Record<string, unknown>).city || null;
 
     if (!siteId || !customer_name || !scheduled_date) {
       return NextResponse.json(
@@ -58,32 +64,29 @@ export async function POST(request: NextRequest) {
 
     const appointmentStatus = config.booking_mode === 'instant' ? 'confirmed' : 'pending';
 
-    // Create the lead first (with graceful fallback if address column missing)
-    const buildLeadPayload = (includeAddress: boolean) => ({
+    // Create the lead first. Graceful fallback: strip an optional column
+    // (address → migration 038, metadata → migration 055) if it hasn't been
+    // migrated yet, so the booking still captures rather than 500ing.
+    const leadPayload: Record<string, unknown> = {
       site_id: siteId,
       name: customer_name,
       email: customer_email || null,
       phone: customer_phone || null,
       service_type: service_type || null,
       message: notes || null,
-      ...(includeAddress ? { address: address || null } : {}),
+      address: address || null,
+      metadata: meta,
       source_page: source_page || '/contact',
       status: 'new',
-    });
+    };
 
-    let leadInsert = await supabase
-      .from('leads')
-      .insert(buildLeadPayload(true))
-      .select()
-      .single();
-
-    if (leadInsert.error && /column .*address.* does not exist/i.test(leadInsert.error.message)) {
-      console.warn('[book] address column missing on leads — retrying without it');
-      leadInsert = await supabase
-        .from('leads')
-        .insert(buildLeadPayload(false))
-        .select()
-        .single();
+    let leadInsert = await supabase.from('leads').insert(leadPayload).select().single();
+    for (let attempt = 0; attempt < 2 && leadInsert.error; attempt++) {
+      const missing = leadInsert.error.message.match(/column .*?"?(address|metadata)"? .*does not exist/i);
+      if (!missing) break;
+      console.warn(`[book] ${missing[1]} column missing on leads — retrying without it`);
+      delete leadPayload[missing[1]];
+      leadInsert = await supabase.from('leads').insert(leadPayload).select().single();
     }
 
     if (leadInsert.error) {
@@ -102,8 +105,8 @@ export async function POST(request: NextRequest) {
       customer_name,
       customer_email: customer_email || null,
       customer_phone: customer_phone || null,
-      customer_city: customer_city || null,
-      customer_zip: customer_zip || null,
+      customer_city: resolvedCity,
+      customer_zip: resolvedZip,
       service_type: service_type || null,
       notes: notes || null,
       ...(includeAddress ? { address: address || null } : {}),

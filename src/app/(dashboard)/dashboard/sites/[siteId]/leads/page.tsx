@@ -18,6 +18,15 @@ const STATUS_OPTIONS: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'archived', label: 'Archived', color: 'bg-gray-100 text-gray-700' },
 ];
 
+// "zip" / "serviceArea" → "Zip" / "Service Area" for niche metadata labels.
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 export default function LeadsPage() {
   const params = useParams();
   const siteId = params.siteId as string;
@@ -266,6 +275,21 @@ export default function LeadsPage() {
                             <span className="font-medium">Service:</span> {lead.service_type}
                           </p>
                         )}
+
+                        {lead.address && (
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Address:</span> {lead.address}
+                          </p>
+                        )}
+
+                        {lead.metadata && typeof lead.metadata === 'object' &&
+                          Object.entries(lead.metadata as Record<string, unknown>)
+                            .filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '')
+                            .map(([key, value]) => (
+                              <p key={key} className="text-sm text-gray-600">
+                                <span className="font-medium">{humanizeKey(key)}:</span> {String(value)}
+                              </p>
+                            ))}
 
                         {lead.message && (
                           <p className="text-sm text-gray-600">

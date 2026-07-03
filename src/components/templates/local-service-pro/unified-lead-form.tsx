@@ -110,6 +110,9 @@ export function UnifiedLeadForm({
   const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
   const [showPredictions, setShowPredictions] = useState(false);
   const addressRef = useRef<HTMLDivElement>(null);
+  // Structured location auto-extracted from the selected address (ZIP/city/coords).
+  // Merged into lead metadata so we capture ZIP without a separate field.
+  const [addressMeta, setAddressMeta] = useState<{ zip?: string; city?: string; lat?: number | null; lng?: number | null }>({});
 
   // Scheduling state (booking mode only)
   const [loading, setLoading] = useState(false);
@@ -170,11 +173,22 @@ export function UnifiedLeadForm({
     loadAvailability();
   }, [step, siteId, isBookingMode, current?.kind]);
 
-  const handleSelectPrediction = (prediction: AddressPrediction) => {
+  const handleSelectPrediction = async (prediction: AddressPrediction) => {
     setField('address', prediction.description);
     setAddressQuery(prediction.description);
     setShowPredictions(false);
     setPredictions([]);
+    // Pull ZIP / city / coords from the chosen place (non-fatal if it fails —
+    // the address string is still captured).
+    try {
+      const res = await fetch(`/api/places/details?placeId=${encodeURIComponent(prediction.placeId)}`);
+      if (res.ok) {
+        const d = await res.json();
+        setAddressMeta({ zip: d.zip || undefined, city: d.city || undefined, lat: d.lat ?? null, lng: d.lng ?? null });
+      }
+    } catch {
+      /* ignore — free-typed address is still submitted */
+    }
   };
 
   // Map dynamic field values into the lead payload shape.
@@ -190,6 +204,9 @@ export function UnifiedLeadForm({
       else if (f.mapsTo === 'message') messageParts.push(v);
       else metadata[f.name] = v;
     }
+    // ZIP + city auto-derived from the selected address (no separate field).
+    if (addressMeta.zip) metadata.zip = addressMeta.zip;
+    if (addressMeta.city) metadata.city = addressMeta.city;
     return {
       name: (formData.name ?? '').trim(),
       phone: (formData.phone ?? '').trim(),
@@ -415,7 +432,7 @@ export function UnifiedLeadForm({
               className={inputClass}
               style={ringStyle}
               value={addressQuery}
-              onChange={e => { setAddressQuery(e.target.value); setField('address', e.target.value); }}
+              onChange={e => { setAddressQuery(e.target.value); setField('address', e.target.value); setAddressMeta({}); }}
               onFocus={() => { if (predictions.length > 0) setShowPredictions(true); }}
             />
             {showPredictions && predictions.length > 0 && (

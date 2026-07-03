@@ -113,6 +113,16 @@ export function UnifiedLeadForm({
   // Structured location auto-extracted from the selected address (ZIP/city/coords).
   // Merged into lead metadata so we capture ZIP without a separate field.
   const [addressMeta, setAddressMeta] = useState<{ zip?: string; city?: string; lat?: number | null; lng?: number | null }>({});
+  // Lowercased covered city names (lazy-loaded). null = not fetched, [] = none/unknown.
+  const [coverageCities, setCoverageCities] = useState<string[] | null>(null);
+
+  // Soft out-of-area check: only flags when we have a non-empty coverage list AND
+  // the entered city isn't in it. Empty/unknown coverage → never flag (fail-open,
+  // so we never wrongly turn away a serviceable customer).
+  const isOutOfArea = (): boolean => {
+    const c = addressMeta.city?.trim().toLowerCase();
+    return !!c && Array.isArray(coverageCities) && coverageCities.length > 0 && !coverageCities.includes(c);
+  };
 
   // Scheduling state (booking mode only)
   const [loading, setLoading] = useState(false);
@@ -173,6 +183,18 @@ export function UnifiedLeadForm({
     loadAvailability();
   }, [step, siteId, isBookingMode, current?.kind]);
 
+  // Lazily load covered cities once the user reaches a step with an address field
+  // (avoids a DB hit for the majority who never get that far).
+  useEffect(() => {
+    if (coverageCities !== null) return;
+    const stepHasAddress = current?.kind === 'fields' && current.step.fields.some(f => f.type === 'address');
+    if (!stepHasAddress) return;
+    fetch(`/api/sites/${siteId}/coverage`)
+      .then(r => (r.ok ? r.json() : { cities: [] }))
+      .then(d => setCoverageCities(Array.isArray(d.cities) ? d.cities : []))
+      .catch(() => setCoverageCities([]));
+  }, [current, coverageCities, siteId]);
+
   const handleSelectPrediction = async (prediction: AddressPrediction) => {
     setField('address', prediction.description);
     setAddressQuery(prediction.description);
@@ -207,6 +229,8 @@ export function UnifiedLeadForm({
     // ZIP + city auto-derived from the selected address (no separate field).
     if (addressMeta.zip) metadata.zip = addressMeta.zip;
     if (addressMeta.city) metadata.city = addressMeta.city;
+    // Flag out-of-area leads for the owner (we still capture them).
+    if (isOutOfArea()) metadata.out_of_area = 'Yes';
     return {
       name: (formData.name ?? '').trim(),
       phone: (formData.phone ?? '').trim(),
@@ -447,6 +471,11 @@ export function UnifiedLeadForm({
                   </li>
                 ))}
               </ul>
+            )}
+            {isOutOfArea() && (
+              <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Heads up — you may be just outside our usual service area. Go ahead and submit and we&apos;ll confirm when we call.
+              </p>
             )}
           </div>
         );

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, CalendarDays, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ApplianceIcon } from './appliance-icons';
 import type { PublicRenderCategory } from '@/lib/sites/public-render-model';
 import {
   resolveNicheForm,
@@ -347,12 +348,12 @@ export function UnifiedLeadForm({
                     type="button"
                     key={o.value}
                     onClick={() => setField(f.name, o.value)}
-                    className={`flex flex-col items-center gap-1 rounded-xl border p-3 text-center text-sm transition-all ${
-                      selected ? 'border-2 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center text-sm transition-all ${
+                      selected ? 'border-2 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:shadow-sm'
                     }`}
                     style={selected ? { borderColor: accentColor, color: accentColor } : undefined}
                   >
-                    {o.icon && <span className="text-xl" aria-hidden>{o.icon}</span>}
+                    {o.icon && <ApplianceIcon name={o.icon} className="h-7 w-7" />}
                     <span className="font-medium leading-tight">{o.label}</span>
                   </button>
                 );

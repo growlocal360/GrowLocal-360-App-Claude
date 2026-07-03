@@ -28,7 +28,7 @@ export type NicheFieldType =
 export interface NicheFieldOption {
   label: string;
   value: string;
-  icon?: string; // emoji shown on cards
+  icon?: string; // icon key resolved to an SVG on cards (see appliance-icons.tsx)
 }
 
 export interface NicheField {
@@ -126,17 +126,17 @@ const APPLIANCE_FORM: NicheFormConfig = {
           required: true,
           mapsTo: 'service_type',
           options: [
-            { label: 'Refrigerator', value: 'Refrigerator', icon: '🧊' },
-            { label: 'Washer', value: 'Washer', icon: '🌀' },
-            { label: 'Dryer', value: 'Dryer', icon: '💨' },
-            { label: 'Dishwasher', value: 'Dishwasher', icon: '🍽️' },
-            { label: 'Oven / Stove', value: 'Oven / Stove', icon: '🔥' },
-            { label: 'Microwave', value: 'Microwave', icon: '📻' },
-            { label: 'Freezer', value: 'Freezer', icon: '❄️' },
-            { label: 'Ice Maker', value: 'Ice Maker', icon: '🧊' },
-            { label: 'Garbage Disposal', value: 'Garbage Disposal', icon: '🗑️' },
-            { label: 'Wine Cooler', value: 'Wine Cooler', icon: '🍷' },
-            { label: 'Other', value: 'Other', icon: '🔧' },
+            { label: 'Refrigerator', value: 'Refrigerator', icon: 'refrigerator' },
+            { label: 'Washer', value: 'Washer', icon: 'washer' },
+            { label: 'Dryer', value: 'Dryer', icon: 'dryer' },
+            { label: 'Dishwasher', value: 'Dishwasher', icon: 'dishwasher' },
+            { label: 'Oven / Stove', value: 'Oven / Stove', icon: 'oven' },
+            { label: 'Microwave', value: 'Microwave', icon: 'microwave' },
+            { label: 'Freezer', value: 'Freezer', icon: 'freezer' },
+            { label: 'Ice Maker', value: 'Ice Maker', icon: 'ice-maker' },
+            { label: 'Garbage Disposal', value: 'Garbage Disposal', icon: 'garbage-disposal' },
+            { label: 'Wine Cooler', value: 'Wine Cooler', icon: 'wine-cooler' },
+            { label: 'Other', value: 'Other', icon: 'other' },
           ],
         },
         { name: 'brand', label: 'Brand (optional)', type: 'text', placeholder: 'Samsung, LG, Whirlpool…' },

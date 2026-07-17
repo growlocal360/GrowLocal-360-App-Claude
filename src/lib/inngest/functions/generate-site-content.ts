@@ -772,18 +772,12 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 6: Generate service pages (batched by category, 2 at a time)
-    // Microsites: target service + up to 2 siblings in the same category
+    // Generate a page for EVERY service (honoring a selective 'services' scope).
+    // Microsites previously capped at target + 2 same-category siblings, which
+    // left any extra services blank and made selective regen impossible — owners
+    // expect content for every service they add.
     const targetServices = shouldRunServices
-      ? isMicrosite
-        ? (() => {
-            const target = msService ? allServices.find(s => s.name === msService) : null;
-            if (!target) return allServices.slice(0, 3);
-            const siblings = allServices
-              .filter(s => s.site_category_id === target.site_category_id && s.id !== target.id)
-              .slice(0, 2);
-            return [target, ...siblings];
-          })()
-        : (scope.type === 'services' ? allServices.filter(s => scope.serviceIds.includes(s.id)) : allServices)
+      ? (scope.type === 'services' ? allServices.filter(s => scope.serviceIds.includes(s.id)) : allServices)
       : [];
     const servicesBySiteCategory = new Map<string, typeof allServices>();
     for (const service of targetServices) {
@@ -833,8 +827,12 @@ export const generateSiteContent = inngest.createFunction(
               );
             }
 
+            // Generate the batch. A batch call can throw, or return fewer/
+            // misaligned items than requested — never let that silently leave a
+            // service blank while the run still reports success.
+            let serviceContents: Awaited<ReturnType<typeof generateServicePages>> = [];
             try {
-              const serviceContents = await generateServicePages(
+              serviceContents = await generateServicePages(
                 anthropic,
                 site.name,
                 primaryLocation.city,
@@ -843,37 +841,58 @@ export const generateSiteContent = inngest.createFunction(
                 batch.map((s) => ({ name: s.name, description: s.description || '' })),
                 contentDirectives
               );
-
-              for (let j = 0; j < batch.length; j++) {
-                const service = batch[j];
-                const content = serviceContents[j];
-
-                if (content) {
-                  await supabase
-                    .from('services')
-                    .update({
-                      meta_title: content.meta_title,
-                      meta_description: content.meta_description,
-                      h1: content.h1,
-                      body_copy: content.body_copy,
-                      intro_copy: content.intro_copy || null,
-                      problems: content.problems || null,
-                      detailed_sections: content.detailed_sections || null,
-                      faqs: content.faqs,
-                      image_prompts: getServiceImageReuse(service.site_category_id),
-                      generated_images: categoryImages,
-                    })
-                    .eq('id', service.id);
-                }
-
-                completed++;
-              }
-              await log(`Generated services: ${batchLabel}`, `generate-services-${batch[0].id}`);
             } catch (batchError) {
               console.error(`Failed to generate service batch: ${batchLabel}`, batchError);
-              await log(`Failed to generate services: ${batchLabel}`, `generate-services-${batch[0].id}`, 'error');
-              completed += batch.length;
+              await log(`Batch failed for ${batchLabel} — retrying each service individually`, `generate-services-${batch[0].id}`, 'error');
             }
+
+            for (let j = 0; j < batch.length; j++) {
+              const service = batch[j];
+              let content = serviceContents[j];
+
+              // Per-service retry: covers a thrown batch or a short/misaligned
+              // response so a service is never left with no content.
+              if (!content) {
+                try {
+                  const retry = await generateServicePages(
+                    anthropic,
+                    site.name,
+                    primaryLocation.city,
+                    primaryLocation.state,
+                    catNameForServices,
+                    [{ name: service.name, description: service.description || '' }],
+                    contentDirectives
+                  );
+                  content = retry[0];
+                } catch (retryError) {
+                  console.error(`Retry failed for service: ${service.name}`, retryError);
+                }
+              }
+
+              if (content) {
+                await supabase
+                  .from('services')
+                  .update({
+                    meta_title: content.meta_title,
+                    meta_description: content.meta_description,
+                    h1: content.h1,
+                    body_copy: content.body_copy,
+                    intro_copy: content.intro_copy || null,
+                    problems: content.problems || null,
+                    detailed_sections: content.detailed_sections || null,
+                    faqs: content.faqs,
+                    image_prompts: getServiceImageReuse(service.site_category_id),
+                    generated_images: categoryImages,
+                  })
+                  .eq('id', service.id);
+              } else {
+                // Surface the failure instead of marking it done silently.
+                await log(`Could not generate content for service: ${service.name}`, `generate-services-${service.id}`, 'error');
+              }
+
+              completed++;
+            }
+            await log(`Generated services: ${batchLabel}`, `generate-services-${batch[0].id}`);
 
             return completed;
           }
@@ -1032,11 +1051,11 @@ export const generateSiteContent = inngest.createFunction(
     }
 
     // Step 8.5: Generate neighborhood pages (batched, 5 at a time with enriched context)
-    // Microsites: skip neighborhoods (city-level focus)
+    // Every neighborhood gets unique, landmark-based AI content. Previously skipped
+    // for microsites, which left neighborhood pages showing empty-state boilerplate;
+    // a microsite still benefits from real per-neighborhood pages.
     const targetNeighborhoods = shouldRunNeighborhoods
-      ? isMicrosite
-        ? []
-        : (scope.type === 'neighborhoods' ? allNeighborhoods.filter(n => scope.neighborhoodIds.includes(n.id)) : allNeighborhoods)
+      ? (scope.type === 'neighborhoods' ? allNeighborhoods.filter(n => scope.neighborhoodIds.includes(n.id)) : allNeighborhoods)
       : [];
     if (targetNeighborhoods.length > 0) {
       // Pre-fetch real landmarks for all neighborhoods via Google Places API
@@ -1359,6 +1378,15 @@ async function generateCorePages(
   const brandHome = websiteType === 'single_location' && !opts?.homepageIsPrimaryMarket;
   const areaPhrase = opts?.areaContext ? ` (${opts.areaContext})` : '';
 
+  // The keyword the home page's H1/meta must target. For a microsite this is the
+  // microsite's target service (optionally brand-prefixed) — NOT the primary GBP
+  // category — so the home page owns "{target service} in {city}" instead of an
+  // internal category. For every other site type it's the primary category.
+  const homeCategoryLabel =
+    websiteType === 'microsite' && micrositeContext?.service
+      ? `${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service}`
+      : primaryCategory;
+
   const homePageFocus =
     websiteType === 'microsite' && micrositeContext?.service
       ? `This is a MICROSITE (EMD). The home page is the primary landing page for "${micrositeContext.service}" in ${city}, ${state}.${micrositeContext.brand ? ` This site focuses specifically on ${micrositeContext.brand} products/services.` : ' Mention all major brands served.'} The H1 MUST be the exact-match keyword: "${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service} in ${city}, ${state}". Every element should reinforce this niche.`
@@ -1386,9 +1414,9 @@ CRITICAL FORMATTING RULES:
 ${brandHome ? `- meta_title for home: BRAND-forward, e.g. "${businessName} | ${primaryCategory}" (max 60 chars). Do NOT use the pattern "${primaryCategory} in ${city}" — that belongs to the Primary Market page.
 - h1 for home: BRAND-LEVEL — it must NOT contain any city name. Establish the brand + service category. Good examples: "${businessName}: Expert ${primaryCategory}", "Trusted ${primaryCategory} from ${businessName}", "${primaryCategory} Done Right — ${businessName}". NEVER "${primaryCategory} in ${city}" and NEVER generic "Professional Services".
 - meta_description for home: mention ${businessName}, the primary category, the BROAD service area (the region/multiple cities — not a single city), and a CTA.
-- hero_description: a brand value proposition spanning the whole service area; mention specific services, not a single city.` : `- meta_title for home MUST follow this exact pattern: "${primaryCategory} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the category or city)
-- meta_description for home MUST mention the primary category, city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${primaryCategory.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"
-- h1 for home MUST include the primary category and location. Pattern: "${primaryCategory} in ${city}, ${state}" or "Your Trusted ${primaryCategory} in ${city}, ${state}" — NEVER use generic phrases like "Professional Services"
+- hero_description: a brand value proposition spanning the whole service area; mention specific services, not a single city.` : `- meta_title for home MUST follow this exact pattern: "${homeCategoryLabel} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the keyword or city)
+- meta_description for home MUST mention "${homeCategoryLabel}", city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${homeCategoryLabel.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"
+- h1 for home MUST include the keyword and location. Pattern: "${homeCategoryLabel} in ${city}, ${state}" or "Your Trusted ${homeCategoryLabel} in ${city}, ${state}" — NEVER use generic phrases like "Professional Services"
 - hero_description MUST mention specific services or capabilities, NOT generic "professional services" language`}
 - Contact page meta_title: "Contact ${businessName} | ${city}, ${state}"
 
@@ -1403,7 +1431,7 @@ BANNED PHRASES (never use these):
 For EACH page, provide:
 1. meta_title: SEO title following the patterns above (max 60 chars)
 2. meta_description: Compelling description with CTA (max 155 chars). Mention specific services.
-3. h1: Main heading — must include the primary category name
+3. h1: Main heading — must include "${homeCategoryLabel}"
 4. h2: Supporting subheading (for home page: something action-oriented like "Expert ${primaryCategory} You Can Count On" or a value proposition mentioning 2-3 specific services)
 5. hero_description: 1-2 sentence hero subheading (compelling value proposition with specific services mentioned, used below the H1)
 6. body_copy: Main content block:

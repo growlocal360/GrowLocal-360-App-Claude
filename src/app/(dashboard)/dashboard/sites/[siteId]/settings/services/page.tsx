@@ -318,12 +318,25 @@ export default function ServicesPage() {
         throw new Error(data.error || 'Failed to generate content');
       }
 
-      // Mark service as having content (will be confirmed on next fetch)
-      setServices((prev) =>
-        prev.map((s) => (s.id === serviceId ? { ...s, h1: 'generating...' } : s))
-      );
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+
+      // Poll the real service data until the regenerated content lands, so the
+      // status dot reflects reality (no fake "optimistic" green). Times out after
+      // a few minutes; if the dot is still gray then, generation genuinely failed.
+      const startedAt = Date.now();
+      const MAX_MS = 4 * 60 * 1000;
+      while (Date.now() - startedAt < MAX_MS) {
+        await new Promise((r) => setTimeout(r, 4000));
+        const res = await fetch(`/api/sites/${siteId}/settings/services`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        setServices(data.services || []);
+        const svc = (data.services || []).find(
+          (s: { id: string; h1: string | null }) => s.id === serviceId
+        );
+        if (svc?.h1) break; // content persisted
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate content');
     } finally {
@@ -457,9 +470,15 @@ export default function ServicesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleGenerateContent(service.id)}
-                            disabled={generatingId === service.id || actionLoading === service.id}
+                            disabled={generatingId !== null || actionLoading === service.id}
                             className="text-xs"
-                            title={service.h1 ? 'Regenerate content' : 'Generate content'}
+                            title={
+                              generatingId && generatingId !== service.id
+                                ? 'Another service is generating…'
+                                : service.h1
+                                ? 'Regenerate content'
+                                : 'Generate content'
+                            }
                           >
                             {generatingId === service.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />

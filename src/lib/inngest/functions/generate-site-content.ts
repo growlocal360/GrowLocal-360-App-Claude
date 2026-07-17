@@ -827,8 +827,12 @@ export const generateSiteContent = inngest.createFunction(
               );
             }
 
+            // Generate the batch. A batch call can throw, or return fewer/
+            // misaligned items than requested — never let that silently leave a
+            // service blank while the run still reports success.
+            let serviceContents: Awaited<ReturnType<typeof generateServicePages>> = [];
             try {
-              const serviceContents = await generateServicePages(
+              serviceContents = await generateServicePages(
                 anthropic,
                 site.name,
                 primaryLocation.city,
@@ -837,37 +841,58 @@ export const generateSiteContent = inngest.createFunction(
                 batch.map((s) => ({ name: s.name, description: s.description || '' })),
                 contentDirectives
               );
-
-              for (let j = 0; j < batch.length; j++) {
-                const service = batch[j];
-                const content = serviceContents[j];
-
-                if (content) {
-                  await supabase
-                    .from('services')
-                    .update({
-                      meta_title: content.meta_title,
-                      meta_description: content.meta_description,
-                      h1: content.h1,
-                      body_copy: content.body_copy,
-                      intro_copy: content.intro_copy || null,
-                      problems: content.problems || null,
-                      detailed_sections: content.detailed_sections || null,
-                      faqs: content.faqs,
-                      image_prompts: getServiceImageReuse(service.site_category_id),
-                      generated_images: categoryImages,
-                    })
-                    .eq('id', service.id);
-                }
-
-                completed++;
-              }
-              await log(`Generated services: ${batchLabel}`, `generate-services-${batch[0].id}`);
             } catch (batchError) {
               console.error(`Failed to generate service batch: ${batchLabel}`, batchError);
-              await log(`Failed to generate services: ${batchLabel}`, `generate-services-${batch[0].id}`, 'error');
-              completed += batch.length;
+              await log(`Batch failed for ${batchLabel} — retrying each service individually`, `generate-services-${batch[0].id}`, 'error');
             }
+
+            for (let j = 0; j < batch.length; j++) {
+              const service = batch[j];
+              let content = serviceContents[j];
+
+              // Per-service retry: covers a thrown batch or a short/misaligned
+              // response so a service is never left with no content.
+              if (!content) {
+                try {
+                  const retry = await generateServicePages(
+                    anthropic,
+                    site.name,
+                    primaryLocation.city,
+                    primaryLocation.state,
+                    catNameForServices,
+                    [{ name: service.name, description: service.description || '' }],
+                    contentDirectives
+                  );
+                  content = retry[0];
+                } catch (retryError) {
+                  console.error(`Retry failed for service: ${service.name}`, retryError);
+                }
+              }
+
+              if (content) {
+                await supabase
+                  .from('services')
+                  .update({
+                    meta_title: content.meta_title,
+                    meta_description: content.meta_description,
+                    h1: content.h1,
+                    body_copy: content.body_copy,
+                    intro_copy: content.intro_copy || null,
+                    problems: content.problems || null,
+                    detailed_sections: content.detailed_sections || null,
+                    faqs: content.faqs,
+                    image_prompts: getServiceImageReuse(service.site_category_id),
+                    generated_images: categoryImages,
+                  })
+                  .eq('id', service.id);
+              } else {
+                // Surface the failure instead of marking it done silently.
+                await log(`Could not generate content for service: ${service.name}`, `generate-services-${service.id}`, 'error');
+              }
+
+              completed++;
+            }
+            await log(`Generated services: ${batchLabel}`, `generate-services-${batch[0].id}`);
 
             return completed;
           }

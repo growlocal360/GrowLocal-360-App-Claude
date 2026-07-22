@@ -28,20 +28,20 @@ export async function createWorkspaceSite(
 ): Promise<{ siteId: string; slug: string }> {
   const { organizationId, userId, businessName, industry, city, state, phone } = args;
 
-  // Idempotency: an org needs only one Job Snaps workspace. A repeated Stripe
-  // webhook (subscription created + updated, re-checkout, retries) must not mint
-  // a second identical workspace. Reuse the existing one if present.
-  const { data: existing } = await supabase
+  // An account can have as many Job Snaps workspaces as it wants — but they must
+  // be DISTINGUISHABLE. If the name already exists in the org, append a counter
+  // ("The Appliance Guys" → "The Appliance Guys (2)") so the workspace picker
+  // never shows two identical entries.
+  const { data: orgSites } = await supabase
     .from('sites')
-    .select('id, slug, settings')
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: true })
-    .limit(50);
-  const existingWorkspace = (existing || []).find(
-    (s) => (s.settings as Record<string, unknown> | null)?.workspace_only === true
+    .select('name')
+    .eq('organization_id', organizationId);
+  const existingNames = new Set(
+    (orgSites || []).map((s) => (s.name || '').trim().toLowerCase())
   );
-  if (existingWorkspace) {
-    return { siteId: existingWorkspace.id, slug: existingWorkspace.slug };
+  let uniqueName = businessName;
+  for (let n = 2; existingNames.has(uniqueName.trim().toLowerCase()); n++) {
+    uniqueName = `${businessName} (${n})`;
   }
 
   // Generate a unique-ish slug. Workspace sites aren't publicly resolvable,
@@ -57,7 +57,7 @@ export async function createWorkspaceSite(
     .from('sites')
     .insert({
       organization_id: organizationId,
-      name: businessName,
+      name: uniqueName,
       slug,
       website_type: 'single_location',
       status: 'active',

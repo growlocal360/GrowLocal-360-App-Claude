@@ -339,6 +339,11 @@
 
 .tpl-premium .pm-layout { display:grid; grid-template-columns: 1fr; gap: 40px; align-items:start; }
 @media (min-width:960px){ .tpl-premium .pm-layout { grid-template-columns: 1fr 360px; gap:56px; } }
+/* Let the sidebar cell fill the full row height so the sticky form has room to
+   travel. Without this, align-items:start collapses the cell to the form's own
+   height, leaving the sticky element nowhere to pin — it scrolls up under the
+   header instead. The form itself stays content-height and sticks at top:104px. */
+.tpl-premium .pm-layout > aside { align-self: stretch; }
 .tpl-premium .pm-prose > * + * { margin-top: 18px; }
 .tpl-premium .pm-prose h2 { font-size: 30px; margin-top: 40px; margin-bottom: 4px; }
 .tpl-premium .pm-prose h3 { font-size: 22px; margin-top: 30px; }

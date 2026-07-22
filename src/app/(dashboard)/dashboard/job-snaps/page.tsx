@@ -444,6 +444,11 @@ export default function JobSnapsPage() {
           <OnboardingChecklist
             hasSnaps={false}
             onConnectClick={() => setActiveTab('connect')}
+            onGbpConnectClick={() => {
+              const target = selectedWorkspace !== 'all' ? selectedWorkspace : workspaceSites[0]?.id;
+              if (target) startGbpConnect(target, window.location.pathname);
+              else toast.error('No Job Snaps workspace found yet — please refresh and try again.');
+            }}
           />
         )}
 

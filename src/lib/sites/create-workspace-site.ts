@@ -28,6 +28,22 @@ export async function createWorkspaceSite(
 ): Promise<{ siteId: string; slug: string }> {
   const { organizationId, userId, businessName, industry, city, state, phone } = args;
 
+  // Idempotency: an org needs only one Job Snaps workspace. A repeated Stripe
+  // webhook (subscription created + updated, re-checkout, retries) must not mint
+  // a second identical workspace. Reuse the existing one if present.
+  const { data: existing } = await supabase
+    .from('sites')
+    .select('id, slug, settings')
+    .eq('organization_id', organizationId)
+    .order('created_at', { ascending: true })
+    .limit(50);
+  const existingWorkspace = (existing || []).find(
+    (s) => (s.settings as Record<string, unknown> | null)?.workspace_only === true
+  );
+  if (existingWorkspace) {
+    return { siteId: existingWorkspace.id, slug: existingWorkspace.slug };
+  }
+
   // Generate a unique-ish slug. Workspace sites aren't publicly resolvable,
   // but the slug column on sites has a uniqueness constraint per org.
   const baseSlug = businessName

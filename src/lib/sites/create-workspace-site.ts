@@ -28,6 +28,22 @@ export async function createWorkspaceSite(
 ): Promise<{ siteId: string; slug: string }> {
   const { organizationId, userId, businessName, industry, city, state, phone } = args;
 
+  // An account can have as many Job Snaps workspaces as it wants — but they must
+  // be DISTINGUISHABLE. If the name already exists in the org, append a counter
+  // ("The Appliance Guys" → "The Appliance Guys (2)") so the workspace picker
+  // never shows two identical entries.
+  const { data: orgSites } = await supabase
+    .from('sites')
+    .select('name')
+    .eq('organization_id', organizationId);
+  const existingNames = new Set(
+    (orgSites || []).map((s) => (s.name || '').trim().toLowerCase())
+  );
+  let uniqueName = businessName;
+  for (let n = 2; existingNames.has(uniqueName.trim().toLowerCase()); n++) {
+    uniqueName = `${businessName} (${n})`;
+  }
+
   // Generate a unique-ish slug. Workspace sites aren't publicly resolvable,
   // but the slug column on sites has a uniqueness constraint per org.
   const baseSlug = businessName
@@ -41,7 +57,7 @@ export async function createWorkspaceSite(
     .from('sites')
     .insert({
       organization_id: organizationId,
-      name: businessName,
+      name: uniqueName,
       slug,
       website_type: 'single_location',
       status: 'active',

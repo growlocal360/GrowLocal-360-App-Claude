@@ -10,6 +10,8 @@ interface OnboardingChecklistProps {
   hasGbpConnection?: boolean;
   hasApiKey?: boolean;
   onConnectClick?: () => void;
+  /** Launch the Google Business Profile connect flow (org-level, no site needed). */
+  onGbpConnectClick?: () => void;
 }
 
 /**
@@ -22,6 +24,7 @@ export function OnboardingChecklist({
   hasGbpConnection,
   hasApiKey,
   onConnectClick,
+  onGbpConnectClick,
 }: OnboardingChecklistProps) {
   const items = [
     {
@@ -50,8 +53,9 @@ export function OnboardingChecklist({
       sublabel: 'Auto-post snaps to GBP',
       done: !!hasGbpConnection,
       cta: hasGbpConnection ? null : (
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard/sites">Connect</Link>
+        <Button variant="outline" size="sm" onClick={onGbpConnectClick}>
+          <Globe className="h-4 w-4 mr-2" />
+          Connect
         </Button>
       ),
       icon: Globe,

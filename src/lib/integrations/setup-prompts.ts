@@ -144,6 +144,28 @@ type WebhookEvent = {
 
 // ── Next.js prompt (the main one) ───────────────────────────────────────
 
+// Shared across framework prompts: instruct the integrator's AI to surface snaps
+// on the site's EXISTING service/city/brand pages, not just the /work/ hub.
+// `revalidateNote` carries the framework-specific "keep these fresh" guidance.
+function relatedPagesSection(revalidateNote: string): string {
+  return `## Surface snaps on my EXISTING pages (beyond /work/)
+
+The biggest SEO win is showing relevant recent jobs on the pages I ALREADY have — not only the /work/ hub. **Only wire up pages that already exist on my site. Do NOT create new service, city, or brand pages.**
+
+For each existing page of these types, add a "Recent Jobs" section: a small grid of 2–6 snap cards that reuse the /work/ card design (featured image with alt = \`snap.alt_text\`, \`snap.h1\` or \`snap.title\`, and \`snap.public_location_label\`) and link to \`snap.url_path\`. Query the local \`snaps\` table (no extra API calls) ordered by \`published_at DESC\`:
+
+- **Service pages** (e.g. /washer-dryer-repair/): match snaps whose \`equipment_type\` OR \`service_type\` fits the page's service. Match loosely and case-insensitively, allowing synonyms — a "Washer & Dryer Repair" page should include snaps with an \`equipment_type\` of "Washer"/"Dryer" or a \`service_type\` of "Washing Machine Repair"/"Dryer Repair".
+- **City / location pages** (e.g. /vineyard/, or a service-area page): match snaps whose \`location.city\` equals the page's city (case-insensitive). If a small town has few snaps, you may backfill with snaps from a nearby parent city/metro — but list exact-city matches first.
+- **Brand pages** (e.g. /brands/samsung/), if I have them: match snaps whose \`brand\` equals the page's brand (case-insensitive).
+
+Rules:
+- Cap each section (e.g. 6 snaps) so pages stay fast, and **hide the section entirely when there are no matching snaps** (no empty state).
+- A snap can legitimately appear on its service page, its city page, and /work/ at the same time — that is expected.
+- ${revalidateNote}
+
+**Deliverable:** a reusable "Recent Jobs" section/component with these filters, wired into whichever existing service, city, and brand pages my site already has.`;
+}
+
 function nextjsPrompt(p: SetupPromptParams): string {
   const apiBase = p.apiBase;
   const apiKey = placeholder(p.apiKey, 'PASTE_YOUR_API_KEY_HERE');
@@ -253,6 +275,8 @@ Create \`app/work/[slug]/page.tsx\`:
 - Render \`snap.h1\` as the page H1, all photos in a gallery (each via \`<Image>\` with proper width/height + \`priority\` on the featured image), \`snap.description\`, \`snap.public_location_label\`.
 - Set page metadata via \`generateMetadata\`: \`title = snap.meta_title\`, \`description = snap.meta_description\`, OG image = first media url, OG title = snap.meta_title.
 - Add JSON-LD structured data (Article schema) using the structured fields directly: \`brand\`, \`service_type\`, \`primary_problem\`, \`location.city\`, \`location.state_abbr\`, etc.
+
+${relatedPagesSection('In the webhook handler, also revalidate the affected service and city pages after each upsert/unpublish (call revalidatePath for the matching service page path and the snap city page) so they refresh alongside /work/.')}
 
 ## Override (advanced)
 
@@ -464,6 +488,8 @@ For lazy-loaded gallery images on the detail page, use \`loading="lazy"\` and sk
 
 **Test it:** after deploy, visit \`/work\`, inspect any snap image. The \`src\` attribute should read \`/public/snaps/...\` (relative) or \`https://<my-domain>/public/snaps/...\` (absolute). It should NOT contain \`supabase.co\`. The image bytes still come from Supabase's CDN — but the URL is on my domain.
 
+${relatedPagesSection('Render these sections in SSR mode (add export const prerender = false to those pages or the shared component) so they reflect new snaps immediately, same as the /work/ pages. If a page is static, trigger the Vercel deploy hook from the webhook instead.')}
+
 ## Override (advanced)
 
 GL360-generated fields are the recommended defaults. Structured fields (\`brand\`, \`primary_problem\`, \`city\`, \`state_abbr\`, etc.) are available in the payload if there's a real reason to override naming for a specific site, but otherwise use the pre-computed values verbatim.
@@ -585,6 +611,8 @@ Build a small WordPress plugin (or add to a child theme's \`functions.php\`):
 
 ${PAYLOAD_REFERENCE_BLOCK}
 
+${relatedPagesSection('Expose these as shortcodes/blocks (e.g. [jobsnaps service="washer-dryer-repair"], [jobsnaps city="vineyard"], [jobsnaps brand="samsung"]) that I can drop into my existing service, city, and brand pages, and clear the relevant page cache on webhook.')}
+
 ## Override (advanced)
 
 GL360-generated fields are the recommended defaults. The structured fields are available in the payload if you need to compute custom naming for a specific site, but only do so deliberately.
@@ -657,6 +685,10 @@ Please integrate this API into my application. Consider:
 3. If there's caching available (Redis, KV, etc.), use it — recommended TTL is 5 minutes.
 4. If this is a frontend app, fetch server-side or via an API route to keep the API key off the browser.
 5. **When rendering snaps, prefer the pre-computed SEO fields** (\`slug\`, \`url_path\`, \`meta_title\`, \`h1\`, \`meta_description\`, \`alt_text\`, \`public_location_label\`, \`image_filename\`). Structured fields are there for filtering, faceting, or advanced customization only.
+
+## Faceting snaps onto existing pages
+
+Beyond a single gallery, use the list filters to surface relevant snaps on the pages I already have: filter by service_type or equipment_type for service pages, by location city for city/area pages, and by brand for brand pages. Reuse each snap's pre-computed url_path, h1, alt_text, and public_location_label when rendering — don't regenerate them.
 
 ## Tip — for SEO, prefer webhooks over live API fetches
 

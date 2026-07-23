@@ -200,7 +200,10 @@ export function generatePublicLocationLabel(parts: LocationLabelParts): string {
   const cityState = [city, stateAbbr].filter(Boolean).join(', ');
 
   const neighborhood = sanitizeText(parts.neighborhood);
-  if (neighborhood) {
+  // Skip the neighborhood when it's the same as the city (common in small towns
+  // where Google returns the same name for sublocality + locality) — otherwise
+  // the label doubles up, e.g. "Vineyard, Vineyard, UT".
+  if (neighborhood && neighborhood.toLowerCase() !== city.toLowerCase()) {
     return [neighborhood, cityState].filter(Boolean).join(', ');
   }
 
@@ -445,7 +448,9 @@ export function generateJobSnapH1(parts: H1Parts): string {
     h1 = [problem, service].filter(Boolean).join(' ');
   }
 
-  if (neighborhood && cityState) {
+  // Don't repeat the city as a neighborhood (e.g. "in Vineyard, Vineyard, UT").
+  const distinctNeighborhood = neighborhood && neighborhood.toLowerCase() !== city.toLowerCase();
+  if (distinctNeighborhood && cityState) {
     h1 += ` in ${neighborhood}, ${cityState}`;
   } else if (cityState) {
     h1 += ` in ${cityState}`;

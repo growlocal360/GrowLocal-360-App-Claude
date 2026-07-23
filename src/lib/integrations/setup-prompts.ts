@@ -161,6 +161,7 @@ For each existing page of these types, add a "Recent Jobs" section: a small grid
 Rules:
 - Cap each section (e.g. 6 snaps) so pages stay fast, and **hide the section entirely when there are no matching snaps** (no empty state).
 - A snap can legitimately appear on its service page, its city page, and /work/ at the same time — that is expected.
+- **Keep it fast.** Index the columns you filter on (\`service_type\`/\`equipment_type\`, the city inside \`location\`, and \`brand\` — an expression/normalized index for the JSONB city), select only the card fields (not \`SELECT *\`), \`LIMIT\` each section, and lazy-load images below the fold with explicit width/height to avoid layout shift.
 - ${revalidateNote}
 
 **Deliverable:** a reusable "Recent Jobs" section/component with these filters, wired into whichever existing service, city, and brand pages my site already has.`;
@@ -488,7 +489,7 @@ For lazy-loaded gallery images on the detail page, use \`loading="lazy"\` and sk
 
 **Test it:** after deploy, visit \`/work\`, inspect any snap image. The \`src\` attribute should read \`/public/snaps/...\` (relative) or \`https://<my-domain>/public/snaps/...\` (absolute). It should NOT contain \`supabase.co\`. The image bytes still come from Supabase's CDN — but the URL is on my domain.
 
-${relatedPagesSection('Render these sections in SSR mode (add export const prerender = false to those pages or the shared component) so they reflect new snaps immediately, same as the /work/ pages. If a page is static, trigger the Vercel deploy hook from the webhook instead.')}
+${relatedPagesSection('Freshness: if these are static local-SEO pages, KEEP them static (that Lighthouse-100 static HTML is a ranking asset) and refresh them with a Vercel deploy-hook rebuild triggered from the webhook — and DEBOUNCE it (one rebuild after a short quiet period, e.g. 60s) so a batch of publishes does not cause a rebuild storm. The secondary sections then update within ~a minute of publishing, which is fine. Only switch these pages to SSR (export const prerender = false) if you specifically need sub-minute freshness on them; /work/ already stays instant via SSR regardless.')}
 
 ## Override (advanced)
 

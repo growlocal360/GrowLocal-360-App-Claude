@@ -246,9 +246,14 @@ export const generateSiteContent = inngest.createFunction(
     const secondaryCategoryNames = siteCategories
       .filter((c) => !c.is_primary)
       .map((c) => getCategoryName(c));
+    // Only combine for a clean 2-category (dual-niche) business — "HVAC & Appliance
+    // Repair". A business with 3+ GBP categories is usually one niche expressed as
+    // several categories (AC repair / HVAC contractor / Heating contractor / …);
+    // joining them all makes a garbage H1, so fall back to the primary. Owners can
+    // hand-edit the home H1 later for precise control.
     const homeCategoriesLabel =
-      secondaryCategoryNames.length > 0
-        ? [categoryName, ...secondaryCategoryNames].join(' & ')
+      secondaryCategoryNames.length === 1
+        ? `${categoryName} & ${secondaryCategoryNames[0]}`
         : categoryName;
     const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings)
       + await buildGSCContext(siteId);

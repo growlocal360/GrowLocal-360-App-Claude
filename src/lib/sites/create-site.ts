@@ -75,6 +75,9 @@ export interface WizardGSCQueryData {
 
 export interface WizardBrand {
   name: string;
+  // AI-inferred best-fit GBP category display name, or 'both'. Resolved to a
+  // site_category_id on insert. Omitted/undefined → NULL (all niches).
+  category?: string | null;
 }
 
 export interface WizardSiteData {
@@ -483,6 +486,14 @@ export async function createSiteFromWizardData(
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
 
+      // Resolve the AI-inferred niche to a site_category_id. "both"/unknown → NULL
+      // (applies to all niches). Only meaningful for multi-category (dual-niche) sites.
+      const brandCategory = brand.category?.trim().toLowerCase();
+      const brandSiteCategoryId =
+        brandCategory && brandCategory !== 'both'
+          ? categoryNameMap[brandCategory] ?? null
+          : null;
+
       const { error: brandError } = await supabase
         .from('site_brands')
         .insert({
@@ -491,6 +502,7 @@ export async function createSiteFromWizardData(
           slug: brandSlug,
           sort_order: i,
           is_active: true,
+          site_category_id: brandSiteCategoryId,
         });
 
       if (brandError) {

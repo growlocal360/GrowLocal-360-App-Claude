@@ -14,6 +14,7 @@ import {
   toPublicAreaListing, toPublicReview, toPublicWorkItem, toPublicCategory,
 } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { filterServicesForBrand } from '@/lib/sites/brand-niche';
 
 export const revalidate = 60;
 
@@ -130,11 +131,16 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
       id: s.id,
       name: s.name,
       slug: s.slug,
+      site_category_id: s.site_category_id,
       categoryName: cat?.gbp_category.display_name || '',
       categorySlug: cat ? normalizeCategorySlug(cat.gbp_category.display_name) : '',
       isPrimaryCategory: cat?.is_primary ?? false,
     };
   });
+
+  // Niche filter: a brand tied to a category (Carrier → HVAC) only lists that
+  // category's services; a "Both" brand (site_category_id null) lists them all.
+  const brandServices = filterServicesForBrand(allServices, brand.site_category_id);
 
   const TemplateComp = getTemplate(site.template_id).BrandDetail;
   return (
@@ -142,7 +148,7 @@ export default async function BrandDetailPageRoute({ params }: BrandDetailPagePr
       site={toPublicSite(site, { hasBrands: brands.length > 0 })}
       brand={toPublicBrandDetail(brand)}
       primaryLocation={primaryLocation ? toPublicLocation(primaryLocation) : null}
-      services={allServices}
+      services={brandServices}
       serviceAreas={serviceAreas.map(toPublicAreaListing)}
       brands={brands.map(toPublicBrandListing)}
       categories={navCategories}

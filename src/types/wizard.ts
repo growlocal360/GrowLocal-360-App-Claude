@@ -82,6 +82,9 @@ export interface WizardBrand {
   name: string;
   isSelected: boolean;
   isCustom: boolean;
+  // Best-fit GBP category display name for this brand (AI-inferred), or 'both'
+  // when it spans niches. Resolved to a site_category_id at site creation.
+  category?: string | null;
 }
 
 // Services offered by the business

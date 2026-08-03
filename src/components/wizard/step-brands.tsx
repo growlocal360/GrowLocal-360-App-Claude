@@ -71,11 +71,12 @@ export function StepBrands() {
 
         if (data.brands && data.brands.length > 0) {
           const suggestedBrands: WizardBrand[] = data.brands.map(
-            (brand: { name: string }, index: number) => ({
+            (brand: { name: string; category?: string | null }) => ({
               id: `ai-${brand.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
               name: brand.name,
               isSelected: true,
               isCustom: false,
+              category: brand.category ?? null,
             })
           );
           setBrands(suggestedBrands);

@@ -8,6 +8,7 @@ import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirect
 import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content/image-prompts';
 import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
 import { computeSitePlan, toStoredSitePlan } from '@/lib/sites/site-plan-store';
+import { resolveBrandCategoryName } from '@/lib/sites/brand-niche';
 import type { SiteSettings, GenerationScope, GeneratedImage } from '@/types/database';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -213,6 +214,7 @@ export const generateSiteContent = inngest.createFunction(
           name: b.name,
           slug: b.slug,
           h1: b.h1 || null,
+          site_category_id: b.site_category_id || null,
         })),
         allNeighborhoods: (neighborhoods || []).map((n) => ({
           id: n.id,
@@ -237,6 +239,17 @@ export const generateSiteContent = inngest.createFunction(
 
     const wasAlreadyActive = site.status === 'active';
     const categoryName = getCategoryName(primaryCategory);
+    // Dual-niche support: map each site_category to its display name, and build a
+    // combined home label ("HVAC & Appliance Repair"). For single-category sites
+    // homeCategoriesLabel === categoryName, so nothing changes.
+    const categoryNameById = new Map(siteCategories.map((c) => [c.id, getCategoryName(c)]));
+    const secondaryCategoryNames = siteCategories
+      .filter((c) => !c.is_primary)
+      .map((c) => getCategoryName(c));
+    const homeCategoriesLabel =
+      secondaryCategoryNames.length > 0
+        ? [categoryName, ...secondaryCategoryNames].join(' & ')
+        : categoryName;
     const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings)
       + await buildGSCContext(siteId);
 
@@ -563,7 +576,7 @@ export const generateSiteContent = inngest.createFunction(
             site.website_type,
             contentDirectives,
             isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined,
-            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext }
+            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext, homeCategoriesLabel }
           );
 
           // Filter to only the requested pages
@@ -984,12 +997,24 @@ export const generateSiteContent = inngest.createFunction(
         : (scope.type === 'brands' ? allBrands.filter(b => scope.brandIds.includes(b.id)) : allBrands)
       : [];
     if (targetBrands.length > 0) {
+      // Group brands by niche so each brand page is generated against ITS category
+      // (Carrier → HVAC, Whirlpool → Appliance). A brand with no niche
+      // (site_category_id null = "Both") uses the combined home label.
+      const brandGroups = new Map<string, typeof targetBrands>();
+      for (const b of targetBrands) {
+        const cat = resolveBrandCategoryName(b.site_category_id, categoryNameById, homeCategoriesLabel);
+        if (!brandGroups.has(cat)) brandGroups.set(cat, []);
+        brandGroups.get(cat)!.push(b);
+      }
+
       const brandBatchSize = 5;
-      for (let i = 0; i < targetBrands.length; i += brandBatchSize) {
-        const batch = targetBrands.slice(i, i + brandBatchSize);
+      let brandGroupIndex = 0;
+      for (const [brandCategoryName, groupBrands] of brandGroups) {
+       for (let i = 0; i < groupBrands.length; i += brandBatchSize) {
+        const batch = groupBrands.slice(i, i + brandBatchSize);
 
         completedTasks = await step.run(
-          `generate-brands-batch-${i}`,
+          `generate-brands-g${brandGroupIndex}-batch-${i}`,
           async () => {
             let completed = completedTasks;
             const anthropic = createAnthropicClient();
@@ -1008,7 +1033,7 @@ export const generateSiteContent = inngest.createFunction(
                 site.name,
                 primaryLocation.city,
                 primaryLocation.state,
-                categoryName,
+                brandCategoryName,
                 batch.map((b) => ({ name: b.name, slug: b.slug })),
                 contentDirectives
               );
@@ -1047,6 +1072,8 @@ export const generateSiteContent = inngest.createFunction(
             return completed;
           }
         );
+       }
+       brandGroupIndex++;
       }
     }
 
@@ -1370,7 +1397,7 @@ async function generateCorePages(
   websiteType: string,
   directives: string = '',
   micrositeContext?: { service?: string; brand?: string },
-  opts?: { homepageIsPrimaryMarket?: boolean; areaContext?: string }
+  opts?: { homepageIsPrimaryMarket?: boolean; areaContext?: string; homeCategoriesLabel?: string }
 ) {
   // v5 rule 11: a single-location business's home page stays BRAND-LEVEL (no city
   // in the H1) so it doesn't cannibalize the Primary Market page — UNLESS the
@@ -1382,10 +1409,13 @@ async function generateCorePages(
   // microsite's target service (optionally brand-prefixed) — NOT the primary GBP
   // category — so the home page owns "{target service} in {city}" instead of an
   // internal category. For every other site type it's the primary category.
+  // For a dual-niche site (e.g. HVAC + appliance repair) the home targets BOTH
+  // niches via a combined label ("HVAC & Appliance Repair"). Single-niche sites
+  // pass homeCategoriesLabel === primaryCategory, so nothing changes.
   const homeCategoryLabel =
     websiteType === 'microsite' && micrositeContext?.service
       ? `${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service}`
-      : primaryCategory;
+      : (opts?.homeCategoriesLabel || primaryCategory);
 
   const homePageFocus =
     websiteType === 'microsite' && micrositeContext?.service
@@ -1411,8 +1441,8 @@ Generate content for these core pages: home, contact
 NOTE: The about page is generated separately with enhanced EEAT content. Do NOT generate an about page here.
 
 CRITICAL FORMATTING RULES:
-${brandHome ? `- meta_title for home: BRAND-forward, e.g. "${businessName} | ${primaryCategory}" (max 60 chars). Do NOT use the pattern "${primaryCategory} in ${city}" — that belongs to the Primary Market page.
-- h1 for home: BRAND-LEVEL — it must NOT contain any city name. Establish the brand + service category. Good examples: "${businessName}: Expert ${primaryCategory}", "Trusted ${primaryCategory} from ${businessName}", "${primaryCategory} Done Right — ${businessName}". NEVER "${primaryCategory} in ${city}" and NEVER generic "Professional Services".
+${brandHome ? `- meta_title for home: BRAND-forward, e.g. "${businessName} | ${homeCategoryLabel}" (max 60 chars). Do NOT use the pattern "${homeCategoryLabel} in ${city}" — that belongs to the Primary Market page.
+- h1 for home: BRAND-LEVEL — it must NOT contain any city name. Establish the brand + service category. Good examples: "${businessName}: Expert ${homeCategoryLabel}", "Trusted ${homeCategoryLabel} from ${businessName}", "${homeCategoryLabel} Done Right — ${businessName}". NEVER "${homeCategoryLabel} in ${city}" and NEVER generic "Professional Services".
 - meta_description for home: mention ${businessName}, the primary category, the BROAD service area (the region/multiple cities — not a single city), and a CTA.
 - hero_description: a brand value proposition spanning the whole service area; mention specific services, not a single city.` : `- meta_title for home MUST follow this exact pattern: "${homeCategoryLabel} in ${city}, ${state} | ${businessName}" (max 60 chars — truncate business name if needed, NEVER truncate the keyword or city)
 - meta_description for home MUST mention "${homeCategoryLabel}", city, and include a CTA with the phone number if available. Example: "${businessName} provides expert ${homeCategoryLabel.toLowerCase()} services in ${city}, ${state}. Call today for a free estimate!"

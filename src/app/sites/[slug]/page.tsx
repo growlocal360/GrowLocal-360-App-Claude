@@ -43,7 +43,10 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
 
   if (homePage?.meta_title) {
     return withOpenGraph({
-      title: homePage.meta_title,
+      // Absolute: the home page shares a route segment with the sites layout, so
+      // its `%s` template doesn't apply — without `absolute` the ROOT template
+      // ("%s | GrowLocal 360") leaks the platform brand into the client title.
+      title: { absolute: homePage.meta_title },
       description: homePage.meta_description || `${site.name} - Professional services. Contact us today for a free quote.`,
       alternates: { canonical: canonicalUrl },
     }, ogOptions);
@@ -58,9 +61,11 @@ export async function generateMetadata({ params }: SitePageProps): Promise<Metad
     : '';
 
   return withOpenGraph({
-    title: categoryName && locationText
-      ? `${categoryName} in ${locationText} | ${site.name}`
-      : `${site.name}${locationText ? ` | ${locationText}` : ''}`,
+    title: {
+      absolute: categoryName && locationText
+        ? `${categoryName} in ${locationText} | ${site.name}`
+        : `${site.name}${locationText ? ` | ${locationText}` : ''}`,
+    },
     description: categoryName
       ? `${site.name} - ${categoryName}${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`
       : `${site.name} - Professional services${locationText ? ` in ${locationText}` : ''}. Contact us today for a free quote.`,

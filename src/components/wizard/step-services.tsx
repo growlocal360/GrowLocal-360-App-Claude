@@ -23,6 +23,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { WizardService } from '@/types/wizard';
+import { findDuplicateService } from '@/lib/services/service-dedupe';
+import { toast } from 'sonner';
 
 export function StepServices() {
   const {
@@ -31,6 +33,7 @@ export function StepServices() {
     services,
     setServices,
     toggleService,
+    moveServiceToCategory,
     addCustomService,
     removeService,
     prevStep,
@@ -163,6 +166,30 @@ export function StepServices() {
   // Selected count
   const selectedCount = services.filter((s) => s.isSelected).length;
 
+  // Warn (don't block) when a custom name matches an existing suggestion in any category.
+  const customDuplicate = customServiceName.trim()
+    ? findDuplicateService(customServiceName, services)
+    : null;
+
+  // Move a service to another category, keeping its name/description/selection.
+  // Blocked if the target category already has a same-named service (one service, one category).
+  const handleMoveService = (service: WizardService, targetGcid: string) => {
+    if (!targetGcid || targetGcid === service.categoryGcid) return;
+    const cat = allCategories.find((c) => c.gcid === targetGcid);
+    if (!cat) return;
+    const collision = findDuplicateService(
+      service.name,
+      services.filter((s) => s.id !== service.id),
+      { inCategoryGcid: targetGcid }
+    );
+    if (collision) {
+      toast.error(`"${service.name}" already exists under ${cat.displayName}.`);
+      return;
+    }
+    moveServiceToCategory(service.id, targetGcid, cat.displayName);
+    toast.success(`Moved "${service.name}" to ${cat.displayName}.`);
+  };
+
   // Handle adding custom service
   const handleAddCustomService = () => {
     if (!customServiceName.trim() || !customServiceCategory) return;
@@ -282,6 +309,12 @@ export function StepServices() {
                   value={customServiceName}
                   onChange={(e) => setCustomServiceName(e.target.value)}
                 />
+                {customDuplicate && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    &quot;{customDuplicate.name}&quot; already exists under {customDuplicate.categoryName}.
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="custom-service-description">Description <span className="text-gray-400 font-normal">(optional)</span></Label>
@@ -409,6 +442,31 @@ export function StepServices() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
+                          {allCategories.length >= 2 && (
+                            <select
+                              aria-label="Move to category"
+                              title="Move this service to another category"
+                              className="max-w-30 rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-600"
+                              value=""
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleMoveService(service, e.target.value);
+                                e.currentTarget.value = '';
+                              }}
+                            >
+                              <option value="" disabled>
+                                Move to…
+                              </option>
+                              {allCategories
+                                .filter((c) => c.gcid !== service.categoryGcid)
+                                .map((c) => (
+                                  <option key={c.gcid} value={c.gcid}>
+                                    {c.displayName}
+                                  </option>
+                                ))}
+                            </select>
+                          )}
                           {service.isCustom && (
                             <button
                               type="button"

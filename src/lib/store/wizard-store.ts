@@ -5,6 +5,7 @@ import type { WebsiteType } from '@/types/database';
 import type { GBPCategoryData } from '@/data/gbp-categories';
 import { initialWizardState, getStepsForFlow } from '@/types/wizard';
 import { isBrandApplicable } from '@/lib/brands/brand-applicable';
+import { moveService } from '@/lib/services/service-dedupe';
 
 interface WizardStore extends WizardState {
   // Actions
@@ -42,6 +43,7 @@ interface WizardStore extends WizardState {
   setServices: (services: WizardService[]) => void;
   toggleService: (id: string) => void;
   updateServiceDescription: (id: string, description: string) => void;
+  moveServiceToCategory: (id: string, categoryGcid: string, categoryName: string) => void;
   addCustomService: (service: WizardService) => void;
   removeService: (id: string) => void;
   setWebsiteType: (type: WebsiteType) => void;
@@ -266,6 +268,13 @@ export const useWizardStore = create<WizardStore>((set, get) => ({
       services: state.services.map((s) =>
         s.id === id ? { ...s, description } : s
       ),
+    })),
+
+  // Re-home a service under a different category, preserving name/description/
+  // selection. Appends to the end of the target group's sort order.
+  moveServiceToCategory: (id, categoryGcid, categoryName) =>
+    set((state) => ({
+      services: moveService(state.services, id, categoryGcid, categoryName),
     })),
 
   addCustomService: (service) =>

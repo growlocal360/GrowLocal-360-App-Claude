@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { dedupeGeneratedServices } from '@/lib/services/service-dedupe';
 
 export const maxDuration = 60;
 
@@ -14,8 +15,6 @@ interface GeneratedService {
   categoryGcid: string;
   categoryName: string;
 }
-
-const BATCH_SIZE = 3;
 
 // Tier the number of sub-services based on total category count
 function getServicesPerCategory(totalCategories: number): number {
@@ -55,25 +54,18 @@ export async function POST(request: Request) {
 
     const servicesPerCategory = getServicesPerCategory(categories.length);
 
-    // Batch categories into groups of 3 for parallel calls
-    const batches: CategoryInput[][] = [];
-    for (let i = 0; i < categories.length; i += BATCH_SIZE) {
-      batches.push(categories.slice(i, i + BATCH_SIZE));
-    }
+    // Single pass with ALL categories in context so the model can assign each
+    // distinct service to exactly one best-fit category (avoids duplicates that
+    // per-category batching produced for overlapping GBP categories).
+    const generated = await generateServicesForBatch(anthropic, categories, servicesPerCategory);
 
-    // Run all batches in parallel
-    const batchResults = await Promise.all(
-      batches.map(async (batch) => {
-        try {
-          return await generateServicesForBatch(anthropic, batch, servicesPerCategory);
-        } catch (error) {
-          console.error('Batch failed for categories:', batch.map(c => c.name).join(', '), error);
-          return [];
-        }
-      })
-    );
-
-    const allServices = batchResults.flat();
+    // Deterministic safety net: strip any service that still repeats across
+    // categories (exact + suffix near-dupes), keeping the best-fit copy.
+    const categoryNameById = Object.fromEntries(categories.map((c) => [c.gcid, c.name]));
+    const allServices = dedupeGeneratedServices(generated, {
+      primaryGcid: categories[0]?.gcid,
+      categoryNameById,
+    });
 
     return NextResponse.json({ services: allServices });
   } catch (error) {
@@ -98,12 +90,14 @@ async function generateServicesForBatch(
 
 ${categoryList}
 
-For EACH category, generate exactly ${servicesPerCategory} deliverable-based service pages.
+For EACH category, generate up to ${servicesPerCategory} deliverable-based service pages.
 
 CRITICAL RULES:
 1. Service names MUST represent real services/deliverables the business offers — things they DO or DELIVER.
 2. Each service name must use clear, industry-standard language that could realistically appear as a Google Business Profile service.
 3. DO NOT name service pages after problems, symptoms, pain points, or emergency language.
+4. NO DUPLICATES ACROSS CATEGORIES. These categories often overlap (e.g. "Air conditioning repair service" + "Air conditioning contractor" + "HVAC contractor", or "Plumber" + "Drain cleaning service"). Each distinct service must appear under EXACTLY ONE category — never repeat a service, and never emit near-synonyms of the same service under different names (e.g. do NOT produce both "Indoor Air Quality Services" and "Indoor Air Quality Solutions", or both "Smart Thermostat Installation" and "Thermostat Installation & Upgrade").
+5. BEST-FIT PLACEMENT (generic across trades): put repair/maintenance-type services under the "…repair service" categories; installation/replacement-type services under the "…contractor" categories; and whole-system services (e.g. ductwork, thermostats, indoor air quality, zoning) under the BROADEST applicable category (e.g. "HVAC contractor") rather than an equipment-specific one.
 
 VALID service name examples:
 - "Logo Design & Branding" (a deliverable)
@@ -138,7 +132,7 @@ Format your response as JSON:
 }
 
 Important:
-- Generate exactly ${servicesPerCategory} services PER category
+- Aim for about ${servicesPerCategory} services per category, but prioritise UNIQUENESS over hitting the count — a service belongs to one category only
 - Service names should be 3-6 words using industry-standard terminology
 - Each service must be a distinct deliverable worthy of its own page
 - Problems and symptoms go in descriptions ONLY, never in service names
@@ -146,7 +140,7 @@ Important:
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [
       {
         role: 'user',

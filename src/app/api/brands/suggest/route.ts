@@ -45,7 +45,9 @@ export async function POST(request: Request) {
           role: 'user',
           content: `For a ${industry} business with these Google Business Profile categories: ${categoryList}
 
-List the top 20 product/equipment brands they commonly service, repair, install, or work with. These should be well-known manufacturer brands that customers would search for (e.g., "Carrier", "Lennox", "Samsung", "LG").
+List the top product/equipment brands they commonly service, repair, install, or work with. These should be well-known manufacturer brands that customers would search for (e.g., "Carrier", "Lennox", "Samsung", "LG").
+
+CRITICAL — balanced coverage: the categories above may span DIFFERENT niches (e.g. HVAC/heating/AC AND appliance repair). You MUST cover EVERY category, not just the primary one. For each distinct niche include roughly 8-12 of its top brands — e.g. an HVAC + appliance repair business needs BOTH HVAC brands (Carrier, Trane, Lennox, Goodman, Rheem…) AND appliance brands (Whirlpool, GE, Maytag, Frigidaire, KitchenAid, Bosch, Samsung, LG…). Do NOT return mostly one niche's brands. Return up to ~24 brands total.
 
 For EACH brand, also assign the single best-fit category from this exact list: ${categoryList}. Use the category's exact wording. If a brand genuinely spans MULTIPLE of those categories (e.g. GE, LG, and Samsung make both HVAC systems and home appliances), set its category to "both" instead.
 

@@ -14,7 +14,12 @@ export function withOpenGraph(
     type?: 'website' | 'article';
   }
 ): Metadata {
-  const title = typeof base.title === 'string' ? base.title : (base.title as { default?: string })?.default || '';
+  const title =
+    typeof base.title === 'string'
+      ? base.title
+      : (base.title as { absolute?: string; default?: string })?.absolute ||
+        (base.title as { default?: string })?.default ||
+        '';
   const description = typeof base.description === 'string' ? base.description : '';
   const ogImage = options.imageUrl || options.logoUrl || undefined;
 

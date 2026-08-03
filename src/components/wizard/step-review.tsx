@@ -142,6 +142,7 @@ export function StepReview() {
         })),
         brands: brands.filter((b) => b.isSelected).map((b) => ({
           name: b.name,
+          category: b.category ?? null,
         })),
         // Microsite targeting (only when websiteType === 'microsite')
         micrositeConfig: websiteType === 'microsite' && micrositeConfig ? micrositeConfig : undefined,
@@ -496,12 +497,18 @@ export function StepReview() {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
 
+          // Resolve AI-inferred niche → site_category_id ("both"/unknown → NULL).
+          const brandCat = brand.category?.trim().toLowerCase();
+          const brandSiteCategoryId =
+            brandCat && brandCat !== 'both' ? categoryNameMap[brandCat] ?? null : null;
+
           await supabase.from('site_brands').insert({
             site_id: site.id,
             name: brand.name,
             slug: brandSlug,
             sort_order: i,
             is_active: true,
+            site_category_id: brandSiteCategoryId,
           });
         }
       }

@@ -11,6 +11,22 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+/** Return the value only if it's a real site_categories id for this site; else null. */
+async function validateSiteCategoryId(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  siteId: string,
+  value: unknown
+): Promise<string | null> {
+  if (!value || typeof value !== 'string') return null;
+  const { data } = await adminSupabase
+    .from('site_categories')
+    .select('id')
+    .eq('site_id', siteId)
+    .eq('id', value)
+    .maybeSingle();
+  return data ? value : null;
+}
+
 // GET - Fetch brands for a site
 export async function GET(
   request: NextRequest,
@@ -25,13 +41,22 @@ export async function GET(
   }
 
   const adminSupabase = createAdminClient();
-  const { data: brands } = await adminSupabase
-    .from('site_brands')
-    .select('*')
-    .eq('site_id', siteId)
-    .order('sort_order');
+  const [{ data: brands }, { data: categories }] = await Promise.all([
+    adminSupabase.from('site_brands').select('*').eq('site_id', siteId).order('sort_order'),
+    adminSupabase
+      .from('site_categories')
+      .select('id, is_primary, gbp_category:gbp_categories(display_name)')
+      .eq('site_id', siteId)
+      .order('is_primary', { ascending: false }),
+  ]);
 
-  return NextResponse.json({ brands: brands || [] });
+  // Flatten categories to { id, name, isPrimary } for the niche dropdown.
+  const cats = (categories || []).map((c) => {
+    const gbp = Array.isArray(c.gbp_category) ? c.gbp_category[0] : c.gbp_category;
+    return { id: c.id, name: gbp?.display_name || 'Category', isPrimary: c.is_primary };
+  });
+
+  return NextResponse.json({ brands: brands || [], categories: cats });
 }
 
 // POST - Add a brand
@@ -48,13 +73,14 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { name, slug } = body;
+  const { name, slug, siteCategoryId } = body;
 
   if (!name || typeof name !== 'string') {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
   const adminSupabase = createAdminClient();
+  const brandCategoryId = await validateSiteCategoryId(adminSupabase, siteId, siteCategoryId);
 
   // Get max sort_order
   const { data: lastBrand } = await adminSupabase
@@ -75,6 +101,7 @@ export async function POST(
       slug: slug || slugify(name),
       sort_order: nextSortOrder,
       is_active: true,
+      site_category_id: brandCategoryId,
     })
     .select()
     .single();
@@ -106,7 +133,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { id, name, isActive } = body;
+  const { id, name, isActive, siteCategoryId } = body;
 
   if (!id) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -121,6 +148,10 @@ export async function PATCH(
   }
   if (isActive !== undefined) {
     update.is_active = isActive;
+  }
+  // Niche override. null/'' explicitly clears it back to "Both" (all niches).
+  if (siteCategoryId !== undefined) {
+    update.site_category_id = await validateSiteCategoryId(adminSupabase, siteId, siteCategoryId);
   }
 
   const { error: updateError } = await adminSupabase

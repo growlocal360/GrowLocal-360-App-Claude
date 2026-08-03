@@ -546,6 +546,10 @@ export interface SiteBrand {
   logo_url: string | null;
   sort_order: number;
   is_active: boolean;
+  // Niche association (migration 056): the site_categories row this brand belongs
+  // to. NULL = applies to all niches ("Both"). Drives which services a brand page
+  // lists + which category its content is generated against.
+  site_category_id: string | null;
   // AI-generated content fields (populated by generate-content pipeline)
   meta_title: string | null;
   meta_description: string | null;

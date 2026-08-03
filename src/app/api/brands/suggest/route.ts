@@ -47,10 +47,12 @@ export async function POST(request: Request) {
 
 List the top 20 product/equipment brands they commonly service, repair, install, or work with. These should be well-known manufacturer brands that customers would search for (e.g., "Carrier", "Lennox", "Samsung", "LG").
 
+For EACH brand, also assign the single best-fit category from this exact list: ${categoryList}. Use the category's exact wording. If a brand genuinely spans MULTIPLE of those categories (e.g. GE, LG, and Samsung make both HVAC systems and home appliances), set its category to "both" instead.
+
 Return ONLY a JSON object in this exact format, no other text:
 {
   "brands": [
-    { "name": "Brand Name" }
+    { "name": "Brand Name", "category": "Exact Category Name or both" }
   ]
 }`,
         },

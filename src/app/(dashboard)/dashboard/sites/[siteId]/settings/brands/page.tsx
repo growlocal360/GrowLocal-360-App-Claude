@@ -34,6 +34,13 @@ interface Brand {
   h1: string | null;
   is_active: boolean;
   sort_order: number;
+  site_category_id: string | null;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
+  isPrimary: boolean;
 }
 
 interface SuggestedBrand {
@@ -45,6 +52,8 @@ export default function BrandsPage() {
   const siteId = params.siteId as string;
 
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [nicheSavingId, setNicheSavingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -77,10 +86,34 @@ export default function BrandsPage() {
       if (!response.ok) throw new Error('Failed to fetch brands');
       const data = await response.json();
       setBrands(data.brands || []);
+      setCategories(data.categories || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load brands');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Change which niche (site category) a brand belongs to. '' = Both (all niches).
+  // Only surfaced on multi-category (dual-niche) sites.
+  const handleChangeNiche = async (brand: Brand, siteCategoryId: string) => {
+    const prev = brand.site_category_id;
+    const next = siteCategoryId || null;
+    setNicheSavingId(brand.id);
+    setBrands((bs) => bs.map((b) => (b.id === brand.id ? { ...b, site_category_id: next } : b)));
+    try {
+      const res = await fetch(`/api/sites/${siteId}/settings/brands`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: brand.id, siteCategoryId: next }),
+      });
+      if (!res.ok) throw new Error('Failed to update niche');
+      toast.success('Brand niche updated — regenerate the brand page to apply it.');
+    } catch {
+      setBrands((bs) => bs.map((b) => (b.id === brand.id ? { ...b, site_category_id: prev } : b)));
+      toast.error('Failed to update brand niche');
+    } finally {
+      setNicheSavingId(null);
     }
   };
 
@@ -347,6 +380,20 @@ export default function BrandsPage() {
                     <span className={`font-medium truncate ${brand.is_active ? 'text-gray-900' : 'text-gray-400 line-through'}`}>{brand.name}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
+                    {categories.length >= 2 && (
+                      <select
+                        className="rounded-md border border-gray-300 px-2 py-1.5 text-xs text-gray-700 max-w-44"
+                        value={brand.site_category_id ?? ''}
+                        disabled={nicheSavingId === brand.id}
+                        onChange={(e) => handleChangeNiche(brand, e.target.value)}
+                        title="Which niche this brand belongs to (controls the services shown on its page)"
+                      >
+                        <option value="">Both (all services)</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

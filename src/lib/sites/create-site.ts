@@ -330,13 +330,19 @@ export async function createSiteFromWizardData(
   // Create neighborhoods (linked to their parent locations)
   const { data: createdLocations } = await supabase
     .from('locations')
-    .select('id, city')
+    .select('id, city, is_primary')
     .eq('site_id', site.id);
 
   const locationIdMap: Record<string, string> = {};
   createdLocations?.forEach((loc) => {
     locationIdMap[loc.city.toLowerCase()] = loc.id;
   });
+  // Fallback so a location-match miss never silently DROPS a neighborhood: the
+  // primary (or first) created location. On a single-location site this is
+  // always the right home; the city-name match above only matters for
+  // multi-location sites.
+  const fallbackLocationId =
+    createdLocations?.find((l) => l.is_primary)?.id || createdLocations?.[0]?.id || null;
 
   for (let i = 0; i < neighborhoods.length; i++) {
     const neighborhood = neighborhoods[i];
@@ -349,9 +355,8 @@ export async function createSiteFromWizardData(
       (loc.id || `loc-${idx}`) === neighborhood.locationId
     );
 
-    const dbLocationId = wizardLocation
-      ? locationIdMap[wizardLocation.city.toLowerCase()]
-      : null;
+    const dbLocationId =
+      (wizardLocation ? locationIdMap[wizardLocation.city.toLowerCase()] : null) || fallbackLocationId;
 
     if (dbLocationId) {
       await supabase.from('neighborhoods').insert({
@@ -365,6 +370,8 @@ export async function createSiteFromWizardData(
         sort_order: i,
         is_active: true,
       });
+    } else {
+      console.warn('[create-site] Skipped neighborhood — no location to attach to', { name: neighborhood.name });
     }
   }
 

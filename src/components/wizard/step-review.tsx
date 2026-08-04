@@ -332,7 +332,7 @@ export function StepReview() {
       // First, we need to get the created location IDs
       const { data: createdLocations } = await supabase
         .from('locations')
-        .select('id, city')
+        .select('id, city, is_primary')
         .eq('site_id', site.id);
 
       const locationIdMap: Record<string, string> = {};
@@ -340,6 +340,11 @@ export function StepReview() {
         // Map by city name (lowercase) to handle matching
         locationIdMap[loc.city.toLowerCase()] = loc.id;
       });
+      // Fallback so a location-match miss never silently DROPS a neighborhood:
+      // the primary (or first) created location. On a single-location site this
+      // is always correct; the city-name match only matters for multi-location.
+      const fallbackLocationId =
+        createdLocations?.find((l) => l.is_primary)?.id || createdLocations?.[0]?.id || null;
 
       for (let i = 0; i < neighborhoods.length; i++) {
         const neighborhood = neighborhoods[i];
@@ -348,16 +353,15 @@ export function StepReview() {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '');
 
-        // Find the parent location ID
-        // The neighborhood.locationId from wizard is like "loc-0" or the actual location id
-        // We need to map it to the actual created location
+        // Find the parent location ID. The neighborhood.locationId from the
+        // wizard is like "loc-0" or the actual location id; map it to the
+        // created location, falling back to the primary location on any miss.
         const wizardLocation = locations.find((loc, idx) =>
           (loc.id || `loc-${idx}`) === neighborhood.locationId
         );
 
-        const dbLocationId = wizardLocation
-          ? locationIdMap[wizardLocation.city.toLowerCase()]
-          : null;
+        const dbLocationId =
+          (wizardLocation ? locationIdMap[wizardLocation.city.toLowerCase()] : null) || fallbackLocationId;
 
         if (dbLocationId) {
           await supabase.from('neighborhoods').insert({
@@ -371,6 +375,8 @@ export function StepReview() {
             sort_order: i,
             is_active: true,
           });
+        } else {
+          console.warn('[wizard] Skipped neighborhood — no location to attach to', neighborhood.name);
         }
       }
 

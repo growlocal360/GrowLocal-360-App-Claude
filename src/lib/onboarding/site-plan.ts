@@ -77,6 +77,14 @@ export interface PlanInputs {
   /** Explicit top revenue services (names). If omitted, first 2-3 GBP categories are used. */
   topServices?: string[];
   /**
+   * Distinct niches this site spans (e.g. HVAC + Appliance), each with a
+   * representative top service. When present, an owner-forced PRIORITY city gets
+   * ONE Pattern-1 page per niche (so a dual-niche business isn't limited to the
+   * global top-3, which could all belong to one niche). Absent → priority cities
+   * use the global topServices. Only affects the priority branch.
+   */
+  niches?: Array<{ key: string; topService: string }>;
+  /**
    * v5 rule 11 (Model B): the home page IS the Primary Market page. When true, the
    * planner does NOT build a separate /{primary-market}/ hub (it would duplicate
    * the home), and the GBP website link points to "/". Default false (Model A:
@@ -211,6 +219,13 @@ export function planSite(input: PlanInputs): SitePlan {
   let pattern1Count = 0;
   const builtCityPageUrls: string[] = [];
 
+  // Services a PRIORITY (owner-forced Dedicated Page) city gets a Pattern-1 page
+  // for. Multi-niche → each niche's top service (so both HVAC + Appliance land a
+  // page); otherwise the global top services.
+  const priorityServiceNames = input.niches && input.niches.length > 0
+    ? input.niches.map((n) => n.topService).filter(Boolean)
+    : services.filter((s) => topServices.includes(svcSlug(s)));
+
   // Primary market itself is its own treatment. Its page is the dedicated hub
   // (Model A) or the home page (Model B).
   cities.push({
@@ -254,22 +269,28 @@ export function planSite(input: PlanInputs): SitePlan {
       continue;
     }
 
-    // 2) Owner-forced PRIORITY city → guaranteed Pattern 1 for the top services,
-    //    bypassing proximity coverage AND the per-strategy cap. The manual escape
-    //    hatch for markets the automation wouldn't pick (e.g. a new business
-    //    already winning work in a smaller, low-competition city with no data yet).
+    // 2) Owner-forced PRIORITY city → guaranteed Pattern 1, bypassing proximity
+    //    coverage AND the per-strategy cap. The manual escape hatch for markets
+    //    the automation wouldn't pick (e.g. a new business already winning work in
+    //    a smaller, low-competition city with no data yet).
+    //    Multi-niche sites get ONE page per niche (each niche's top service) so a
+    //    dual-niche business isn't limited to the global top-3; single-niche (or
+    //    no niche data) falls back to the global top services.
     if (c.priority) {
       const built: string[] = [];
-      for (const s of services) {
-        if (!topServices.includes(svcSlug(s))) continue; // top services only
-        const url = `/${svcSlug(s)}/${citySlug(c.city)}/`;
+      const seen = new Set<string>();
+      for (const s of priorityServiceNames) {
+        const slug = svcSlug(s);
+        if (seen.has(slug)) continue; // de-dupe niches that share a top service
+        seen.add(slug);
+        const url = `/${slug}/${citySlug(c.city)}/`;
         pages.push({
           url,
           pageType: 'pattern_1_city',
           title: `${s} in ${titleCity(c.city, c.state)}`,
           associatedCity: c.city,
           associatedService: s,
-          links: [`/${svcSlug(s)}/`, serviceAreasUrl],
+          links: [`/${slug}/`, serviceAreasUrl],
         });
         built.push(url);
       }

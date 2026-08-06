@@ -68,6 +68,33 @@ describe('site-plan-store — generator wiring', () => {
     expect(paths.has(normalizePublicPath('/appliance-repair/sun-city/'))).toBe(false);
   });
 
+  it('classifies a dual-niche site and gives a priority city one page per niche', () => {
+    const { inputs } = buildPlanInputs({
+      settings: {
+        travel_strategy: 'regional',
+        primary_market_city: 'Lake Charles',
+        primary_market_state: 'LA',
+        primary_market_source: 'user_input',
+      } as SiteSettings,
+      primaryLocation: { city: 'Lake Charles', state: 'LA', address: null },
+      // Global top-3 are all HVAC; appliance only appears 4th/5th.
+      gbpCategories: ['AC repair service', 'HVAC contractor', 'Heating contractor', 'Appliance repair service', 'Refrigerator repair service'],
+      serviceAreas: [
+        { name: 'Moss Bluff', state: 'LA', is_anchor: false, distance_miles: 12, is_priority: true },
+      ] as Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles' | 'is_priority'>[],
+    });
+    // buildPlanInputs populates niches (HVAC primary, then Appliance).
+    expect(inputs.niches).toEqual([
+      { key: 'hvac', topService: 'AC repair service' },
+      { key: 'appliance', topService: 'Appliance repair service' },
+    ]);
+    const paths = plannedCityPathSet(toStoredSitePlan(planSite(inputs), {
+      travelStrategy: 'regional', primaryMarket: { city: 'Lake Charles', state: 'LA' }, generatedAt: '2026-06-25T00:00:00Z',
+    }));
+    expect(paths.has('ac-repair/moss-bluff')).toBe(true);
+    expect(paths.has('appliance-repair/moss-bluff')).toBe(true);
+  });
+
   it('infers + flags Primary Market when settings are missing (pre-v5 site)', () => {
     const { needsReview, primaryMarket, travelStrategy } = buildPlanInputs({
       settings: {},

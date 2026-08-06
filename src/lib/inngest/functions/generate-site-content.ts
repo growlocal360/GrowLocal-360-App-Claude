@@ -1124,7 +1124,12 @@ export const generateSiteContent = inngest.createFunction(
       const serviceAreaNames = allServiceAreas.map((a) => a.name);
       const allNeighborhoodNames = allNeighborhoods.map((n) => n.name);
 
-      const neighborhoodBatchSize = 5;
+      // Batch of 2 (not 5): each neighborhood emits a large payload (200-350 word
+      // body + full local_features + FAQs). At 5/batch the combined JSON overran
+      // the model's max_tokens and got truncated → parse failed → every row was
+      // silently skipped while the batch still counted as "complete". 2/batch keeps
+      // output well under the ceiling.
+      const neighborhoodBatchSize = 2;
       for (let i = 0; i < targetNeighborhoods.length; i += neighborhoodBatchSize) {
         const batch = targetNeighborhoods.slice(i, i + neighborhoodBatchSize);
 
@@ -1167,7 +1172,7 @@ export const generateSiteContent = inngest.createFunction(
                 const neighborhood = batch[j];
                 const content = neighborhoodContents[j];
 
-                if (content) {
+                if (content && content.body_copy) {
                   await supabase
                     .from('neighborhoods')
                     .update({
@@ -1179,14 +1184,27 @@ export const generateSiteContent = inngest.createFunction(
                       faqs: content.faqs,
                     })
                     .eq('id', neighborhood.id);
+                } else {
+                  // Don't silently mark a page "done" with no content — surface it.
+                  await log(
+                    `No content generated for neighborhood "${neighborhood.name}" — page will show fallback copy`,
+                    'generate-neighborhoods',
+                    'warn'
+                  );
                 }
 
                 completed++;
               }
             } catch (batchError) {
+              const msg = batchError instanceof Error ? batchError.message : String(batchError);
               console.error(
                 `Failed to generate neighborhood batch starting at ${batch[0].name}:`,
                 batchError
+              );
+              await log(
+                `Neighborhood batch failed (${batch.map((n) => n.name).join(', ')}): ${msg}`,
+                'generate-neighborhoods',
+                'warn'
               );
               completed += batch.length;
             }
@@ -2111,7 +2129,9 @@ Return ONLY valid JSON.`;
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
-        max_tokens: 8192,
+        // Headroom so a full multi-neighborhood payload never truncates (a
+        // truncated response fails JSON.parse and yields no content).
+        max_tokens: 16000,
         messages: [{ role: 'user', content: prompt }],
       },
       { signal }

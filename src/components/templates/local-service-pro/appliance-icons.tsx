@@ -1,6 +1,6 @@
 'use client';
 
-import { Wrench } from 'lucide-react';
+import { Wrench, Hammer, Gauge } from 'lucide-react';
 
 /**
  * Custom line-icon set for the appliance intake cards. Drawn to match the Lucide
@@ -122,6 +122,14 @@ export function ApplianceIcon({ name, className = 'h-7 w-7' }: IconProps) {
         <line x1="5.5" y1="13" x2="14.5" y2="13" />
         <line x1="16.5" y1="9" x2="16.5" y2="12" />
       </>);
+
+    // HVAC "Type of Service" cards
+    case 'repair':
+      return <Wrench className={className} strokeWidth={1.5} aria-hidden />;
+    case 'installation':
+      return <Hammer className={className} strokeWidth={1.5} aria-hidden />;
+    case 'maintenance':
+      return <Gauge className={className} strokeWidth={1.5} aria-hidden />;
 
     case 'other':
       return <Wrench className={className} strokeWidth={1.5} aria-hidden />;

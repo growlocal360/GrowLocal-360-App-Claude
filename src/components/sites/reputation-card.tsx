@@ -24,7 +24,7 @@ export function ReputationCard({ siteId }: ReputationCardProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (): Promise<number> => {
     const supabase = createClient();
 
     const [{ data: site }, { count: reviewCount }, { data: latestReview }, { data: connections }] =
@@ -56,14 +56,16 @@ export function ReputationCard({ siteId }: ReputationCardProps) {
 
     const settings = site?.settings as Record<string, unknown> | null;
 
+    const storedReviewCount = reviewCount ?? 0;
     setData({
       averageRating: (settings?.google_average_rating as number) ?? null,
       totalReviews: (settings?.google_total_reviews as number) ?? null,
-      storedReviewCount: reviewCount ?? 0,
+      storedReviewCount,
       lastFetchedDate: latestReview?.[0]?.created_at ?? null,
       hasGoogleConnection: (connections?.length ?? 0) > 0,
     });
     setLoading(false);
+    return storedReviewCount;
   }, [siteId]);
 
   useEffect(() => {
@@ -85,15 +87,17 @@ export function ReputationCard({ siteId }: ReputationCardProps) {
         return;
       }
 
-      // Wait a moment for the Inngest function to complete, then re-fetch
-      // The generate endpoint is async (Inngest), so we poll briefly
+      // Wait a moment for the Inngest function to complete, then re-fetch.
+      // The generate endpoint is async (Inngest), so we poll briefly.
       await new Promise(resolve => setTimeout(resolve, 5000));
-      await fetchData();
-      toast.success(
-        data?.storedReviewCount
-          ? `Reviews refreshed — ${data.storedReviewCount} reviews stored`
-          : 'Reviews refreshed'
-      );
+      const count = await fetchData();
+      if (count > 0) {
+        toast.success(`Reviews refreshed — ${count} review${count !== 1 ? 's' : ''} stored`);
+      } else {
+        // Nothing came back — don't claim success. Usually a token/connection
+        // issue (reconnect GBP) or the fetch is still running.
+        toast.warning('No reviews imported yet. If this persists, reconnect your Google Business Profile and try again.');
+      }
     } catch {
       toast.error('Failed to refresh reviews. Please try again.');
     } finally {

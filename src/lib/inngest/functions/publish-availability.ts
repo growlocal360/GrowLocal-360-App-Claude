@@ -21,15 +21,22 @@ async function getStoredGoogleToken(
   supabase: SupabaseClient,
   siteId: string
 ): Promise<string | null> {
-  const { data: connection } = await supabase
+  // A site can have multiple active google_business connections (e.g. a leftover
+  // "default" placeholder). `.single()` errors on >1 row and returns null, which
+  // silently looks like "no token". Select all and pick deterministically:
+  // prefer a real GBP account over "default", then most recently updated.
+  const { data: connections } = await supabase
     .from('social_connections')
-    .select('access_token, refresh_token, token_expires_at')
+    .select('id, access_token, refresh_token, token_expires_at, account_id')
     .eq('site_id', siteId)
     .eq('platform', 'google_business')
     .eq('is_active', true)
-    .single();
+    .order('updated_at', { ascending: false });
 
-  if (!connection) return null;
+  if (!connections || connections.length === 0) return null;
+
+  const connection =
+    connections.find((c) => c.account_id && c.account_id !== 'default') ?? connections[0];
 
   if (connection.token_expires_at) {
     const expiresAt = new Date(connection.token_expires_at).getTime();
@@ -66,8 +73,7 @@ async function getStoredGoogleToken(
           token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('site_id', siteId)
-        .eq('platform', 'google_business');
+        .eq('id', connection.id);
 
       return access_token;
     } catch {

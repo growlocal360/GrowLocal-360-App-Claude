@@ -13,6 +13,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { planSite, type PlanInputs, type SitePlan, type BusinessType } from '@/lib/onboarding/site-plan';
 import { resolvePrimaryMarket } from '@/lib/onboarding/primary-market';
+import { resolveNichesFromNames } from '@/lib/forms/niche-forms';
 import type { SiteSettings, StoredSitePlan, ServiceAreaDB } from '@/types/database';
 
 /** Normalize a public path for set membership ("/Appliance-Repair/Peoria/" → "appliance-repair/peoria"). */
@@ -89,12 +90,16 @@ export function buildPlanInputs(args: {
   const TOP_SERVICES_COUNT = 3;
   const topServices = gbpCategories.slice(0, TOP_SERVICES_COUNT);
 
+  // Distinct niches (e.g. HVAC + Appliance) → one dedicated-city page per niche.
+  const niches = resolveNichesFromNames(gbpCategories);
+
   const inputs: PlanInputs = {
     businessType,
     travelStrategy: resolved.travelStrategy,
     primaryMarket: { city: resolved.city, state: resolved.state },
     gbpCategories,
     topServices,
+    niches,
     homepageIsPrimaryMarket: args.settings?.homepage_is_primary_market === true,
     subServicesByService: args.subServicesByService,
     serviceAreaCities: args.serviceAreas.map((a) => ({

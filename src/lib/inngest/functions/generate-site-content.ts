@@ -239,17 +239,10 @@ export const generateSiteContent = inngest.createFunction(
 
     const wasAlreadyActive = site.status === 'active';
     const categoryName = getCategoryName(primaryCategory);
-    // Dual-niche support: map each site_category to its display name, and build a
-    // combined home label ("HVAC & Appliance Repair"). For single-category sites
-    // homeCategoriesLabel === categoryName, so nothing changes.
+    // The home page targets the PRIMARY category only — even on a dual-niche site
+    // (e.g. HVAC + Appliance), the home stays focused on the primary to avoid a
+    // diluted "X & Y" H1. Secondary niches get their own hub/city pages instead.
     const categoryNameById = new Map(siteCategories.map((c) => [c.id, getCategoryName(c)]));
-    const secondaryCategoryNames = siteCategories
-      .filter((c) => !c.is_primary)
-      .map((c) => getCategoryName(c));
-    const homeCategoriesLabel =
-      secondaryCategoryNames.length > 0
-        ? [categoryName, ...secondaryCategoryNames].join(' & ')
-        : categoryName;
     const contentDirectives = buildContentDirectives((site.settings || {}) as SiteSettings)
       + await buildGSCContext(siteId);
 
@@ -393,8 +386,11 @@ export const generateSiteContent = inngest.createFunction(
 
     // Step 2b: v5 Site Plan — compute the Primary Market page inventory and
     // persist it so the sitemap, routing gate, and /service-areas/ page agree on
-    // which v5 URLs exist. Full builds only (selective scopes keep the plan).
-    if (isFullBuild) {
+    // which v5 URLs exist. Runs on full builds AND service-areas scope — the
+    // latter so toggling a city's "Dedicated Page" (is_priority) actually
+    // rebuilds the plan and creates/removes the Pattern-1 page (otherwise the
+    // priority city 404s). Other selective scopes keep the existing plan.
+    if (isFullBuild || scope.type === 'service-areas') {
       await step.run('plan-site', async () => {
         // GBP category display names, primary first.
         const orderedCats = [...siteCategories].sort(
@@ -576,7 +572,7 @@ export const generateSiteContent = inngest.createFunction(
             site.website_type,
             contentDirectives,
             isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined,
-            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext, homeCategoriesLabel }
+            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext }
           );
 
           // Filter to only the requested pages
@@ -999,10 +995,10 @@ export const generateSiteContent = inngest.createFunction(
     if (targetBrands.length > 0) {
       // Group brands by niche so each brand page is generated against ITS category
       // (Carrier → HVAC, Whirlpool → Appliance). A brand with no niche
-      // (site_category_id null = "Both") uses the combined home label.
+      // (site_category_id null = "Both") falls back to the primary category.
       const brandGroups = new Map<string, typeof targetBrands>();
       for (const b of targetBrands) {
-        const cat = resolveBrandCategoryName(b.site_category_id, categoryNameById, homeCategoriesLabel);
+        const cat = resolveBrandCategoryName(b.site_category_id, categoryNameById, categoryName);
         if (!brandGroups.has(cat)) brandGroups.set(cat, []);
         brandGroups.get(cat)!.push(b);
       }
@@ -1397,7 +1393,7 @@ async function generateCorePages(
   websiteType: string,
   directives: string = '',
   micrositeContext?: { service?: string; brand?: string },
-  opts?: { homepageIsPrimaryMarket?: boolean; areaContext?: string; homeCategoriesLabel?: string }
+  opts?: { homepageIsPrimaryMarket?: boolean; areaContext?: string }
 ) {
   // v5 rule 11: a single-location business's home page stays BRAND-LEVEL (no city
   // in the H1) so it doesn't cannibalize the Primary Market page — UNLESS the
@@ -1408,14 +1404,12 @@ async function generateCorePages(
   // The keyword the home page's H1/meta must target. For a microsite this is the
   // microsite's target service (optionally brand-prefixed) — NOT the primary GBP
   // category — so the home page owns "{target service} in {city}" instead of an
-  // internal category. For every other site type it's the primary category.
-  // For a dual-niche site (e.g. HVAC + appliance repair) the home targets BOTH
-  // niches via a combined label ("HVAC & Appliance Repair"). Single-niche sites
-  // pass homeCategoriesLabel === primaryCategory, so nothing changes.
+  // internal category. For every other site type it's the primary category only
+  // (even a dual-niche site keeps its home focused on the primary).
   const homeCategoryLabel =
     websiteType === 'microsite' && micrositeContext?.service
       ? `${micrositeContext.brand ? `${micrositeContext.brand} ` : ''}${micrositeContext.service}`
-      : (opts?.homeCategoriesLabel || primaryCategory);
+      : primaryCategory;
 
   const homePageFocus =
     websiteType === 'microsite' && micrositeContext?.service

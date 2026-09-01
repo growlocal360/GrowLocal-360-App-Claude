@@ -192,6 +192,15 @@ export interface SiteSettings {
   email?: string;
   core_industry?: string;
   cta_text?: string;
+  // About page "featured person" — the client's business owner shown in the
+  // founder/Our Story headshot. When set (name present), it overrides the
+  // account-owner profile so the agency's own account doesn't appear on client
+  // About pages. photo_url is a clean /public/assets/... path.
+  about_featured_person?: {
+    name?: string;
+    title?: string;
+    photo_url?: string;
+  };
   // External website — when the client's real site is hosted elsewhere (not the
   // GL360-generated site). Job Snap / GBP "Learn more" links point here.
   public_website_url?: string;

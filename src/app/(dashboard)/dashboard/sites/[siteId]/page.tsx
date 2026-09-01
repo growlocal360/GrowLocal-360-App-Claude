@@ -39,6 +39,7 @@ import {
   CalendarDays,
   Bell,
   LayoutTemplate,
+  UserRound,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
@@ -61,6 +62,7 @@ interface SiteData {
     phone?: string;
     email?: string;
     onboarding_completed?: boolean;
+    about_featured_person?: { name?: string; title?: string; photo_url?: string };
   } | null;
   custom_domain: string | null;
   custom_domain_verified: boolean;
@@ -649,6 +651,33 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/settings/branding`}>
                   Customize Branding
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* About Page — Featured Person */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <UserRound className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">About Page</h3>
+                  <p className="text-sm text-gray-500">Featured person</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.settings?.about_featured_person?.name
+                  ? `Showing ${site.settings.about_featured_person.name}`
+                  : 'Using account owner'}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/about-person`}>
+                  Set Featured Person
                 </Link>
               </Button>
             </CardContent>

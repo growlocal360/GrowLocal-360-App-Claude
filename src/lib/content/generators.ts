@@ -91,8 +91,36 @@ const POV_LABELS: Record<string, string> = {
   third_person: 'Write in third person (they/the company)',
 };
 
+// Appended to EVERY generation prompt (via buildContentDirectives), whether or
+// not the site has any settings filled in. Two jobs: keep the copy sounding like
+// a person wrote it, and stop the model inventing facts about the business.
+export const WRITING_STANDARDS = `
+## Writing Standards — these override any length or structure guidance elsewhere in this prompt:
+
+VOICE
+- Write the way the owner would explain the job to a customer at the counter: plain words, direct, knows the trade. Not a brochure, not an essay.
+- Short sentences. Average under 18 words; never over 30. One idea per sentence. If a sentence has two commas and a dash, split it.
+- No em dashes (—). Use a period or a comma.
+- Say a thing once. Never restate the heading, the hero text, or a previous paragraph in different words.
+- Stop when the point is made. Word counts in this prompt are CEILINGS, never targets. Shorter is better when nothing is lost.
+- Lead with the specific. Name the part, the symptom, the cause, the fix. Cut any sentence that would be equally true of every company in the industry.
+- No adjective stacking ("comprehensive, professional, reliable"). No throat-clearing openers ("When it comes to...", "In today's...", "Whether you need X or Y...").
+- NEVER use: "comprehensive", "peak performance", "state-of-the-art", "top-notch", "second to none", "look no further", "one-stop shop", "proudly serving", "we take pride", "trusted provider", "unique needs", "peace of mind", "rest assured", "relentless", "demanding conditions", "the expertise and equipment", "we understand that", "don't let X ruin your Y".
+- Vary the shape. Do not give every section the same length or the same paragraph-then-bullets layout. Use bullets only where the content is actually a list.
+
+FACTS — do not invent anything about this business
+- The ONLY facts you know about this business are the ones written in this prompt (business name, location, services, and anything under Content Directives).
+- Unless it is stated in this prompt, do NOT claim or imply: years in business, "family-owned", generations, licensing or insurance, certifications or factory training, awards, guarantees or warranties, response or turnaround times, 24/7 or emergency availability, free estimates, pricing, financing, team size, customer counts, specific tools, equipment or parts brands used, or OEM parts policies.
+- Do NOT describe how this business operates unless stated in this prompt: shop vs. mobile or on-site service, written estimates or reports, inspection or approval steps, scheduling, pickup or delivery. You do not know their process.
+- FAQs must be answerable from trade knowledge alone. Never write a question whose honest answer depends on this business's policies (hours, on-site service, payment, warranty). Skip it.
+- Avoid self-praise disguised as process: "honest assessment", "straight answer", "fix the actual problem, not just the symptom", "done right the first time".
+- Do NOT put words in customers' mouths or describe reviews unless review text is provided in this prompt.
+- General trade knowledge IS allowed and encouraged: how the work is done, what causes the problem, what a customer should check or expect, how local climate or conditions affect it. Write about the work, not about how great the company is.
+- When a fact about the business would help but is not provided, leave it out. Never fill the gap with a plausible guess.
+`;
+
 export function buildContentDirectives(settings?: SiteSettings): string {
-  if (!settings) return '';
+  if (!settings) return WRITING_STANDARDS;
 
   const lines: string[] = [];
 
@@ -130,9 +158,74 @@ export function buildContentDirectives(settings?: SiteSettings): string {
     lines.push(`**Additional Business Context:**\n${settings.onboarding_notes.trim()}`);
   }
 
-  if (lines.length === 0) return '';
+  if (lines.length === 0) return WRITING_STANDARDS;
 
-  return `\n## Content Directives — follow these closely when writing:\n${lines.join('\n')}\n`;
+  return `\n## Content Directives — follow these closely when writing:\n${lines.join('\n')}\n${WRITING_STANDARDS}`;
+}
+
+// --- Service page prompt (shared by the Inngest pipeline and the single-service route) ---
+
+export function buildServicePagePrompt(
+  ctx: { businessName: string; city: string; state: string; categoryName: string },
+  services: { name: string; description: string }[],
+  directives: string
+): string {
+  const serviceList = services
+    .map((s) => `- ${s.name}: ${s.description || 'No description'}`)
+    .join('\n');
+
+  return `You are writing service pages for a local service business. The reader is a customer with a problem who wants to know three things fast: do you fix my problem, what is involved, and what should I do next.
+
+Business: ${ctx.businessName}
+Location: ${ctx.city}, ${ctx.state}
+Category: ${ctx.categoryName}
+${directives}
+Write a page for each of these services:
+${serviceList}
+
+${services.length > 1 ? `These pages sit side by side on the same site. They must NOT share a skeleton: give them different numbers of problems and sections, and no more than ONE section angle in common. If one page has a "how it is done" section or a checklist, the other should not. Do not reuse heading patterns ("X vs. Y", "How Florida...") across pages.
+
+` : ''}The short description after each service name is ALREADY shown at the top of the page as the hero text. Do not repeat or paraphrase it anywhere.
+
+For EACH service, provide:
+1. meta_title: "[Service Name] in [City], [State] | [Business Name]" (max 60 chars total)
+2. meta_description: What the service covers plus a call to action (max 155 chars)
+3. h1: Name the service in plain words, the way a customer would say it (max 9 words). It MUST contain the service's core keyword. Do NOT put a city or state in the h1: this page is the brand-level page for the service, the title tag carries the location, and separate city pages own "[service] in [city]". No "Professional ... Services" wrapper, no adjectives, no taglines. Let the form follow the service: sometimes just the service name, sometimes the name plus what it covers (e.g. "Marine Engine Repair and Rebuilds", "Fiberglass Hull and Gelcoat Repair").
+4. intro_copy: 2 sentences, max 45 words. Open with the customer's situation or the most common reason people call, not with the business name.
+5. body_copy: One short paragraph, max 80 words, plain summary of what this service covers. Used as a fallback only.
+6. problems: The 2 to 4 problems customers actually call about for THIS service. Use as many as are real, not a fixed number. Each has a heading (the symptom in the customer's words, max 8 words) and a description of 1-2 sentences (max 40 words) giving the usual cause and what the fix involves.
+7. detailed_sections: 2 to 4 sections. Pick the angles that matter for THIS service, and choose different angles for different services. Options include: how the work is done step by step, repair vs. replace, what affects the cost, how long it takes and why, what to check yourself before calling, warning signs, how local climate or conditions affect it, maintenance that prevents the problem. Each section has:
+   - h2: a plain heading a customer would search for or ask. No "Comprehensive", no "&" chains, max 9 words.
+   - body: 40 to 90 words. Lengths should differ between sections.
+   - bullets: 0 to 5 items. Use bullets ONLY when the content is a real list (steps, symptoms, parts, a checklist). At least one section per page should have NO bullets (empty array). Bullets are fragments of max 12 words and must not repeat the body.
+8. faqs: 3 to 5 questions a customer would really ask. Answers are 1-3 sentences (max 60 words) and start with the direct answer. Do not re-ask anything the sections already covered.
+
+Use double newlines (\\n\\n) to separate paragraphs.
+
+Format your response as JSON:
+{
+  "services": [
+    {
+      "name": "Service Name exactly as given",
+      "meta_title": "...",
+      "meta_description": "...",
+      "h1": "...",
+      "intro_copy": "...",
+      "body_copy": "...",
+      "problems": [
+        { "heading": "...", "description": "..." }
+      ],
+      "detailed_sections": [
+        { "h2": "...", "body": "...", "bullets": [] }
+      ],
+      "faqs": [
+        { "question": "...", "answer": "..." }
+      ]
+    }
+  ]
+}
+
+Return ONLY valid JSON.`;
 }
 
 // --- GSC context builder ---
@@ -205,46 +298,11 @@ export async function generateSingleServiceContent(
 
   const directives = buildContentDirectives(ctx.settings);
 
-  const prompt = `You are an SEO expert generating rich, structured content for a local service business website.
-
-Business: ${ctx.businessName}
-Location: ${ctx.primaryCity}, ${ctx.state}
-Category: ${categoryName}
-${directives}
-Generate SEO-optimized content for this service:
-- ${service.name}: ${service.description || 'No description'}
-
-Provide ALL of these fields:
-1. meta_title: Format as "[Service Name] in [City], [State] | [Business Name]" (max 60 chars total)
-2. meta_description: Compelling description with call-to-action (max 155 chars)
-3. h1: Main heading like "Professional [Service Name] Services"
-4. intro_copy: 2-3 sentence service introduction highlighting key benefits (shown as a callout card)
-5. body_copy: 2-3 paragraphs of helpful, SEO-friendly content (300-500 words total)
-6. problems: Exactly 3 common problems/issues this service solves. Each with a short heading and a description of how the business solves it (2-3 sentences each)
-7. detailed_sections: Exactly 3 informational subsections. Each with an h2 heading, a body paragraph (100-150 words), and 3-4 bullet points
-8. faqs: 3-5 common questions and detailed answers about this specific service
-
-Use double newlines (\\n\\n) to separate paragraphs within body_copy.
-
-Format your response as JSON:
-{
-  "meta_title": "...",
-  "meta_description": "...",
-  "h1": "...",
-  "intro_copy": "...",
-  "body_copy": "...",
-  "problems": [
-    { "heading": "Problem 1", "description": "How we solve it..." }
-  ],
-  "detailed_sections": [
-    { "h2": "Section heading", "body": "Paragraph...", "bullets": ["point 1", "point 2", "point 3"] }
-  ],
-  "faqs": [
-    { "question": "...", "answer": "..." }
-  ]
-}
-
-Return ONLY valid JSON.`;
+  const prompt = buildServicePagePrompt(
+    { businessName: ctx.businessName, city: ctx.primaryCity, state: ctx.state, categoryName },
+    [service],
+    directives
+  );
 
   const message = await withRetry(
     (signal) =>
@@ -260,7 +318,7 @@ Return ONLY valid JSON.`;
     60_000
   );
 
-  const result = parseJsonResponse<ServiceContentResult>(message);
+  const result = parseJsonResponse<{ services: ServiceContentResult[] }>(message)?.services?.[0];
   if (!result) throw new Error('Failed to generate service content');
   return result;
 }

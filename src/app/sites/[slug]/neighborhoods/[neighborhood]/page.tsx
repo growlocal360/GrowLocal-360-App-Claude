@@ -5,9 +5,10 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
-import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem } from '@/lib/sites/public-render-model';
+import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
 import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 60;
 
@@ -63,10 +64,16 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
     notFound();
   }
 
-  const [{ categories }, workItems, hasBrands] = await Promise.all([
+  const admin = createAdminClient();
+  const [{ categories }, workItems, hasBrands, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
     getPublishedWorkItems(data.site.id, { city: data.location.city, limit: 6 }),
     siteHasActiveBrands(data.site.id),
+    admin
+      .from('scheduling_configs')
+      .select('is_active, cta_style')
+      .eq('site_id', data.site.id)
+      .single(),
   ]);
   const navCategories: NavCategory[] = categories.map(c => ({
     id: c.id,
@@ -87,6 +94,9 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
       siteSlug={slug}
       categories={navCategories}
       recentWorkItems={workItems.map(toPublicWorkItem)}
+      formCategories={categories.map(toPublicCategory)}
+      schedulingActive={schedulingConfig?.is_active || false}
+      ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}
     />
   );
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { inngest } from '@/lib/inngest/client';
 
 function slugify(name: string): string {
   return name
@@ -107,6 +108,20 @@ export async function POST(
       { status: 500 }
     );
   }
+
+  // Generate this neighborhood's content (body copy, local features, FAQs) now.
+  // Without this the row goes live as an EMPTY page — revalidateSite even busts
+  // the cache so the blank page is served. Fire a neighborhoods-scope build for
+  // just the new row (the pipeline populates meta/h1/body_copy/local_features/faqs).
+  const { data: { session } } = await supabase.auth.getSession();
+  await inngest.send({
+    name: 'site/content.generate',
+    data: {
+      siteId,
+      googleAccessToken: session?.provider_token || null,
+      scope: { type: 'neighborhoods', neighborhoodIds: [newNeighborhood.id] },
+    },
+  });
 
   await revalidateSite(siteId);
 

@@ -141,6 +141,48 @@ describe('planSite — Priority city override', () => {
     });
     expect(plan.cities.find((c) => c.city === 'Buckeye')?.treatment).toBe('has_pattern_1_page');
   });
+
+  it('multi-niche priority city gets ONE page per niche (not just the global top-3)', () => {
+    // AM Refrigeration case: the global top-3 are all HVAC, so without niche
+    // awareness appliance would never get a dedicated-city page. With niches,
+    // Moss Bluff gets both an HVAC and an Appliance Pattern-1 page.
+    const plan = planSite({
+      businessType: 'sab',
+      travelStrategy: 'regional',
+      primaryMarket: { city: 'Lake Charles', state: 'LA' },
+      gbpCategories: [
+        'AC repair service',
+        'HVAC contractor',
+        'Heating contractor',
+        'Appliance repair service',
+        'Refrigerator repair service',
+      ],
+      topServices: ['AC repair service', 'HVAC contractor', 'Heating contractor'], // all HVAC
+      niches: [
+        { key: 'hvac', topService: 'AC repair service' },
+        { key: 'appliance', topService: 'Appliance repair service' },
+      ],
+      serviceAreaCities: [{ city: 'Moss Bluff', state: 'LA', distanceMiles: 12, priority: true }],
+    });
+    const urls = new Set(plan.pages.map((p) => p.url));
+    expect(urls.has('/ac-repair/moss-bluff/')).toBe(true);
+    expect(urls.has('/appliance-repair/moss-bluff/')).toBe(true);
+    expect(plan.cities.find((c) => c.city === 'Moss Bluff')?.treatment).toBe('has_pattern_1_page');
+  });
+
+  it('without niche data, priority city falls back to the global top services', () => {
+    const plan = planSite({
+      ...SURPRISE,
+      serviceAreaCities: [{ city: 'Sun City', state: 'AZ', distanceMiles: 6, priority: true }],
+    });
+    const priorityUrls = plan.pages
+      .filter((p) => p.pageType === 'pattern_1_city' && p.url.includes('sun-city'))
+      .map((p) => p.url);
+    // Top-2 services only (SURPRISE.topServices), no appliance/washer bloat.
+    expect(priorityUrls).toContain('/appliance-repair/sun-city/');
+    expect(priorityUrls).toContain('/refrigerator-repair/sun-city/');
+    expect(priorityUrls.some((u) => u.includes('washer'))).toBe(false);
+  });
 });
 
 describe('planSite — Model B (home IS the Primary Market page)', () => {

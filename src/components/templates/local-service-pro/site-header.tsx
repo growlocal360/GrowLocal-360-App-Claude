@@ -7,6 +7,7 @@ import { Menu, X, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PublicRenderSite, PublicRenderLocation } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
+import { useSiteFormConfig } from '@/components/templates/site-form-config';
 
 export interface NavCategory {
   id: string;
@@ -24,6 +25,8 @@ interface SiteHeaderProps {
 }
 
 export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderProps) {
+  // The header has no cta_style prop; its long-standing default is the estimate label.
+  const ctaLabel = useSiteFormConfig().ctaText?.trim() || 'Get Free Estimate';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const phone = site.settings?.phone || primaryLocation?.phone;
@@ -95,7 +98,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
             style={{ backgroundColor: ctaColor }}
             className="rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
           >
-            <a href="#contact">Get Free Estimate</a>
+            <a href="#contact">{ctaLabel}</a>
           </Button>
         </div>
 
@@ -146,7 +149,7 @@ export function SiteHeader({ site, primaryLocation, locationSlug }: SiteHeaderPr
               className="w-full rounded-full shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
             >
               <a href="#contact" onClick={() => setMobileMenuOpen(false)}>
-                Get Free Estimate
+                {ctaLabel}
               </a>
             </Button>
           </div>

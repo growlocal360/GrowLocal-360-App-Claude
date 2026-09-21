@@ -12,6 +12,7 @@ import {
   type NicheField,
   type NicheStep,
 } from '@/lib/forms/niche-forms';
+import { useCtaLabel, useSiteFormConfig } from '@/components/templates/site-form-config';
 
 interface SlotInfo {
   startTime: string;
@@ -71,6 +72,8 @@ export function UnifiedLeadForm({
 }: UnifiedLeadFormProps) {
   const isBookingMode = schedulingActive && ctaStyle === 'booking';
   const config = useMemo(() => resolveNicheForm(categories, coreIndustry), [categories, coreIndustry]);
+  const siteFormConfig = useSiteFormConfig();
+  const ctaLabel = useCtaLabel(ctaStyle);
 
   // Expand the config's ordered steps for this mode: SCHEDULE_STEP → Date + Time
   // in booking mode, dropped otherwise.
@@ -321,7 +324,7 @@ export function UnifiedLeadForm({
   const advanceFromFields = (fieldsStep: NicheStep) => {
     const missing = fieldsStep.fields.find(f => {
       if (!f.required) return false;
-      if (f.type === 'select' && f.optionsFrom === 'categories' && (!categories || categories.length === 0)) return false;
+      if (f.type === 'select' && f.optionsFrom === 'categories' && !siteFormConfig.formServiceOptions?.length && (!categories || categories.length === 0)) return false;
       return !(formData[f.name] ?? '').trim();
     });
     if (missing) {
@@ -342,9 +345,11 @@ export function UnifiedLeadForm({
     return s.step.title;
   };
 
-  const heroHeading = step === 1 && config.firstStepUsesCtaHeading
-    ? (ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate')
+  // Step-1 heading: the site's custom form heading wins, then the CTA label.
+  const heroHeading = step === 1 && (siteFormConfig.formHeading?.trim() || config.firstStepUsesCtaHeading)
+    ? (siteFormConfig.formHeading?.trim() || ctaLabel)
     : stepTitleAt(step);
+  const heroSubheading = siteFormConfig.formSubheading?.trim() || 'In less than 30 seconds';
 
   const inputClass = variant === 'hero'
     ? 'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-transparent focus:outline-none focus:ring-2'
@@ -361,8 +366,11 @@ export function UnifiedLeadForm({
 
     switch (f.type) {
       case 'select': {
+        // Site-chosen dropdown options (Settings → Lead Form) replace the GBP category list.
         const options = f.optionsFrom === 'categories'
-          ? (categories ?? []).map(c => ({ label: c.gbp_category.display_name, value: c.gbp_category.display_name }))
+          ? (siteFormConfig.formServiceOptions?.length
+              ? siteFormConfig.formServiceOptions.map(o => ({ label: o, value: o }))
+              : (categories ?? []).map(c => ({ label: c.gbp_category.display_name, value: c.gbp_category.display_name })))
           : (f.options ?? []);
         if (options.length === 0) return null;
         return (
@@ -713,7 +721,7 @@ export function UnifiedLeadForm({
               <div>
                 <span className="font-bold text-gray-900 text-2xl">{heroHeading}</span>
                 {step === 1 && (
-                  <div className="font-medium" style={{ color: accentColor }}>In less than 30 seconds</div>
+                  <div className="font-medium" style={{ color: accentColor }}>{heroSubheading}</div>
                 )}
               </div>
               <span className="text-gray-500">Step {step} of {totalSteps}</span>

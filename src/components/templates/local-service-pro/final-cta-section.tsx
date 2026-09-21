@@ -1,6 +1,7 @@
 import { Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_BRAND_COLOR } from './theme';
+import { useCtaLabel } from '@/components/templates/site-form-config';
 
 interface FinalCTASectionProps {
   brandColor?: string | null;
@@ -31,6 +32,7 @@ export function FinalCTASection({
   subheading,
   formHref = '#hero-form',
 }: FinalCTASectionProps) {
+  const ctaLabel = useCtaLabel(ctaStyle);
   const color = ctaColor || brandColor || DEFAULT_BRAND_COLOR;
   const headingText = heading || (ctaStyle === 'booking'
     ? 'Ready to get on the schedule?'
@@ -52,7 +54,7 @@ export function FinalCTASection({
             style={{ color }}
           >
             <a href={formHref}>
-              {ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate'}
+              {ctaLabel}
             </a>
           </Button>
           {phone && (

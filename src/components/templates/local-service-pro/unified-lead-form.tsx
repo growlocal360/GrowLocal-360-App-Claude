@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ApplianceIcon } from './appliance-icons';
 import type { PublicRenderCategory } from '@/lib/sites/public-render-model';
 import {
-  resolveNicheForm,
+  resolveSiteNiches,
   allFields,
   SCHEDULE_STEP,
   type NicheField,
@@ -44,8 +44,13 @@ interface UnifiedLeadFormProps {
   coreIndustry?: string;
 }
 
-// A resolved step to render: a fields step, or one of the two scheduling steps.
-type RenderStep = { kind: 'fields'; step: NicheStep } | { kind: 'date' } | { kind: 'time' };
+// A resolved step to render: the niche branch selector (multi-niche sites only),
+// a fields step, or one of the two scheduling steps.
+type RenderStep =
+  | { kind: 'niche' }
+  | { kind: 'fields'; step: NicheStep }
+  | { kind: 'date' }
+  | { kind: 'time' };
 
 function formatTime(time: string): string {
   const [h, m] = time.split(':').map(Number);
@@ -71,14 +76,27 @@ export function UnifiedLeadForm({
   coreIndustry,
 }: UnifiedLeadFormProps) {
   const isBookingMode = schedulingActive && ctaStyle === 'booking';
-  const config = useMemo(() => resolveNicheForm(categories, coreIndustry), [categories, coreIndustry]);
   const siteFormConfig = useSiteFormConfig();
   const ctaLabel = useCtaLabel(ctaStyle);
 
-  // Expand the config's ordered steps for this mode: SCHEDULE_STEP → Date + Time
-  // in booking mode, dropped otherwise.
+  // The distinct niches this site spans. A dual-niche business (e.g. HVAC +
+  // Appliance) gets a branch selector first; single-niche sites behave as before.
+  const niches = useMemo(() => resolveSiteNiches(categories, coreIndustry), [categories, coreIndustry]);
+  const multiNiche = niches.length >= 2;
+
+  // Which branch the user is in. Single-niche → locked to the only niche.
+  const [selectedNicheKey, setSelectedNicheKey] = useState<string | null>(
+    multiNiche ? null : (niches[0]?.key ?? null)
+  );
+  const activeNiche = niches.find(n => n.key === selectedNicheKey) ?? niches[0];
+  const config = activeNiche.config;
+
+  // Expand the active config's ordered steps for this mode: SCHEDULE_STEP →
+  // Date + Time in booking mode, dropped otherwise. On multi-niche sites the
+  // branch selector is prepended as step 1.
   const steps: RenderStep[] = useMemo(() => {
     const out: RenderStep[] = [];
+    if (multiNiche) out.push({ kind: 'niche' });
     for (const item of config.steps) {
       if (item === SCHEDULE_STEP) {
         if (isBookingMode) { out.push({ kind: 'date' }); out.push({ kind: 'time' }); }
@@ -87,7 +105,7 @@ export function UnifiedLeadForm({
       }
     }
     return out;
-  }, [config, isBookingMode]);
+  }, [config, isBookingMode, multiNiche]);
   const totalSteps = steps.length;
 
   const [step, setStep] = useState(1);
@@ -229,6 +247,8 @@ export function UnifiedLeadForm({
       else if (f.mapsTo === 'message') messageParts.push(v);
       else metadata[f.name] = v;
     }
+    // Record which niche branch the customer chose (dual-niche sites only).
+    if (multiNiche && activeNiche) metadata.niche = activeNiche.label;
     // ZIP + city auto-derived from the selected address (no separate field).
     if (addressMeta.zip) metadata.zip = addressMeta.zip;
     if (addressMeta.city) metadata.city = addressMeta.city;
@@ -337,18 +357,24 @@ export function UnifiedLeadForm({
 
   const finalLabel = config.submitLabel || (ctaStyle === 'booking' ? 'Schedule Service' : 'Get Free Estimate');
 
+  // Form heading: the site's custom form heading wins, then the CTA label.
+  const customFormHeading = siteFormConfig.formHeading?.trim();
+  const ctaHeading = customFormHeading || ctaLabel;
+
   const stepTitleAt = (i: number): string => {
     const s = steps[i - 1];
     if (!s) return '';
+    if (s.kind === 'niche') return ctaHeading;
     if (s.kind === 'date') return 'Select Date';
     if (s.kind === 'time') return 'Select Time';
     return s.step.title;
   };
 
-  // Step-1 heading: the site's custom form heading wins, then the CTA label.
-  const heroHeading = step === 1 && (siteFormConfig.formHeading?.trim() || config.firstStepUsesCtaHeading)
-    ? (siteFormConfig.formHeading?.trim() || ctaLabel)
-    : stepTitleAt(step);
+  // A custom form heading always shows on step 1, even for niches whose first
+  // step normally uses its own title.
+  const heroHeading = current?.kind === 'niche'
+    ? ctaHeading
+    : (step === 1 && (customFormHeading || config.firstStepUsesCtaHeading) ? ctaHeading : stepTitleAt(step));
   const heroSubheading = siteFormConfig.formSubheading?.trim() || 'In less than 30 seconds';
 
   const inputClass = variant === 'hero'
@@ -567,6 +593,34 @@ export function UnifiedLeadForm({
   // ---- Step body ----
   const renderStepBody = () => {
     if (!current) return null;
+
+    // Niche branch selector (dual-niche sites): pick a service line, then jump
+    // into that niche's qualifier flow.
+    if (current.kind === 'niche') {
+      return (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">What do you need help with?</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {niches.map(n => {
+              const selected = selectedNicheKey === n.key;
+              return (
+                <button
+                  type="button"
+                  key={n.key}
+                  onClick={() => { setSelectedNicheKey(n.key); setStepError(null); setStep(2); }}
+                  className={`rounded-xl border p-4 text-center text-base font-medium transition-all ${
+                    selected ? 'border-2 shadow-sm' : 'border-gray-200 text-gray-800 hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                  style={selected ? { borderColor: accentColor, color: accentColor } : undefined}
+                >
+                  {n.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
 
     if (current.kind === 'date') {
       return (

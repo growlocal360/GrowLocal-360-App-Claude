@@ -5,7 +5,7 @@ import { Phone, MapPin, ArrowLeft, Home, ChevronRight, Landmark, GraduationCap, 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { PublicRenderSite, PublicRenderLocation, PublicRenderNeighborhoodDetail, PublicRenderNeighborhoodListing, PublicRenderWorkItem } from '@/lib/sites/public-render-model';
+import type { PublicRenderSite, PublicRenderLocation, PublicRenderNeighborhoodDetail, PublicRenderNeighborhoodListing, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
   JsonLd,
@@ -29,6 +29,11 @@ interface NeighborhoodPageSingleLocationProps {
   siteSlug: string;
   categories?: NavCategory[];
   recentWorkItems?: PublicRenderWorkItem[];
+  // Accepted for a shared route signature with the Premium template (which uses
+  // the lead form on neighborhood pages). This template keeps its phone quote card.
+  formCategories?: PublicRenderCategory[];
+  schedulingActive?: boolean;
+  ctaStyle?: 'booking' | 'estimate';
 }
 
 export function NeighborhoodPageSingleLocation({ data, siteSlug, categories, recentWorkItems }: NeighborhoodPageSingleLocationProps) {

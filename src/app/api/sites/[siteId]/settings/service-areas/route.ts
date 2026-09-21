@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { inngest } from '@/lib/inngest/client';
 
 function slugify(name: string): string {
   return name
@@ -143,7 +144,21 @@ export async function PATCH(
 
   await revalidateSite(siteId);
 
-  // The dedicated page is built on the next regenerate.
+  // Rebuild the site plan so the Dedicated Page toggle takes effect immediately:
+  // the service-areas scope re-runs plan-site (fresh is_priority) which
+  // creates/removes the city's Pattern-1 page(s) and regenerates their content.
+  // Without this the priority city would 404 until a full regenerate.
+  const { data: { session } } = await supabase.auth.getSession();
+  await inngest.send({
+    name: 'site/content.generate',
+    data: {
+      siteId,
+      googleAccessToken: session?.provider_token || null,
+      scope: { type: 'service-areas', serviceAreaIds: [id] },
+    },
+  });
+
+  // The dedicated page is (re)built by the triggered regenerate above.
   return NextResponse.json({ success: true, requiresRegenerate: true });
 }
 

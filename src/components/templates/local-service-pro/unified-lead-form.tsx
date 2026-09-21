@@ -12,6 +12,7 @@ import {
   type NicheField,
   type NicheStep,
 } from '@/lib/forms/niche-forms';
+import { useCtaLabel, useSiteFormConfig } from '@/components/templates/site-form-config';
 
 interface SlotInfo {
   startTime: string;
@@ -75,6 +76,8 @@ export function UnifiedLeadForm({
   coreIndustry,
 }: UnifiedLeadFormProps) {
   const isBookingMode = schedulingActive && ctaStyle === 'booking';
+  const siteFormConfig = useSiteFormConfig();
+  const ctaLabel = useCtaLabel(ctaStyle);
 
   // The distinct niches this site spans. A dual-niche business (e.g. HVAC +
   // Appliance) gets a branch selector first; single-niche sites behave as before.
@@ -341,7 +344,7 @@ export function UnifiedLeadForm({
   const advanceFromFields = (fieldsStep: NicheStep) => {
     const missing = fieldsStep.fields.find(f => {
       if (!f.required) return false;
-      if (f.type === 'select' && f.optionsFrom === 'categories' && (!categories || categories.length === 0)) return false;
+      if (f.type === 'select' && f.optionsFrom === 'categories' && !siteFormConfig.formServiceOptions?.length && (!categories || categories.length === 0)) return false;
       return !(formData[f.name] ?? '').trim();
     });
     if (missing) {
@@ -354,7 +357,9 @@ export function UnifiedLeadForm({
 
   const finalLabel = config.submitLabel || (ctaStyle === 'booking' ? 'Schedule Service' : 'Get Free Estimate');
 
-  const ctaHeading = ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate';
+  // Form heading: the site's custom form heading wins, then the CTA label.
+  const customFormHeading = siteFormConfig.formHeading?.trim();
+  const ctaHeading = customFormHeading || ctaLabel;
 
   const stepTitleAt = (i: number): string => {
     const s = steps[i - 1];
@@ -365,9 +370,12 @@ export function UnifiedLeadForm({
     return s.step.title;
   };
 
+  // A custom form heading always shows on step 1, even for niches whose first
+  // step normally uses its own title.
   const heroHeading = current?.kind === 'niche'
     ? ctaHeading
-    : (step === 1 && config.firstStepUsesCtaHeading ? ctaHeading : stepTitleAt(step));
+    : (step === 1 && (customFormHeading || config.firstStepUsesCtaHeading) ? ctaHeading : stepTitleAt(step));
+  const heroSubheading = siteFormConfig.formSubheading?.trim() || 'In less than 30 seconds';
 
   const inputClass = variant === 'hero'
     ? 'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-transparent focus:outline-none focus:ring-2'
@@ -384,8 +392,11 @@ export function UnifiedLeadForm({
 
     switch (f.type) {
       case 'select': {
+        // Site-chosen dropdown options (Settings → Lead Form) replace the GBP category list.
         const options = f.optionsFrom === 'categories'
-          ? (categories ?? []).map(c => ({ label: c.gbp_category.display_name, value: c.gbp_category.display_name }))
+          ? (siteFormConfig.formServiceOptions?.length
+              ? siteFormConfig.formServiceOptions.map(o => ({ label: o, value: o }))
+              : (categories ?? []).map(c => ({ label: c.gbp_category.display_name, value: c.gbp_category.display_name })))
           : (f.options ?? []);
         if (options.length === 0) return null;
         return (
@@ -764,7 +775,7 @@ export function UnifiedLeadForm({
               <div>
                 <span className="font-bold text-gray-900 text-2xl">{heroHeading}</span>
                 {step === 1 && (
-                  <div className="font-medium" style={{ color: accentColor }}>In less than 30 seconds</div>
+                  <div className="font-medium" style={{ color: accentColor }}>{heroSubheading}</div>
                 )}
               </div>
               <span className="text-gray-500">Step {step} of {totalSteps}</span>

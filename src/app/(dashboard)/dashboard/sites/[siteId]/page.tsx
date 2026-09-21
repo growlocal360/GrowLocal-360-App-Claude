@@ -40,6 +40,7 @@ import {
   Bell,
   LayoutTemplate,
   UserRound,
+  ClipboardList,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
@@ -63,6 +64,8 @@ interface SiteData {
     email?: string;
     onboarding_completed?: boolean;
     about_featured_person?: { name?: string; title?: string; photo_url?: string };
+    cta_text?: string;
+    form_service_options?: string[];
   } | null;
   custom_domain: string | null;
   custom_domain_verified: boolean;
@@ -678,6 +681,36 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/settings/about-person`}>
                   Set Featured Person
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Lead Form & CTA */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <ClipboardList className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Lead Form &amp; CTA</h3>
+                  <p className="text-sm text-gray-500">Button text, form header, services</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {site.settings?.cta_text
+                  ? `Button: "${site.settings.cta_text}"`
+                  : 'Using default button text'}
+                {site.settings?.form_service_options?.length
+                  ? ` · ${site.settings.form_service_options.length} dropdown options`
+                  : ''}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/settings/lead-form`}>
+                  Customize Form
                 </Link>
               </Button>
             </CardContent>

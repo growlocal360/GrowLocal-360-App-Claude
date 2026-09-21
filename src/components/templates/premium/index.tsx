@@ -19,6 +19,7 @@ import {
   PmIconPhone, PmIconCheck, PmIconStar, PmIconShield, PmIconClock,
   PmIconWrench, PmIconLayers, PmIconArrow, PmIconPin,
 } from './icons';
+import { useCtaLabel } from '@/components/templates/site-form-config';
 
 const LOWERCASE_WORDS = new Set(['a','an','the','and','but','or','nor','for','yet','so','in','on','at','to','of','by','with','from','as','into']);
 function toTitleCase(str: string): string {
@@ -97,7 +98,7 @@ export function PremiumTemplate({
     : null;
   const webSiteSchema = businessInput ? buildWebSiteSchema(businessInput) : null;
 
-  const ctaLabel = ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate';
+  const ctaLabel = useCtaLabel(ctaStyle);
   const svcList = services || [];
   const work = recentWorkItems || [];
 
@@ -155,7 +156,7 @@ export function PremiumTemplate({
                     </span>
                   </a>
                 )}
-                <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{caLabel(ctaStyle)} <PmIconArrow /></a>
+                <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{ctaLabel} <PmIconArrow /></a>
               </div>
             </div>
 
@@ -319,7 +320,7 @@ export function PremiumTemplate({
             <h2>{ctaStyle === 'booking' ? 'Ready to book? Let’s get started.' : 'Ready for your free estimate?'}</h2>
             <p>Fast response, upfront pricing, and work backed by our guarantee.</p>
             <div className="pm-row">
-              <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{caLabel(ctaStyle)} <PmIconArrow /></a>
+              <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{ctaLabel} <PmIconArrow /></a>
               {phoneHref && <a className="pm-btn pm-btn-ghost pm-btn-lg" href={phoneHref}><PmIconPhone style={{ width: 18, height: 18 }} /> {phone}</a>}
             </div>
           </div>
@@ -343,7 +344,6 @@ function WhyItem({ h, p }: { h: string; p: string }) {
 }
 function stars(n: number) { return '★★★★★'.slice(0, Math.max(0, Math.min(5, n))); }
 function initials(name: string) { return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase(); }
-function caLabel(ctaStyle: 'booking' | 'estimate') { return ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate'; }
 
 /** Readable ink color (#0a0a0b or #fff) for text/icons on a brand fill. */
 function readableInk(hex: string): string {

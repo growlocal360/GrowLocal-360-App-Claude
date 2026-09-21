@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderPageContent, PublicRenderServiceListing, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import { UnifiedLeadForm } from './unified-lead-form';
 import { AvailabilityBadge } from './availability-badge';
+import { useCtaLabel } from '@/components/templates/site-form-config';
 
 const LOWERCASE_WORDS = new Set([
   'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
@@ -37,6 +38,7 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ site, primaryLocation, pageContent, services, formCategories, schedulingActive = false, averageRating, totalReviewCount, primaryCategoryName, showAvailabilityBadge = true, ctaStyle = 'booking', ctaColor, secondaryColor }: HeroSectionProps) {
+  const ctaLabel = useCtaLabel(ctaStyle);
   const brandColor = site.settings?.brand_color || '#00ef99';
   const buttonColor = ctaColor || brandColor;
   const accentColor = secondaryColor || brandColor;
@@ -138,7 +140,7 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
                   style={{ backgroundColor: buttonColor }}
                 >
                   <a href="#hero-form">
-                    {ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate'}
+                    {ctaLabel}
                   </a>
                 </Button>
               </div>

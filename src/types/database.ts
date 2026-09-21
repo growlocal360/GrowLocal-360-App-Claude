@@ -191,7 +191,14 @@ export interface SiteSettings {
   phone?: string;
   email?: string;
   core_industry?: string;
-  cta_text?: string;
+  // Lead form + CTA button overrides. All optional: empty falls back to the
+  // cta_style defaults ("Book Online" / "Get Free Estimate").
+  cta_text?: string;            // header/hero/footer CTA button label
+  form_heading?: string;        // lead form step-1 heading
+  form_subheading?: string;     // line under the heading ("In less than 30 seconds")
+  // Options shown in the form's "Service Needed" dropdown, in order. When empty
+  // the dropdown lists the site's GBP categories.
+  form_service_options?: string[];
   // About page "featured person" — the client's business owner shown in the
   // founder/Our Story headshot. When set (name present), it overrides the
   // account-owner profile so the agency's own account doesn't appear on client

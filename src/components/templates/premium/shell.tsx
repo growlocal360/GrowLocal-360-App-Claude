@@ -12,6 +12,7 @@ import * as paths from '@/lib/routing/paths';
 import { PremiumHeader } from './header';
 import { PremiumFooter } from './footer';
 import { PmIconPhone, PmIconArrow } from './icons';
+import { useCtaLabel } from '@/components/templates/site-form-config';
 
 /** Readable ink color (#0a0a0b or #fff) for text/icons on a brand fill. */
 export function readableInk(hex: string): string {
@@ -20,10 +21,6 @@ export function readableInk(hex: string): string {
   const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return lum > 0.6 ? '#0a0a0b' : '#ffffff';
-}
-
-export function ctaLabelFor(ctaStyle: 'booking' | 'estimate') {
-  return ctaStyle === 'booking' ? 'Book Online' : 'Get Free Estimate';
 }
 
 interface ShellProps {
@@ -41,9 +38,10 @@ interface ShellProps {
 export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', children }: ShellProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const brandInk = readableInk(brandColor);
+  const ctaLabel = useCtaLabel(ctaStyle);
   return (
     <div className="tpl-premium" style={{ ['--brand' as string]: brandColor, ['--brand-ink' as string]: brandInk }}>
-      <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabelFor(ctaStyle)} />
+      <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabel} />
       <main>{children}</main>
       <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
     </div>
@@ -77,13 +75,14 @@ export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede }: { crum
 /** Reusable dark final-CTA band. */
 export function PremiumFinalCta({ heading, sub, ctaStyle = 'booking', phone }: { heading: string; sub?: string; ctaStyle?: 'booking' | 'estimate'; phone?: string | null }) {
   const phoneHref = phone ? `tel:${phone.replace(/\D/g, '')}` : undefined;
+  const ctaLabel = useCtaLabel(ctaStyle);
   return (
     <div className="pm-wrap pm-finalwrap" style={{ paddingTop: 88 }}>
       <div className="pm-final">
         <h2>{heading}</h2>
         {sub && <p>{sub}</p>}
         <div className="pm-row">
-          <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{ctaLabelFor(ctaStyle)} <PmIconArrow /></a>
+          <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{ctaLabel} <PmIconArrow /></a>
           {phoneHref && <a className="pm-btn pm-btn-ghost pm-btn-lg" href={phoneHref}><PmIconPhone style={{ width: 18, height: 18 }} /> {phone}</a>}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { WRITING_STANDARDS } from '@/lib/content/generators';
 
 // Request types
 interface ServiceInput {
@@ -152,13 +153,10 @@ For EACH service, provide:
 2. meta_description: Compelling description with call-to-action (max 155 chars)
 3. h1: Main heading that includes the service and location naturally
 4. h2: Supporting subheading that adds value
-5. body_copy: 2-3 paragraphs of helpful, SEO-friendly content (300-500 words total). Include:
-   - What the problem/service is
-   - How ${req.businessName} solves it
-   - Why choose this business
-   - Brief mention of the service area
+5. body_copy: 2-3 short paragraphs (max 200 words total). Cover what the problem is, what causes it, and what the fix involves.
 6. faqs: 3-5 common questions and detailed answers about this specific service. Each answer should be 2-4 sentences.
 
+${WRITING_STANDARDS}
 Format your response as JSON:
 {
   "services": [
@@ -226,6 +224,7 @@ For EACH category, provide:
    - Why ${req.businessName} excels in this area
    - The value provided to customers
 
+${WRITING_STANDARDS}
 Format as JSON:
 {
   "categories": [
@@ -289,6 +288,7 @@ For EACH page, provide:
    - About: Company story, values, and why choose us (300-500 words)
    - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
 
+${WRITING_STANDARDS}
 Format as JSON:
 {
   "pages": [
@@ -357,6 +357,7 @@ For EACH service area, provide:
    - How close/convenient it is from our primary location
    - Call to action to contact us
 
+${WRITING_STANDARDS}
 Format as JSON:
 {
   "service_areas": [

@@ -4,7 +4,7 @@ import { revalidateSite, revalidatePages } from '@/lib/sites/revalidate';
 import Anthropic from '@anthropic-ai/sdk';
 import { GBPClient, starRatingToNumber } from '@/lib/google/gbp-client';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext } from '@/lib/content/generators';
+import { createAnthropicClient, withRetry, parseJsonResponse, buildContentDirectives, buildGSCContext, buildServicePagePrompt } from '@/lib/content/generators';
 import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content/image-prompts';
 import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
 import { computeSitePlan, toStoredSitePlan } from '@/lib/sites/site-plan-store';
@@ -1485,10 +1485,10 @@ For EACH page, provide:
 4. h2: Supporting subheading (for home page: something action-oriented like "Expert ${primaryCategory} You Can Count On" or a value proposition mentioning 2-3 specific services)
 5. hero_description: 1-2 sentence hero subheading (compelling value proposition with specific services mentioned, used below the H1)
 6. body_copy: Main content block:
-   - Home: 2-3 paragraphs about the business, the specific services offered, and why customers trust them (300-500 words). Write naturally — mention real services, not generic platitudes.${brandHome ? ' Frame the coverage around the WHOLE service area / region (reference multiple communities served), not a single city.' : ''}
-   - Contact: Brief intro encouraging contact with mention of service area (100-200 words)
+   - Home: 2-3 short paragraphs (max 220 words total) on what the business does, the specific services offered, and who it serves. Mention real services by name. No claims about trust, quality, or reputation.${brandHome ? ' Frame the coverage around the WHOLE service area / region (reference multiple communities served), not a single city.' : ''}
+   - Contact: Brief intro on how to reach the business and the area served (max 70 words)
 7. body_copy_2: Secondary content block (used in alternating layout sections):
-   - Home: 1-2 paragraphs about community commitment, certifications, or experience (150-250 words)
+   - Home: 1 paragraph (max 110 words). If the Content Directives give credentials, history, or business background, use those facts. If they do not, write instead about how the work is done or what local conditions mean for customers. Never invent certifications, experience, or community involvement.
    - Contact: empty string
 
 Use double newlines (\\n\\n) to separate paragraphs within body_copy and body_copy_2.
@@ -1566,8 +1566,8 @@ Generate content for this category page:
 3. h1: Main heading with category name and location
 4. h2: Supporting subheading — action-oriented, mentioning specific services in this category
 5. hero_description: 1-2 sentence value proposition mentioning specific services, shown below the H1
-6. body_copy: 2-3 paragraphs introducing this category of services (200-400 words). Mention specific services by name. Write naturally about capabilities and local commitment.
-7. body_copy_2: 1-2 paragraphs for a secondary content block (150-250 words) — certifications, community involvement, or value propositions.
+6. body_copy: 2 short paragraphs (max 180 words total) introducing this category. Mention specific services by name and what problems they solve.
+7. body_copy_2: 1 paragraph (max 110 words). If the Content Directives give credentials or business background, use those facts. Otherwise write about how to choose between the services in this category, or what local conditions mean for this kind of work. Never invent certifications or community involvement.
 
 Use double newlines (\\n\\n) to separate paragraphs.
 
@@ -1627,57 +1627,11 @@ async function generateServicePages(
   services: { name: string; description: string }[],
   directives: string = ''
 ) {
-  const serviceList = services
-    .map((s) => `- ${s.name}: ${s.description || 'No description'}`)
-    .join('\n');
-
-  const prompt = `You are an SEO expert generating rich, structured content for a local service business website.
-
-Business: ${businessName}
-Location: ${city}, ${state}
-Category: ${categoryName}
-${directives}
-Generate SEO-optimized content for these services:
-${serviceList}
-
-For EACH service, provide ALL of these fields:
-1. meta_title: Format as "[Service Name] in [City], [State] | [Business Name]" (max 60 chars total)
-2. meta_description: Compelling description with call-to-action (max 155 chars)
-3. h1: Main heading like "Professional [Service Name] Services"
-4. intro_copy: 2-3 sentence service introduction highlighting key benefits (shown as a callout card)
-5. body_copy: 2-3 paragraphs of helpful, SEO-friendly content (300-500 words total)
-6. problems: Exactly 3 common problems/issues this service solves. Each with a short heading and a description of how the business solves it (2-3 sentences each)
-7. detailed_sections: Exactly 3 informational subsections. Each with an h2 heading, a body paragraph (100-150 words), and 3-4 bullet points
-8. faqs: 3-5 common questions and detailed answers about this specific service
-
-Use double newlines (\\n\\n) to separate paragraphs within body_copy.
-
-Format your response as JSON:
-{
-  "services": [
-    {
-      "name": "Service Name",
-      "meta_title": "...",
-      "meta_description": "...",
-      "h1": "...",
-      "intro_copy": "...",
-      "body_copy": "...",
-      "problems": [
-        { "heading": "Problem 1", "description": "How we solve it..." },
-        { "heading": "Problem 2", "description": "..." },
-        { "heading": "Problem 3", "description": "..." }
-      ],
-      "detailed_sections": [
-        { "h2": "Section heading", "body": "Paragraph...", "bullets": ["point 1", "point 2", "point 3"] }
-      ],
-      "faqs": [
-        { "question": "...", "answer": "..." }
-      ]
-    }
-  ]
-}
-
-Return ONLY valid JSON.`;
+  const prompt = buildServicePagePrompt(
+    { businessName, city, state, categoryName },
+    services,
+    directives
+  );
 
   const message = await withRetry((signal) =>
     anthropic.messages.create(
@@ -1745,9 +1699,9 @@ ${areaList}
 - NEVER start with "${businessName} proudly..." or "${businessName} is your trusted..."
 - Each area MUST open differently: a question, a local scenario, a weather/seasonal angle, a homeowner pain point — vary the approach
 - If a services list is provided above, reference 2-3 specific services per area and rotate which ones. If no services list, reference common ${primaryCategory.toLowerCase()} services for the area
-- Mention the relationship to ${primaryCity} naturally (e.g., "just 15 minutes from our ${primaryCity} team" or "serving [City] and the surrounding area")
+- Mention the relationship to ${primaryCity} naturally (e.g., "our ${primaryCity} team covers [City]"). Do NOT state drive times or distances, you do not know them
 - If search query data is included in the directives, weave relevant queries into the copy
-- Write 2-3 paragraphs (200-300 words) per area — enough to be genuinely useful, not just filler
+- Write 2 short paragraphs (max 160 words) per area. Every sentence must be about THIS city or a specific service. No filler.
 
 ## DATA PRIORITY — use whatever is available:
 1. ALWAYS use: business name, category, city/state — these are always present
@@ -1761,7 +1715,7 @@ For EACH service area, provide:
 1. meta_title: "${primaryCategory} in [City], [State] | ${businessName}" (max 60 chars)
 2. meta_description: Compelling, specific description (max 155 chars)
 3. h1: Varied heading — NOT "${primaryCategory} in [City]" for every single one
-4. body_copy: 2-3 paragraphs (200-300 words) that:
+4. body_copy: 2 short paragraphs (max 160 words) that:
    - Connect the area to the business naturally
    - Reference specific services relevant to that community
    - Include a clear call to action
@@ -1827,7 +1781,7 @@ Generate unique, compelling content for each of these brand pages:
 ${brandList}
 
 CRITICAL: Each brand MUST have genuinely different wording, tone, and selling points. Do NOT just swap the brand name into identical templates. Consider:
-- Premium/luxury brands (Sub-Zero, Wolf, Viking, Miele, Thermador) → emphasize specialized expertise, factory training, genuine parts, warranty protection
+- Premium/luxury brands (Sub-Zero, Wolf, Viking, Miele, Thermador) → focus on what makes these units different to service (sealed systems, proprietary parts, diagnostics)
 - Popular brands (Samsung, LG, Whirlpool, GE, Frigidaire) → emphasize fast service, affordability, wide availability of parts, reliability
 - Mid-tier brands (KitchenAid, Bosch, Maytag) → emphasize quality workmanship, value, trusted service
 
@@ -1836,9 +1790,9 @@ For EACH brand, provide ALL of these fields:
 2. meta_description: Compelling description with CTA (max 155 chars)
 3. h1: Main hero heading — be creative, vary structure between brands (don't just use "[Brand] [Category] in [City]" for every one)
 4. hero_description: 2-3 sentences below the H1 — unique value proposition for this specific brand. What makes ${businessName} the right choice for THIS brand?
-5. body_copy: 1-2 paragraphs (150-300 words) for the "Why Choose Us" section — specific to this brand. Mention what sets this brand apart and why expert service matters.
+5. body_copy: 1-2 short paragraphs (max 150 words) specific to this brand: its common failure points, parts availability, and what servicing it involves.
 6. value_props: 3-4 unique value propositions, each with a "title" (3-5 words) and "description" (1-2 sentences). VARY these between brands — not every brand should get "Experienced Technicians".
-7. faqs: 3-5 brand-specific Q&A pairs. Include questions customers actually ask about this brand (e.g., repair costs, common issues, parts availability, warranty). Naturally mention typical repair cost ranges where relevant.
+7. faqs: 3-5 brand-specific Q&A pairs customers actually ask about this brand (common issues, parts availability, repair vs. replace). Answers max 60 words. Do not quote prices.
 8. cta_heading: Action-oriented CTA heading — vary between brands
 9. cta_description: 1-2 sentences encouraging contact — mention the brand and city
 
@@ -2095,13 +2049,13 @@ For EACH neighborhood, provide ALL of these fields:
 1. meta_title: "${primaryCategory} in [Neighborhood], ${primaryCity} | ${businessName}" (max 60 chars)
 2. meta_description: Compelling, specific description (max 155 chars) — NOT a generic template
 3. h1: Creative, varied heading — each one structurally different from the others
-4. body_copy: 2-3 paragraphs (200-350 words) weaving together neighborhood character, relevant services, and local landmarks
+4. body_copy: 2 short paragraphs (max 180 words) weaving together neighborhood character, relevant services, and local landmarks
 5. local_features: Object with:
    - landmarks: 2-3 from the provided landmark data with 1-sentence descriptions (or empty array if none provided)
    - schools: 2-3 nearby schools from the provided data with 1-sentence descriptions (or empty array if none provided)
    - housing: 1 paragraph about typical housing types — connect to relevant services
    - community: 1 paragraph about the neighborhood's vibe and character
-   - why_choose_us: 4-6 reasons specific to THIS neighborhood (reference local factors, housing age, climate, specific services)
+   - why_choose_us: 3-5 short reasons specific to THIS neighborhood (local factors, housing age, climate, specific services). Reasons about the area and the work, not invented claims about the business
 6. faqs: 3-4 neighborhood-specific Q&As that reference actual services and local conditions
 
 Format as JSON:
@@ -2246,7 +2200,8 @@ CONTENT RULES:
 - Write naturally, avoid keyword stuffing
 - Do not make unverifiable claims or invent awards/certifications
 - Prefer specificity over hype
-- If data is missing, write naturally without sounding vague
+- If data is missing, write LESS. A short honest section beats a long invented one. An empty paragraphs/highlights array is acceptable
+- You have NO founder, history, or credential information beyond what appears above. ${businessDescription ? 'Build the story ONLY from the Business Description above.' : 'No Business Description was provided, so do NOT write a founding story, founder background, dates, or motivations. Describe what the business does today and the work it handles instead.'}
 - Tone: professional, warm, credible, local, knowledgeable
 - Never use: "Your one-stop shop", "Look no further", "Proudly serving", "Professional services", "Quality service" as standalone
 
@@ -2267,25 +2222,25 @@ Generate the following JSON structure:
   "h1": "About ${businessName} — heading that establishes trust",
   "h2": "Supporting subheading about expertise or values",
   "hero_description": "1-2 sentence intro establishing the business, primary category, and location",
-  "body_copy": "Condensed company story for backwards compatibility (300-400 words, use \\n\\n between paragraphs)",
-  "body_copy_2": "Additional company info for backwards compatibility (150-200 words)",
+  "body_copy": "Condensed summary of the business for backwards compatibility (max 180 words, use \\n\\n between paragraphs)",
+  "body_copy_2": "Additional info for backwards compatibility (max 90 words)",
   "sections": {
     "founder_story": {
       "heading": "Our Story or Meet the Founder — choose what fits",
-      "paragraphs": ["paragraph1 about how the company began, founder background, motivation (200-300 words split across 2-3 paragraphs)"]
+      "paragraphs": ["${businessDescription ? 'The company story drawn strictly from the Business Description (max 160 words across 1-2 paragraphs)' : 'What the business does today and the kind of work it handles (max 90 words, 1 paragraph). No invented history'}"]
     },
     "mission_values": {
       "heading": "Our Mission or What We Believe",
-      "paragraphs": ["1-2 paragraphs about what the business stands for, quality, service, community (100-150 words)"]
+      "paragraphs": ["1 paragraph on how the business approaches the work, in concrete terms (max 80 words)"]
     },
     "experience_credentials": {
       "heading": "Experience You Can Trust or Why Experience Matters",
-      "paragraphs": ["1-2 paragraphs about expertise, training, certifications, why experience benefits customers (150-200 words)"],
-      "highlights": ["highlight1 like 'Licensed and insured'", "highlight2 like 'Ongoing professional training'", "up to 5 credential/experience highlights"]
+      "paragraphs": ["${credentials ? '1 paragraph built strictly from the Credentials above (max 110 words)' : '1 paragraph on the technical knowledge this trade requires and why it matters to the customer (max 90 words). Claim no credentials'}"],
+      "highlights": ["${credentials ? 'One highlight per credential actually listed above, up to 5' : 'Return an EMPTY array. No credentials were provided'}"]
     },
     "local_connection": {
       "heading": "Serving ${city} and Surrounding Areas or Local Service You Can Count On",
-      "paragraphs": ["1-2 paragraphs about local roots, community connection, geographic service (100-150 words)"]
+      "paragraphs": ["1 paragraph about the area served and local conditions that affect this work (max 90 words). No invented community involvement"]
     },
     "trust_points": {
       "heading": "Why Customers Choose ${businessName}",

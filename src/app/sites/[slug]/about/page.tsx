@@ -75,8 +75,27 @@ export default async function AboutPageRoute({ params }: AboutPageProps) {
   }));
 
   const aboutContent = data.sitePages?.find(p => p.page_type === 'about') || null;
-  const teamMembers = teamProfiles.map(toPublicTeamMember);
+  let teamMembers = teamProfiles.map(toPublicTeamMember);
   const reviews = (data.googleReviews || []).map(toPublicReview);
+
+  // Per-site "featured person": when the client's business owner is set, use it
+  // for the founder/Our Story headshot instead of the account-owner profile (so
+  // the agency's own account never appears on a client's About page). Injected as
+  // the owner-role member so both templates + schema pick it up unchanged.
+  const featured = data.site.settings?.about_featured_person;
+  if (featured?.name?.trim()) {
+    teamMembers = [
+      {
+        id: 'featured-person',
+        full_name: featured.name.trim(),
+        title: featured.title?.trim() || null,
+        bio: null,
+        avatar_url: featured.photo_url || null,
+        role: 'owner',
+      },
+      ...teamMembers.filter((m) => m.role !== 'owner'),
+    ];
+  }
 
   const TemplateComp = getTemplate(data.site.template_id).About;
   return (

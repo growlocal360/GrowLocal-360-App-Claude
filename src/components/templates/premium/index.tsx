@@ -15,6 +15,7 @@ import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unifie
 import { AvailabilityBadge } from '@/components/templates/local-service-pro/availability-badge';
 import { PremiumHeader } from './header';
 import { PremiumFooter } from './footer';
+import { premiumThemeStyle } from './shell';
 import {
   PmIconPhone, PmIconCheck, PmIconStar, PmIconShield, PmIconClock,
   PmIconWrench, PmIconLayers, PmIconArrow, PmIconPin,
@@ -71,7 +72,6 @@ export function PremiumTemplate({
     || null;
 
   // brand-ink: readable text color on top of the brand fill
-  const brandInk = readableInk(brandColor);
 
   // Hero copy
   const category = primaryCategoryName || (site.settings?.core_industry as string) || 'Professional Services';
@@ -117,7 +117,7 @@ export function PremiumTemplate({
       ];
 
   return (
-    <div className="tpl-premium" style={{ ['--brand' as string]: brandColor, ['--brand-ink' as string]: brandInk }}>
+    <div className="tpl-premium" style={premiumThemeStyle(site)}>
       <JsonLd data={[localBusinessSchema, webSiteSchema]} />
       <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={slug} locationSlug={locationSlug} ctaLabel={ctaLabel} />
 
@@ -345,14 +345,6 @@ function WhyItem({ h, p }: { h: string; p: string }) {
 function stars(n: number) { return '★★★★★'.slice(0, Math.max(0, Math.min(5, n))); }
 function initials(name: string) { return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase(); }
 
-/** Readable ink color (#0a0a0b or #fff) for text/icons on a brand fill. */
-function readableInk(hex: string): string {
-  const c = hex.replace('#', '');
-  if (c.length < 6) return '#0a0a0b';
-  const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? '#0a0a0b' : '#ffffff';
-}
 
 /** Split a title so the accent phrase can be wrapped in brand color. */
 function splitAccent(title: string, accent: string): { before: string; accent: string; after: string } {

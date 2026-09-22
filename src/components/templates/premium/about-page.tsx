@@ -30,7 +30,7 @@ interface PremiumAboutPageProps {
 
 export function PremiumAboutPage({
   site, primaryLocation, pageContent, serviceAreas = [], siteSlug, locationSlug,
-  reviews, ctaStyle = 'booking',
+  reviews, teamMembers, ctaStyle = 'booking',
 }: PremiumAboutPageProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const cityState = primaryLocation?.city ? `${primaryLocation.city}${primaryLocation.state ? `, ${primaryLocation.state}` : ''}` : '';
@@ -51,6 +51,12 @@ export function PremiumAboutPage({
   ]);
 
   const featuredReview = reviews?.find(r => r.comment);
+  // The Our Story visual: the site's featured person (owner) when one is set.
+  const owner = teamMembers?.find(m => m.role === 'owner');
+  const person = site.settings?.about_featured_person;
+  const personPhoto = owner?.avatar_url || person?.photo_url || null;
+  const personName = owner?.full_name || person?.name || null;
+  const personTitle = owner?.title || person?.title || null;
 
   return (
     <PremiumShell site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
@@ -90,6 +96,10 @@ export function PremiumAboutPage({
             )}
           </div>
           <div className="pm-whyvisual">
+            {personPhoto && <div className="pm-whyphoto" style={{ backgroundImage: `url(${personPhoto})` }} role="img" aria-label={personName || undefined} />}
+            {personPhoto && personName && (
+              <div className="pm-whyname">{personName}{personTitle ? <span> · {personTitle}</span> : null}</div>
+            )}
             {featuredReview && (
               <div className="pm-badge">
                 <div className="pm-q">&ldquo;{featuredReview.comment}&rdquo;</div>

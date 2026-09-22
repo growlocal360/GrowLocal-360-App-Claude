@@ -59,7 +59,7 @@ export function PremiumAboutPage({
   const personTitle = owner?.title || person?.title || null;
 
   return (
-    <PremiumShell site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
+    <PremiumShell formOnPage={false} site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
       <JsonLd data={[breadcrumb]} />
 
       <PremiumPageHero

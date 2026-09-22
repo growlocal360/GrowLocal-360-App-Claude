@@ -35,7 +35,7 @@ export function PremiumNeighborhoodPage({ data, siteSlug, locationSlug }: Premiu
   ]);
 
   return (
-    <PremiumShell site={site} primaryLocation={location} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle="booking">
+    <PremiumShell formOnPage={false} site={site} primaryLocation={location} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle="booking">
       <JsonLd data={[breadcrumb]} />
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: neighborhood.name }]}

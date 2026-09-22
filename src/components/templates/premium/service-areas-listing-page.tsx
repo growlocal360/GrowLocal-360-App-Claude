@@ -35,7 +35,7 @@ export function PremiumServiceAreasListingPage({
   ]);
 
   return (
-    <PremiumShell site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
+    <PremiumShell formOnPage={false} site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
       <JsonLd data={[breadcrumb]} />
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Service Areas' }]}

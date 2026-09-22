@@ -1,5 +1,7 @@
 'use client';
 
+import { createContext, useContext } from 'react';
+
 /**
  * Shared premium-template chrome for inner pages: the .tpl-premium wrapper
  * (with brand-color vars), header, footer, a breadcrumb page-hero, and a
@@ -23,6 +25,16 @@ export function readableInk(hex: string): string {
   return lum > 0.6 ? '#0a0a0b' : '#ffffff';
 }
 
+/**
+ * Where the CTA buttons point. Pages that render the lead form use the on-page
+ * anchor; pages without one (About, Services, FAQ...) send visitors to the
+ * Contact page's form instead of a dead "#pm-form" link.
+ */
+const CtaHrefContext = createContext<string>('#pm-form');
+export function useCtaHref(): string {
+  return useContext(CtaHrefContext);
+}
+
 interface ShellProps {
   site: PublicRenderSite;
   primaryLocation: PublicRenderLocation | null;
@@ -31,6 +43,8 @@ interface ShellProps {
   siteSlug: string;
   locationSlug?: string;
   ctaStyle?: 'booking' | 'estimate';
+  /** false when this page has no lead form; CTAs then link to the Contact page form. */
+  formOnPage?: boolean;
   children: React.ReactNode;
 }
 
@@ -47,14 +61,17 @@ export function premiumThemeStyle(site: PublicRenderSite): React.CSSProperties {
   return vars as React.CSSProperties;
 }
 
-export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', children }: ShellProps) {
+export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', formOnPage = true, children }: ShellProps) {
   const ctaLabel = useCtaLabel(ctaStyle);
+  const ctaHref = formOnPage ? '#pm-form' : `${paths.contactPage(locationSlug)}#pm-form`;
   return (
-    <div className="tpl-premium" style={premiumThemeStyle(site)}>
-      <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabel} />
-      <main>{children}</main>
-      <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
-    </div>
+    <CtaHrefContext.Provider value={ctaHref}>
+      <div className="tpl-premium" style={premiumThemeStyle(site)}>
+        <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabel} ctaHref={ctaHref} />
+        <main>{children}</main>
+        <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
+      </div>
+    </CtaHrefContext.Provider>
   );
 }
 
@@ -86,13 +103,14 @@ export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede }: { crum
 export function PremiumFinalCta({ heading, sub, ctaStyle = 'booking', phone }: { heading: string; sub?: string; ctaStyle?: 'booking' | 'estimate'; phone?: string | null }) {
   const phoneHref = phone ? `tel:${phone.replace(/\D/g, '')}` : undefined;
   const ctaLabel = useCtaLabel(ctaStyle);
+  const ctaHref = useCtaHref();
   return (
     <div className="pm-wrap pm-finalwrap" style={{ paddingTop: 88 }}>
       <div className="pm-final">
         <h2>{heading}</h2>
         {sub && <p>{sub}</p>}
         <div className="pm-row">
-          <a className="pm-btn pm-btn-brand pm-btn-lg" href="#pm-form">{ctaLabel} <PmIconArrow /></a>
+          <a className="pm-btn pm-btn-brand pm-btn-lg" href={ctaHref}>{ctaLabel} <PmIconArrow /></a>
           {phoneHref && <a className="pm-btn pm-btn-ghost pm-btn-lg" href={phoneHref}><PmIconPhone style={{ width: 18, height: 18 }} /> {phone}</a>}
         </div>
       </div>

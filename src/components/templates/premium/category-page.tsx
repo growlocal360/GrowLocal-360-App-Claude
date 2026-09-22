@@ -12,6 +12,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
 import { PmIconWrench, PmIconArrow, PmIconStar, PmIconShield, PmIconClock } from './icons';
+import { PremiumCityMap } from './city-map';
 
 interface PremiumCategoryPageProps {
   data: {
@@ -94,6 +95,7 @@ export function PremiumCategoryPage({
             )}
           </div>
           <aside>
+            <div className="pm-asidestack">
             <div className="pm-aside" id="pm-form">
               <UnifiedLeadForm siteId={site.id} accentColor={ctaColor} categories={formCategories} schedulingActive={schedulingActive} ctaStyle={ctaStyle} variant="hero" />
               <div className="pm-asidetrust">
@@ -101,6 +103,8 @@ export function PremiumCategoryPage({
                 <div className="pm-t"><span className="pm-ic"><PmIconShield /></span>Satisfaction guaranteed</div>
                 <div className="pm-t"><span className="pm-ic"><PmIconClock /></span>Fast response times</div>
               </div>
+            </div>
+            {location?.city && <PremiumCityMap city={location.city} state={location.state} />}
             </div>
           </aside>
         </div>

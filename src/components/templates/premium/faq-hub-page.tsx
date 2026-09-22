@@ -42,7 +42,7 @@ export function PremiumFAQHubPage({
   const groups = topicGroups.length > 0 ? topicGroups : [...new Set(faqItems.map(f => f.topicGroup))];
 
   return (
-    <PremiumShell site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
+    <PremiumShell formOnPage={false} site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
       <JsonLd data={[breadcrumb]} />
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'FAQ' }]}

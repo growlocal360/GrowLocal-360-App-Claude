@@ -12,9 +12,10 @@ interface PremiumHeaderProps {
   siteSlug?: string;
   locationSlug?: string;
   ctaLabel: string;
+  ctaHref?: string;
 }
 
-export function PremiumHeader({ site, primaryLocation, locationSlug, ctaLabel }: PremiumHeaderProps) {
+export function PremiumHeader({ site, primaryLocation, locationSlug, ctaLabel, ctaHref = '#pm-form' }: PremiumHeaderProps) {
   const [open, setOpen] = useState(false);
   const phone = site.settings?.phone || primaryLocation?.phone;
   const phoneHref = phone ? `tel:${phone.replace(/\D/g, '')}` : undefined;
@@ -49,7 +50,7 @@ export function PremiumHeader({ site, primaryLocation, locationSlug, ctaLabel }:
 
         <div className="pm-navcta">
           {phone && <a className="pm-phone" href={phoneHref}><span className="pm-dot" />{phone}</a>}
-          <a className="pm-btn pm-btn-brand" href="#pm-form">{ctaLabel}</a>
+          <a className="pm-btn pm-btn-brand" href={ctaHref}>{ctaLabel}</a>
         </div>
 
         <button className="pm-burger" aria-label="Toggle menu" onClick={() => setOpen(o => !o)}>
@@ -63,7 +64,7 @@ export function PremiumHeader({ site, primaryLocation, locationSlug, ctaLabel }:
         <div className="pm-mobnav">
           {links.map(l => <Link key={l.label} href={l.href} onClick={() => setOpen(false)}>{l.label}</Link>)}
           {phone && <a href={phoneHref} onClick={() => setOpen(false)} style={{ fontWeight: 700, padding: '11px 14px' }}>{phone}</a>}
-          <a className="pm-btn pm-btn-brand" href="#pm-form" onClick={() => setOpen(false)} style={{ marginTop: 6 }}>{ctaLabel}</a>
+          <a className="pm-btn pm-btn-brand" href={ctaHref} onClick={() => setOpen(false)} style={{ marginTop: 6 }}>{ctaLabel}</a>
         </div>
       )}
     </header>

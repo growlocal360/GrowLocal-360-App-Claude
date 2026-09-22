@@ -43,7 +43,8 @@ export function PremiumBrandDetailPage({
   const faqs = brand.faqs || [];
 
   const h1 = brand.h1 || `${brand.name} Repair${cityState ? ` in ${cityState}` : ''}`;
-  const intro = brand.body_copy || brand.hero_description || `Expert ${brand.name} service and repair.`;
+  // hero_description is the hero lede; the body only falls back to it when there is no lede to show.
+  const intro = brand.body_copy || (brand.hero_description ? '' : `Expert ${brand.name} service and repair.`);
 
   const faqSchema = faqs.length > 0 ? buildFAQPageSchema(faqs) : null;
   const breadcrumb = buildBreadcrumbSchema([
@@ -65,7 +66,7 @@ export function PremiumBrandDetailPage({
       <section className="pm-block">
         <div className="pm-wrap pm-layout">
           <div className="pm-prose">
-            {intro.split('\n\n').map((p, i) => <p key={i}>{p}</p>)}
+            {intro.split('\n\n').filter(p => p.trim()).map((p, i) => <p key={i}>{p}</p>)}
             {valueProps.length > 0 && (
               <>
                 <h2>Why choose us for {brand.name}</h2>

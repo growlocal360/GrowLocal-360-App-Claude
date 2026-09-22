@@ -49,7 +49,8 @@ export function PremiumServicePage({
   const categorySlug = categoryName ? normalizeCategorySlug(categoryName) : undefined;
 
   const h1 = service.h1 || `${service.name}${cityState ? ` in ${cityState}` : ''}`;
-  const intro = service.intro_copy || service.body_copy || service.description || '';
+  // service.description is already the hero lede; don't repeat it as the intro.
+  const intro = service.intro_copy || service.body_copy || '';
   const problems = service.problems || [];
   const sections = service.detailed_sections || [];
   const faqs = service.faqs || [];

@@ -45,7 +45,15 @@ export function PremiumCategoryPage({
   const categorySlug = normalizeCategorySlug(categoryName);
 
   const h1 = pageContent?.h1 || `${categoryName}${cityState ? ` in ${cityState}` : ''}`;
-  const intro = pageContent?.hero_description || pageContent?.body_copy || `Professional ${categoryName.toLowerCase()}${cityState ? ` for ${location?.city} homeowners` : ''}.`;
+  // hero_description is shown once, in the hero. The body renders body_copy
+  // (+ body_copy_2) as paragraphs so the lede is never printed twice.
+  const lede = pageContent?.hero_description || undefined;
+  const bodyParagraphs = [pageContent?.body_copy, pageContent?.body_copy_2]
+    .filter((t): t is string => !!t?.trim())
+    .flatMap(t => t.split('\n\n'))
+    .map(p => p.trim())
+    .filter(Boolean);
+  const intro = lede || bodyParagraphs[0] || `${categoryName}${cityState ? ` in ${cityState}` : ''}.`;
 
   const businessInput = toBusinessInput(site, location);
   const serviceSchema = buildServiceSchema({ name: categoryName, slug: categorySlug, description: intro, categoryName }, businessInput, toLocationInput(location));
@@ -61,13 +69,14 @@ export function PremiumCategoryPage({
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: categoryName }]}
         title={h1}
         accent={categoryName}
-        lede={pageContent?.hero_description || undefined}
+        lede={lede}
       />
       <section className="pm-block">
         <div className="pm-wrap pm-layout">
           <div className="pm-prose">
-            {intro && <p>{intro}</p>}
-            {pageContent?.body_copy && pageContent.body_copy !== intro && <p>{pageContent.body_copy}</p>}
+            {bodyParagraphs.length > 0
+              ? bodyParagraphs.map((p, i) => <p key={i}>{p}</p>)
+              : !lede && <p>{intro}</p>}
             {services.length > 0 && (
               <>
                 <h2>Our {categoryName.toLowerCase()} services</h2>

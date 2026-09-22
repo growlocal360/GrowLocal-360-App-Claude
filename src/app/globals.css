@@ -271,7 +271,9 @@
 .tpl-premium .pm-chk svg { width:14px; height:14px; }
 .tpl-premium .pm-whylist h4 { font-family:var(--font-body); font-weight:700; font-size:16.5px; margin-bottom:2px; color:var(--ink); }
 .tpl-premium .pm-whylist p { font-size:14.5px; color:var(--muted); }
-.tpl-premium .pm-whyvisual { aspect-ratio: 4/5; border-radius:24px; position:relative; overflow:hidden; box-shadow:var(--shadow-lg); background: radial-gradient(420px 300px at 30% 20%, color-mix(in srgb,var(--brand) 30%, transparent), transparent 70%), linear-gradient(150deg, #16161a 0%, #1b1b20 100%); }
+.tpl-premium .pm-whyvisual { aspect-ratio: 4/5; border-radius:24px; position:relative; overflow:hidden; box-shadow:var(--shadow-lg); background: radial-gradient(420px 300px at 30% 20%, color-mix(in srgb,var(--brand) 30%, transparent), transparent 70%), linear-gradient(150deg, color-mix(in srgb, var(--dark) 94%, #fff) 0%, color-mix(in srgb, var(--dark) 88%, #fff) 100%); }
+.tpl-premium .pm-whyvisual .pm-whyname { position:absolute; top:20px; left:20px; background:rgba(10,10,11,.55); backdrop-filter:blur(8px); color:#fff; font-size:13.5px; font-weight:700; padding:8px 12px; border-radius:999px; }
+.tpl-premium .pm-whyvisual .pm-whyname span { font-weight:500; opacity:.75; }
 .tpl-premium .pm-whyvisual .pm-whyphoto { position:absolute; inset:0; background-size:cover; background-position:center top; }
 .tpl-premium .pm-whyvisual .pm-whyphoto::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(10,10,11,.75) 100%); }
 .tpl-premium .pm-whyvisual .pm-badge { position:absolute; bottom:24px; left:24px; right:24px; background:rgba(255,255,255,.08); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:20px; color:#fff; }

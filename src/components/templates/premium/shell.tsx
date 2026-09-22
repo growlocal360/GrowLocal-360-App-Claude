@@ -35,12 +35,22 @@ interface ShellProps {
 }
 
 /** Wraps inner-page content with the premium chrome + brand color vars. */
-export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', children }: ShellProps) {
+/** Inline CSS vars for the Premium theme: brand color + optional dark-section color from settings. */
+export function premiumThemeStyle(site: PublicRenderSite): React.CSSProperties {
   const brandColor = site.settings?.brand_color || '#00ef99';
-  const brandInk = readableInk(brandColor);
+  const vars: Record<string, string> = { '--brand': brandColor, '--brand-ink': readableInk(brandColor) };
+  const darkColor = site.settings?.dark_color;
+  if (darkColor && /^#[0-9A-Fa-f]{6}$/.test(darkColor)) {
+    vars['--dark'] = darkColor;
+    vars['--dark-ink'] = readableInk(darkColor);
+  }
+  return vars as React.CSSProperties;
+}
+
+export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', children }: ShellProps) {
   const ctaLabel = useCtaLabel(ctaStyle);
   return (
-    <div className="tpl-premium" style={{ ['--brand' as string]: brandColor, ['--brand-ink' as string]: brandInk }}>
+    <div className="tpl-premium" style={premiumThemeStyle(site)}>
       <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabel} />
       <main>{children}</main>
       <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />

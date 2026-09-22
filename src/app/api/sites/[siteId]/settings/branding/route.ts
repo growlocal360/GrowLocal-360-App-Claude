@@ -44,6 +44,8 @@ export async function GET(
     brandColor: settings.brand_color || null,
     secondaryColor: settings.secondary_color || null,
     ctaColor: settings.cta_color || null,
+    darkColor: settings.dark_color || null,
+    tagline: settings.tagline || '',
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     siteName: site.name,
@@ -76,13 +78,22 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, logoUrl, logoDarkUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, logoUrl, logoDarkUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
     if (typeof brandColor !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(brandColor)) {
       return NextResponse.json(
         { error: 'Invalid brand color format. Use hex format like #10b981' },
+        { status: 400 }
+      );
+    }
+  }
+
+  if (darkColor !== undefined && darkColor !== null && darkColor !== '') {
+    if (typeof darkColor !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(darkColor)) {
+      return NextResponse.json(
+        { error: 'Invalid dark background color format. Use hex format like #0a0a0b' },
         { status: 400 }
       );
     }
@@ -106,6 +117,8 @@ export async function PATCH(
     brand_color: brandColor !== undefined ? brandColor : currentSettings.brand_color,
     secondary_color: secondaryColor !== undefined ? secondaryColor : currentSettings.secondary_color,
     cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
+    dark_color: darkColor !== undefined ? (darkColor || null) : currentSettings.dark_color,
+    tagline: typeof tagline === 'string' ? tagline.trim().slice(0, 160) : currentSettings.tagline,
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
   };
@@ -145,6 +158,8 @@ export async function PATCH(
     brandColor: updatedSettings.brand_color,
     secondaryColor: updatedSettings.secondary_color,
     ctaColor: updatedSettings.cta_color,
+    darkColor: updatedSettings.dark_color || null,
+    tagline: updatedSettings.tagline || '',
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
   });

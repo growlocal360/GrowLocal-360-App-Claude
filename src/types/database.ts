@@ -187,6 +187,8 @@ export interface SiteSettings {
   brand_color?: string;
   secondary_color?: string;
   cta_color?: string;
+  dark_color?: string;          // Premium: dark sections + footer background
+  tagline?: string;             // one line under the footer logo
   logo_url?: string;
   phone?: string;
   email?: string;

@@ -22,6 +22,8 @@ import {
 interface BrandingConfig {
   brandColor: string | null;
   secondaryColor: string | null;
+  darkColor: string | null;
+  tagline: string | null;
   ctaColor: string | null;
   logoUrl: string | null;
   logoDarkUrl: string | null;
@@ -44,6 +46,8 @@ export default function BrandingSettingsPage() {
   const [brandColor, setBrandColor] = useState('#00ef99');
   const [secondaryColor, setSecondaryColor] = useState('#1f2937');
   const [ctaColor, setCtaColor] = useState('#00ef99');
+  const [darkColor, setDarkColor] = useState('#0a0a0b');
+  const [tagline, setTagline] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
@@ -69,6 +73,8 @@ export default function BrandingSettingsPage() {
       setBrandColor(data.brandColor || '#10b981');
       setSecondaryColor(data.secondaryColor || '#1f2937');
       setCtaColor(data.ctaColor || data.brandColor || '#00ef99');
+      setDarkColor(data.darkColor || '#0a0a0b');
+      setTagline(data.tagline || '');
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
     } catch (err) {
@@ -171,6 +177,8 @@ export default function BrandingSettingsPage() {
           brandColor,
           secondaryColor,
           ctaColor,
+          darkColor,
+          tagline,
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
         }),
@@ -192,6 +200,8 @@ export default function BrandingSettingsPage() {
               brandColor,
               secondaryColor,
               ctaColor,
+              darkColor,
+              tagline,
               logoUrl: dashboardLogoUrl,
               logoDarkUrl: dashboardLogoDarkUrl,
             }
@@ -216,6 +226,8 @@ export default function BrandingSettingsPage() {
     brandColor !== (config?.brandColor || '#10b981') ||
     secondaryColor !== (config?.secondaryColor || '#1f2937') ||
     ctaColor !== (config?.ctaColor || config?.brandColor || '#00ef99') ||
+    darkColor !== (config?.darkColor || '#0a0a0b') ||
+    tagline !== (config?.tagline || '') ||
     logoFile !== null ||
     logoDarkFile !== null ||
     (logoPreview === null && config?.logoUrl !== null) ||
@@ -563,6 +575,79 @@ export default function BrandingSettingsPage() {
               </button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Dark Background Color (Premium template) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-gray-800" />
+            <h2 className="font-semibold">Dark Background Color</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Background for the dark sections on the Premium template: the reviews band, the bottom call-to-action block, and the footer.
+            Your dark-background logo is shown in the footer on this color.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={darkColor}
+              onChange={(e) => setDarkColor(e.target.value)}
+              className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300"
+            />
+            <Input
+              type="text"
+              value={darkColor}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                  setDarkColor(value);
+                }
+              }}
+              className="w-28 font-mono"
+              placeholder="#0a0a0b"
+            />
+          </div>
+          <div className="mt-4 p-6 rounded-lg" style={{ backgroundColor: darkColor }}>
+            {logoDarkPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoDarkPreview} alt="Dark logo preview" className="h-12 w-auto object-contain mb-3" />
+            ) : (
+              <p className="text-white text-lg font-bold mb-3">Your Business Name</p>
+            )}
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.62)' }}>{tagline.trim() || 'Your footer tagline appears here.'}</p>
+            <button
+              style={{ backgroundColor: ctaColor }}
+              className="mt-4 px-5 py-2 text-white rounded-full text-sm font-medium"
+            >
+              Book Online
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Footer Tagline */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-gray-500" />
+            <h2 className="font-semibold">Footer Tagline</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-500">
+            One line under your logo in the footer. Leave blank for the default.
+          </p>
+          <Input
+            type="text"
+            value={tagline}
+            maxLength={160}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="Marine engine, hull and electrical repair on Florida's Gulf Coast since 1998."
+          />
         </CardContent>
       </Card>
 

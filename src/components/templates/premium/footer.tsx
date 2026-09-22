@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { PublicRenderSite, PublicRenderLocation, PublicRenderAreaListing } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 
@@ -16,6 +17,8 @@ export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlu
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
   const nameParts = site.name.split(' ');
+  // Footer sits on the dark background, so only the dark-background logo is used here.
+  const darkLogoUrl = site.settings?.logo_dark_url;
   const year = 2026;
 
   return (
@@ -23,7 +26,11 @@ export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlu
       <div className="pm-wrap">
         <div className="pm-footgrid">
           <div>
-            <div className="pm-footlogo">{nameParts[0]}<span>.</span> {nameParts.slice(1).join(' ')}</div>
+            {darkLogoUrl ? (
+              <Image src={darkLogoUrl} alt={site.name} width={280} height={72} className="pm-footlogo-img" />
+            ) : (
+              <div className="pm-footlogo">{nameParts[0]}<span>.</span> {nameParts.slice(1).join(' ')}</div>
+            )}
             <p className="pm-footdesc">
               {(site.settings?.tagline as string) ||
                 `Professional service${primaryLocation?.city ? ` in ${primaryLocation.city}` : ''} you can count on — done right the first time.`}

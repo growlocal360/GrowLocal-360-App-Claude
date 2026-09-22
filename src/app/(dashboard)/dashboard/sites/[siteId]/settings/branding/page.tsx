@@ -23,6 +23,7 @@ interface BrandingConfig {
   brandColor: string | null;
   secondaryColor: string | null;
   darkColor: string | null;
+  tagline: string | null;
   ctaColor: string | null;
   logoUrl: string | null;
   logoDarkUrl: string | null;
@@ -46,6 +47,7 @@ export default function BrandingSettingsPage() {
   const [secondaryColor, setSecondaryColor] = useState('#1f2937');
   const [ctaColor, setCtaColor] = useState('#00ef99');
   const [darkColor, setDarkColor] = useState('#0a0a0b');
+  const [tagline, setTagline] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
@@ -72,6 +74,7 @@ export default function BrandingSettingsPage() {
       setSecondaryColor(data.secondaryColor || '#1f2937');
       setCtaColor(data.ctaColor || data.brandColor || '#00ef99');
       setDarkColor(data.darkColor || '#0a0a0b');
+      setTagline(data.tagline || '');
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
     } catch (err) {
@@ -175,6 +178,7 @@ export default function BrandingSettingsPage() {
           secondaryColor,
           ctaColor,
           darkColor,
+          tagline,
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
         }),
@@ -197,6 +201,7 @@ export default function BrandingSettingsPage() {
               secondaryColor,
               ctaColor,
               darkColor,
+              tagline,
               logoUrl: dashboardLogoUrl,
               logoDarkUrl: dashboardLogoDarkUrl,
             }
@@ -222,6 +227,7 @@ export default function BrandingSettingsPage() {
     secondaryColor !== (config?.secondaryColor || '#1f2937') ||
     ctaColor !== (config?.ctaColor || config?.brandColor || '#00ef99') ||
     darkColor !== (config?.darkColor || '#0a0a0b') ||
+    tagline !== (config?.tagline || '') ||
     logoFile !== null ||
     logoDarkFile !== null ||
     (logoPreview === null && config?.logoUrl !== null) ||
@@ -612,7 +618,7 @@ export default function BrandingSettingsPage() {
             ) : (
               <p className="text-white text-lg font-bold mb-3">Your Business Name</p>
             )}
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.62)' }}>Footer text and links appear like this.</p>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.62)' }}>{tagline.trim() || 'Your footer tagline appears here.'}</p>
             <button
               style={{ backgroundColor: ctaColor }}
               className="mt-4 px-5 py-2 text-white rounded-full text-sm font-medium"
@@ -620,6 +626,28 @@ export default function BrandingSettingsPage() {
               Book Online
             </button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Footer Tagline */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-gray-500" />
+            <h2 className="font-semibold">Footer Tagline</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-500">
+            One line under your logo in the footer. Leave blank for the default.
+          </p>
+          <Input
+            type="text"
+            value={tagline}
+            maxLength={160}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="Marine engine, hull and electrical repair on Florida's Gulf Coast since 1998."
+          />
         </CardContent>
       </Card>
 

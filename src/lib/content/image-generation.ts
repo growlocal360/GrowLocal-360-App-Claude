@@ -73,9 +73,10 @@ async function generateWithNanoBanana(
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
     console.error('[image-gen] Nano Banana API error:', errorData);
-    throw new Error(`Nano Banana API failed: ${response.status} ${response.statusText}`);
+    // Include Google's message (e.g. "API key was reported as leaked") so build logs say why.
+    throw new Error(`Nano Banana API failed: ${response.status}${errorData?.error?.message ? ` — ${errorData.error.message}` : ''}`);
   }
 
   const data = await response.json();
@@ -178,7 +179,8 @@ export async function generateImagesFromPrompts(
   prompts: ImagePrompt[],
   logoUrl?: string | null,
   pageH1?: string | null,
-  siteSlug?: string | null
+  siteSlug?: string | null,
+  onError?: (message: string) => void
 ): Promise<GeneratedImage[]> {
   const results: GeneratedImage[] = [];
 
@@ -201,8 +203,6 @@ export async function generateImagesFromPrompts(
       const suffix = i > 0 ? String(i + 1) : undefined;
       const filename = toSeoFilename(baseText, suffix);
 
-      let storagePath: string;
-      let publicUrl: string;
       const width = 1024;
       const height = 1024;
 
@@ -213,11 +213,11 @@ export async function generateImagesFromPrompts(
         logoUrl
       );
       const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
-      storagePath = uploaded.storagePath;
+      const storagePath = uploaded.storagePath;
 
       // Store clean relative URL (served via /public/images/ proxy)
       // Middleware rewrites to /sites/{slug}/public/images/ for routing
-      publicUrl = `/public/images/${filename}`;
+      const publicUrl = `/public/images/${filename}`;
 
       results.push({
         url: publicUrl,
@@ -233,6 +233,7 @@ export async function generateImagesFromPrompts(
     } catch (error) {
       // Image generation is non-fatal — log and continue
       console.error(`[image-gen] Failed to generate image ${i} for ${pageSlug}:`, error);
+      onError?.(error instanceof Error ? error.message : String(error));
     }
   }
 

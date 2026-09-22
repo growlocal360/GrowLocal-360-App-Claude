@@ -272,6 +272,8 @@
 .tpl-premium .pm-whylist h4 { font-family:var(--font-body); font-weight:700; font-size:16.5px; margin-bottom:2px; color:var(--ink); }
 .tpl-premium .pm-whylist p { font-size:14.5px; color:var(--muted); }
 .tpl-premium .pm-whyvisual { aspect-ratio: 4/5; border-radius:24px; position:relative; overflow:hidden; box-shadow:var(--shadow-lg); background: radial-gradient(420px 300px at 30% 20%, color-mix(in srgb,var(--brand) 30%, transparent), transparent 70%), linear-gradient(150deg, #16161a 0%, #1b1b20 100%); }
+.tpl-premium .pm-whyvisual .pm-whyphoto { position:absolute; inset:0; background-size:cover; background-position:center top; }
+.tpl-premium .pm-whyvisual .pm-whyphoto::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(10,10,11,.75) 100%); }
 .tpl-premium .pm-whyvisual .pm-badge { position:absolute; bottom:24px; left:24px; right:24px; background:rgba(255,255,255,.08); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:20px; color:#fff; }
 .tpl-premium .pm-whyvisual .pm-q { font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:-.02em; line-height:1.3; }
 .tpl-premium .pm-whyvisual .pm-a { font-size:13.5px; opacity:.7; margin-top:8px; }

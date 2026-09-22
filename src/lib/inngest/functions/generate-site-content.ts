@@ -9,7 +9,7 @@ import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content
 import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
 import { computeSitePlan, toStoredSitePlan } from '@/lib/sites/site-plan-store';
 import { resolveBrandCategoryName } from '@/lib/sites/brand-niche';
-import type { SiteSettings, GenerationScope, GeneratedImage } from '@/types/database';
+import type { SiteSettings, GenerationScope, GeneratedImage, ImagePrompt } from '@/types/database';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -601,12 +601,12 @@ export const generateSiteContent = inngest.createFunction(
               brandStyleGuide: (site.settings as SiteSettings)?.brand_style_guide || undefined,
             });
 
-            // Generate actual images from prompts
-            let generatedImages: GeneratedImage[] | null = null;
-            if (imagePrompts.length > 0) {
-              const images = await generateImagesFromPrompts(siteId, page.page_type, imagePrompts, (site.settings as SiteSettings)?.logo_url, page.h1, site.slug);
-              generatedImages = images.length > 0 ? images : null;
-            }
+            // Generate actual images from prompts (keeps existing ones if the run fails)
+            const generatedImages = await generatePageImages(
+              supabase, siteId,
+              { pageType: page.page_type, slug: page.page_type, h1: page.h1, label: `${page.page_type} page` },
+              imagePrompts, (site.settings as SiteSettings)?.logo_url, site.slug, log, 'generate-core-pages'
+            );
 
             await supabase.from('site_pages').upsert(
               {
@@ -670,12 +670,12 @@ export const generateSiteContent = inngest.createFunction(
           brandStyleGuide: settings.brand_style_guide || undefined,
         });
 
-        // Generate actual images for about page
-        let aboutGeneratedImages: GeneratedImage[] | null = null;
-        if (aboutImagePrompts.length > 0) {
-          const images = await generateImagesFromPrompts(siteId, 'about', aboutImagePrompts, (site.settings as SiteSettings)?.logo_url, aboutContent.h1, site.slug);
-          aboutGeneratedImages = images.length > 0 ? images : null;
-        }
+        // Generate actual images for about page (keeps existing ones if the run fails)
+        const aboutGeneratedImages = await generatePageImages(
+          supabase, siteId,
+          { pageType: 'about', slug: 'about', h1: aboutContent.h1, label: 'about page' },
+          aboutImagePrompts, (site.settings as SiteSettings)?.logo_url, site.slug, log, 'generate-about-page'
+        );
 
         await supabase.from('site_pages').upsert(
           {
@@ -754,12 +754,12 @@ export const generateSiteContent = inngest.createFunction(
             brandStyleGuide: ((site.settings || {}) as SiteSettings).brand_style_guide || undefined,
           });
 
-          // Generate actual images for category page
-          let catGeneratedImages: GeneratedImage[] | null = null;
-          if (catImagePrompts.length > 0) {
-            const images = await generateImagesFromPrompts(siteId, catSlug, catImagePrompts, (site.settings as SiteSettings)?.logo_url, categoryContent.h1, site.slug);
-            catGeneratedImages = images.length > 0 ? images : null;
-          }
+          // Generate actual images for category page (keeps existing ones if the run fails)
+          const catGeneratedImages = await generatePageImages(
+            supabase, siteId,
+            { pageType: 'category', slug: catSlug, h1: categoryContent.h1, label: `${catName} category page` },
+            catImagePrompts, (site.settings as SiteSettings)?.logo_url, site.slug, log, `generate-category-${category.id}`
+          );
 
           await supabase.from('site_pages').upsert(
             {
@@ -1406,6 +1406,44 @@ async function updateProgress(
       status_updated_at: new Date().toISOString(),
     })
     .eq('id', siteId);
+}
+
+
+/**
+ * A failed image run (bad API key, provider outage) must not erase the images a
+ * page already has: return the new set when there is one, else whatever is
+ * stored. Logs the failure so it shows in the build log instead of vanishing.
+ */
+async function generatePageImages(
+  supabase: ReturnType<typeof createAdminClient>,
+  siteId: string,
+  page: { pageType: string; slug: string; h1?: string | null; label: string },
+  prompts: ImagePrompt[],
+  logoUrl: string | null | undefined,
+  siteSlug: string,
+  log: (message: string, step: string, level?: 'info' | 'error') => Promise<void>,
+  step: string
+): Promise<GeneratedImage[] | null> {
+  if (prompts.length === 0) return null;
+  const errors: string[] = [];
+  const images = await generateImagesFromPrompts(siteId, page.slug, prompts, logoUrl, page.h1, siteSlug, (m) => errors.push(m));
+  if (images.length > 0) return images;
+
+  const { data: existing } = await supabase
+    .from('site_pages')
+    .select('generated_images')
+    .eq('site_id', siteId)
+    .eq('page_type', page.pageType)
+    .eq('slug', page.slug)
+    .limit(1)
+    .maybeSingle();
+  const kept = (existing?.generated_images as GeneratedImage[] | null) ?? null;
+  await log(
+    `Image generation failed for ${page.label}${errors[0] ? `: ${errors[0]}` : ''}. ${kept?.length ? 'Kept existing images.' : 'Page has no images.'}`,
+    step,
+    'error'
+  );
+  return kept;
 }
 
 // --- Content generation functions ---

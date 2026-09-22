@@ -45,6 +45,7 @@ export async function GET(
     secondaryColor: settings.secondary_color || null,
     ctaColor: settings.cta_color || null,
     darkColor: settings.dark_color || null,
+    tagline: settings.tagline || '',
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     siteName: site.name,
@@ -77,7 +78,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, darkColor, logoUrl, logoDarkUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, logoUrl, logoDarkUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -117,6 +118,7 @@ export async function PATCH(
     secondary_color: secondaryColor !== undefined ? secondaryColor : currentSettings.secondary_color,
     cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
     dark_color: darkColor !== undefined ? (darkColor || null) : currentSettings.dark_color,
+    tagline: typeof tagline === 'string' ? tagline.trim().slice(0, 160) : currentSettings.tagline,
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
   };
@@ -157,6 +159,7 @@ export async function PATCH(
     secondaryColor: updatedSettings.secondary_color,
     ctaColor: updatedSettings.cta_color,
     darkColor: updatedSettings.dark_color || null,
+    tagline: updatedSettings.tagline || '',
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
   });

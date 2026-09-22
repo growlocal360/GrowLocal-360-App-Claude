@@ -51,6 +51,8 @@ export interface PublicRenderSettings {
   cta_text: string | null;
   dark_color: string | null;
   tagline: string | null;
+  /** Client's featured person (About page owner); photo doubles as the home-page 'why us' visual. */
+  about_featured_person: { name: string; title: string | null; photo_url: string | null } | null;
   google_average_rating: number | null;
   google_total_reviews: number | null;
 }
@@ -351,6 +353,13 @@ export function toPublicSite(
       cta_text: s.cta_text || null,
       dark_color: s.dark_color || null,
       tagline: (s as { tagline?: string | null }).tagline || null,
+      about_featured_person: s.about_featured_person?.name?.trim()
+        ? {
+            name: s.about_featured_person.name.trim(),
+            title: s.about_featured_person.title?.trim() || null,
+            photo_url: sanitizeAssetUrl(s.about_featured_person.photo_url, 'brand'),
+          }
+        : null,
       google_average_rating: s.google_average_rating ?? null,
       google_total_reviews: s.google_total_reviews ?? null,
     },

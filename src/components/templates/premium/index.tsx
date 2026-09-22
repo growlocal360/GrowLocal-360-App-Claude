@@ -100,6 +100,8 @@ export function PremiumTemplate({
 
   const ctaLabel = useCtaLabel(ctaStyle);
   const svcList = services || [];
+  // Featured person (Settings → About Page) fills the 'why us' visual; else the gradient placeholder.
+  const featuredPhoto = site.settings?.about_featured_person?.photo_url || null;
   const work = recentWorkItems || [];
 
   // areas (neighborhoods + service areas) — same combination as baseline
@@ -242,6 +244,7 @@ export function PremiumTemplate({
               </ul>
             </div>
             <div className="pm-whyvisual">
+              {featuredPhoto && <div className="pm-whyphoto" style={{ backgroundImage: `url(${featuredPhoto})` }} aria-label={site.settings?.about_featured_person?.name} role="img" />}
               <div className="pm-badge">
                 <div className="pm-q">&ldquo;{testimonials[0].text}&rdquo;</div>
                 <div className="pm-a">— {testimonials[0].name}{cityState ? `, ${primaryLocation?.city}` : ''}</div>

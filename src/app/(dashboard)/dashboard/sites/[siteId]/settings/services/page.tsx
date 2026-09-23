@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { ImageIcon, X as XIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ interface ServiceItem {
   is_active: boolean;
   sort_order: number;
   h1: string | null;
+  hero_image_url: string | null;
 }
 
 interface CategoryWithGbp {
@@ -181,6 +183,48 @@ export default function ServicesPage() {
       setError(err instanceof Error ? err.message : 'Failed to update service');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  // Service hero image: upload to storage, then save the path on the service.
+  const [imageUploadingId, setImageUploadingId] = useState<string | null>(null);
+  const toDashboardUrl = (u: string | null) => (u && u.startsWith('/public/assets/') ? `/api/sites/${siteId}/${u.replace('/public/', '')}` : u);
+  const saveHeroImage = async (serviceId: string, url: string | null) => {
+    const response = await fetch(`/api/sites/${siteId}/settings/services`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: serviceId, heroImageUrl: url }),
+    });
+    if (!response.ok) throw new Error('Failed to save image');
+    setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, hero_image_url: url } : s)));
+  };
+  const handleHeroImageFile = async (serviceId: string, file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('Image must be smaller than 10MB'); return; }
+    try {
+      setImageUploadingId(serviceId);
+      setError(null);
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch(`/api/sites/${siteId}/settings/services/hero-image`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to upload image');
+      const { url } = await res.json();
+      await saveHeroImage(serviceId, url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setImageUploadingId(null);
+    }
+  };
+  const handleRemoveHeroImage = async (serviceId: string) => {
+    try {
+      setImageUploadingId(serviceId);
+      await saveHeroImage(serviceId, null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove image');
+    } finally {
+      setImageUploadingId(null);
     }
   };
 
@@ -450,6 +494,40 @@ export default function ServicesPage() {
                             : 'bg-gray-50 border-gray-100 opacity-60'
                         }`}
                       >
+                        {/* Hero image thumb + upload */}
+                        <div className="mr-3 shrink-0">
+                          <label
+                            className="relative flex h-12 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400"
+                            title={service.hero_image_url ? 'Replace hero image' : 'Upload hero image'}
+                          >
+                            {service.hero_image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={toDashboardUrl(service.hero_image_url) || ''} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <ImageIcon className="h-4 w-4 text-gray-400" />
+                            )}
+                            {imageUploadingId === service.id && (
+                              <span className="absolute inset-0 flex items-center justify-center bg-white/70"><Loader2 className="h-4 w-4 animate-spin" /></span>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={imageUploadingId !== null}
+                              onChange={(e) => { handleHeroImageFile(service.id, e.target.files?.[0]); e.target.value = ''; }}
+                            />
+                          </label>
+                          {service.hero_image_url && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveHeroImage(service.id)}
+                              disabled={imageUploadingId !== null}
+                              className="mt-1 flex w-16 items-center justify-center gap-1 text-[10px] text-gray-500 hover:text-red-600"
+                            >
+                              <XIcon className="h-3 w-3" /> remove
+                            </button>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm truncate">{service.name}</p>

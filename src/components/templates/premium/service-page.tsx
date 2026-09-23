@@ -14,7 +14,7 @@ import {
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta, PremiumRecentWork } from './shell';
-import { PmIconCheck, PmIconStar, PmIconShield, PmIconClock, PmIconWrench, PmIconArrow } from './icons';
+import { PmIconCheck, PmIconStar, PmIconShield, PmIconClock, PmIconWrench, PmIconArrow, PmIconPhone } from './icons';
 
 interface PremiumServicePageProps {
   data: {
@@ -79,7 +79,14 @@ export function PremiumServicePage({
         title={h1}
         accent={service.name}
         lede={service.description || undefined}
-      />
+        image={service.hero_image_url ? { src: service.hero_image_url, alt: `${service.name} by ${site.name}` } : null}
+      >
+        {phone && (
+          <div className="pm-callrow">
+            <a className="pm-btn pm-btn-brand pm-btn-xl" href={`tel:${phone.replace(/\D/g, '')}`}><PmIconPhone style={{ width: 20, height: 20 }} /> Call Now · {phone}</a>
+          </div>
+        )}
+      </PremiumPageHero>
 
       <section className="pm-block">
         <div className="pm-wrap pm-layout">

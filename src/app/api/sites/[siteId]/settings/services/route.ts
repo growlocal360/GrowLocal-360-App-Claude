@@ -127,7 +127,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { id, name, description, isActive, sortOrder, siteCategoryId } = body;
+  const { id, name, description, isActive, sortOrder, siteCategoryId, heroImageUrl } = body;
 
   if (!id || typeof id !== 'string') {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -143,6 +143,11 @@ export async function PATCH(
   if (isActive !== undefined) updateData.is_active = isActive;
   if (sortOrder !== undefined) updateData.sort_order = sortOrder;
   if (siteCategoryId !== undefined) updateData.site_category_id = siteCategoryId;
+  if (heroImageUrl !== undefined) {
+    // Accept the dashboard proxy path or a clean /public/ path; store the clean one. null clears.
+    const m = typeof heroImageUrl === 'string' ? heroImageUrl.match(/^\/api\/sites\/[^/]+\/(.+)$/) : null;
+    updateData.hero_image_url = heroImageUrl ? (m ? `/public/${m[1]}` : heroImageUrl) : null;
+  }
 
   const adminSupabase = createAdminClient();
   const { error: updateError } = await adminSupabase

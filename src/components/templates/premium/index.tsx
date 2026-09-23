@@ -100,6 +100,24 @@ export function PremiumTemplate({
 
   const ctaLabel = useCtaLabel(ctaStyle);
   const svcList = services || [];
+  // Generated per business on the home row (sections.process / sections.why). The
+  // fallbacks are trade-neutral and promise nothing, for sites not regenerated yet.
+  const cityName = primaryLocation?.city || '';
+  const process = homePageContent?.sections?.process;
+  const processHeading = process?.heading || (ctaStyle === 'booking' ? 'How booking works' : 'How to get a quote');
+  const processSteps = process?.steps?.length ? process.steps : [
+    { title: 'Tell us what\'s going on', description: 'Book online or call and describe what you\'re seeing.' },
+    { title: 'We look it over', description: 'We find the cause and tell you what the fix involves before starting.' },
+    { title: 'The work gets done', description: 'You hear from us when it\'s finished and what to expect after.' },
+  ];
+  const why = homePageContent?.sections?.why;
+  const whyHeading = why?.heading || 'What working with us looks like';
+  const whyIntro = why?.intro || 'Plain answers about what we found and what it needs.';
+  const whyPoints = why?.points?.length ? why.points : [
+    { title: 'This is what we do', description: 'Not a sideline. It is the work we handle every day.' },
+    { title: 'Straight answers', description: 'We tell you what we found and what it needs before anything starts.' },
+    { title: cityName ? `Local to ${cityName}` : 'Local and nearby', description: cityName ? `Serving ${cityName} and the surrounding area.` : 'Serving the surrounding area.' },
+  ];
   // Featured person (Settings → About Page) fills the 'why us' visual; else the gradient placeholder.
   const featuredPhoto = site.settings?.about_featured_person?.photo_url || null;
   const work = recentWorkItems || [];
@@ -220,12 +238,10 @@ export function PremiumTemplate({
           <div className="pm-wrap">
             <div className="pm-sechead pm-center">
               <span className="pm-eyebrow">Simple Process</span>
-              <h2>{ctaStyle === 'booking' ? 'Booking takes 60 seconds' : 'Getting a quote is easy'}</h2>
+              <h2>{processHeading}</h2>
             </div>
             <div className="pm-steps">
-              <Step n="01" h="Tell us what you need" p="Book online or call. Describe the job and we'll match you with the right expert." />
-              <Step n="02" h="We show up on time" p="Get a guaranteed arrival window. Our team arrives prepared to get the work done." />
-              <Step n="03" h="Done & guaranteed" p="Upfront pricing before any work begins, backed by our satisfaction guarantee." />
+              {processSteps.slice(0, 3).map((s, i) => <Step key={i} n={String(i + 1).padStart(2, '0')} h={s.title} p={s.description} />)}
             </div>
           </div>
         </section>
@@ -235,12 +251,10 @@ export function PremiumTemplate({
           <div className="pm-wrap pm-split">
             <div>
               <span className="pm-eyebrow">Why Choose {site.name}</span>
-              <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', margin: '16px 0 8px' }}>The team your neighbors recommend</h2>
-              <p style={{ color: 'var(--ink-2)', fontSize: 17 }}>We've built our reputation one honest job at a time — no upsells, no surprises, just work that lasts.</p>
+              <h2 style={{ fontSize: 'clamp(28px,4vw,44px)', margin: '16px 0 8px' }}>{whyHeading}</h2>
+              <p style={{ color: 'var(--ink-2)', fontSize: 17 }}>{whyIntro}</p>
               <ul className="pm-whylist">
-                <WhyItem h="Experienced professionals" p="Trained, vetted, and equipped to handle the job right." />
-                <WhyItem h="Upfront, honest pricing" p="You approve the price before we start. No hidden fees." />
-                <WhyItem h="Satisfaction guaranteed" p="We stand behind our work with a full service warranty." />
+                {whyPoints.slice(0, 3).map((w, i) => <WhyItem key={i} h={w.title} p={w.description} />)}
               </ul>
             </div>
             <div className="pm-whyvisual">

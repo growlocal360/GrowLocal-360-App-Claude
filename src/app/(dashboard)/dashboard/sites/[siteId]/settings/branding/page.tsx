@@ -27,6 +27,9 @@ interface BrandingConfig {
   bgScheme: 'warm' | 'light' | 'custom' | null;
   bgColor: string | null;
   bgAltColor: string | null;
+  heroOverlay: 'dark' | 'brand' | 'dark_color' | 'custom' | null;
+  heroOverlayColor: string | null;
+  heroOverlayStrength: number | null;
   ctaColor: string | null;
   logoUrl: string | null;
   logoDarkUrl: string | null;
@@ -54,6 +57,9 @@ export default function BrandingSettingsPage() {
   const [bgScheme, setBgScheme] = useState<'warm' | 'light' | 'custom'>('warm');
   const [bgColor, setBgColor] = useState('#faf9f6');
   const [bgAltColor, setBgAltColor] = useState('#f1efe9');
+  const [heroOverlay, setHeroOverlay] = useState<'dark' | 'brand' | 'dark_color' | 'custom'>('dark');
+  const [heroOverlayColor, setHeroOverlayColor] = useState('#0a0a0b');
+  const [heroOverlayStrength, setHeroOverlayStrength] = useState(100);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
@@ -84,6 +90,9 @@ export default function BrandingSettingsPage() {
       setBgScheme(data.bgScheme || 'warm');
       setBgColor(data.bgColor || '#faf9f6');
       setBgAltColor(data.bgAltColor || '#f1efe9');
+      setHeroOverlay(data.heroOverlay || 'dark');
+      setHeroOverlayColor(data.heroOverlayColor || '#0a0a0b');
+      setHeroOverlayStrength(typeof data.heroOverlayStrength === 'number' ? data.heroOverlayStrength : 100);
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
     } catch (err) {
@@ -191,6 +200,9 @@ export default function BrandingSettingsPage() {
           bgScheme,
           bgColor: bgScheme === 'custom' ? bgColor : null,
           bgAltColor: bgScheme === 'custom' ? bgAltColor : null,
+          heroOverlay,
+          heroOverlayColor: heroOverlay === 'custom' ? heroOverlayColor : null,
+          heroOverlayStrength,
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
         }),
@@ -217,6 +229,9 @@ export default function BrandingSettingsPage() {
               bgScheme,
               bgColor: bgScheme === 'custom' ? bgColor : null,
               bgAltColor: bgScheme === 'custom' ? bgAltColor : null,
+              heroOverlay,
+              heroOverlayColor: heroOverlay === 'custom' ? heroOverlayColor : null,
+              heroOverlayStrength,
               logoUrl: dashboardLogoUrl,
               logoDarkUrl: dashboardLogoDarkUrl,
             }
@@ -245,6 +260,9 @@ export default function BrandingSettingsPage() {
     tagline !== (config?.tagline || '') ||
     bgScheme !== (config?.bgScheme || 'warm') ||
     (bgScheme === 'custom' && (bgColor !== (config?.bgColor || '#faf9f6') || bgAltColor !== (config?.bgAltColor || '#f1efe9'))) ||
+    heroOverlay !== (config?.heroOverlay || 'dark') ||
+    (heroOverlay === 'custom' && heroOverlayColor !== (config?.heroOverlayColor || '#0a0a0b')) ||
+    heroOverlayStrength !== (config?.heroOverlayStrength ?? 100) ||
     logoFile !== null ||
     logoDarkFile !== null ||
     (logoPreview === null && config?.logoUrl !== null) ||
@@ -642,6 +660,67 @@ export default function BrandingSettingsPage() {
             >
               Book Online
             </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Home Hero Overlay (Premium template) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-indigo-600" />
+            <h2 className="font-semibold">Home Hero Overlay</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            The tint over the home page hero photo. The text on the hero is white, so darker or deeply saturated colors read best.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {([
+              { id: 'dark', label: 'Black', sub: 'Template default', color: '#0a0a0b' },
+              { id: 'brand', label: 'Brand color', sub: brandColor, color: brandColor },
+              { id: 'dark_color', label: 'Dark background', sub: darkColor, color: darkColor },
+              { id: 'custom', label: 'Custom', sub: 'Choose a color', color: heroOverlayColor },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setHeroOverlay(opt.id)}
+                className={`rounded-lg border-2 p-3 text-left transition-colors ${heroOverlay === opt.id ? 'border-black' : 'border-gray-200 hover:border-gray-400'}`}
+              >
+                <div className="mb-2 h-12 rounded-md border border-gray-200" style={{ background: `linear-gradient(90deg, ${opt.color} 0%, ${opt.color}99 100%)` }} />
+                <div className="text-sm font-semibold">{opt.label}</div>
+                <div className="text-xs text-gray-500 font-mono">{opt.sub}</div>
+              </button>
+            ))}
+          </div>
+          {heroOverlay === 'custom' && (
+            <div className="flex items-center gap-3">
+              <input type="color" value={heroOverlayColor} onChange={(e) => setHeroOverlayColor(e.target.value)} className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300" />
+              <Input type="text" value={heroOverlayColor} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setHeroOverlayColor(e.target.value); }} className="w-28 font-mono" />
+            </div>
+          )}
+          <div>
+            <Label htmlFor="heroStrength">Strength: {heroOverlayStrength}%</Label>
+            <input
+              id="heroStrength"
+              type="range"
+              min={30}
+              max={100}
+              step={5}
+              value={heroOverlayStrength}
+              onChange={(e) => setHeroOverlayStrength(Number(e.target.value))}
+              className="mt-1 w-full"
+            />
+            <p className="mt-1 text-xs text-gray-500">100% is the current look. Lower it to let more of the photo show through.</p>
+          </div>
+          <div className="relative h-32 overflow-hidden rounded-lg bg-gray-400">
+            <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${heroOverlay === 'brand' ? brandColor : heroOverlay === 'dark_color' ? darkColor : heroOverlay === 'custom' ? heroOverlayColor : '#0a0a0b'} 0%, transparent 100%)`, opacity: heroOverlayStrength / 100 }} />
+            <div className="relative p-4 text-white">
+              <p className="text-lg font-bold">Your headline here</p>
+              <p className="text-sm opacity-80">Hero text is white on top of the tint.</p>
+            </div>
           </div>
         </CardContent>
       </Card>

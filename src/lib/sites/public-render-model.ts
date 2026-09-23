@@ -54,6 +54,9 @@ export interface PublicRenderSettings {
   bg_scheme: 'warm' | 'light' | 'custom' | null;
   bg_color: string | null;
   bg_alt_color: string | null;
+  hero_overlay: 'dark' | 'brand' | 'dark_color' | 'custom' | null;
+  hero_overlay_color: string | null;
+  hero_overlay_strength: number | null;
   /** Client's featured person (About page owner); photo doubles as the home-page 'why us' visual. */
   about_featured_person: { name: string; title: string | null; photo_url: string | null } | null;
   google_average_rating: number | null;
@@ -359,6 +362,9 @@ export function toPublicSite(
       bg_scheme: s.bg_scheme || null,
       bg_color: s.bg_color || null,
       bg_alt_color: s.bg_alt_color || null,
+      hero_overlay: s.hero_overlay || null,
+      hero_overlay_color: s.hero_overlay_color || null,
+      hero_overlay_strength: typeof s.hero_overlay_strength === 'number' ? s.hero_overlay_strength : null,
       about_featured_person: s.about_featured_person?.name?.trim()
         ? {
             name: s.about_featured_person.name.trim(),

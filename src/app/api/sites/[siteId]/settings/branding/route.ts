@@ -49,6 +49,9 @@ export async function GET(
     bgScheme: settings.bg_scheme || 'warm',
     bgColor: settings.bg_color || null,
     bgAltColor: settings.bg_alt_color || null,
+    heroOverlay: settings.hero_overlay || 'dark',
+    heroOverlayColor: settings.hero_overlay_color || null,
+    heroOverlayStrength: typeof settings.hero_overlay_strength === 'number' ? settings.hero_overlay_strength : 100,
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     siteName: site.name,
@@ -81,7 +84,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, logoUrl, logoDarkUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, heroOverlay, heroOverlayColor, heroOverlayStrength, logoUrl, logoDarkUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -106,7 +109,13 @@ export async function PATCH(
   if (bgScheme !== undefined && !['warm', 'light', 'custom'].includes(bgScheme)) {
     return NextResponse.json({ error: 'Invalid background scheme' }, { status: 400 });
   }
-  for (const [name, v] of [['bgColor', bgColor], ['bgAltColor', bgAltColor]] as const) {
+  if (heroOverlay !== undefined && !['dark', 'brand', 'dark_color', 'custom'].includes(heroOverlay)) {
+    return NextResponse.json({ error: 'Invalid hero overlay option' }, { status: 400 });
+  }
+  if (heroOverlayStrength !== undefined && (typeof heroOverlayStrength !== 'number' || heroOverlayStrength < 30 || heroOverlayStrength > 100)) {
+    return NextResponse.json({ error: 'Hero overlay strength must be between 30 and 100' }, { status: 400 });
+  }
+  for (const [name, v] of [['bgColor', bgColor], ['bgAltColor', bgAltColor], ['heroOverlayColor', heroOverlayColor]] as const) {
     if (v !== undefined && v !== null && v !== '' && !isHex(v)) {
       return NextResponse.json({ error: `Invalid ${name} format. Use hex format like #ffffff` }, { status: 400 });
     }
@@ -135,6 +144,9 @@ export async function PATCH(
     bg_scheme: bgScheme !== undefined ? bgScheme : currentSettings.bg_scheme,
     bg_color: bgColor !== undefined ? (bgColor || null) : currentSettings.bg_color,
     bg_alt_color: bgAltColor !== undefined ? (bgAltColor || null) : currentSettings.bg_alt_color,
+    hero_overlay: heroOverlay !== undefined ? heroOverlay : currentSettings.hero_overlay,
+    hero_overlay_color: heroOverlayColor !== undefined ? (heroOverlayColor || null) : currentSettings.hero_overlay_color,
+    hero_overlay_strength: heroOverlayStrength !== undefined ? Math.round(heroOverlayStrength) : currentSettings.hero_overlay_strength,
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
   };
@@ -179,6 +191,9 @@ export async function PATCH(
     bgScheme: updatedSettings.bg_scheme || 'warm',
     bgColor: updatedSettings.bg_color || null,
     bgAltColor: updatedSettings.bg_alt_color || null,
+    heroOverlay: updatedSettings.hero_overlay || 'dark',
+    heroOverlayColor: updatedSettings.hero_overlay_color || null,
+    heroOverlayStrength: typeof updatedSettings.hero_overlay_strength === 'number' ? updatedSettings.hero_overlay_strength : 100,
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
   });

@@ -193,6 +193,10 @@ export interface SiteSettings {
   bg_scheme?: 'warm' | 'light' | 'custom';
   bg_color?: string;            // custom: page background
   bg_alt_color?: string;        // custom: alternate/soft section background
+  // Premium home hero photo overlay: tint color + strength (100 = template default)
+  hero_overlay?: 'dark' | 'brand' | 'dark_color' | 'custom';
+  hero_overlay_color?: string;  // custom tint
+  hero_overlay_strength?: number; // 30-100
   logo_url?: string;
   phone?: string;
   email?: string;

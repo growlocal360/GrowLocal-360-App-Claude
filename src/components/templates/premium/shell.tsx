@@ -75,6 +75,20 @@ export function premiumThemeStyle(site: PublicRenderSite): React.CSSProperties {
     vars['--paper-2'] = surface.paper2;
     vars['--line'] = surface.line;
   }
+  // Home hero photo overlay: tint color + strength. Defaults (near-black, 100%) live in the CSS.
+  const overlay = site.settings?.hero_overlay;
+  const overlayColor = overlay === 'brand'
+    ? brandColor
+    : overlay === 'dark_color'
+      ? hex(site.settings?.dark_color)
+      : overlay === 'custom'
+        ? hex(site.settings?.hero_overlay_color)
+        : null;
+  if (overlayColor) vars['--hero-veil'] = overlayColor;
+  const strength = site.settings?.hero_overlay_strength;
+  if (typeof strength === 'number' && strength >= 30 && strength <= 100 && strength !== 100) {
+    vars['--hero-veil-strength'] = String(strength / 100);
+  }
   return vars as React.CSSProperties;
 }
 

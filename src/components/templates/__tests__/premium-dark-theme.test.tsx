@@ -28,6 +28,17 @@ describe('premium dark theme', () => {
     expect(badCustom).not.toHaveProperty('--paper');
   });
 
+  it('hero overlay tint and strength set vars only when chosen', () => {
+    expect(premiumThemeStyle(baseSite)).not.toHaveProperty('--hero-veil');
+    const brand = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, hero_overlay: 'brand', hero_overlay_strength: 60 } } as PublicRenderSite);
+    expect(brand).toMatchObject({ '--hero-veil': '#00ef99', '--hero-veil-strength': '0.6' });
+    const dark = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, hero_overlay: 'dark_color', dark_color: '#002252', hero_overlay_strength: 100 } } as PublicRenderSite);
+    expect(dark).toMatchObject({ '--hero-veil': '#002252' });
+    expect(dark).not.toHaveProperty('--hero-veil-strength');
+    const bad = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, hero_overlay: 'custom', hero_overlay_color: 'navy' } } as PublicRenderSite);
+    expect(bad).not.toHaveProperty('--hero-veil');
+  });
+
   it('footer shows the business name when there is no dark logo', () => {
     const html = renderToStaticMarkup(<PremiumFooter site={baseSite} primaryLocation={null} serviceAreas={[]} />);
     expect(html).toContain('pm-footlogo');

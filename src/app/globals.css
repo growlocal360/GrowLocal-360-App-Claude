@@ -191,9 +191,11 @@
    for readability. Text turns light over the image (layout unchanged). */
 .tpl-premium .pm-hero-photo { position:absolute; inset:0; z-index:0; background-size:cover; background-position:center; }
 .tpl-premium .pm-hero-photo-veil { position:absolute; inset:0; z-index:0;
+  /* tint color + strength come from settings (hero_overlay*); defaults match the original near-black veil */
+  --hv: var(--hero-veil, #0a0a0b); --hs: var(--hero-veil-strength, 1);
   background:
-    linear-gradient(90deg, rgba(10,10,11,.86) 0%, rgba(10,10,11,.74) 42%, rgba(10,10,11,.42) 70%, rgba(10,10,11,.30) 100%),
-    linear-gradient(180deg, rgba(10,10,11,.30), rgba(10,10,11,.45)); }
+    linear-gradient(90deg, color-mix(in srgb, var(--hv) calc(86% * var(--hs)), transparent) 0%, color-mix(in srgb, var(--hv) calc(74% * var(--hs)), transparent) 42%, color-mix(in srgb, var(--hv) calc(42% * var(--hs)), transparent) 70%, color-mix(in srgb, var(--hv) calc(30% * var(--hs)), transparent) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--hv) calc(30% * var(--hs)), transparent), color-mix(in srgb, var(--hv) calc(45% * var(--hs)), transparent)); }
 /* When a photo is present, hide the default light grid + lift text to light. */
 .tpl-premium .pm-hero--photo .pm-hero-grid { display:none; }
 .tpl-premium .pm-hero--photo h1 { color:#fff; }
@@ -204,7 +206,7 @@
 .tpl-premium .pm-hero--photo .pm-ratingpill b { color:#fff; }
 .tpl-premium .pm-hero--photo .pm-ratingpill .pm-rev { color:rgba(255,255,255,.7); }
 @media (max-width: 980px){
-  .tpl-premium .pm-hero--photo .pm-hero-photo-veil { background: linear-gradient(180deg, rgba(10,10,11,.78), rgba(10,10,11,.6)); }
+  .tpl-premium .pm-hero--photo .pm-hero-photo-veil { background: linear-gradient(180deg, color-mix(in srgb, var(--hv) calc(78% * var(--hs)), transparent), color-mix(in srgb, var(--hv) calc(60% * var(--hs)), transparent)); }
 }
 .tpl-premium .pm-hero-inner { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; }
 @media (min-width: 980px){ .tpl-premium .pm-hero-inner { grid-template-columns: 1.15fr .85fr; gap: 64px; } }

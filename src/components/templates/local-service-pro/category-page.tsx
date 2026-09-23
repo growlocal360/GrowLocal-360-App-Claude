@@ -37,6 +37,8 @@ interface CategoryPageProps {
   serviceAreas?: PublicRenderAreaListing[];
   neighborhoods?: PublicRenderNeighborhoodListing[];
   recentWorkItems?: PublicRenderWorkItem[];
+  /** Total published job snaps (used by the Premium hub's proof strip; unused here). */
+  workItemsCount?: number;
   locationSlug?: string;
   formCategories?: PublicRenderCategory[];
   schedulingActive?: boolean;

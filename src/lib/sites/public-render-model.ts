@@ -107,6 +107,8 @@ export interface PublicRenderServiceListing {
   slug: string;
   description: string | null;
   site_category_id: string | null;
+  /** Generated "common problems" for this service; used by hub pages as quick-solution bullets. */
+  problems: ServiceProblem[] | null;
 }
 
 export interface PublicRenderServiceDetail extends PublicRenderServiceListing {
@@ -405,6 +407,7 @@ export function toPublicServiceListing(svc: Service): PublicRenderServiceListing
     slug: svc.slug,
     description: svc.description,
     site_category_id: svc.site_category_id,
+    problems: svc.problems ?? null,
   };
 }
 

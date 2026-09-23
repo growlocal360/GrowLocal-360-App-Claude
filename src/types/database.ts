@@ -405,6 +405,8 @@ export interface Service {
   faqs: ServiceFAQ[] | null;
   // Structured content fields
   intro_copy: string | null;
+  /** Owner-uploaded hero image for the service page (clean /public/assets/... path). */
+  hero_image_url: string | null;
   problems: ServiceProblem[] | null;
   detailed_sections: ServiceDetailedSection[] | null;
   image_prompts: ImagePrompt[] | null;

@@ -345,6 +345,11 @@
 .tpl-premium .pm-crumbs .pm-sep { opacity:.5; }
 .tpl-premium .pm-page-hero h1 { position:relative; font-size: clamp(34px, 5vw, 56px); max-width: 820px; }
 .tpl-premium .pm-page-hero h1 .pm-accent { color: var(--brand); }
+/* page hero with a photo beside the text (service hero image) */
+.tpl-premium .pm-page-hero-grid { position:relative; display:grid; grid-template-columns:1fr; gap:32px; align-items:center; }
+@media (min-width:960px){ .tpl-premium .pm-page-hero-grid { grid-template-columns: 1.15fr 1fr; gap:56px; } }
+.tpl-premium .pm-page-hero-img { border-radius:24px; overflow:hidden; box-shadow:var(--shadow-lg); aspect-ratio: 4/3; background:var(--paper-2); }
+.tpl-premium .pm-page-hero-img img { display:block; width:100%; height:100%; object-fit:cover; }
 /* lead-gen hub hero: proof pills + Call Now row */
 .tpl-premium .pm-proof { position:relative; display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
 .tpl-premium .pm-proof .pm-pill { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:999px; background:var(--card); border:1px solid var(--line); font-weight:600; font-size:14px; color:var(--ink-2); }

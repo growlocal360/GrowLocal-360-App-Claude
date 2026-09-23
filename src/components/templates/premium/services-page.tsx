@@ -10,6 +10,7 @@ import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
 import { PmIconWrench, PmIconArrow } from './icons';
+import { hubCityFor, servedCommunitiesLabel } from '@/lib/sites/hub-heading';
 
 interface PremiumServicesPageProps {
   site: PublicRenderSite;
@@ -29,7 +30,14 @@ export function PremiumServicesPage({
   siteSlug, locationSlug, ctaStyle = 'booking',
 }: PremiumServicesPageProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
-  const cityState = primaryLocation?.city ? `${primaryLocation.city}${primaryLocation.state ? `, ${primaryLocation.state}` : ''}` : '';
+  // Brand-level hub: names the city only when the home page is the Primary Market page (v5 rule 11).
+  const hubCity = hubCityFor(site, primaryLocation?.city);
+  const served = servedCommunitiesLabel(serviceAreas);
+  const lede = hubCity
+    ? `Every service we offer in ${hubCity} and the surrounding area.`
+    : served
+      ? `Serving ${served}.`
+      : `Every service ${site.name} offers, in one place.`;
 
   const breadcrumb = buildBreadcrumbSchema([
     { name: 'Home', url: paths.locationHome(locationSlug) },
@@ -42,9 +50,9 @@ export function PremiumServicesPage({
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Services' }]}
         eyebrow="What We Do"
-        title={`Our services${cityState ? ` in ${primaryLocation?.city}` : ''}`}
-        accent={cityState ? primaryLocation?.city : undefined}
-        lede="Comprehensive service for every need — done right the first time."
+        title={hubCity ? `Our services in ${hubCity}` : 'Our services'}
+        accent={hubCity || 'services'}
+        lede={lede}
       />
       <section className="pm-block">
         <div className="pm-wrap">

@@ -18,6 +18,7 @@ import { SiteFooter } from './site-footer';
 import { UnifiedLeadForm } from './unified-lead-form';
 import { PageHero } from './page-hero';
 import { FinalCTASection } from './final-cta-section';
+import { hubCityFor } from '@/lib/sites/hub-heading';
 
 interface ServicesPageProps {
   site: PublicRenderSite;
@@ -35,7 +36,9 @@ interface ServicesPageProps {
 export function ServicesPage({ site, primaryLocation, categories, servicesByCategory, serviceAreas, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServicesPageProps) {
   const brandColor = site.settings?.brand_color || '#00ef99';
   const ctaColor = site.settings?.cta_color || brandColor;
-  const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
+  const accentColor = site.settings?.secondary_color || brandColor;
+  // Brand-level hub: names the city only when the home page is the Primary Market page (v5 rule 11).
+  const city = hubCityFor(site, primaryLocation?.city) || '';
   const phone = site.settings?.phone || primaryLocation?.phone;
 
   const navCategories: NavCategory[] = categories.map(c => ({
@@ -60,7 +63,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
   const siteUrl = getSiteUrl(businessInput);
   const collectionSchema = buildCollectionPageSchema(
     `Our Services${city ? ` in ${city}` : ''}`,
-    `${site.name} offers professional services${city ? ` in ${city}` : ''}. Browse our full range of services.`,
+    `Every service ${site.name} offers${city ? ` in ${city}` : ''}, in one place.`,
     siteUrl + paths.servicesIndex(locationSlug),
     businessInput
   );
@@ -73,7 +76,7 @@ export function ServicesPage({ site, primaryLocation, categories, servicesByCate
         <PageHero
           brandColor={brandColor}
           title={`Our Services${city ? ` in ${city}` : ''}`}
-          subtitle={`Browse our full range of professional services. ${site.name} is your trusted local provider${city ? ` serving ${city} and surrounding areas` : ''}.`}
+          subtitle={`Every service ${site.name} offers, in one place${city ? `, serving ${city} and the surrounding area` : ''}.`}
         />
 
         {/* Category Cards Overview */}

@@ -8,6 +8,7 @@ import {
 } from '@/lib/sites/public-render-model';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { PublicRenderServiceListing } from '@/lib/sites/public-render-model';
+import { hubCityFor } from '@/lib/sites/hub-heading';
 
 export const revalidate = 60;
 
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: ServicesPageProps): Promise<M
   }
 
   const { site, primaryLocation } = data;
-  const city = primaryLocation?.city;
+  const city = hubCityFor(site, primaryLocation?.city);
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
   const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: ServicesPageProps): Promise<M
 
   return {
     title: `Our Services${city ? ` in ${city}` : ''} | ${site.name}`,
-    description: `${site.name} offers professional services${city ? ` in ${city}` : ''}. Browse our full range of services and request a free estimate today.`,
+    description: `Every service ${site.name} offers${city ? ` in ${city}` : ''}, in one place. Request service online or call.`,
     alternates: {
       canonical: canonicalUrl,
     },

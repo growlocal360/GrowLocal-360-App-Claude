@@ -3,7 +3,9 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-// inngest import removed — build is triggered from success page after onboarding
+// The build itself is triggered from the success page after onboarding; the
+// webhook only schedules a fallback that starts it if that never happens.
+import { inngest } from '@/lib/inngest/client';
 import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
 import { createWorkspaceSite } from '@/lib/sites/create-workspace-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
@@ -168,6 +170,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       supabase
     );
     siteId = result.siteId;
+
+    // Fallback: start the build in 10 minutes if the success page never did.
+    await inngest.send({ name: 'site/build.ensure', data: { siteId, waitFor: '10m' } });
   }
 
   // Create subscription record

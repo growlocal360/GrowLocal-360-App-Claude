@@ -356,6 +356,7 @@
 .tpl-premium .pm-proof .pm-pill .pm-ic { color:var(--brand); display:grid; place-items:center; } .tpl-premium .pm-proof .pm-pill .pm-ic svg { width:16px; height:16px; }
 .tpl-premium .pm-callrow { position:relative; display:flex; flex-wrap:wrap; gap:14px; margin-top:26px; }
 .tpl-premium .pm-btn-xl { padding:18px 30px; font-size:19px; }
+.tpl-premium .pm-card--static { cursor:default; } .tpl-premium .pm-card--static:hover { transform:none; box-shadow:var(--shadow-sm); border-color:var(--line); }
 .tpl-premium .pm-card .pm-quicklist { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; font-size:14.5px; color:var(--ink-2); }
 .tpl-premium .pm-card .pm-quicklist li { display:flex; gap:8px; align-items:flex-start; }
 .tpl-premium .pm-card .pm-quicklist .pm-chk, .tpl-premium .pm-checklist .pm-chk { color:var(--brand); display:grid; place-items:center; flex:none; margin-top:2px; } .tpl-premium .pm-quicklist .pm-chk svg, .tpl-premium .pm-checklist .pm-chk svg { width:16px; height:16px; }

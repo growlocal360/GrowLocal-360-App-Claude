@@ -26,7 +26,8 @@ async function getBrandBySlug(siteSlug: string, brandSlug: string) {
   const data = await getSiteBySlug(siteSlug);
   if (!data) return null;
 
-  const brand = data.brands.find(b => b.slug === brandSlug);
+  // List-only brands (no detail page opted in) are not routable.
+  const brand = data.brands.find(b => b.slug === brandSlug && b.has_detail_page !== false);
   if (!brand) return null;
 
   return { ...data, brand };

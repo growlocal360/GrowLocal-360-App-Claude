@@ -514,6 +514,7 @@ export function StepReview() {
             slug: brandSlug,
             sort_order: i,
             is_active: true,
+            has_detail_page: brand.hasDetailPage === true,
             site_category_id: brandSiteCategoryId,
           });
         }

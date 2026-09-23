@@ -168,6 +168,8 @@ export interface PublicRenderBrandListing {
   name: string;
   slug: string;
   hero_description: string | null;
+  /** True only when this brand has a generated detail page to link to. */
+  has_page: boolean;
 }
 
 export interface PublicRenderBrandDetail extends PublicRenderBrandListing {
@@ -470,6 +472,7 @@ export function toPublicBrandListing(brand: SiteBrand): PublicRenderBrandListing
     name: brand.name,
     slug: brand.slug,
     hero_description: brand.hero_description,
+    has_page: brand.has_detail_page !== false && !!brand.h1,
   };
 }
 

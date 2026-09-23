@@ -587,6 +587,8 @@ export interface SiteBrand {
   // to. NULL = applies to all niches ("Both"). Drives which services a brand page
   // lists + which category its content is generated against.
   site_category_id: string | null;
+  /** Listed on /brands always; a generated detail page only when true (owner opt-in, like city pages). */
+  has_detail_page: boolean;
   // AI-generated content fields (populated by generate-content pipeline)
   meta_title: string | null;
   meta_description: string | null;

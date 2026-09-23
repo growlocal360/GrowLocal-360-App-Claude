@@ -33,6 +33,7 @@ interface Brand {
   slug: string;
   h1: string | null;
   is_active: boolean;
+  has_detail_page: boolean;
   sort_order: number;
   site_category_id: string | null;
 }
@@ -245,6 +246,27 @@ export default function BrandsPage() {
     }
   };
 
+  // Detail page opt-in. Turning it on builds the page content (server fires the build).
+  const [pageTogglingId, setPageTogglingId] = useState<string | null>(null);
+  const handleToggleDetailPage = async (brand: Brand) => {
+    try {
+      setPageTogglingId(brand.id);
+      const next = !brand.has_detail_page;
+      const response = await fetch(`/api/sites/${siteId}/settings/brands`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: brand.id, hasDetailPage: next }),
+      });
+      if (!response.ok) throw new Error('Failed to update brand');
+      setBrands((prev) => prev.map((b) => (b.id === brand.id ? { ...b, has_detail_page: next } : b)));
+      if (next && !brand.h1) toast.success(`Building the ${brand.name} page…`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update brand');
+    } finally {
+      setPageTogglingId(null);
+    }
+  };
+
   const handleToggleBrand = async (brand: Brand) => {
     try {
       setTogglingId(brand.id);
@@ -394,7 +416,17 @@ export default function BrandsPage() {
                         ))}
                       </select>
                     )}
-                    <Button
+                    <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer" title="Build a dedicated page for this brand. Off = listed on /brands only.">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300"
+                        checked={brand.has_detail_page}
+                        disabled={pageTogglingId === brand.id}
+                        onChange={() => handleToggleDetailPage(brand)}
+                      />
+                      Detail page
+                    </label>
+                    {brand.has_detail_page && <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleGenerateBrand(brand.id)}
@@ -411,7 +443,7 @@ export default function BrandsPage() {
                       <span className="ml-1.5 text-xs">
                         {brand.h1 ? 'Regenerate' : 'Build Page'}
                       </span>
-                    </Button>
+                    </Button>}
                     <Button
                       variant="outline"
                       size="sm"

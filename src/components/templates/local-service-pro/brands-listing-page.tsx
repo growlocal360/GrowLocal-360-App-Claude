@@ -67,7 +67,7 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
                 All Brands ({brands.length})
               </h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {brands.map((brand) => (
+                {brands.map((brand) => brand.has_page ? (
                   <Link key={brand.id} href={paths.brandPage(brand.slug, locationSlug)}>
                     <Card
                       className="group h-full cursor-pointer rounded-2xl border-gray-200 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
@@ -89,6 +89,12 @@ export function BrandsListingPage({ site, primaryLocation, brands, serviceAreas,
                       </CardContent>
                     </Card>
                   </Link>
+                ) : (
+                  <Card key={brand.id} className="h-full rounded-2xl border-gray-200">
+                    <CardContent className="p-5">
+                      <h3 className="text-lg font-bold text-gray-900">{brand.name}</h3>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>

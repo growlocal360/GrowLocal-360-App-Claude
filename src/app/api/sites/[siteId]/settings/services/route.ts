@@ -127,7 +127,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { id, name, description, isActive, sortOrder, siteCategoryId, heroImageUrl } = body;
+  const { id, name, description, isActive, sortOrder, siteCategoryId, heroImageUrl, h1, metaTitle, metaDescription, introCopy, bodyCopy, problems, detailedSections, faqs } = body;
 
   if (!id || typeof id !== 'string') {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -147,6 +147,41 @@ export async function PATCH(
     // Accept the dashboard proxy path or a clean /public/ path; store the clean one. null clears.
     const m = typeof heroImageUrl === 'string' ? heroImageUrl.match(/^\/api\/sites\/[^/]+\/(.+)$/) : null;
     updateData.hero_image_url = heroImageUrl ? (m ? `/public/${m[1]}` : heroImageUrl) : null;
+  }
+
+  // Page content edited in Settings → Services → Edit. Strings are trimmed;
+  // empty becomes null; JSON lists are rebuilt from plain strings only.
+  const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) || null : null);
+  if (h1 !== undefined) updateData.h1 = str(h1, 120);
+  if (metaTitle !== undefined) updateData.meta_title = str(metaTitle, 70);
+  if (metaDescription !== undefined) updateData.meta_description = str(metaDescription, 200);
+  if (introCopy !== undefined) updateData.intro_copy = str(introCopy, 600);
+  if (bodyCopy !== undefined) updateData.body_copy = str(bodyCopy, 6000);
+  if (problems !== undefined) {
+    const list = Array.isArray(problems)
+      ? problems
+          .map((p) => ({ heading: str(p?.heading, 120) || '', description: str(p?.description, 600) || '' }))
+          .filter((p) => p.heading)
+      : [];
+    updateData.problems = list.length ? list.slice(0, 8) : null;
+  }
+  if (detailedSections !== undefined) {
+    const list = Array.isArray(detailedSections)
+      ? detailedSections
+          .map((s) => ({
+            h2: str(s?.h2, 120) || '',
+            body: str(s?.body, 2000) || '',
+            bullets: Array.isArray(s?.bullets) ? s.bullets.map((b: unknown) => str(b, 200)).filter((b: string | null): b is string => !!b).slice(0, 8) : [],
+          }))
+          .filter((s) => s.h2)
+      : [];
+    updateData.detailed_sections = list.length ? list.slice(0, 8) : null;
+  }
+  if (faqs !== undefined) {
+    const list = Array.isArray(faqs)
+      ? faqs.map((f) => ({ question: str(f?.question, 200) || '', answer: str(f?.answer, 1200) || '' })).filter((f) => f.question && f.answer)
+      : [];
+    updateData.faqs = list.length ? list.slice(0, 12) : null;
   }
 
   const adminSupabase = createAdminClient();

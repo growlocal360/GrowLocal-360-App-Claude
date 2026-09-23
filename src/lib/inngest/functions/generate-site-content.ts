@@ -192,6 +192,7 @@ export const generateSiteContent = inngest.createFunction(
           .select('*')
           .eq('site_id', siteId)
           .eq('is_active', true)
+          .eq('has_detail_page', true) // list-only brands get no page content
           .order('sort_order'),
         supabase
           .from('neighborhoods')

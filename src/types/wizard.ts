@@ -82,6 +82,8 @@ export interface WizardBrand {
   name: string;
   isSelected: boolean;
   isCustom: boolean;
+  /** Build a dedicated detail page for this brand (default off; most brands are list-only). */
+  hasDetailPage?: boolean;
   // Best-fit GBP category display name for this brand (AI-inferred), or 'both'
   // when it spans niches. Resolved to a site_category_id at site creation.
   category?: string | null;

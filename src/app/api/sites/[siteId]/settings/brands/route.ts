@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { inngest } from '@/lib/inngest/client';
 
 function slugify(name: string): string {
   return name
@@ -73,7 +74,7 @@ export async function POST(
   }
 
   const body = await request.json();
-  const { name, slug, siteCategoryId } = body;
+  const { name, slug, siteCategoryId, hasDetailPage } = body;
 
   if (!name || typeof name !== 'string') {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -101,6 +102,7 @@ export async function POST(
       slug: slug || slugify(name),
       sort_order: nextSortOrder,
       is_active: true,
+      has_detail_page: hasDetailPage === true,
       site_category_id: brandCategoryId,
     })
     .select()
@@ -133,7 +135,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { id, name, isActive, siteCategoryId } = body;
+  const { id, name, isActive, siteCategoryId, hasDetailPage } = body;
 
   if (!id) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 });
@@ -149,6 +151,9 @@ export async function PATCH(
   if (isActive !== undefined) {
     update.is_active = isActive;
   }
+  if (hasDetailPage !== undefined) {
+    update.has_detail_page = hasDetailPage === true;
+  }
   // Niche override. null/'' explicitly clears it back to "Both" (all niches).
   if (siteCategoryId !== undefined) {
     update.site_category_id = await validateSiteCategoryId(adminSupabase, siteId, siteCategoryId);
@@ -163,6 +168,19 @@ export async function PATCH(
   if (updateError) {
     console.error('Failed to update brand:', updateError);
     return NextResponse.json({ error: 'Failed to update brand' }, { status: 500 });
+  }
+
+  // Opting a brand INTO a detail page: build its content now if it has none,
+  // so the new page never goes live blank (same as adding a neighborhood).
+  if (hasDetailPage === true) {
+    const { data: row } = await adminSupabase.from('site_brands').select('h1').eq('id', id).single();
+    if (!row?.h1) {
+      const { data: { session } } = await supabase.auth.getSession();
+      await inngest.send({
+        name: 'site/content.generate',
+        data: { siteId, googleAccessToken: session?.provider_token || null, scope: { type: 'brands', brandIds: [id] } },
+      });
+    }
   }
 
   await revalidateSite(siteId);

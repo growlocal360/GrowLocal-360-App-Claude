@@ -75,6 +75,7 @@ export interface WizardGSCQueryData {
 
 export interface WizardBrand {
   name: string;
+  hasDetailPage?: boolean;
   // AI-inferred best-fit GBP category display name, or 'both'. Resolved to a
   // site_category_id on insert. Omitted/undefined → NULL (all niches).
   category?: string | null;
@@ -509,6 +510,7 @@ export async function createSiteFromWizardData(
           slug: brandSlug,
           sort_order: i,
           is_active: true,
+          has_detail_page: brand.hasDetailPage === true,
           site_category_id: brandSiteCategoryId,
         });
 

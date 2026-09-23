@@ -111,6 +111,9 @@ export function StepBrands() {
 
   // Counts
   const selectedCount = brands.filter((b) => b.isSelected).length;
+  const pageCount = brands.filter((b) => b.isSelected && b.hasDetailPage).length;
+  const togglePage = (id: string) =>
+    setBrands(brands.map((b) => (b.id === id ? { ...b, hasDetailPage: !b.hasDetailPage } : b)));
   const totalCount = brands.length;
 
   // Handle adding custom brand
@@ -182,9 +185,10 @@ export function StepBrands() {
           <div>
             <p className="font-medium text-gray-900">Why Brands Matter</p>
             <p className="text-sm text-gray-600">
-              Customers often search for brand-specific services like &quot;Samsung appliance repair&quot;
-              or &quot;Carrier AC installation.&quot; Each selected brand gets a dedicated page to help
-              you rank for these searches.
+              Every brand you keep here is listed on your Brands page. Most brands get little search
+              traffic, so they stay list-only. Mark a brand as <b>page</b> only when people actually
+              search for it (&quot;GE appliance repair&quot;): it then gets its own detailed page. You can
+              change this later in Settings &rarr; Brands.
             </p>
           </div>
         </CardContent>
@@ -225,7 +229,7 @@ export function StepBrands() {
       {/* Selected Count */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          <span className="font-medium text-gray-900">{selectedCount}</span> of {totalCount} brands selected
+          <span className="font-medium text-gray-900">{selectedCount}</span> of {totalCount} brands listed · <span className="font-medium text-gray-900">{pageCount}</span> with a detail page
         </p>
         {brands.length > 0 && (
           <div className="flex gap-2">
@@ -275,6 +279,17 @@ export function StepBrands() {
                 {brand.isSelected && <Check className="h-2.5 w-2.5" />}
               </span>
               {brand.name}
+              {brand.isSelected && (
+                <span
+                  role="switch"
+                  aria-checked={!!brand.hasDetailPage}
+                  title={brand.hasDetailPage ? 'Detail page: on (click to make list-only)' : 'List-only (click to build a detail page)'}
+                  onClick={(e) => { e.stopPropagation(); togglePage(brand.id); }}
+                  className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${brand.hasDetailPage ? 'bg-[#00ef99] text-black' : 'bg-gray-200 text-gray-600'}`}
+                >
+                  {brand.hasDetailPage ? 'page' : 'list'}
+                </span>
+              )}
               {brand.isCustom && (
                 <span
                   onClick={(e) => {

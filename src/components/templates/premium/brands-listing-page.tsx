@@ -48,13 +48,19 @@ export function PremiumBrandsListingPage({
         <div className="pm-wrap">
           {brands.length > 0 ? (
             <div className="pm-grid3">
-              {brands.map(b => (
+              {brands.map(b => b.has_page ? (
                 <Link key={b.id} className="pm-card" href={paths.brandPage(b.slug, locationSlug)}>
                   <span className="pm-icon"><PmIconLayers /></span>
                   <h3>{b.name}</h3>
                   {b.hero_description && <p>{b.hero_description}</p>}
-                  <span className="pm-more">View {b.name} service <PmIconArrow /></span>
+                  <span className="pm-more">{b.name} service details <PmIconArrow /></span>
                 </Link>
+              ) : (
+                // Listed, no detail page (same treatment as service areas without a page)
+                <div key={b.id} className="pm-card pm-card--static">
+                  <span className="pm-icon"><PmIconLayers /></span>
+                  <h3>{b.name}</h3>
+                </div>
               ))}
             </div>
           ) : (

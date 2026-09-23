@@ -113,7 +113,7 @@ export async function GET(
   // Brands
   if (brands && brands.length > 0) {
     entries.push({ url: `${baseUrl}/brands`, lastmod, changefreq: 'monthly', priority: 0.5 });
-    for (const brand of brands) {
+    for (const brand of brands.filter(b => b.has_detail_page !== false && b.h1)) {
       entries.push({ url: `${baseUrl}/brands/${brand.slug}`, lastmod, changefreq: 'monthly', priority: 0.5 });
     }
   }

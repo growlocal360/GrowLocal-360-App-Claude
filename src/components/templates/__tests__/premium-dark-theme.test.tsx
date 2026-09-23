@@ -18,6 +18,16 @@ describe('premium dark theme', () => {
     expect(bad).not.toHaveProperty('--dark');
   });
 
+  it('page background presets and custom colors set the surface tokens', () => {
+    expect(premiumThemeStyle(baseSite)).not.toHaveProperty('--paper');
+    const light = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, bg_scheme: 'light' } } as PublicRenderSite);
+    expect(light).toMatchObject({ '--paper': '#ffffff', '--paper-2': '#f3f4f6', '--line': '#e5e7eb' });
+    const custom = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, bg_scheme: 'custom', bg_color: '#f0f7ff', bg_alt_color: '#dbeafe' } } as PublicRenderSite);
+    expect(custom).toMatchObject({ '--paper': '#f0f7ff', '--paper-2': '#dbeafe' });
+    const badCustom = premiumThemeStyle({ ...baseSite, settings: { ...baseSite.settings, bg_scheme: 'custom', bg_color: 'blue' } } as PublicRenderSite);
+    expect(badCustom).not.toHaveProperty('--paper');
+  });
+
   it('footer shows the business name when there is no dark logo', () => {
     const html = renderToStaticMarkup(<PremiumFooter site={baseSite} primaryLocation={null} serviceAreas={[]} />);
     expect(html).toContain('pm-footlogo');

@@ -189,6 +189,10 @@ export interface SiteSettings {
   cta_color?: string;
   dark_color?: string;          // Premium: dark sections + footer background
   tagline?: string;             // one line under the footer logo
+  // Premium page background: 'warm' (cream, default), 'light' (white/grey) or 'custom' (bg_color + bg_alt_color)
+  bg_scheme?: 'warm' | 'light' | 'custom';
+  bg_color?: string;            // custom: page background
+  bg_alt_color?: string;        // custom: alternate/soft section background
   logo_url?: string;
   phone?: string;
   email?: string;

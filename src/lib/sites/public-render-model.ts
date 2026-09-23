@@ -115,6 +115,7 @@ export interface PublicRenderServiceDetail extends PublicRenderServiceListing {
   h1: string | null;
   body_copy: string | null;
   intro_copy: string | null;
+  hero_image_url: string | null;
   problems: ServiceProblem[] | null;
   detailed_sections: ServiceDetailedSection[] | null;
   faqs: ServiceFAQ[] | null;
@@ -417,6 +418,7 @@ export function toPublicServiceDetail(svc: Service): PublicRenderServiceDetail {
     h1: svc.h1,
     body_copy: svc.body_copy,
     intro_copy: svc.intro_copy,
+    hero_image_url: sanitizeAssetUrl(svc.hero_image_url, 'site'),
     problems: svc.problems,
     detailed_sections: svc.detailed_sections,
     faqs: svc.faqs,

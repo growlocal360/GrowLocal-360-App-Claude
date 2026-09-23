@@ -115,11 +115,12 @@ export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlu
 interface Crumb { label: string; href?: string }
 
 /** Breadcrumb + headline page hero used at the top of inner pages. */
-export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede, children }: { crumbs: Crumb[]; eyebrow?: string; title: string; accent?: string; lede?: string; children?: React.ReactNode }) {
+export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede, image, children }: { crumbs: Crumb[]; eyebrow?: string; title: string; accent?: string; lede?: string; /** Optional photo shown beside the text (service hero image). */ image?: { src: string; alt: string } | null; children?: React.ReactNode }) {
   const parts = splitAccent(title, accent || '');
   return (
-    <section className="pm-page-hero">
-      <div className="pm-wrap">
+    <section className={`pm-page-hero${image ? ' pm-page-hero--image' : ''}`}>
+      <div className={`pm-wrap${image ? ' pm-page-hero-grid' : ''}`}>
+        <div>
         <nav className="pm-crumbs">
           {crumbs.map((c, i) => (
             <span key={i} style={{ display: 'inline-flex', gap: 9, alignItems: 'center' }}>
@@ -132,6 +133,13 @@ export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede, children
         <h1>{parts.accent ? <>{parts.before}<span className="pm-accent">{parts.accent}</span>{parts.after}</> : title}</h1>
         {lede && <p className="pm-lede" style={{ marginTop: 16, marginBottom: 0 }}>{lede}</p>}
         {children}
+        </div>
+        {image && (
+          <div className="pm-page-hero-img">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image.src} alt={image.alt} loading="eager" />
+          </div>
+        )}
       </div>
     </section>
   );

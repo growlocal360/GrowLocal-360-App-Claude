@@ -115,7 +115,7 @@ export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlu
 interface Crumb { label: string; href?: string }
 
 /** Breadcrumb + headline page hero used at the top of inner pages. */
-export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede }: { crumbs: Crumb[]; eyebrow?: string; title: string; accent?: string; lede?: string }) {
+export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede, children }: { crumbs: Crumb[]; eyebrow?: string; title: string; accent?: string; lede?: string; children?: React.ReactNode }) {
   const parts = splitAccent(title, accent || '');
   return (
     <section className="pm-page-hero">
@@ -131,6 +131,7 @@ export function PremiumPageHero({ crumbs, eyebrow, title, accent, lede }: { crum
         {eyebrow && <span className="pm-eyebrow" style={{ marginBottom: 14 }}>{eyebrow}</span>}
         <h1>{parts.accent ? <>{parts.before}<span className="pm-accent">{parts.accent}</span>{parts.after}</> : title}</h1>
         {lede && <p className="pm-lede" style={{ marginTop: 16, marginBottom: 0 }}>{lede}</p>}
+        {children}
       </div>
     </section>
   );

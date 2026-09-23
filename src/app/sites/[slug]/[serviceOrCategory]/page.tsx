@@ -14,7 +14,7 @@ import {
   toPublicCategory, toPublicReview, toPublicAreaListing, toPublicNeighborhoodListing,
   toPublicPageContent, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
-import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 
@@ -160,7 +160,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     // Fetch work items for all services in this category
     const categoryServiceIds = categoryData.services.map(s => s.id);
     const categoryHasBrands = await siteHasActiveBrands(categoryData.site.id);
-    const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, { data: catSchedulingConfig }, ...workItemResults] = await Promise.all([
+    const [allCategoryReviews, { data: serviceAreas }, { data: neighborhoods }, { data: catSchedulingConfig }, workItemsCount, ...workItemResults] = await Promise.all([
       getAllGoogleReviewsForSite(categoryData.site.id),
       admin.from('service_areas').select('*').eq('site_id', categoryData.site.id).order('sort_order'),
       admin.from('neighborhoods').select('*').eq('site_id', categoryData.site.id).eq('is_active', true).order('sort_order'),
@@ -169,6 +169,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         .select('is_active, cta_style')
         .eq('site_id', categoryData.site.id)
         .single(),
+      getPublishedWorkItemsCount(categoryData.site.id),
       ...categoryServiceIds.map(sid => getPublishedWorkItems(categoryData.site.id, { serviceId: sid, limit: 6 })),
     ]);
 
@@ -203,6 +204,7 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
         serviceAreas={(serviceAreas || []).map(toPublicAreaListing)}
         neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
         recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
+        workItemsCount={workItemsCount}
         formCategories={categoryData.allCategories.map(toPublicCategory)}
         schedulingActive={catSchedulingConfig?.is_active || false}
         ctaStyle={(catSchedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}

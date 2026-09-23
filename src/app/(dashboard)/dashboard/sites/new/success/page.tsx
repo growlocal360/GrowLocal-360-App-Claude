@@ -104,6 +104,11 @@ function PaymentSuccessContent() {
   // Onboarding state
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // The build trigger must reach the server exactly once, after the site record
+  // is known. If onboarding finishes before that, remember it and fire later.
+  const [buildTriggerPending, setBuildTriggerPending] = useState(false);
+  const [buildTriggered, setBuildTriggered] = useState(false);
   const [saving, setSaving] = useState(false);
   const [businessDescription, setBusinessDescription] = useState('');
   const [credentials, setCredentials] = useState('');
@@ -117,10 +122,15 @@ function PaymentSuccessContent() {
 
   // Auto-save onboarding data (optionally trigger the build)
   const saveOnboardingData = useCallback(async (options?: { triggerBuild?: boolean }) => {
-    if (!siteData?.id) return;
+    if (!siteData?.id) {
+      // Site record not loaded yet (webhook still creating it). Don't drop the trigger.
+      if (options?.triggerBuild) setBuildTriggerPending(true);
+      return;
+    }
     setSaving(true);
+    setSaveError(null);
     try {
-      await fetch(`/api/sites/${siteData.id}/settings/onboarding`, {
+      const res = await fetch(`/api/sites/${siteData.id}/settings/onboarding`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,11 +143,28 @@ function PaymentSuccessContent() {
           triggerBuild: options?.triggerBuild || false,
         }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || `Save failed (${res.status})`);
+      }
+      if (options?.triggerBuild) {
+        setBuildTriggered(true);
+        setBuildTriggerPending(false);
+      }
     } catch (err) {
       console.error('Failed to save onboarding data:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save your details');
+      if (options?.triggerBuild) setBuildTriggerPending(true);
     }
     setSaving(false);
   }, [siteData?.id, businessDescription, credentials, targetAudience, pointOfView, toneValues, localDetails]);
+
+  // Flush a pending build trigger once the site record exists (or after a failed attempt).
+  useEffect(() => {
+    if (!buildTriggerPending || buildTriggered || !siteData?.id || saving) return;
+    const t = setTimeout(() => { saveOnboardingData({ triggerBuild: true }); }, 1500);
+    return () => clearTimeout(t);
+  }, [buildTriggerPending, buildTriggered, siteData?.id, saving, saveOnboardingData]);
 
   // Auto-generate local details
   const handleGenerateLocal = async () => {
@@ -703,7 +730,7 @@ function PaymentSuccessContent() {
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-6 w-6 text-[#00ef99]" />
                 <div>
-                  <h3 className="font-semibold text-gray-900">Business details saved!</h3>
+                  <h3 className="font-semibold text-gray-900">{saveError ? 'Could not save your details' : buildTriggerPending && !buildTriggered ? 'Finishing setup…' : 'Business details saved!'}</h3>
                   <p className="text-sm text-gray-600">
                     {status === 'building'
                       ? 'Your personalized details will enhance the next content refresh.'

@@ -24,6 +24,9 @@ interface BrandingConfig {
   secondaryColor: string | null;
   darkColor: string | null;
   tagline: string | null;
+  bgScheme: 'warm' | 'light' | 'custom' | null;
+  bgColor: string | null;
+  bgAltColor: string | null;
   ctaColor: string | null;
   logoUrl: string | null;
   logoDarkUrl: string | null;
@@ -48,6 +51,9 @@ export default function BrandingSettingsPage() {
   const [ctaColor, setCtaColor] = useState('#00ef99');
   const [darkColor, setDarkColor] = useState('#0a0a0b');
   const [tagline, setTagline] = useState('');
+  const [bgScheme, setBgScheme] = useState<'warm' | 'light' | 'custom'>('warm');
+  const [bgColor, setBgColor] = useState('#faf9f6');
+  const [bgAltColor, setBgAltColor] = useState('#f1efe9');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
@@ -75,6 +81,9 @@ export default function BrandingSettingsPage() {
       setCtaColor(data.ctaColor || data.brandColor || '#00ef99');
       setDarkColor(data.darkColor || '#0a0a0b');
       setTagline(data.tagline || '');
+      setBgScheme(data.bgScheme || 'warm');
+      setBgColor(data.bgColor || '#faf9f6');
+      setBgAltColor(data.bgAltColor || '#f1efe9');
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
     } catch (err) {
@@ -179,6 +188,9 @@ export default function BrandingSettingsPage() {
           ctaColor,
           darkColor,
           tagline,
+          bgScheme,
+          bgColor: bgScheme === 'custom' ? bgColor : null,
+          bgAltColor: bgScheme === 'custom' ? bgAltColor : null,
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
         }),
@@ -202,6 +214,9 @@ export default function BrandingSettingsPage() {
               ctaColor,
               darkColor,
               tagline,
+              bgScheme,
+              bgColor: bgScheme === 'custom' ? bgColor : null,
+              bgAltColor: bgScheme === 'custom' ? bgAltColor : null,
               logoUrl: dashboardLogoUrl,
               logoDarkUrl: dashboardLogoDarkUrl,
             }
@@ -228,6 +243,8 @@ export default function BrandingSettingsPage() {
     ctaColor !== (config?.ctaColor || config?.brandColor || '#00ef99') ||
     darkColor !== (config?.darkColor || '#0a0a0b') ||
     tagline !== (config?.tagline || '') ||
+    bgScheme !== (config?.bgScheme || 'warm') ||
+    (bgScheme === 'custom' && (bgColor !== (config?.bgColor || '#faf9f6') || bgAltColor !== (config?.bgAltColor || '#f1efe9'))) ||
     logoFile !== null ||
     logoDarkFile !== null ||
     (logoPreview === null && config?.logoUrl !== null) ||
@@ -626,6 +643,61 @@ export default function BrandingSettingsPage() {
               Book Online
             </button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Page Background (Premium template) */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-amber-600" />
+            <h2 className="font-semibold">Page Background</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            The light page and section backgrounds on the Premium template. Pick the warm cream, a clean white and grey, or your own two colors.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {([
+              { id: 'warm', label: 'Warm', sub: 'Cream (current default)', paper: '#faf9f6', alt: '#f1efe9' },
+              { id: 'light', label: 'Light', sub: 'White and light grey', paper: '#ffffff', alt: '#f3f4f6' },
+              { id: 'custom', label: 'Custom', sub: 'Choose your own', paper: bgColor, alt: bgAltColor },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setBgScheme(opt.id)}
+                className={`rounded-lg border-2 p-3 text-left transition-colors ${bgScheme === opt.id ? 'border-black' : 'border-gray-200 hover:border-gray-400'}`}
+              >
+                <div className="mb-2 flex h-14 overflow-hidden rounded-md border border-gray-200">
+                  <div className="flex-1" style={{ backgroundColor: opt.paper }} />
+                  <div className="flex-1" style={{ backgroundColor: opt.alt }} />
+                </div>
+                <div className="text-sm font-semibold">{opt.label}</div>
+                <div className="text-xs text-gray-500">{opt.sub}</div>
+              </button>
+            ))}
+          </div>
+          {bgScheme === 'custom' && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Page background</Label>
+                <div className="mt-1 flex items-center gap-3">
+                  <input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300" />
+                  <Input type="text" value={bgColor} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setBgColor(e.target.value); }} className="w-28 font-mono" />
+                </div>
+              </div>
+              <div>
+                <Label>Alternate section background</Label>
+                <div className="mt-1 flex items-center gap-3">
+                  <input type="color" value={bgAltColor} onChange={(e) => setBgAltColor(e.target.value)} className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300" />
+                  <Input type="text" value={bgAltColor} onChange={(e) => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setBgAltColor(e.target.value); }} className="w-28 font-mono" />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Used for the hero fade and the softer bands between sections. Keep it a shade darker than the page.</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

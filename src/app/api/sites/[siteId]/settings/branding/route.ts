@@ -46,6 +46,9 @@ export async function GET(
     ctaColor: settings.cta_color || null,
     darkColor: settings.dark_color || null,
     tagline: settings.tagline || '',
+    bgScheme: settings.bg_scheme || 'warm',
+    bgColor: settings.bg_color || null,
+    bgAltColor: settings.bg_alt_color || null,
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     siteName: site.name,
@@ -78,7 +81,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, logoUrl, logoDarkUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, logoUrl, logoDarkUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -96,6 +99,16 @@ export async function PATCH(
         { error: 'Invalid dark background color format. Use hex format like #0a0a0b' },
         { status: 400 }
       );
+    }
+  }
+
+  const isHex = (v: unknown) => typeof v === 'string' && /^#[0-9A-Fa-f]{6}$/.test(v);
+  if (bgScheme !== undefined && !['warm', 'light', 'custom'].includes(bgScheme)) {
+    return NextResponse.json({ error: 'Invalid background scheme' }, { status: 400 });
+  }
+  for (const [name, v] of [['bgColor', bgColor], ['bgAltColor', bgAltColor]] as const) {
+    if (v !== undefined && v !== null && v !== '' && !isHex(v)) {
+      return NextResponse.json({ error: `Invalid ${name} format. Use hex format like #ffffff` }, { status: 400 });
     }
   }
 
@@ -119,6 +132,9 @@ export async function PATCH(
     cta_color: ctaColor !== undefined ? ctaColor : currentSettings.cta_color,
     dark_color: darkColor !== undefined ? (darkColor || null) : currentSettings.dark_color,
     tagline: typeof tagline === 'string' ? tagline.trim().slice(0, 160) : currentSettings.tagline,
+    bg_scheme: bgScheme !== undefined ? bgScheme : currentSettings.bg_scheme,
+    bg_color: bgColor !== undefined ? (bgColor || null) : currentSettings.bg_color,
+    bg_alt_color: bgAltColor !== undefined ? (bgAltColor || null) : currentSettings.bg_alt_color,
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
   };
@@ -160,6 +176,9 @@ export async function PATCH(
     ctaColor: updatedSettings.cta_color,
     darkColor: updatedSettings.dark_color || null,
     tagline: updatedSettings.tagline || '',
+    bgScheme: updatedSettings.bg_scheme || 'warm',
+    bgColor: updatedSettings.bg_color || null,
+    bgAltColor: updatedSettings.bg_alt_color || null,
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
   });

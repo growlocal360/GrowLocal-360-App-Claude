@@ -58,8 +58,31 @@ export function premiumThemeStyle(site: PublicRenderSite): React.CSSProperties {
     vars['--dark'] = darkColor;
     vars['--dark-ink'] = readableInk(darkColor);
   }
+  // Page background: warm cream (template default), light white/grey, or the site's own two colors.
+  const scheme = site.settings?.bg_scheme;
+  const hex = (v: string | null | undefined) => (v && /^#[0-9A-Fa-f]{6}$/.test(v) ? v : null);
+  const surface = scheme === 'light'
+    ? BG_SCHEMES.light
+    : scheme === 'custom' && hex(site.settings?.bg_color)
+      ? {
+          paper: hex(site.settings?.bg_color)!,
+          paper2: hex(site.settings?.bg_alt_color) || `color-mix(in srgb, ${hex(site.settings?.bg_color)} 96%, #000)`,
+          line: `color-mix(in srgb, ${hex(site.settings?.bg_alt_color) || hex(site.settings?.bg_color)} 86%, #6b6b73)`,
+        }
+      : null;
+  if (surface) {
+    vars['--paper'] = surface.paper;
+    vars['--paper-2'] = surface.paper2;
+    vars['--line'] = surface.line;
+  }
   return vars as React.CSSProperties;
 }
+
+/** Premium page-background presets; 'warm' matches the CSS defaults in globals.css. */
+export const BG_SCHEMES = {
+  warm: { paper: '#faf9f6', paper2: '#f1efe9', line: '#e7e5e0' },
+  light: { paper: '#ffffff', paper2: '#f3f4f6', line: '#e5e7eb' },
+} as const;
 
 export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', formOnPage = true, children }: ShellProps) {
   const ctaLabel = useCtaLabel(ctaStyle);

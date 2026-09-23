@@ -51,6 +51,9 @@ export interface PublicRenderSettings {
   cta_text: string | null;
   dark_color: string | null;
   tagline: string | null;
+  bg_scheme: 'warm' | 'light' | 'custom' | null;
+  bg_color: string | null;
+  bg_alt_color: string | null;
   /** Client's featured person (About page owner); photo doubles as the home-page 'why us' visual. */
   about_featured_person: { name: string; title: string | null; photo_url: string | null } | null;
   google_average_rating: number | null;
@@ -353,6 +356,9 @@ export function toPublicSite(
       cta_text: s.cta_text || null,
       dark_color: s.dark_color || null,
       tagline: (s as { tagline?: string | null }).tagline || null,
+      bg_scheme: s.bg_scheme || null,
+      bg_color: s.bg_color || null,
+      bg_alt_color: s.bg_alt_color || null,
       about_featured_person: s.about_featured_person?.name?.trim()
         ? {
             name: s.about_featured_person.name.trim(),

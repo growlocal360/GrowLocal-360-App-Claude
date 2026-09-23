@@ -28,7 +28,7 @@ import type {
   BrandValueProp,
   WorkItemWithRelations,
   WorkItemImage,
-  AboutPageSections,
+  SitePageSections,
   GeneratedImage,
 } from '@/types/database';
 import type { PublicSiteData } from './get-site';
@@ -194,7 +194,7 @@ export interface PublicRenderPageContent {
   body_copy: string | null;
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
-  sections: AboutPageSections | null;
+  sections: SitePageSections | null;
   generated_images: GeneratedImage[] | null;
 }
 

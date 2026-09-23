@@ -9,7 +9,7 @@ import { generateImagePromptsForPage, getServiceImageReuse } from '@/lib/content
 import { generateImagesFromPrompts, resolveServiceImages } from '@/lib/content/image-generation';
 import { computeSitePlan, toStoredSitePlan } from '@/lib/sites/site-plan-store';
 import { resolveBrandCategoryName } from '@/lib/sites/brand-niche';
-import type { SiteSettings, GenerationScope, GeneratedImage, ImagePrompt } from '@/types/database';
+import type { SiteSettings, GenerationScope, GeneratedImage, ImagePrompt, HomePageSections } from '@/types/database';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -620,6 +620,10 @@ export const generateSiteContent = inngest.createFunction(
                 hero_description: page.hero_description || null,
                 body_copy: page.body_copy,
                 body_copy_2: page.body_copy_2 || null,
+                // Home-only generated blocks (process / why). Contact stores nothing here.
+                sections: page.page_type === 'home' && (page.process || page.why)
+                  ? { ...(page.process ? { process: page.process } : {}), ...(page.why ? { why: page.why } : {}) }
+                  : null,
                 image_prompts: imagePrompts.length > 0 ? imagePrompts : null,
                 generated_images: generatedImages,
                 is_active: true,
@@ -1528,6 +1532,8 @@ For EACH page, provide:
 7. body_copy_2: Secondary content block (used in alternating layout sections):
    - Home: 1 paragraph (max 110 words). If the Content Directives give credentials, history, or business background, use those facts. If they do not, write instead about how the work is done or what local conditions mean for customers. Never invent certifications, experience, or community involvement.
    - Contact: empty string
+8. process (home only, null for contact): the "how it works" block. heading: max 6 words, about what the customer does (not "Booking takes 60 seconds" unless online booking is how this business works). steps: exactly 3, each with title (max 5 words) and description (max 22 words). The steps must fit how THIS kind of business actually operates: a shop the customer brings something to, a crew that goes to the customer, or a service done by appointment. Say what happens in plain words. Do NOT promise arrival windows, response times, timelines, guarantees, warranties, or pricing unless stated in the Content Directives.
+9. why (home only, null for contact): the "why choose us" block. heading: max 8 words, no superlatives. intro: one sentence, max 20 words. points: exactly 3, each with title (max 5 words) and description (max 20 words). Points must be concrete and specific to this trade and area (the kind of work handled, local conditions, how problems are approached). No "licensed and insured", "satisfaction guaranteed", "experienced professionals", "honest pricing" or similar unless the Content Directives state it.
 
 Use double newlines (\\n\\n) to separate paragraphs within body_copy and body_copy_2.
 
@@ -1542,7 +1548,9 @@ Format as JSON:
       "h2": "...",
       "hero_description": "...",
       "body_copy": "...",
-      "body_copy_2": "..."
+      "body_copy_2": "...",
+      "process": { "heading": "...", "steps": [ { "title": "...", "description": "..." } ] },
+      "why": { "heading": "...", "intro": "...", "points": [ { "title": "...", "description": "..." } ] }
     }
   ]
 }
@@ -1553,7 +1561,7 @@ Return ONLY valid JSON.`;
     anthropic.messages.create(
       {
         model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
+        max_tokens: 6144,
         messages: [{ role: 'user', content: prompt }],
       },
       { signal }
@@ -1570,6 +1578,8 @@ Return ONLY valid JSON.`;
       hero_description: string;
       body_copy: string;
       body_copy_2: string;
+      process?: HomePageSections['process'] | null;
+      why?: HomePageSections['why'] | null;
     }[];
   }>(message);
 

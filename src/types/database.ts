@@ -440,6 +440,15 @@ export interface ServiceFAQ {
 
 export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area' | 'faq';
 
+/** Home page blocks generated per business (Premium "Simple Process" + "Why Choose" sections). */
+export interface HomePageSections {
+  process?: { heading: string; steps: { title: string; description: string }[] };
+  why?: { heading: string; intro: string; points: { title: string; description: string }[] };
+}
+
+/** site_pages.sections holds About sections on the about row and Home sections on the home row. */
+export type SitePageSections = AboutPageSections & HomePageSections;
+
 export interface AboutPageSections {
   founder_story?: { heading: string; paragraphs: string[] };
   mission_values?: { heading: string; paragraphs: string[] };
@@ -465,7 +474,7 @@ export interface SitePage {
   hero_description: string | null;
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
-  sections: AboutPageSections | null;
+  sections: SitePageSections | null;
   image_prompts: ImagePrompt[] | null;
   generated_images: GeneratedImage[] | null;
   is_active: boolean;

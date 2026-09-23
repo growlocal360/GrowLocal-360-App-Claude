@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ImageIcon, X as XIcon } from 'lucide-react';
+import { ImageIcon, X as XIcon, Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -544,6 +544,9 @@ export default function ServicesPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 ml-4">
+                          <Button variant="ghost" size="sm" asChild className="text-xs" title="Edit page text">
+                            <Link href={`/dashboard/sites/${siteId}/settings/services/${service.id}`}><Pencil className="h-3.5 w-3.5" /></Link>
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

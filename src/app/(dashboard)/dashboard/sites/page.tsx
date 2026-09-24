@@ -438,7 +438,7 @@ export default function SitesPage() {
                         first, delete second) plus type-to-confirm matches
                         the GitHub / Vercel / Stripe destructive-action pattern.
                       */}
-                      {site.status === 'archived' && userRole === 'owner' && (
+                      {(site.status === 'archived' || site.status === 'building') && userRole === 'owner' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -453,7 +453,7 @@ export default function SitesPage() {
                         </Button>
                       )}
 
-                      {(site.status === 'active' || site.status === 'paused' || site.status === 'failed') && (
+                      {(site.status === 'active' || site.status === 'paused' || site.status === 'failed' || site.status === 'building') && (
                         <Button
                           variant="outline"
                           size="sm"

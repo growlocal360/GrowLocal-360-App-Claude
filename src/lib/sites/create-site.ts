@@ -555,10 +555,47 @@ export async function createSiteFromWizardData(
     console.error('onboarding_analyses insert failed:', err);
   }
 
+  // A restricted member (admin/user with site assignments) who buys a new site
+  // must be able to see and manage it: without an assignment row the site is
+  // hidden from their Sites list and every /api/sites/{id} call is rejected
+  // (403), so onboarding never triggers the build. Owners and unrestricted
+  // admins already see every site in the org; adding a row for them would
+  // RESTRICT them, so they are left alone.
+  await grantCreatorSiteAccess(supabase, userId, organizationId, site.id);
+
   return {
     siteId: site.id,
     slug: site.slug,
   };
+}
+
+async function grantCreatorSiteAccess(
+  supabase: SupabaseClient,
+  userId: string,
+  organizationId: string,
+  siteId: string
+): Promise<void> {
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!profile || profile.role === 'owner') return;
+
+    const { data: existing } = await supabase
+      .from('profile_site_assignments')
+      .select('id')
+      .eq('profile_id', profile.id)
+      .limit(1);
+    // Admin with no assignments = all sites; only restricted profiles need a row.
+    if (profile.role === 'admin' && (!existing || existing.length === 0)) return;
+
+    await supabase.from('profile_site_assignments').insert({ profile_id: profile.id, site_id: siteId });
+  } catch (err) {
+    console.error('grantCreatorSiteAccess failed (site still created):', err);
+  }
 }
 
 /**

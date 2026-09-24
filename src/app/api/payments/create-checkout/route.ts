@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
         .eq('user_id', user.id);
     }
 
-    // For Job Snaps flows, capture the active org so the webhook attaches
-    // the new workspace site to the right org. Existing logged-in users
-    // (multi-org agencies) need this; brand-new signups don't have one yet.
-    const activeOrgId = isJobSnapsOnly ? await getActiveOrgId() : null;
+    // Capture the active org so the webhook attaches the new site to the org
+    // the buyer is working in (a member of several orgs, e.g. a web designer
+    // with client access buying their own site). Brand-new signups have none.
+    const activeOrgId = await getActiveOrgId();
 
     let metadataPayload: Record<string, string>;
 
@@ -129,12 +129,14 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           plan_name: planName,
           pending_site_id: pendingSite.id,
+          ...(activeOrgId ? { organization_id: activeOrgId } : {}),
         };
       } else {
         metadataPayload = {
           user_id: user.id,
           plan_name: planName,
           site_data: siteDataString,
+          ...(activeOrgId ? { organization_id: activeOrgId } : {}),
         };
       }
     }

@@ -5,7 +5,7 @@ import type { SiteStatus } from '@/types/database';
 
 // Valid status transitions
 const VALID_TRANSITIONS: Record<SiteStatus, SiteStatus[]> = {
-  building: [], // Cannot manually change while building
+  building: ['archived'], // A stuck build can be archived (then hard-deleted); nothing else
   active: ['paused', 'archived'], // Can pause or archive an active site
   paused: ['active', 'archived'], // Can resume or archive a paused site
   failed: ['building', 'archived'], // Can retry a failed build or archive

@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // The build itself is triggered from the success page after onboarding; the
 // webhook only schedules a fallback that starts it if that never happens.
 import { inngest } from '@/lib/inngest/client';
-import { createSiteFromWizardData, ensureUserOrganization } from '@/lib/sites/create-site';
+import { createSiteFromWizardData, ensureUserOrganization, resolveMemberOrganization } from '@/lib/sites/create-site';
 import { createWorkspaceSite } from '@/lib/sites/create-workspace-site';
 import type { WizardSiteData } from '@/lib/sites/create-site';
 
@@ -105,9 +105,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // If the checkout came from a logged-in user adding Job Snaps to their
     // existing org (e.g. agency adding a 12th business), the active org_id
     // is in metadata. Otherwise (brand-new signup), find or create one.
-    const organizationId = metadata.organization_id
-      ? metadata.organization_id
-      : await ensureUserOrganization(userId, undefined, businessName, supabase);
+    const organizationId =
+      (await resolveMemberOrganization(supabase, userId, metadata.organization_id)) ??
+      (await ensureUserOrganization(userId, undefined, businessName, supabase));
 
     const workspace = await createWorkspaceSite(supabase, {
       organizationId,
@@ -156,12 +156,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       return;
     }
 
-    const organizationId = await ensureUserOrganization(
-      userId,
-      undefined,
-      siteData.businessName,
-      supabase
-    );
+    // Prefer the org the buyer had active at checkout (verified: they must
+    // have a profile in it). Fall back to their existing org, or a new one.
+    const organizationId =
+      (await resolveMemberOrganization(supabase, userId, metadata.organization_id)) ??
+      (await ensureUserOrganization(userId, undefined, siteData.businessName, supabase));
 
     const result = await createSiteFromWizardData(
       userId,

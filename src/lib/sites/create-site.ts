@@ -618,6 +618,26 @@ function deriveDefaultScope(data: WizardSiteData): SiteScope {
 }
 
 /**
+ * Returns `orgId` if the user has a profile in that organization, else null.
+ * Used to honor the org the buyer had active at checkout without trusting
+ * the metadata blindly.
+ */
+export async function resolveMemberOrganization(
+  supabase: SupabaseClient,
+  userId: string,
+  orgId: string | null | undefined
+): Promise<string | null> {
+  if (!orgId) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('organization_id', orgId)
+    .limit(1);
+  return data && data.length > 0 ? orgId : null;
+}
+
+/**
  * Ensures user has an organization, creating one if needed.
  * Returns the organization ID.
  *
@@ -635,12 +655,16 @@ export async function ensureUserOrganization(
 ): Promise<string> {
   const supabase = supabaseClient || createStaticClient();
 
-  // Check if user already has a profile with organization
-  const { data: profile } = await supabase
+  // Check if user already has a profile with an organization. A user can be
+  // in several orgs; `.single()` errors on multiple rows and would wrongly
+  // create a brand-new org, so take the most recent profile instead.
+  const { data: profiles } = await supabase
     .from('profiles')
     .select('organization_id')
     .eq('user_id', userId)
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const profile = profiles?.[0];
 
   if (profile?.organization_id) {
     return profile.organization_id;

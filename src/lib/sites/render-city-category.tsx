@@ -22,7 +22,7 @@ import { matchReviewsToCategory } from '@/lib/sites/match-reviews';
 import { getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { getTemplate } from '@/lib/templates/registry';
-import { getPublishedWorkItems, getPublishedWorkItemsCount } from '@/lib/sites/get-work-items';
+import { getPublishedWorkItemsCount, getWorkItemsForPlace } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 import {
   toPublicSite, toPublicLocation, toPublicCategory, toPublicServiceListing,
@@ -53,23 +53,24 @@ export async function renderCategoryInCity(params: {
 
   const admin = createAdminClient();
   const categoryServiceIds = categoryData.services.map((s) => s.id);
-  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, { data: cityArea }, workItemsCount, ...workItemResults] = await Promise.all([
+  const [allReviews, { data: serviceAreas }, { data: neighborhoods }, { data: schedulingConfig }, hasBrands, { data: cityArea }, workItemsCount] = await Promise.all([
     getAllGoogleReviewsForSite(siteId),
     admin.from('service_areas').select('*').eq('site_id', siteId).order('sort_order'),
     admin.from('neighborhoods').select('*').eq('site_id', siteId).eq('is_active', true).order('sort_order'),
     admin.from('scheduling_configs').select('is_active, cta_style').eq('site_id', siteId).single(),
     siteHasActiveBrands(siteId),
-    admin.from('service_areas').select('h1, body_copy').eq('site_id', siteId).eq('slug', citySeg).maybeSingle(),
+    admin.from('service_areas').select('id, h1, body_copy').eq('site_id', siteId).eq('slug', citySeg).maybeSingle(),
     getPublishedWorkItemsCount(siteId),
-    ...categoryServiceIds.map((sid) => getPublishedWorkItems(siteId, { serviceId: sid, limit: 6 })),
   ]);
 
-  const seenIds = new Set<string>();
-  const categoryWorkItems = workItemResults.flat().filter((item) => {
-    if (seenIds.has(item.id)) return false;
-    seenIds.add(item.id);
-    return true;
-  }).slice(0, 6);
+  // Jobs done in THIS city (address match or attached to the service area)
+  // lead; the category's jobs from elsewhere fill any remaining slots.
+  const { items: categoryWorkItems, localCount: localWorkCount } = await getWorkItemsForPlace(siteId, {
+    city: city.name,
+    areaId: (cityArea as { id?: string } | null)?.id ?? null,
+    fallbackServiceIds: categoryServiceIds,
+    limit: 6,
+  });
 
   const categoryName = categoryData.category.gbp_category.display_name;
   const serviceNames = categoryData.services.map((s) => s.name);
@@ -120,6 +121,7 @@ export async function renderCategoryInCity(params: {
       neighborhoods={(neighborhoods || []).map(toPublicNeighborhoodListing)}
       recentWorkItems={categoryWorkItems.map(toPublicWorkItem)}
       workItemsCount={workItemsCount}
+      recentWorkTitle={localWorkCount > 0 ? `Recent work in ${city.name}` : undefined}
       formCategories={categoryData.allCategories.map(toPublicCategory)}
       schedulingActive={schedulingConfig?.is_active || false}
       ctaStyle={(schedulingConfig?.cta_style as 'booking' | 'estimate') || 'booking'}

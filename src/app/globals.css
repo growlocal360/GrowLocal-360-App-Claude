@@ -168,6 +168,8 @@
 /* header */
 .tpl-premium .pm-header { position: sticky; top: 0; z-index: 50; background: rgba(250,249,246,.72); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid var(--line); }
 .tpl-premium .pm-nav { display: flex; align-items: center; justify-content: space-between; height: 88px; }
+/* logo: 72px tall on desktop, tighter on phones so the nav CTA still fits */
+@media (max-width: 640px){ .tpl-premium .pm-logo-img { height: 52px !important; } }
 .tpl-premium .pm-logo { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -.04em; color:var(--ink); }
 .tpl-premium .pm-logo span { color: var(--brand); }
 .tpl-premium .pm-navlinks { display: none; gap: 4px; }

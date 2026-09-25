@@ -34,7 +34,7 @@ export function PremiumHeader({ site, primaryLocation, locationSlug, ctaLabel, c
   const logoUrl = site.settings?.logo_url;
   const nameParts = site.name.split(' ');
   const logoNode = logoUrl ? (
-    <Image src={logoUrl} alt={site.name} width={280} height={72} className="pm-logo-img" style={{ height: 56, width: 'auto', objectFit: 'contain' }} priority />
+    <Image src={logoUrl} alt={site.name} width={360} height={92} className="pm-logo-img" style={{ height: 72, width: 'auto', objectFit: 'contain' }} priority />
   ) : (
     <span className="pm-logo">{nameParts[0]}<span>.</span> {nameParts.slice(1).join(' ')}</span>
   );

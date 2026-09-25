@@ -6,7 +6,7 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import { toPublicSite, toPublicLocation, toPublicNeighborhoodDetail, toPublicNeighborhoodListing, toPublicWorkItem, toPublicCategory } from '@/lib/sites/public-render-model';
-import { getPublishedWorkItems } from '@/lib/sites/get-work-items';
+import { getWorkItemsForPlace } from '@/lib/sites/get-work-items';
 import { siteHasActiveBrands } from '@/lib/sites/has-active-brands';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -67,7 +67,8 @@ export default async function NeighborhoodRoute({ params }: NeighborhoodPageProp
   const admin = createAdminClient();
   const [{ categories }, workItems, hasBrands, { data: schedulingConfig }] = await Promise.all([
     getCategoriesWithServices(data.site.id),
-    getPublishedWorkItems(data.site.id, { city: data.location.city, limit: 6 }),
+    // Jobs tagged with this neighborhood lead; jobs elsewhere in the city fill in.
+    getWorkItemsForPlace(data.site.id, { neighborhood: data.neighborhood.name, city: data.location.city, limit: 6 }).then((r) => r.items),
     siteHasActiveBrands(data.site.id),
     admin
       .from('scheduling_configs')

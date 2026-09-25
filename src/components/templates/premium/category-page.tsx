@@ -31,6 +31,8 @@ interface PremiumCategoryPageProps {
   recentWorkItems?: PublicRenderWorkItem[];
   /** Total published job snaps for the site (proof strip). */
   workItemsCount?: number;
+  /** Override for the recent-work heading (e.g. "Recent work in Bradenton" when the items are local). */
+  recentWorkTitle?: string;
   locationSlug?: string;
   formCategories?: PublicRenderCategory[];
   schedulingActive?: boolean;
@@ -44,7 +46,7 @@ interface PremiumCategoryPageProps {
  * snap count, service areas); nothing is asserted that the site can't back.
  */
 export function PremiumCategoryPage({
-  data, siteSlug, googleReviews = [], serviceAreas = [], recentWorkItems, workItemsCount = 0, locationSlug, formCategories,
+  data, siteSlug, googleReviews = [], serviceAreas = [], recentWorkItems, workItemsCount = 0, recentWorkTitle, locationSlug, formCategories,
   schedulingActive = false, ctaStyle = 'booking',
 }: PremiumCategoryPageProps) {
   const { site, location, category, services, pageContent } = data;
@@ -200,7 +202,7 @@ export function PremiumCategoryPage({
         </section>
       )}
 
-      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={`Recent ${categoryName.toLowerCase()} work`} />
+      <PremiumRecentWork items={recentWorkItems} locationSlug={locationSlug} title={recentWorkTitle || `Recent ${categoryName.toLowerCase()} work`} />
 
       <PremiumFinalCta heading={`Need ${categoryName.toLowerCase()}${city ? ` in ${city}` : ''}?`} sub={phone ? `Call ${phone} or send the form. We reply during business hours.` : 'Send the form and we reply during business hours.'} ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>

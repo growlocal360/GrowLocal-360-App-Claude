@@ -47,6 +47,8 @@ export async function getPublishedWorkItems(
      * snap surface on multiple pages without duplicating rows.
      */
     attachmentTarget?: { type: JobSnapAttachmentTarget; id: string };
+    /** Case-insensitive match on the snap's neighborhood (job_snaps.neighborhood); unioned like attachments. */
+    neighborhood?: string;
   }
 ): Promise<WorkItemWithRelations[]> {
   const supabase = createAdminClient();
@@ -74,6 +76,20 @@ export async function getPublishedWorkItems(
       attachmentLinkedIds = (linkedSnaps || [])
         .map((s: { work_item_id: string | null }) => s.work_item_id)
         .filter((v: string | null): v is string => !!v);
+    }
+  }
+
+  // ── Neighborhood match lives on the snap, not the work item ───────────
+  if (options?.neighborhood?.trim()) {
+    const { data: hoodSnaps } = await supabase
+      .from('job_snaps')
+      .select('work_item_id')
+      .eq('site_id', siteId)
+      .ilike('neighborhood', options.neighborhood.trim())
+      .not('work_item_id', 'is', null);
+    for (const s of hoodSnaps || []) {
+      const id = (s as { work_item_id: string | null }).work_item_id;
+      if (id && !attachmentLinkedIds.includes(id)) attachmentLinkedIds.push(id);
     }
   }
 
@@ -139,6 +155,67 @@ export async function getPublishedWorkItems(
     service: item.service_id ? serviceMap.get(item.service_id) || null : null,
     location: item.location_id ? locationMap.get(item.location_id) || null : null,
   })) as WorkItemWithRelations[];
+}
+
+/**
+ * Work items for a PLACE page (city hub, category-in-city, neighborhood).
+ * Local jobs come first: anything performed in the city, attached to the
+ * service area, or tagged with the neighborhood. If that leaves room, the
+ * category's jobs from anywhere fill the rest so the section is never
+ * empty on a new site. Deduped, most recent first within each group.
+ */
+export async function getWorkItemsForPlace(
+  siteId: string,
+  options: {
+    city?: string | null;
+    areaId?: string | null;
+    neighborhood?: string | null;
+    fallbackServiceIds?: string[];
+    limit?: number;
+  }
+): Promise<{ items: WorkItemWithRelations[]; localCount: number }> {
+  const limit = options.limit ?? 6;
+  const seen = new Set<string>();
+  const out: WorkItemWithRelations[] = [];
+  const take = (items: WorkItemWithRelations[]) => {
+    for (const it of items) {
+      if (out.length >= limit) break;
+      if (seen.has(it.id)) continue;
+      seen.add(it.id);
+      out.push(it);
+    }
+  };
+
+  const localQueries: Promise<WorkItemWithRelations[]>[] = [];
+  if (options.neighborhood) localQueries.push(getPublishedWorkItems(siteId, { neighborhood: options.neighborhood, limit }));
+  if (options.city || options.areaId) {
+    localQueries.push(
+      getPublishedWorkItems(siteId, {
+        city: options.city || undefined,
+        attachmentTarget: options.areaId ? { type: 'service_area', id: options.areaId } : undefined,
+        limit,
+      })
+    );
+  }
+  const localResults = await Promise.all(localQueries);
+  // Interleave by recency across the local groups.
+  const local = localResults.flat().sort((a, b) =>
+    String(b.performed_at || b.created_at || '').localeCompare(String(a.performed_at || a.created_at || ''))
+  );
+  take(local);
+  const localCount = out.length;
+
+  if (out.length < limit && options.fallbackServiceIds?.length) {
+    const fills = await Promise.all(
+      options.fallbackServiceIds.map((sid) => getPublishedWorkItems(siteId, { serviceId: sid, limit }))
+    );
+    const fallback = fills.flat().sort((a, b) =>
+      String(b.performed_at || b.created_at || '').localeCompare(String(a.performed_at || a.created_at || ''))
+    );
+    take(fallback);
+  }
+
+  return { items: out, localCount };
 }
 
 /**

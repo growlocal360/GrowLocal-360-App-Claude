@@ -34,14 +34,16 @@ export async function GET(
   // For single-location sites, fall back to the location's phone
   // (wizard saves phone to locations table, not settings)
   // For multi-location, only use settings.phone (location phones managed separately)
+  // Primary location: phone fallback + the address shown on the site.
+  const { data: primaryLocation } = await supabase
+    .from('locations')
+    .select('phone, address_line1, address_line2, city, state, zip_code')
+    .eq('site_id', siteId)
+    .eq('is_primary', true)
+    .limit(1)
+    .maybeSingle();
   let phone = settings.phone || null;
   if (!phone && site.website_type === 'single_location') {
-    const { data: primaryLocation } = await supabase
-      .from('locations')
-      .select('phone')
-      .eq('site_id', siteId)
-      .eq('is_primary', true)
-      .single();
     phone = primaryLocation?.phone || null;
   }
 
@@ -53,6 +55,14 @@ export async function GET(
     businessDescription: settings.business_description || '',
     credentials: settings.credentials || '',
     tagline: settings.tagline || '',
+    address: {
+      line1: primaryLocation?.address_line1 || '',
+      line2: primaryLocation?.address_line2 || '',
+      city: primaryLocation?.city || '',
+      state: primaryLocation?.state || '',
+      zip: primaryLocation?.zip_code || '',
+    },
+    showAddress: settings.show_address !== false,
   });
 }
 
@@ -81,7 +91,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline } = body;
+  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline, address, showAddress } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
@@ -93,6 +103,7 @@ export async function PATCH(
     ...(businessDescription !== undefined && { business_description: businessDescription }),
     ...(credentials !== undefined && { credentials }),
     ...(tagline !== undefined && { tagline }),
+    ...(typeof showAddress === 'boolean' && { show_address: showAddress }),
   };
 
   const updateData: Record<string, unknown> = {
@@ -116,6 +127,28 @@ export async function PATCH(
       { error: 'Failed to update business info' },
       { status: 500 }
     );
+  }
+
+  // Address lives on the primary location row (also feeds schema + maps).
+  if (address && typeof address === 'object') {
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : undefined);
+    const locUpdate: Record<string, string> = {};
+    const line1 = str(address.line1, 120); if (line1 !== undefined) locUpdate.address_line1 = line1;
+    const line2 = str(address.line2, 120); if (line2 !== undefined) locUpdate.address_line2 = line2;
+    const city = str(address.city, 80); if (city) locUpdate.city = city;
+    const state = str(address.state, 40); if (state) locUpdate.state = state;
+    const zip = str(address.zip, 20); if (zip !== undefined) locUpdate.zip_code = zip;
+    if (Object.keys(locUpdate).length > 0) {
+      const { error: locError } = await adminSupabase
+        .from('locations')
+        .update(locUpdate)
+        .eq('site_id', siteId)
+        .eq('is_primary', true);
+      if (locError) {
+        console.error('Failed to update primary location address:', locError);
+        return NextResponse.json({ error: 'Failed to update address' }, { status: 500 });
+      }
+    }
   }
 
   await revalidateSite(siteId);

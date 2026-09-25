@@ -16,6 +16,7 @@ interface PremiumFooterProps {
 export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlug }: PremiumFooterProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const email = site.settings?.email;
+  const showAddress = site.settings?.show_address !== false && !!primaryLocation?.address_line1;
   const nameParts = site.name.split(' ');
   // Footer sits on the dark background, so only the dark-background logo is used here.
   const darkLogoUrl = site.settings?.logo_dark_url;
@@ -55,6 +56,12 @@ export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlu
 
           <div className="pm-footcol">
             <h5>Get in Touch</h5>
+            {showAddress && (
+              <p style={{ marginBottom: 8, fontSize: 13.5, opacity: 0.85 }}>
+                {primaryLocation!.address_line1}{primaryLocation!.address_line2 ? `, ${primaryLocation!.address_line2}` : ''}<br />
+                {primaryLocation!.city}, {primaryLocation!.state} {primaryLocation!.zip_code}
+              </p>
+            )}
             {phone && <p style={{ marginBottom: 8 }}><b>{phone}</b></p>}
             {email && <p style={{ marginBottom: 8 }}>{String(email)}</p>}
             {(serviceAreas.length > 0) && (

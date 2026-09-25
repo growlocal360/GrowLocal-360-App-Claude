@@ -82,6 +82,12 @@ export function PremiumContactPage({
                 <div><div className="pm-lbl">Email</div><div className="pm-val sm">{email}</div></div>
               </a>
             )}
+            {site.settings?.show_address !== false && primaryLocation?.address_line1 && (
+              <a className="pm-cirow" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${primaryLocation.address_line1}, ${primaryLocation.city}, ${primaryLocation.state} ${primaryLocation.zip_code}`)}`} target="_blank" rel="noopener noreferrer">
+                <span className="pm-icon sm"><PmIconPin /></span>
+                <div><div className="pm-lbl">Visit us</div><div className="pm-val sm">{primaryLocation.address_line1}{primaryLocation.address_line2 ? `, ${primaryLocation.address_line2}` : ''}, {primaryLocation.city}, {primaryLocation.state} {primaryLocation.zip_code}</div></div>
+              </a>
+            )}
             {(cityState || areaNames) && (
               <div className="pm-cirow">
                 <span className="pm-icon sm"><PmIconPin /></span>

@@ -89,7 +89,7 @@ export function ContactPage({ site, primaryLocation, pageContent, services, form
                 <Card className="border-0 shadow-md">
                   <CardContent className="space-y-4 p-6">
                     <h3 className="text-lg font-semibold text-gray-900">Get In Touch</h3>
-                    {primaryLocation && (
+                    {primaryLocation && site.settings?.show_address !== false && (
                       <div className="flex items-start gap-3 text-gray-700">
                         <MapPin className="mt-0.5 h-5 w-5 shrink-0" style={{ color: brandColor }} />
                         <div>

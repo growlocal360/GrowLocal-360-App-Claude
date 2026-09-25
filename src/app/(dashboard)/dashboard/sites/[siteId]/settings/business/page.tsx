@@ -18,6 +18,8 @@ interface BusinessInfo {
   businessDescription: string;
   credentials: string;
   tagline: string;
+  address?: { line1: string; line2: string; city: string; state: string; zip: string };
+  showAddress?: boolean;
 }
 
 export default function BusinessInfoPage() {
@@ -37,6 +39,12 @@ export default function BusinessInfoPage() {
   const [businessDescription, setBusinessDescription] = useState('');
   const [credentials, setCredentials] = useState('');
   const [tagline, setTagline] = useState('');
+  const [addr1, setAddr1] = useState('');
+  const [addr2, setAddr2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+  const [showAddress, setShowAddress] = useState(true);
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -57,6 +65,12 @@ export default function BusinessInfoPage() {
       setBusinessDescription(data.businessDescription || '');
       setCredentials(data.credentials || '');
       setTagline(data.tagline || '');
+      setAddr1(data.address?.line1 || '');
+      setAddr2(data.address?.line2 || '');
+      setCity(data.address?.city || '');
+      setState(data.address?.state || '');
+      setZip(data.address?.zip || '');
+      setShowAddress(data.showAddress !== false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load business info');
     } finally {
@@ -71,7 +85,13 @@ export default function BusinessInfoPage() {
     coreIndustry !== (original?.coreIndustry || '') ||
     businessDescription !== (original?.businessDescription || '') ||
     credentials !== (original?.credentials || '') ||
-    tagline !== (original?.tagline || '');
+    tagline !== (original?.tagline || '') ||
+    addr1 !== (original?.address?.line1 || '') ||
+    addr2 !== (original?.address?.line2 || '') ||
+    city !== (original?.address?.city || '') ||
+    state !== (original?.address?.state || '') ||
+    zip !== (original?.address?.zip || '') ||
+    showAddress !== (original?.showAddress !== false);
 
   const handleSave = async () => {
     try {
@@ -82,7 +102,7 @@ export default function BusinessInfoPage() {
       const response = await fetch(`/api/sites/${siteId}/settings/business`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline }),
+        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress }),
       });
 
       if (!response.ok) {
@@ -90,7 +110,7 @@ export default function BusinessInfoPage() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline });
+      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -197,6 +217,25 @@ export default function BusinessInfoPage() {
               placeholder="hello@yourbusiness.com"
               className="mt-1"
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <div>
+              <Label>Business Address</Label>
+              <p className="text-xs text-gray-500">Used for the map, local business schema, and (optionally) shown on the site.</p>
+            </div>
+            <Input value={addr1} onChange={(e) => setAddr1(e.target.value)} placeholder="Street address" />
+            <Input value={addr2} onChange={(e) => setAddr2(e.target.value)} placeholder="Suite, unit (optional)" />
+            <div className="grid grid-cols-6 gap-2">
+              <Input className="col-span-3" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
+              <Input className="col-span-1" value={state} onChange={(e) => setState(e.target.value)} placeholder="ST" maxLength={2} />
+              <Input className="col-span-2" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="ZIP" />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={showAddress} onChange={(e) => setShowAddress(e.target.checked)} />
+              Show the address on the website (footer and Contact page)
+            </label>
+            <p className="text-xs text-gray-500">Turn this off for service-area or home-based businesses that don&apos;t receive customers at the address.</p>
           </div>
 
           <div>

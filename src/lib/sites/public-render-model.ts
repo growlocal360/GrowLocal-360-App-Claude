@@ -53,6 +53,8 @@ export interface PublicRenderSettings {
   tagline: string | null;
   /** v5 rule 11: home (and brand-level hubs) may name the city only when this is true. */
   homepage_is_primary_market: boolean;
+  /** Street address shown in footer + Contact page (default true). */
+  show_address: boolean;
   bg_scheme: 'warm' | 'light' | 'custom' | null;
   bg_color: string | null;
   bg_alt_color: string | null;
@@ -367,6 +369,7 @@ export function toPublicSite(
       dark_color: s.dark_color || null,
       tagline: (s as { tagline?: string | null }).tagline || null,
       homepage_is_primary_market: s.homepage_is_primary_market === true,
+      show_address: s.show_address !== false,
       bg_scheme: s.bg_scheme || null,
       bg_color: s.bg_color || null,
       bg_alt_color: s.bg_alt_color || null,

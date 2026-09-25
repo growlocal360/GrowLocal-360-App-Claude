@@ -124,7 +124,7 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
               Contact Info
             </h3>
             <div className="space-y-3 text-sm">
-              {primaryLocation && (
+              {primaryLocation && site.settings?.show_address !== false && (
                 <div className="flex items-start gap-2">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>

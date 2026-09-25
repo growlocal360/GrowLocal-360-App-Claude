@@ -189,6 +189,9 @@ export interface SiteSettings {
   cta_color?: string;
   dark_color?: string;          // Premium: dark sections + footer background
   tagline?: string;             // one line under the footer logo
+  // Show the primary location's street address in the footer + Contact page.
+  // Unset = shown (matches historical behavior); false = hidden (SAB / home-based).
+  show_address?: boolean;
   // Premium page background: 'warm' (cream, default), 'light' (white/grey) or 'custom' (bg_color + bg_alt_color)
   bg_scheme?: 'warm' | 'light' | 'custom';
   bg_color?: string;            // custom: page background

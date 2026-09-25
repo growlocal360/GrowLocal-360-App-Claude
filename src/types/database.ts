@@ -189,6 +189,7 @@ export interface SiteSettings {
   cta_color?: string;
   dark_color?: string;          // Premium: dark sections + footer background
   tagline?: string;             // one line under the footer logo
+  service_region?: string;      // e.g. "Southwest Florida": used in brand-level headings instead of the shop city
   // Show the primary location's street address in the footer + Contact page.
   // Unset = shown (matches historical behavior); false = hidden (SAB / home-based).
   show_address?: boolean;

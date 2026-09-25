@@ -18,6 +18,7 @@ interface BusinessInfo {
   businessDescription: string;
   credentials: string;
   tagline: string;
+  serviceRegion?: string;
   address?: { line1: string; line2: string; city: string; state: string; zip: string };
   showAddress?: boolean;
 }
@@ -39,6 +40,7 @@ export default function BusinessInfoPage() {
   const [businessDescription, setBusinessDescription] = useState('');
   const [credentials, setCredentials] = useState('');
   const [tagline, setTagline] = useState('');
+  const [serviceRegion, setServiceRegion] = useState('');
   const [addr1, setAddr1] = useState('');
   const [addr2, setAddr2] = useState('');
   const [city, setCity] = useState('');
@@ -65,6 +67,7 @@ export default function BusinessInfoPage() {
       setBusinessDescription(data.businessDescription || '');
       setCredentials(data.credentials || '');
       setTagline(data.tagline || '');
+      setServiceRegion(data.serviceRegion || '');
       setAddr1(data.address?.line1 || '');
       setAddr2(data.address?.line2 || '');
       setCity(data.address?.city || '');
@@ -86,6 +89,7 @@ export default function BusinessInfoPage() {
     businessDescription !== (original?.businessDescription || '') ||
     credentials !== (original?.credentials || '') ||
     tagline !== (original?.tagline || '') ||
+    serviceRegion !== (original?.serviceRegion || '') ||
     addr1 !== (original?.address?.line1 || '') ||
     addr2 !== (original?.address?.line2 || '') ||
     city !== (original?.address?.city || '') ||
@@ -102,7 +106,7 @@ export default function BusinessInfoPage() {
       const response = await fetch(`/api/sites/${siteId}/settings/business`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress }),
+        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress }),
       });
 
       if (!response.ok) {
@@ -110,7 +114,7 @@ export default function BusinessInfoPage() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress });
+      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -192,6 +196,21 @@ export default function BusinessInfoPage() {
             />
             <p className="text-xs text-gray-400 mt-1">
               A short one-liner shown under your logo in the footer. Keep it under ~10 words. Leave blank to use the default.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="serviceRegion">Service region</Label>
+            <Input
+              id="serviceRegion"
+              value={serviceRegion}
+              onChange={(e) => setServiceRegion(e.target.value)}
+              placeholder="e.g., Southwest Florida"
+              maxLength={60}
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used in site-wide headings like &ldquo;See our work across Southwest Florida&rdquo; instead of your shop&apos;s city. Set this if you do jobs beyond one city (mobile or multi-market). Leave blank and those headings drop the place.
             </p>
           </div>
 

@@ -6,6 +6,7 @@ import type {
 } from '@/lib/sites/public-render-model';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import * as paths from '@/lib/routing/paths';
+import { brandPlaceLabel } from '@/lib/sites/hub-heading';
 import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
 import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unified-lead-form';
 import { PremiumShell, PremiumPageHero } from './shell';
@@ -52,7 +53,7 @@ export function PremiumReviewsPage({
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Reviews' }]}
         eyebrow="Reviews"
-        title={`What ${primaryLocation?.city || 'our'} customers say`}
+        title={`What ${brandPlaceLabel(site, primaryLocation?.city) || 'our'} customers say`}
         accent={primaryLocation?.city || undefined}
         lede={averageRating ? `${averageRating.toFixed(1)} average across ${totalReviewCount || withText.length} Google reviews.` : undefined}
       />

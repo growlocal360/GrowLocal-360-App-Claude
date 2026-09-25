@@ -7,6 +7,7 @@ import type {
 } from '@/lib/sites/public-render-model';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import * as paths from '@/lib/routing/paths';
+import { brandPlaceLabel } from '@/lib/sites/hub-heading';
 import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
 import { PmIconCheck, PmIconBolt, PmIconDollar, PmIconShield } from './icons';
@@ -135,7 +136,7 @@ export function PremiumAboutPage({
         </div>
       </section>
 
-      <PremiumFinalCta heading="Ready to work with the best?" sub={cityState ? `Join your ${primaryLocation?.city} neighbors who trust us.` : 'Join the neighbors who trust us.'} ctaStyle={ctaStyle} phone={phone} />
+      <PremiumFinalCta heading="Ready to work with the best?" sub={(() => { const l = brandPlaceLabel(site, primaryLocation?.city); return l ? `Join your ${l} neighbors who trust us.` : 'Join the neighbors who trust us.'; })()} ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>
   );
 }

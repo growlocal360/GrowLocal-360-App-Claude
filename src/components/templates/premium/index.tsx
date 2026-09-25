@@ -21,6 +21,7 @@ import {
   PmIconWrench, PmIconLayers, PmIconArrow, PmIconPin,
 } from './icons';
 import { useCtaLabel } from '@/components/templates/site-form-config';
+import { brandPlaceLabel } from '@/lib/sites/hub-heading';
 
 const LOWERCASE_WORDS = new Set(['a','an','the','and','but','or','nor','for','yet','so','in','on','at','to','of','by','with','from','as','into']);
 function toTitleCase(str: string): string {
@@ -100,6 +101,8 @@ export function PremiumTemplate({
 
   const ctaLabel = useCtaLabel(ctaStyle);
   const svcList = services || [];
+  // Brand-level headings: shop city only when the home page is the Primary Market page, else the service region.
+  const placeLabel = brandPlaceLabel(site, primaryLocation?.city);
   // Generated per business on the home row (sections.process / sections.why). The
   // fallbacks are trade-neutral and promise nothing, for sites not regenerated yet.
   const cityName = primaryLocation?.city || '';
@@ -273,7 +276,7 @@ export function PremiumTemplate({
             <div className="pm-wrap">
               <div className="pm-sechead">
                 <span className="pm-eyebrow">Recent Work</span>
-                <h2>See our work{cityState ? ` across ${primaryLocation?.city}` : ''}</h2>
+                <h2>See our work{placeLabel ? ` across ${placeLabel}` : ''}</h2>
               </div>
               <div className="pm-work">
                 {work.slice(0, 3).map(w => {
@@ -296,7 +299,7 @@ export function PremiumTemplate({
           <div className="pm-wrap">
             <div className="pm-sechead pm-center">
               <span className="pm-eyebrow">Reviews</span>
-              <h2>What {primaryLocation?.city || 'our'} customers say</h2>
+              <h2>What {placeLabel || 'our'} customers say</h2>
               {averageRating ? <p>{averageRating.toFixed(1)} average across {totalReviewCount} Google reviews.</p> : <p>Don&apos;t just take our word for it.</p>}
             </div>
             <div className="pm-grid3">

@@ -55,6 +55,7 @@ export async function GET(
     businessDescription: settings.business_description || '',
     credentials: settings.credentials || '',
     tagline: settings.tagline || '',
+    serviceRegion: settings.service_region || '',
     address: {
       line1: primaryLocation?.address_line1 || '',
       line2: primaryLocation?.address_line2 || '',
@@ -91,7 +92,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline, address, showAddress } = body;
+  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address, showAddress } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
@@ -103,6 +104,7 @@ export async function PATCH(
     ...(businessDescription !== undefined && { business_description: businessDescription }),
     ...(credentials !== undefined && { credentials }),
     ...(tagline !== undefined && { tagline }),
+    ...(typeof serviceRegion === 'string' && { service_region: serviceRegion.trim().slice(0, 60) }),
     ...(typeof showAddress === 'boolean' && { show_address: showAddress }),
   };
 

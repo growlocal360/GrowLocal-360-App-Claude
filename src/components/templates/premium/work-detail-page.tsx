@@ -82,12 +82,20 @@ export function PremiumWorkDetailPage({
             ))}
             {/* gallery */}
             {singles.length > 0 && (
-              <div className="pm-work" style={{ marginTop: completePairs.length ? 20 : 0 }}>
-                {singles.map((img, i) => (
-                  <div key={i} className="pm-workcard" style={{ cursor: 'default' }}>
-                    <img src={img.url} alt={img.alt || workItem.title} />
+              <div style={{ marginTop: completePairs.length ? 20 : 0 }}>
+                {/* First photo spans the column; the rest sit below as smaller tiles. */}
+                <div className="pm-workhero">
+                  <img src={singles[0].url} alt={singles[0].alt || workItem.title} />
+                </div>
+                {singles.length > 1 && (
+                  <div className="pm-work pm-work--thumbs" style={{ marginTop: 14 }}>
+                    {singles.slice(1).map((img, i) => (
+                      <div key={i} className="pm-workcard" style={{ cursor: 'default' }}>
+                        <img src={img.url} alt={img.alt || workItem.title} />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
             {body && body.split('\n\n').map((p, i) => <p key={i}>{p}</p>)}

@@ -633,6 +633,8 @@ export interface JobSnap {
   meta_description: string | null;
   alt_text_default: string | null;
   image_filename_base: string | null;
+  /** Owner overrides of naming-engine fields (Advanced SEO); re-applied on every save. */
+  seo_overrides?: Record<string, string> | null;
   public_location_label: string | null;
   // ── Status + location ──
   status: JobStatus;

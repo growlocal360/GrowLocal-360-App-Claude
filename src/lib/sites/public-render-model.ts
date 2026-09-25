@@ -51,6 +51,8 @@ export interface PublicRenderSettings {
   cta_text: string | null;
   dark_color: string | null;
   tagline: string | null;
+  /** Region the business serves ("Southwest Florida"); brand-level headings use it instead of the shop city. */
+  service_region: string | null;
   /** v5 rule 11: home (and brand-level hubs) may name the city only when this is true. */
   homepage_is_primary_market: boolean;
   /** Street address shown in footer + Contact page (default true). */
@@ -368,6 +370,7 @@ export function toPublicSite(
       cta_text: s.cta_text || null,
       dark_color: s.dark_color || null,
       tagline: (s as { tagline?: string | null }).tagline || null,
+      service_region: s.service_region?.trim() || null,
       homepage_is_primary_market: s.homepage_is_primary_market === true,
       show_address: s.show_address !== false,
       bg_scheme: s.bg_scheme || null,

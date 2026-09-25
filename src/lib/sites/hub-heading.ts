@@ -14,6 +14,21 @@ export function hubCityFor(
   return single && site.settings?.homepage_is_primary_market === true ? city : null;
 }
 
+/**
+ * Place label for brand-level headings ("See our work across …", "What …
+ * customers say", "Real work across …"). The shop city is only used when the
+ * home page is the Primary Market page (v5 rule 11); otherwise the site's
+ * Service region setting ("Southwest Florida"); otherwise null and the
+ * heading drops the place entirely. A mobile business that does jobs all
+ * over the coast should never be captioned with just its shop's city.
+ */
+export function brandPlaceLabel(
+  site: { website_type?: string | null; settings?: { homepage_is_primary_market?: boolean | null; service_region?: string | null } | null },
+  city: string | null | undefined
+): string | null {
+  return hubCityFor(site, city) || site.settings?.service_region?.trim() || null;
+}
+
 /** "Englewood, Venice, Sarasota and 5 more communities" from a service-area list. */
 export function servedCommunitiesLabel(areas: { name: string }[], max = 3): string | null {
   if (!areas.length) return null;

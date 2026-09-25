@@ -7,6 +7,7 @@ import type {
 } from '@/lib/sites/public-render-model';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import * as paths from '@/lib/routing/paths';
+import { hubCityFor, brandPlaceLabel } from '@/lib/sites/hub-heading';
 import { JsonLd, buildBreadcrumbSchema } from '@/lib/schema';
 import { PremiumShell, PremiumPageHero, PremiumFinalCta } from './shell';
 
@@ -30,6 +31,8 @@ export function PremiumWorkHubPage({
 }: PremiumWorkHubPageProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
   const cityState = primaryLocation?.city ? `${primaryLocation.city}${primaryLocation.state ? `, ${primaryLocation.state}` : ''}` : '';
+  const hubCity = hubCityFor(site, primaryLocation?.city);
+  const placeLabel = brandPlaceLabel(site, primaryLocation?.city);
 
   const breadcrumb = buildBreadcrumbSchema([
     { name: 'Home', url: paths.locationHome(locationSlug) },
@@ -43,9 +46,9 @@ export function PremiumWorkHubPage({
       <PremiumPageHero
         crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Recent Work' }]}
         eyebrow="Recent Work"
-        title={cityState ? `Real work in ${cityState}` : 'Our recent work'}
-        accent={cityState || undefined}
-        lede="Every job documented by our team — browse recent projects in your area."
+        title={hubCity ? `Real work in ${hubCity}` : placeLabel ? `Real work across ${placeLabel}` : 'Our recent work'}
+        accent={hubCity ? cityState : placeLabel || undefined}
+        lede={placeLabel ? `Every job documented by our team, from ${placeLabel}.` : 'Every job documented by our team.'}
       />
 
       <section className="pm-block">

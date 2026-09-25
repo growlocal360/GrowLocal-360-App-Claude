@@ -220,8 +220,17 @@ export async function PATCH(
       }
     );
 
-    // Per-field overrides take precedence over the engine output.
-    const overrides = body.overrides || {};
+    // Per-field overrides take precedence over the engine output. They are
+    // PERSISTED (job_snaps.seo_overrides) and re-applied on every save, so an
+    // edited H1 survives later routine saves. A full regenerate starts from a
+    // clean slate (only overrides sent with that request apply). An override
+    // sent as an empty string clears that key back to the engine's value.
+    const storedOverrides = (body.regenerate_seo_fields ? {} : (snap.seo_overrides || {})) as Record<string, string>;
+    const overrides: Record<string, string> = { ...storedOverrides };
+    for (const [k, v] of Object.entries(body.overrides || {})) {
+      if (typeof v !== 'string') continue;
+      if (v.trim() === '') delete overrides[k]; else overrides[k] = v.trim();
+    }
 
     const update: Record<string, unknown> = {
       ...merged,
@@ -240,6 +249,7 @@ export async function PATCH(
       alt_text_default: overrides.alt_text_default ?? naming.alt_text_default,
       image_filename_base: overrides.image_filename_base ?? naming.image_filename_base,
       public_location_label: overrides.public_location_label ?? naming.public_location_label,
+      seo_overrides: overrides,
     };
 
     const { error: updateError } = await adminClient
@@ -257,13 +267,25 @@ export async function PATCH(
     // would miss the repair case where a previous edit changed job_snaps.slug
     // but never synced work_items.slug (so they're already different and a
     // second re-save would no-op the sync).
-    if (snap.work_item_id && typeof update.slug === 'string') {
+    // The public /work page renders work_items, not job_snaps, so every
+    // edited SEO/text field has to reach the linked row too (previously only
+    // the slug did, which is why an edited H1 never showed on the site).
+    if (snap.work_item_id) {
+      const workItemSync: Record<string, unknown> = {
+        title: update.title ?? snap.title,
+        description: update.description ?? snap.description,
+        h1: update.h1,
+        meta_title: update.meta_title,
+        meta_description: update.meta_description,
+        updated_at: new Date().toISOString(),
+      };
+      if (typeof update.slug === 'string') workItemSync.slug = update.slug;
       const { error: workItemUpdateError } = await adminClient
         .from('work_items')
-        .update({ slug: update.slug })
+        .update(workItemSync)
         .eq('id', snap.work_item_id);
       if (workItemUpdateError) {
-        console.warn('PATCH job_snaps: failed to sync work_items.slug', workItemUpdateError);
+        console.warn('PATCH job_snaps: failed to sync work_items', workItemUpdateError);
         // Non-fatal — snap update succeeded; publish-gbp now reads from
         // job_snaps.slug so the GBP link is still correct.
       }

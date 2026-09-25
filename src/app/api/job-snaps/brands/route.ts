@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifySiteAccess } from '@/lib/auth/permissions';
 
 /**
  * GET /api/job-snaps/brands?siteId=xxx
@@ -22,29 +23,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'siteId is required' }, { status: 400 });
     }
 
-    // Verify user has access to this site
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('user_id', user.id);
-
-    const orgIds = (profiles || []).map((p: { organization_id: string }) => p.organization_id);
-    if (orgIds.length === 0) {
-      return NextResponse.json({ brands: [] });
+    // Verify access with the same rule as every other site endpoint
+    // (org membership + per-profile site assignments), not just "any org".
+    const access = await verifySiteAccess(supabase, siteId);
+    if (access.error) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     const admin = createAdminClient();
-
-    const { data: site } = await admin
-      .from('sites')
-      .select('id')
-      .eq('id', siteId)
-      .in('organization_id', orgIds)
-      .single();
-
-    if (!site) {
-      return NextResponse.json({ error: 'Site not found' }, { status: 404 });
-    }
 
     const { data: snaps } = await admin
       .from('job_snaps')

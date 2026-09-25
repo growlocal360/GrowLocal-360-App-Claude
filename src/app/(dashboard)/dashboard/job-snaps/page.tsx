@@ -26,6 +26,7 @@ import {
   Code2,
 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { getAccessibleSiteIdsClient } from '@/lib/auth/accessible-sites-client';
 import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-snap-card';
 import { IntegrationsPanel } from '@/components/integrations/integrations-panel';
 import { GetStartedCard } from '@/components/job-snaps/get-started-card';
@@ -84,32 +85,23 @@ export default function JobSnapsPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load sites — scoped to assigned sites for 'user' role
+      // Load sites for the ACTIVE org only, then apply the same site-level
+      // access rule as the Sites page (owner: all; admin: all unless assigned;
+      // user: assigned only). A person with profiles in several orgs must never
+      // see another org's jobs here.
       let sites: { id: string; name: string; settings?: { workspace_only?: boolean } | null }[] | null = null;
 
-      if (role === 'user' && profile?.id) {
-        // Users only see their assigned sites
-        const { data: assignments } = await supabase
-          .from('profile_site_assignments')
-          .select('site_id')
-          .eq('profile_id', profile.id);
-
-        const assignedIds = (assignments || []).map((a: { site_id: string }) => a.site_id);
-        if (assignedIds.length > 0) {
-          const { data } = await supabase
+      if (profile?.id && profile.organization_id) {
+        const accessibleIds = await getAccessibleSiteIdsClient(supabase, profile.id, role);
+        if (accessibleIds === null || accessibleIds.length > 0) {
+          let q = supabase
             .from('sites')
             .select('id, name, settings')
-            .in('id', assignedIds);
+            .eq('organization_id', profile.organization_id);
+          if (accessibleIds) q = q.in('id', accessibleIds);
+          const { data } = await q;
           sites = data;
         }
-      } else {
-        // Owner/Admin see all org sites
-        const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
-        const { data } = await supabase
-          .from('sites')
-          .select('id, name, settings')
-          .in('organization_id', orgIds);
-        sites = data;
       }
 
       setHasAnySite(!!sites?.length);

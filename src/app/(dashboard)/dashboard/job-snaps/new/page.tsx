@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowLeft, Sparkles, Loader2, Building2 } from 'lucide-react';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { getAccessibleSiteIdsClient } from '@/lib/auth/accessible-sites-client';
 import { PhotoUpload } from '@/components/job-snaps/photo-upload';
 import { ImagePreviewGrid, type LocalImage } from '@/components/job-snaps/image-preview-grid';
 import { JobLocationCard, type JobLocation } from '@/components/job-snaps/job-location-card';
@@ -70,15 +71,16 @@ export default function NewJobSnapPage() {
         avatarUrl: profile?.avatar_url,
       });
 
-      // Load site(s) for business context
-      // All org IDs this user belongs to (needed for cross-org siteId lookup)
-      const orgIds = (allProfiles || []).map((p: { organization_id: string }) => p.organization_id);
-
+      // Load site(s) for business context, scoped to the ACTIVE org and to the
+      // sites this profile may access (same rule as the Sites page).
       // Use the resolved profile's org rather than the cookie — the active_org
       // cookie may be null for users who've never used the org switcher.
       const targetOrgId = profile?.organization_id || activeOrgId;
+      const accessibleIds = profile?.id
+        ? await getAccessibleSiteIdsClient(supabase, profile.id, profile.role || 'user')
+        : [];
 
-      if (orgIds.length > 0) {
+      if (targetOrgId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapSite = (s: any) => {
           const primaryCat = (s.site_categories as { is_primary: boolean; gbp_category: { name: string } | null }[])
@@ -93,13 +95,16 @@ export default function NewJobSnapPage() {
         };
 
         if (siteIdParam) {
-          // Specific site requested — verify user has access to it through any of their orgs
-          const { data: sites } = await supabase
-            .from('sites')
-            .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
-            .eq('id', siteIdParam)
-            .in('organization_id', orgIds)
-            .limit(1);
+          // Specific site requested — must be in the active org AND accessible to this profile
+          const allowed = accessibleIds === null || accessibleIds.includes(siteIdParam);
+          const { data: sites } = allowed
+            ? await supabase
+                .from('sites')
+                .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
+                .eq('id', siteIdParam)
+                .eq('organization_id', targetOrgId)
+                .limit(1)
+            : { data: null };
 
           if (sites && sites.length > 0) {
             const ctx = mapSite(sites[0]);
@@ -107,31 +112,16 @@ export default function NewJobSnapPage() {
             setSiteContext(ctx);
           }
         } else if (targetOrgId) {
-          // No specific site — load sites scoped to the user's role
-          const role = profile?.role || 'user';
+          // No specific site — the active org's sites this profile may access
+          // (including workspace-only Job Snaps containers).
           let sites;
-
-          if (role === 'user' && profile?.id) {
-            // Users only see their assigned sites
-            const { data: assignments } = await supabase
-              .from('profile_site_assignments')
-              .select('site_id')
-              .eq('profile_id', profile.id);
-
-            const assignedIds = (assignments || []).map((a: { site_id: string }) => a.site_id);
-            if (assignedIds.length > 0) {
-              const { data } = await supabase
-                .from('sites')
-                .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
-                .in('id', assignedIds);
-              sites = data;
-            }
-          } else {
-            // Owner/Admin see all org sites (including workspace-only Job Snaps containers)
-            const { data } = await supabase
+          if (accessibleIds === null || accessibleIds.length > 0) {
+            let q = supabase
               .from('sites')
               .select(`id, name, settings, site_categories(is_primary, gbp_category:gbp_categories(name))`)
               .eq('organization_id', targetOrgId);
+            if (accessibleIds) q = q.in('id', accessibleIds);
+            const { data } = await q;
             sites = data;
           }
 

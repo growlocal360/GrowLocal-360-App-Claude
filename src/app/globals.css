@@ -167,9 +167,10 @@
 
 /* header */
 .tpl-premium .pm-header { position: sticky; top: 0; z-index: 50; background: rgba(250,249,246,.72); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid var(--line); }
-.tpl-premium .pm-nav { display: flex; align-items: center; justify-content: space-between; height: 88px; }
+.tpl-premium .pm-nav { display: flex; align-items: center; justify-content: space-between; height: 112px; }
+@media (max-width: 640px){ .tpl-premium .pm-nav { height: 76px; } }
 /* logo: 72px tall on desktop, tighter on phones so the nav CTA still fits */
-@media (max-width: 640px){ .tpl-premium .pm-logo-img { height: 52px !important; } }
+@media (max-width: 640px){ .tpl-premium .pm-logo-img { height: 60px !important; } }
 .tpl-premium .pm-logo { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -.04em; color:var(--ink); }
 .tpl-premium .pm-logo span { color: var(--brand); }
 .tpl-premium .pm-navlinks { display: none; gap: 4px; }
@@ -377,7 +378,7 @@
 /* Let the sidebar cell fill the full row height so the sticky form has room to
    travel. Without this, align-items:start collapses the cell to the form's own
    height, leaving the sticky element nowhere to pin — it scrolls up under the
-   header instead. The form itself stays content-height and sticks at top:104px. */
+   header instead. The form itself stays content-height and sticks at top:128px (header 112 + 16). */
 .tpl-premium .pm-layout > aside { align-self: stretch; }
 .tpl-premium .pm-prose > * + * { margin-top: 18px; }
 .tpl-premium .pm-prose h2 { font-size: 30px; margin-top: 40px; margin-bottom: 4px; }
@@ -388,8 +389,8 @@
 .tpl-premium .pm-prose ul li .pm-chk { flex-shrink:0; width:24px; height:24px; border-radius:50%; border:1.5px solid color-mix(in srgb,var(--brand) 45%,var(--line)); color:var(--brand); display:grid; place-items:center; margin-top:3px; }
 .tpl-premium .pm-prose ul li .pm-chk svg { width:13px; height:13px; }
 
-.tpl-premium .pm-aside { position: sticky; top: 104px; background: var(--card); border:1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 26px; }
-.tpl-premium .pm-asidestack { position: sticky; top: 104px; display:flex; flex-direction:column; gap:16px; }
+.tpl-premium .pm-aside { position: sticky; top: 128px; background: var(--card); border:1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 26px; }
+.tpl-premium .pm-asidestack { position: sticky; top: 128px; display:flex; flex-direction:column; gap:16px; }
 .tpl-premium .pm-asidestack .pm-aside { position: static; top: auto; }
 .tpl-premium .pm-asidemap { border-radius: 22px; overflow:hidden; border:1px solid var(--line); background: var(--card); box-shadow: var(--shadow-md); }
 .tpl-premium .pm-asidemap iframe { display:block; width:100%; height:260px; border:0; }

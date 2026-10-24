@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getGoogleToken } from '@/lib/google/get-google-token';
 
 /**
  * POST /api/sites/[siteId]/connect-gbp
@@ -24,17 +25,14 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Get session token ────────────────────────────────────────────────────
+    // ── Get a Google token ───────────────────────────────────────────────────
+    // A session provider_token only exists for ~1h after a Google sign-in. The
+    // location picker (GET /api/gbp/locations) already falls back to the stored
+    // site/org connection (auto-refreshed); saving must do the same, otherwise
+    // the picker works and Save fails with "No Google token available".
     const { data: { session } } = await supabase.auth.getSession();
-    const providerToken = session?.provider_token;
-    const providerRefreshToken = session?.provider_refresh_token;
-
-    if (!providerToken) {
-      return NextResponse.json(
-        { error: 'No Google token available. Please re-authenticate with Google first.' },
-        { status: 400 }
-      );
-    }
+    let providerToken: string | null = session?.provider_token || null;
+    let providerRefreshToken: string | null = session?.provider_refresh_token || null;
 
     const body = await request.json();
     const { accountName, locationName, locationTitle } = body;
@@ -63,6 +61,42 @@ export async function POST(
 
     if (!site || !userOrgIds.includes(site.organization_id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!providerToken) {
+      providerToken = await getGoogleToken(siteId); // site connection → org connection, refreshed as needed
+      if (providerToken) {
+        // Keep whichever refresh token we already hold so the connection
+        // keeps working after this access token expires.
+        const { data: siteConn } = await admin
+          .from('social_connections')
+          .select('refresh_token')
+          .eq('site_id', siteId)
+          .eq('platform', 'google_business')
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const { data: orgConn } = siteConn?.refresh_token
+          ? { data: null }
+          : await admin
+              .from('org_google_connections')
+              .select('refresh_token')
+              .eq('organization_id', site.organization_id)
+              .eq('is_active', true)
+              .maybeSingle();
+        providerRefreshToken = siteConn?.refresh_token || orgConn?.refresh_token || null;
+      }
+    }
+
+    if (!providerToken) {
+      return NextResponse.json(
+        {
+          error: 'Google needs to be connected again for this site. Sign in with Google to continue.',
+          needsReauth: true,
+        },
+        { status: 400 }
+      );
     }
 
     // ── Save GBP IDs ─────────────────────────────────────────────────────────

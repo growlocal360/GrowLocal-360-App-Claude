@@ -105,6 +105,12 @@ export function ConnectGbpForm({ siteId, siteName, nextPath }: Props) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.needsReauth) {
+          // No usable stored token either — go through Google sign-in and come back here.
+          setPhase('needs-oauth');
+          await handleOAuth();
+          return;
+        }
         throw new Error(data.error || 'Failed to save listing');
       }
       setPhase('done');

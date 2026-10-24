@@ -131,6 +131,25 @@ export function GBPConnectCard({ siteId }: GBPConnectCardProps) {
         }),
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.needsReauth) {
+          // Stored connection is gone/expired beyond refresh — re-authenticate instead of a dead toast.
+          toast.message('Reconnecting Google…');
+          const supabase = createClient();
+          await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              scopes: 'https://www.googleapis.com/auth/business.manage https://www.googleapis.com/auth/webmasters.readonly',
+              redirectTo: `${window.location.origin}/oauth2callback?siteId=${siteId}&next=${encodeURIComponent(window.location.pathname)}`,
+              queryParams: { prompt: 'consent', access_type: 'offline' },
+            },
+          });
+          return;
+        }
+        throw new Error(data.error || 'Failed to connect GBP');
+      }
+
       if (res.ok) {
         setStatus({
           isConnected: true,

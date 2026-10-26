@@ -340,6 +340,53 @@ export async function verifyDomainDNS(domain: string): Promise<{
 }
 
 /**
+ * Whether Vercel has issued a TLS certificate for the domain. DNS can be
+ * perfect and the domain verified while issuance never happened; the site
+ * then serves on http:// but closes https:// connections.
+ */
+export async function getCertificateStatus(domain: string): Promise<{ issued: boolean; error?: string }> {
+  try {
+    const apex = getApexDomain(domain);
+    const teamParam = getTeamParam();
+    const sep = teamParam ? '&' : '?';
+    const response = await fetch(
+      `${VERCEL_API_BASE}/v7/certs${teamParam}${sep}domain=${encodeURIComponent(apex)}&limit=5`,
+      { method: 'GET', headers: getVercelHeaders() }
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { issued: false, error: data.error?.message || `Certificate lookup failed (${response.status})` };
+    }
+    const data = await response.json();
+    return { issued: Array.isArray(data.certs) && data.certs.length > 0 };
+  } catch (error) {
+    return { issued: false, error: error instanceof Error ? error.message : 'Certificate lookup failed' };
+  }
+}
+
+/**
+ * Ask Vercel to issue a certificate for the apex + www. Same thing the
+ * Vercel dashboard's "Refresh" does; safe to call repeatedly.
+ */
+export async function requestCertificate(domain: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apex = getApexDomain(domain);
+    const response = await fetch(`${VERCEL_API_BASE}/v7/certs${getTeamParam()}`, {
+      method: 'POST',
+      headers: getVercelHeaders(),
+      body: JSON.stringify({ cns: [apex, `www.${apex}`] }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { success: false, error: data.error?.message || `Certificate request failed (${response.status})` };
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Certificate request failed' };
+  }
+}
+
+/**
  * Extract the apex (root) domain from any domain input.
  * e.g., "www.example.com" → "example.com", "example.com" → "example.com"
  */

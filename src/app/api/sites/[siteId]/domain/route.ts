@@ -8,6 +8,7 @@ import {
   removeDomainPairFromVercel,
   getDNSInstructions,
   isVercelConfigured,
+  getCertificateStatus,
 } from '@/lib/vercel/domains';
 
 interface RouteParams {
@@ -57,10 +58,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // HTTPS can lag DNS verification (certificate never issued); surface it.
+    let httpsReady: boolean | null = null;
+    if (site.custom_domain && site.custom_domain_verified && isVercelConfigured()) {
+      httpsReady = (await getCertificateStatus(site.custom_domain)).issued;
+    }
+
     return NextResponse.json({
       subdomain,
       customDomain: site.custom_domain,
       customDomainVerified: site.custom_domain_verified,
+      httpsReady,
       publicWebsiteUrl,
       dnsInstructions,
       vercelConfigured: isVercelConfigured(),

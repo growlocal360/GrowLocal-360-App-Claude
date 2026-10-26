@@ -30,6 +30,8 @@ interface DomainConfig {
   subdomain: string;
   customDomain: string | null;
   customDomainVerified: boolean;
+  /** null = unknown/not applicable; false = DNS verified but no TLS certificate yet. */
+  httpsReady?: boolean | null;
   publicWebsiteUrl: string | null;
   dnsInstructions: {
     configured: boolean;
@@ -69,7 +71,8 @@ export default function DomainSettingsPage() {
 
   // Auto-poll DNS verification every 30s when pending
   useEffect(() => {
-    if (!config?.customDomain || config.customDomainVerified) return;
+    // Keep polling while DNS is pending OR while HTTPS is still being issued.
+    if (!config?.customDomain || (config.customDomainVerified && config.httpsReady !== false)) return;
 
     const poll = setInterval(async () => {
       try {
@@ -78,9 +81,9 @@ export default function DomainSettingsPage() {
         });
         const data = await response.json();
         if (data.verified) {
-          setVerifyMessage('Domain verified successfully!');
+          setVerifyMessage(data.message || 'Domain verified successfully!');
           await fetchDomainConfig();
-          clearInterval(poll);
+          if (data.httpsReady !== false) clearInterval(poll);
         }
       } catch {
         // Silent fail — will retry on next interval
@@ -88,7 +91,7 @@ export default function DomainSettingsPage() {
     }, 30000);
 
     return () => clearInterval(poll);
-  }, [config?.customDomain, config?.customDomainVerified, siteId]);
+  }, [config?.customDomain, config?.customDomainVerified, config?.httpsReady, siteId]);
 
   const fetchDomainConfig = async () => {
     try {
@@ -310,12 +313,12 @@ export default function DomainSettingsPage() {
             {config?.customDomain && (
               <Badge
                 className={
-                  config.customDomainVerified
+                  config.customDomainVerified && config.httpsReady !== false
                     ? 'bg-[#00ef99]/10 text-[#00ef99]'
                     : 'bg-yellow-100 text-yellow-700'
                 }
               >
-                {config.customDomainVerified ? 'Verified' : 'Pending DNS'}
+                {!config.customDomainVerified ? 'Pending DNS' : config.httpsReady === false ? 'Verified · HTTPS pending' : 'Live'}
               </Badge>
             )}
           </div>
@@ -343,7 +346,8 @@ export default function DomainSettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleVerifyDomain}
-                  disabled={isVerifying || config.customDomainVerified}
+                  disabled={isVerifying || (config.customDomainVerified && config.httpsReady !== false)}
+                  title={config.customDomainVerified && config.httpsReady === false ? 'Request the HTTPS certificate again' : 'Check DNS'}
                 >
                   {isVerifying ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />

@@ -7,6 +7,8 @@ import {
   verifyDomainDNS,
   getDomainConfig,
   isVercelConfigured,
+  getCertificateStatus,
+  requestCertificate,
 } from '@/lib/vercel/domains';
 
 interface RouteParams {
@@ -78,10 +80,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Revalidate so canonical/schema URLs flip from subdomain → custom domain
       await revalidateSite(siteId);
 
+      // DNS + ownership are not the whole story: HTTPS only works once Vercel
+      // has issued a certificate, and that step can silently never happen.
+      // If it hasn't, ask for it now (the owner clicked Verify / the page is polling).
+      let cert = await getCertificateStatus(site.custom_domain);
+      let certError: string | undefined = cert.error;
+      if (!cert.issued) {
+        const req = await requestCertificate(site.custom_domain);
+        if (!req.success) certError = req.error;
+        cert = await getCertificateStatus(site.custom_domain);
+      }
+
       return NextResponse.json({
         verified: true,
         configured: true,
-        message: 'Domain verified successfully! Your site is now live at this domain.',
+        httpsReady: cert.issued,
+        message: cert.issued
+          ? 'Domain verified successfully! Your site is now live at this domain.'
+          : `DNS is verified. Waiting on the HTTPS certificate (usually a few minutes)${certError ? `: ${certError}` : '.'}`,
       });
     }
 

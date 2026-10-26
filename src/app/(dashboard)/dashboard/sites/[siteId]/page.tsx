@@ -41,6 +41,7 @@ import {
   LayoutTemplate,
   UserRound,
   ClipboardList,
+  FileText,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
@@ -656,6 +657,29 @@ export default function SiteDashboardPage() {
                   Customize Branding
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Core pages: Home / About / Contact content */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-sky-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Pages</h3>
+                  <p className="text-sm text-gray-500">Home, About &amp; Contact text and hero image</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">Edit headings, copy and the home hero photo directly.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/home`}>Home</Link></Button>
+                <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/about`}>About</Link></Button>
+                <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/contact`}>Contact</Link></Button>
+              </div>
             </CardContent>
           </Card>
 

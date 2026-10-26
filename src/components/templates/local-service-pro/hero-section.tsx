@@ -59,9 +59,11 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
     `${site.name} provides expert ${categoryNoun.toLowerCase()} services${cityStatePart ? ` in ${cityStatePart} and surrounding areas` : ''}.`;
 
   // Find hero image — prefer prompt_index 0, fall back to first available
-  const heroImage = pageContent?.generated_images?.find(
-    (img) => img.prompt_index === 0
-  ) || pageContent?.generated_images?.[0] || null;
+  const heroImage: { url: string } | null = pageContent?.hero_image_url
+    ? { url: pageContent.hero_image_url } // owner-uploaded (Settings → Pages → Home)
+    : pageContent?.generated_images?.find(
+        (img) => img.prompt_index === 0
+      ) || pageContent?.generated_images?.[0] || null;
 
   return (
     <section className="relative py-20 text-white lg:py-28" style={{ backgroundColor: brandColor }}>

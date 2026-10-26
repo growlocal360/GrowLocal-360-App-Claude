@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowUp, ArrowDown, Plus, Trash2, Loader2, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Plus, Trash2, Loader2, Check, AlertCircle, ImageIcon, X as XIcon } from 'lucide-react';
 
 interface Problem { heading: string; description: string }
 interface Section { h2: string; body: string; bullets: string[] }
@@ -26,6 +26,7 @@ interface ServiceRow {
   problems: Problem[] | null;
   detailed_sections: Section[] | null;
   faqs: Faq[] | null;
+  hero_image_url: string | null;
 }
 
 /** Edit everything the service page shows. Saves through the services PATCH; the public page refreshes on save. */
@@ -49,6 +50,8 @@ export default function ServiceEditorPage() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [faqs, setFaqs] = useState<Faq[]>([]);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null); // dashboard proxy path
+  const [imageBusy, setImageBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -69,6 +72,7 @@ export default function ServiceEditorPage() {
         setProblems(svc.problems || []);
         setSections((svc.detailed_sections || []).map((s) => ({ ...s, bullets: s.bullets || [] })));
         setFaqs(svc.faqs || []);
+        setHeroImageUrl(svc.hero_image_url && svc.hero_image_url.startsWith('/public/assets/') ? `/api/sites/${siteId}/${svc.hero_image_url.replace('/public/', '')}` : svc.hero_image_url);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load service');
       } finally {
@@ -101,6 +105,29 @@ export default function ServiceEditorPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Hero image: upload → save on the service immediately (same endpoints as the services list).
+  const saveHeroImage = async (url: string | null) => {
+    const res = await fetch(`/api/sites/${siteId}/settings/services`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: serviceId, heroImageUrl: url }),
+    });
+    if (!res.ok) throw new Error('Failed to save image');
+    setHeroImageUrl(url && url.startsWith('/public/assets/') ? `/api/sites/${siteId}/${url.replace('/public/', '')}` : url);
+  };
+  const handleHeroFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('Image must be smaller than 10MB'); return; }
+    try {
+      setImageBusy(true); setError(null);
+      const fd = new FormData(); fd.append('photo', file);
+      const up = await fetch(`/api/sites/${siteId}/settings/services/hero-image`, { method: 'POST', body: fd });
+      if (!up.ok) throw new Error((await up.json().catch(() => ({}))).error || 'Failed to upload image');
+      await saveHeroImage((await up.json()).url);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to upload image'); }
+    finally { setImageBusy(false); }
   };
 
   // Generic list helpers (move / remove) for the three repeating blocks.
@@ -161,6 +188,27 @@ export default function ServiceEditorPage() {
             <div>
               <Label htmlFor="h1">Page heading (H1)</Label>
               <Input id="h1" className="mt-1" value={h1} maxLength={120} onChange={(e) => setH1(e.target.value)} placeholder={name} />
+            </div>
+            <div>
+              <Label>Hero image</Label>
+              <div className="mt-1 flex items-center gap-4">
+                <label className="relative flex h-24 w-36 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400" title={heroImageUrl ? 'Replace hero image' : 'Upload hero image'}>
+                  {heroImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={heroImageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <ImageIcon className="h-6 w-6 text-gray-400" />
+                  )}
+                  {imageBusy && <span className="absolute inset-0 flex items-center justify-center bg-white/70"><Loader2 className="h-5 w-5 animate-spin" /></span>}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={imageBusy} onChange={(e) => { handleHeroFile(e.target.files?.[0]); e.target.value = ''; }} />
+                </label>
+                <div className="text-xs text-gray-500">
+                  <p>Shown beside the heading at the top of the service page (4:3, landscape works best). Saves immediately.</p>
+                  {heroImageUrl && (
+                    <button type="button" onClick={() => saveHeroImage(null)} disabled={imageBusy} className="mt-2 inline-flex items-center gap-1 text-red-600 hover:text-red-700"><XIcon className="h-3 w-3" /> Remove image</button>
+                  )}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -485,6 +485,8 @@ export interface SitePage {
   body_copy_2: string | null;
   faqs: ServiceFAQ[] | null;
   sections: SitePageSections | null;
+  /** Owner-uploaded hero image (clean /public/assets/... path); overrides generated_images[0]. */
+  hero_image_url?: string | null;
   image_prompts: ImagePrompt[] | null;
   generated_images: GeneratedImage[] | null;
   is_active: boolean;

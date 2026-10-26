@@ -210,6 +210,8 @@ export interface PublicRenderPageContent {
   faqs: ServiceFAQ[] | null;
   sections: SitePageSections | null;
   generated_images: GeneratedImage[] | null;
+  /** Owner-uploaded hero image; templates prefer it over generated_images. */
+  hero_image_url: string | null;
 }
 
 // --- Category (for nav and page rendering) ---
@@ -518,6 +520,7 @@ export function toPublicPageContent(page: SitePage): PublicRenderPageContent {
     faqs: page.faqs,
     sections: page.sections ?? null,
     generated_images: cleanGeneratedImages(page.generated_images),
+    hero_image_url: sanitizeAssetUrl(page.hero_image_url, 'site'),
   };
 }
 

@@ -98,7 +98,7 @@ export async function renderCategoryInCity(params: {
     pageContent = {
       h1: null, h2: null, hero_description: cityIntro,
       body_copy: cityBody, body_copy_2: null,
-      faqs: null, sections: null, generated_images: null,
+      faqs: null, sections: null, generated_images: null, hero_image_url: null,
     };
   } else if (params.allowPrimaryContentFallback && categoryData.pageContent) {
     pageContent = { ...toPublicPageContent(categoryData.pageContent), h1: null };

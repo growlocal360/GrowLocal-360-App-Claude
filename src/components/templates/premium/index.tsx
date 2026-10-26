@@ -68,9 +68,11 @@ export function PremiumTemplate({
 
   // Hero background image — prefer the generated prompt_index 0 image (same
   // selection the local-service-pro hero uses), fall back to the first available.
-  const heroImage = homePageContent?.generated_images?.find((img) => img.prompt_index === 0)
-    || homePageContent?.generated_images?.[0]
-    || null;
+  const heroImage: { url: string } | null = homePageContent?.hero_image_url
+    ? { url: homePageContent.hero_image_url } // owner-uploaded (Settings → Pages → Home)
+    : homePageContent?.generated_images?.find((img) => img.prompt_index === 0)
+      || homePageContent?.generated_images?.[0]
+      || null;
 
   // brand-ink: readable text color on top of the brand fill
 

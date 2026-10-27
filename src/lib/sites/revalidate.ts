@@ -64,7 +64,7 @@ export async function revalidateSite(siteId: string) {
 
   // -------- Root paths (v5 flat structure) --------
   revalidatePath(base, 'page'); // home
-  for (const path of ['/about', '/contact', '/faq', '/services', '/service-areas', '/brands', '/work', '/reviews']) {
+  for (const path of ['/about', '/contact', '/book', '/faq', '/services', '/service-areas', '/brands', '/work', '/reviews']) {
     revalidatePath(`${base}${path}`, 'page');
   }
 

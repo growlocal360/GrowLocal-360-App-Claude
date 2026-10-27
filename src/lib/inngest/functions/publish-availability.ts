@@ -275,6 +275,14 @@ export const publishAvailability = inngest.createFunction(
       const result = await step.run(`publish-gbp-${siteId}`, async () => {
         try {
           const gbpClient = new GBPClient(gbpData.token);
+          // Button per site setting. CALL must not carry a URL (Google dials the
+          // profile's phone); BOOK / LEARN_MORE link to the owner's URL or /book.
+          const ctaType = typedConfig.post_cta_type || 'BOOK';
+          const ctaUrl = (typedConfig.post_cta_url || '').trim() || `${siteUrl}/book`;
+          const callToAction =
+            ctaType === 'NONE' ? undefined
+            : ctaType === 'CALL' ? { actionType: 'CALL' }
+            : { actionType: ctaType, url: ctaUrl };
           const post = await gbpClient.createLocalPost(
             gbpData.accountName,
             gbpData.locationName,
@@ -282,10 +290,7 @@ export const publishAvailability = inngest.createFunction(
               topicType: 'STANDARD',
               languageCode: 'en-US',
               summary: postContent,
-              callToAction: {
-                actionType: 'BOOK',
-                url: `${siteUrl}/contact`,
-              },
+              ...(callToAction ? { callToAction } : {}),
             }
           );
           return { success: true as const, postId: post.name };

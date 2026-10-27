@@ -71,6 +71,7 @@ export async function GET(
     `- Home: ${siteUrl}`,
     `- About: ${siteUrl}/about`,
     `- Contact: ${siteUrl}/contact`,
+    `- Book an appointment / request an estimate: ${siteUrl}/book`,
     `- Services: ${siteUrl}/services`,
     `- FAQ: ${siteUrl}/faq`,
     `- Recent Work: ${siteUrl}/work`,

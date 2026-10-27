@@ -37,6 +37,8 @@ import { PremiumNeighborhoodPage } from '@/components/templates/premium/neighbor
 import { PremiumNeighborhoodPageSingleLocation } from '@/components/templates/premium/neighborhood-page-single';
 import { PremiumLocationPage } from '@/components/templates/premium/location-page';
 import { PremiumWorkDetailPage } from '@/components/templates/premium/work-detail-page';
+import { PremiumLegalPage } from '@/components/templates/premium/legal-page';
+import { LegalPage } from '@/components/templates/local-service-pro/legal-page';
 
 /**
  * A TemplateComponents set maps each page "role" to the component that renders
@@ -64,6 +66,7 @@ export interface TemplateComponents {
   FAQ: typeof FAQHubPage;
   Reviews: typeof ReviewsPage;
   Location: typeof LocationPage;
+  Legal: typeof LegalPage;
 }
 
 const BASELINE: TemplateComponents = {
@@ -84,6 +87,7 @@ const BASELINE: TemplateComponents = {
   FAQ: FAQHubPage,
   Reviews: ReviewsPage,
   Location: LocationPage,
+  Legal: LegalPage,
 };
 
 /**
@@ -111,6 +115,7 @@ const OVERRIDES: Record<TemplateId, Partial<TemplateComponents>> = {
     NeighborhoodSingle: PremiumNeighborhoodPageSingleLocation,
     Location: PremiumLocationPage,
     WorkDetail: PremiumWorkDetailPage,
+    Legal: PremiumLegalPage,
     // Full coverage — every page type now has a premium component.
   },
 };

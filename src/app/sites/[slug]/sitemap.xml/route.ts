@@ -111,6 +111,8 @@ export async function GET(
   }
 
   // Brands
+  entries.push({ url: `${baseUrl}/privacy`, lastmod, changefreq: 'yearly', priority: 0.2 });
+  entries.push({ url: `${baseUrl}/terms`, lastmod, changefreq: 'yearly', priority: 0.2 });
   if (brands && brands.length > 0) {
     entries.push({ url: `${baseUrl}/brands`, lastmod, changefreq: 'monthly', priority: 0.5 });
     for (const brand of brands.filter(b => b.has_detail_page !== false && b.h1)) {

@@ -448,7 +448,7 @@ export interface ServiceFAQ {
   answer: string;
 }
 
-export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area' | 'faq';
+export type SitePageType = 'home' | 'about' | 'contact' | 'category' | 'service_area' | 'faq' | 'privacy' | 'terms';
 
 /** Home page blocks generated per business (Premium "Simple Process" + "Why Choose" sections). */
 export interface HomePageSections {

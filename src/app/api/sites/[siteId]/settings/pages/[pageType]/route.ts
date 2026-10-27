@@ -4,8 +4,9 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
 import type { SitePageSections } from '@/types/database';
+import { defaultPrivacyPolicy, defaultTermsOfService } from '@/lib/sites/legal-defaults';
 
-const PAGE_TYPES = ['home', 'about', 'contact'] as const;
+const PAGE_TYPES = ['home', 'about', 'contact', 'privacy', 'terms'] as const;
 type CorePageType = (typeof PAGE_TYPES)[number];
 
 const str = (v: unknown, max: number): string | null =>
@@ -76,16 +77,37 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
+  const admin = createAdminClient();
   const page = await loadPage(siteId, pageType as CorePageType);
+
+  // Legal pages render generated boilerplate until the owner saves their own text;
+  // hand the editor that default so it starts from something real.
+  let defaults: { h1: string; body: string } | null = null;
+  if (pageType === 'privacy' || pageType === 'terms') {
+    const { data: siteRow } = await admin.from('sites').select('name, slug, settings, custom_domain, custom_domain_verified').eq('id', siteId).single();
+    const { data: loc } = await admin.from('locations').select('city, state, phone').eq('site_id', siteId).eq('is_primary', true).limit(1).maybeSingle();
+    const st = (siteRow?.settings || {}) as { phone?: string; email?: string };
+    const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
+    const ctx = {
+      businessName: siteRow?.name || 'This business',
+      domain: siteRow?.custom_domain_verified && siteRow?.custom_domain ? siteRow.custom_domain : `${siteRow?.slug}.${appDomain}`,
+      phone: st.phone || loc?.phone || null,
+      email: st.email || null,
+      city: loc?.city || null,
+      state: loc?.state || null,
+    };
+    defaults = pageType === 'privacy' ? defaultPrivacyPolicy(ctx) : defaultTermsOfService(ctx);
+  }
   const toDashboardUrl = (u: string | null | undefined) =>
     u && u.startsWith('/public/assets/') ? `/api/sites/${siteId}/${u.replace('/public/', '')}` : u || null;
   return NextResponse.json({
     pageType,
     exists: !!page,
-    h1: page?.h1 || '',
+    h1: page?.h1 || defaults?.h1 || '',
     h2: page?.h2 || '',
     heroDescription: page?.hero_description || '',
-    bodyCopy: page?.body_copy || '',
+    bodyCopy: page?.body_copy || defaults?.body || '',
+    usingDefaults: !!defaults && !page?.body_copy,
     bodyCopy2: page?.body_copy_2 || '',
     metaTitle: page?.meta_title || '',
     metaDescription: page?.meta_description || '',

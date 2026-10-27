@@ -334,7 +334,13 @@
 /* footer */
 .tpl-premium .pm-footer { background: var(--footer); color: color-mix(in srgb, var(--dark-ink) 62%, transparent); padding: 72px 0 32px; }
 .tpl-premium .pm-footgrid { display:grid; grid-template-columns: 1fr 1fr; gap:32px; padding-bottom:48px; border-bottom:1px solid color-mix(in srgb, var(--dark-ink) 10%, transparent); }
-@media (min-width:820px){ .tpl-premium .pm-footgrid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap:40px; } }
+@media (min-width:640px){ .tpl-premium .pm-footgrid { grid-template-columns: 1fr 1fr; } }
+@media (min-width:980px){ .tpl-premium .pm-footgrid { grid-template-columns: 1.5fr 1fr 1fr .9fr 1.1fr; gap:36px; } }
+.tpl-premium .pm-footcol .pm-foottext { display:block; font-size:14.5px; margin-bottom:10px; color:color-mix(in srgb, var(--dark-ink) 62%, transparent); }
+.tpl-premium .pm-footcol .pm-footmore { font-weight:600; color:var(--brand) !important; }
+.tpl-premium .pm-footcol a b { color:inherit; }
+.tpl-premium .pm-footlegal { display:flex; gap:18px; flex-wrap:wrap; align-items:center; }
+.tpl-premium .pm-footlegal a { color:inherit; text-decoration:none; } .tpl-premium .pm-footlegal a:hover { color:var(--brand); }
 .tpl-premium .pm-footlogo { font-family:var(--font-display); font-weight:800; font-size:22px; color:var(--dark-ink); letter-spacing:-.04em; margin-bottom:14px; }
 .tpl-premium .pm-footlogo span{ color:var(--brand); }
 .tpl-premium .pm-footlogo-img { display:block; height:56px; width:auto; object-fit:contain; margin-bottom:16px; }

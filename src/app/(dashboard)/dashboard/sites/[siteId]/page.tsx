@@ -669,7 +669,7 @@ export default function SiteDashboardPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">Pages</h3>
-                  <p className="text-sm text-gray-500">Home, About &amp; Contact text and hero image</p>
+                  <p className="text-sm text-gray-500">Home, About, Contact, Privacy &amp; Terms</p>
                 </div>
               </div>
             </CardHeader>
@@ -679,6 +679,9 @@ export default function SiteDashboardPage() {
                 <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/home`}>Home</Link></Button>
                 <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/about`}>About</Link></Button>
                 <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/contact`}>Contact</Link></Button>
+                <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/privacy`}>Privacy</Link></Button>
+                <Button variant="outline" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/terms`}>Terms</Link></Button>
+                <Button variant="outline" size="sm" asChild><a href={`https://${site.custom_domain_verified && site.custom_domain ? site.custom_domain : `${site.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com'}`}/sitemap.xml`} target="_blank" rel="noopener noreferrer">Sitemap ↗</a></Button>
               </div>
             </CardContent>
           </Card>

@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Loader2, Check, AlertCircle, ImageIcon, X as XIcon, Plus, Trash2 } from 'lucide-react';
 
-type PageType = 'home' | 'about' | 'contact';
+type PageType = 'home' | 'about' | 'contact' | 'privacy' | 'terms';
 interface Pair { title: string; description: string }
 interface Block { heading: string; paragraphs: string[] }
 
-const TITLES: Record<PageType, string> = { home: 'Home page', about: 'About page', contact: 'Contact page' };
+const TITLES: Record<PageType, string> = { home: 'Home page', about: 'About page', contact: 'Contact page', privacy: 'Privacy Policy', terms: 'Terms of Service' };
+const isLegal = (p: PageType) => p === 'privacy' || p === 'terms';
 
 /** Textarea helpers: paragraphs are separated by a blank line; lists by newlines. */
 const joinParas = (p: string[] | undefined) => (p || []).join('\n\n');
@@ -61,6 +62,7 @@ export default function CorePageEditor() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [generatedHeroUrl, setGeneratedHeroUrl] = useState<string | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
+  const [usingDefaults, setUsingDefaults] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -73,6 +75,7 @@ export default function CorePageEditor() {
         setBodyCopy(d.bodyCopy || ''); setBodyCopy2(d.bodyCopy2 || '');
         setMetaTitle(d.metaTitle || ''); setMetaDescription(d.metaDescription || '');
         setHeroImageUrl(d.heroImageUrl || null); setGeneratedHeroUrl(d.generatedHeroUrl || null);
+        setUsingDefaults(!!d.usingDefaults);
         const s = d.sections || {};
         setProcessHeading(s.process?.heading || ''); setProcessSteps(s.process?.steps || []);
         setWhyHeading(s.why?.heading || ''); setWhyIntro(s.why?.intro || ''); setWhyPoints(s.why?.points || []);
@@ -189,7 +192,7 @@ export default function CorePageEditor() {
           <p className="mt-1 text-gray-600">Changes go live when you save. Regenerating content will overwrite these edits.</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          {(['home', 'about', 'contact'] as PageType[]).filter((p) => p !== pageType).map((p) => (
+          {(['home', 'about', 'contact', 'privacy', 'terms'] as PageType[]).filter((p) => p !== pageType && isLegal(p) === isLegal(pageType)).map((p) => (
             <Button key={p} variant="ghost" size="sm" asChild><Link href={`/dashboard/sites/${siteId}/settings/pages/${p}`}>{TITLES[p]}</Link></Button>
           ))}
           <Button onClick={() => save()} disabled={saving} className="bg-black hover:bg-gray-800">
@@ -200,10 +203,15 @@ export default function CorePageEditor() {
 
       {error && <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"><AlertCircle className="h-4 w-4 shrink-0" /> {error}</div>}
       {success && <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700"><Check className="h-4 w-4 shrink-0" /> Saved. The page has been refreshed.</div>}
+      {isLegal(pageType) && usingDefaults && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          This page is showing GrowLocal&apos;s default text, built from your business details. It is general boilerplate, not legal advice. Edit anything below and Save to replace it.
+        </div>
+      )}
 
       <div className="space-y-6">
         <Card>
-          <CardHeader><h2 className="font-semibold">Heading &amp; hero</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold">{isLegal(pageType) ? 'Heading' : 'Heading & hero'}</h2></CardHeader>
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="h1">Page heading (H1)</Label>
@@ -215,11 +223,13 @@ export default function CorePageEditor() {
                 <Input id="h2" className="mt-1" value={h2} maxLength={160} onChange={(e) => setH2(e.target.value)} />
               </div>
             )}
+            {!isLegal(pageType) && (
             <div>
               <Label htmlFor="hero">Hero text</Label>
               <Textarea id="hero" className="mt-1" rows={3} value={heroDescription} maxLength={600} onChange={(e) => setHeroDescription(e.target.value)} />
               <p className="mt-1 text-xs text-gray-500">The sentence or two under the heading.</p>
             </div>
+            )}
             {pageType === 'home' && (
               <div>
                 <Label>Hero image</Label>
@@ -262,14 +272,14 @@ export default function CorePageEditor() {
         </Card>
 
         <Card>
-          <CardHeader><h2 className="font-semibold">{pageType === 'contact' ? 'Intro copy' : 'Body copy'}</h2></CardHeader>
+          <CardHeader><h2 className="font-semibold">{pageType === 'contact' ? 'Intro copy' : isLegal(pageType) ? 'Policy text' : 'Body copy'}</h2></CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="bodyCopy">{pageType === 'home' ? 'Main copy' : pageType === 'about' ? 'Story (fallback when the sections below are empty)' : 'Intro paragraph'}</Label>
-              <Textarea id="bodyCopy" className="mt-1" rows={6} value={bodyCopy} onChange={(e) => setBodyCopy(e.target.value)} />
+              <Label htmlFor="bodyCopy">{pageType === 'home' ? 'Main copy' : pageType === 'about' ? 'Story (fallback when the sections below are empty)' : isLegal(pageType) ? 'Full text' : 'Intro paragraph'}</Label>
+              <Textarea id="bodyCopy" className="mt-1" rows={isLegal(pageType) ? 22 : 6} value={bodyCopy} onChange={(e) => setBodyCopy(e.target.value)} />
               <p className="mt-1 text-xs text-gray-500">Separate paragraphs with a blank line.</p>
             </div>
-            {pageType !== 'contact' && (
+            {pageType !== 'contact' && !isLegal(pageType) && (
               <div>
                 <Label htmlFor="bodyCopy2">Second block</Label>
                 <Textarea id="bodyCopy2" className="mt-1" rows={4} value={bodyCopy2} onChange={(e) => setBodyCopy2(e.target.value)} />

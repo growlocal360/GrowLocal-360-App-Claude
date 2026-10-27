@@ -218,6 +218,8 @@ export class GBPClient {
     accountName: string,
     locationName: string,
     payload: {
+      /** Required by the v4 API; omitting it returns "Request contains an invalid argument." */
+      topicType?: 'STANDARD' | 'EVENT' | 'OFFER' | 'ALERT';
       languageCode: string;
       summary: string;
       callToAction?: { actionType: string; url: string };

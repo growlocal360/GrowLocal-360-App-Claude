@@ -65,7 +65,7 @@ export function generateAvailabilityPost(context: PublishContext): string {
   const isBooked = spotsAvailable <= 0;
   const raw = isBooked ? template.fullyBooked : template.hasSpots;
 
-  return raw
+  const out = raw
     .replace('{count}', String(spotsAvailable))
     .replace('{s}', spotsAvailable === 1 ? '' : 's')
     .replace('{service}', serviceName.toLowerCase())
@@ -75,4 +75,16 @@ export function generateAvailabilityPost(context: PublishContext): string {
     .replace('{day}', dayName)
     // Handle any remaining {s} for plural
     .replace('{s}', spotsAvailable === 1 ? '' : 's');
+
+  if (phone) return out;
+  // No phone on file: drop the "call …" clause instead of leaving a hole in the sentence
+  return out
+    .replace(/\s*or call\s*!/i, '!')
+    .replace(/\s*or call\s*\./i, '.')
+    .replace(/\s*or call\s+(now|before)/i, ' $1')
+    .replace(/Call\s+or book/i, 'Book')
+    .replace(/\bCall\s+(to|for)\b/i, 'Contact us $1')
+    .replace(/\s*or\s*\.$/i, '.')
+    .replace(/:\s*(https?:\/\/\S+)\s+or\s*\./i, ': $1.')
+    .replace(/[ ]{2,}/g, ' ');
 }

@@ -201,7 +201,7 @@ export const publishAvailability = inngest.createFunction(
       const gbpData = await step.run(`get-gbp-info-${siteId}`, async () => {
         const { data: location } = await supabase
           .from('locations')
-          .select('gbp_account_id, gbp_location_id, city')
+          .select('gbp_account_id, gbp_location_id, city, phone')
           .eq('site_id', siteId)
           .eq('is_primary', true)
           .single();
@@ -219,6 +219,7 @@ export const publishAvailability = inngest.createFunction(
             ? location.gbp_location_id
             : `locations/${location.gbp_location_id}`,
           city: location.city || '',
+          phone: location.phone || '',
           token,
         };
       });
@@ -245,8 +246,21 @@ export const publishAvailability = inngest.createFunction(
       const siteUrl = siteData.custom_domain
         ? `https://${siteData.custom_domain}`
         : `https://${siteData.slug}.${appDomain}`;
-      const serviceName = settings.core_industry || 'service';
-      const phone = settings.phone || '';
+      // Service name: explicit setting → primary GBP category → generic
+      const serviceName = await step.run(`service-name-${siteId}`, async () => {
+        if (settings.core_industry) return settings.core_industry;
+        const { data: cat } = await supabase
+          .from('site_categories')
+          .select('gbp_category:gbp_categories(display_name)')
+          .eq('site_id', siteId)
+          .eq('is_primary', true)
+          .limit(1)
+          .maybeSingle();
+        const gbp = cat?.gbp_category as unknown as { display_name?: string } | { display_name?: string }[] | null;
+        const name = Array.isArray(gbp) ? gbp[0]?.display_name : gbp?.display_name;
+        return name || 'service';
+      });
+      const phone = settings.phone || gbpData.phone || '';
 
       const postContent = generateAvailabilityPost({
         spotsAvailable: availData.spotsRemaining,
@@ -265,7 +279,8 @@ export const publishAvailability = inngest.createFunction(
             gbpData.accountName,
             gbpData.locationName,
             {
-              languageCode: 'en',
+              topicType: 'STANDARD',
+              languageCode: 'en-US',
               summary: postContent,
               callToAction: {
                 actionType: 'BOOK',

@@ -437,3 +437,8 @@
 .tpl-premium .pm-hours .pm-h { display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); font-size:15px; }
 .tpl-premium .pm-hours .pm-h:last-child{ border-bottom:none; }
 .tpl-premium .pm-hours .pm-h .pm-d { font-weight:600; color:var(--ink); } .tpl-premium .pm-hours .pm-h .pm-open { color:var(--brand); font-weight:700; }
+
+/* Availability badge arrow: nudges toward the count while the ring pings */
+@keyframes pm-nudge { 0%,100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+.pm-availarrow { animation: pm-nudge 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pm-availarrow { animation: none; } }

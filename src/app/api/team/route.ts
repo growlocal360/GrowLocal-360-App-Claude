@@ -66,14 +66,14 @@ export async function GET() {
     .select('id, profile_id, is_active, assignments:staff_site_assignments(site_id, site:sites(name))')
     .in('profile_id', profileIds)
     .eq('is_active', true);
-  const staffMap = new Map<string, { id: string; site_names: string[] }>();
+  const staffMap = new Map<string, { id: string; site_ids: string[]; site_names: string[] }>();
   for (const s of linkedStaff || []) {
     if (!s.profile_id) continue;
     const rows = (s.assignments || []) as unknown as { site_id: string; site: { name: string } | { name: string }[] | null }[];
     const names = rows
       .map((r) => (Array.isArray(r.site) ? r.site[0]?.name : r.site?.name))
       .filter((n): n is string => !!n);
-    staffMap.set(s.profile_id, { id: s.id, site_names: names });
+    staffMap.set(s.profile_id, { id: s.id, site_ids: rows.map((r) => r.site_id), site_names: names });
   }
 
   const members = profiles.map((p) => ({

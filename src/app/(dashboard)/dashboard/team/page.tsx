@@ -33,6 +33,15 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, UserCheck, Pencil, Wrench } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { InviteMemberDialog } from '@/components/team/invite-member-dialog';
 import { AddStaffDialog } from '@/components/team/add-staff-dialog';
 import { EditStaffDialog } from '@/components/team/edit-staff-dialog';
@@ -52,7 +61,7 @@ interface TeamMember {
   created_at: string;
   site_assignments: { site_id: string; site_name: string; site_slug: string }[];
   /** Active staff record linked to this login (null = not schedulable). */
-  staff_link: { id: string; site_names: string[] } | null;
+  staff_link: { id: string; site_ids: string[]; site_names: string[] } | null;
 }
 
 interface StaffMember {
@@ -99,6 +108,9 @@ export default function TeamPage() {
   const [callerRole, setCallerRole] = useState<UserRole>('user');
   const [callerProfileId, setCallerProfileId] = useState<string | null>(null);
   const [togglingStaffFor, setTogglingStaffFor] = useState<string | null>(null);
+  const [orgSites, setOrgSites] = useState<{ id: string; name: string }[]>([]);
+  // "Works in the field" site picker: which sites this person takes jobs at
+  const [fieldDialog, setFieldDialog] = useState<{ member: TeamMember; selected: string[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
@@ -164,6 +176,16 @@ export default function TeamPage() {
         email: user?.email || '',
         avatarUrl: profile?.avatar_url,
       });
+
+      if (profile?.organization_id) {
+        const { data: sitesData } = await supabase
+          .from('sites')
+          .select('id, name')
+          .eq('organization_id', profile.organization_id)
+          .eq('is_active', true)
+          .order('name');
+        setOrgSites(sitesData || []);
+      }
     }
 
     loadUser();
@@ -269,14 +291,15 @@ export default function TeamPage() {
 
   const canManageTeam = callerRole === 'owner' || callerRole === 'admin';
 
-  // "Works in the field": create/deactivate the staff record linked to a login
-  const handleToggleFieldStaff = async (member: TeamMember, enabled: boolean) => {
+  // "Works in the field": create/deactivate the staff record linked to a login.
+  // Turning it on (or clicking the Schedulable line) opens a site picker first.
+  const saveFieldStaff = async (member: TeamMember, enabled: boolean, siteIds?: string[]) => {
     setTogglingStaffFor(member.id);
     try {
       const res = await fetch(`/api/team/members/${member.id}/staff`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify(enabled ? { enabled, siteIds } : { enabled }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -286,6 +309,21 @@ export default function TeamPage() {
     } finally {
       setTogglingStaffFor(null);
     }
+  };
+
+  const openFieldPicker = (member: TeamMember) => {
+    // Pre-check: current staff sites → the user's site access → every site (single-site orgs)
+    const current = member.staff_link?.site_ids?.length
+      ? member.staff_link.site_ids
+      : member.site_assignments.length
+        ? member.site_assignments.map((a) => a.site_id)
+        : orgSites.length === 1 ? [orgSites[0].id] : [];
+    setFieldDialog({ member, selected: current });
+  };
+
+  const handleToggleFieldStaff = (member: TeamMember, enabled: boolean) => {
+    if (enabled) openFieldPicker(member);
+    else saveFieldStaff(member, false);
   };
 
   if (loading) {
@@ -405,10 +443,15 @@ export default function TeamPage() {
                           <p className="text-xs text-gray-400 mt-0.5">Access: All sites</p>
                         )}
                         {member.staff_link && (
-                          <p className="text-xs text-emerald-700 mt-0.5 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => (canManageTeam || member.id === callerProfileId) && openFieldPicker(member)}
+                            className="text-xs text-emerald-700 mt-0.5 flex items-center gap-1 hover:underline text-left"
+                            title="Change which sites this person takes jobs at"
+                          >
                             <Wrench className="h-3 w-3" /> Schedulable
-                            {member.staff_link.site_names.length > 0 ? ` · ${member.staff_link.site_names.join(', ')}` : ''}
-                          </p>
+                            {member.staff_link.site_names.length > 0 ? ` · ${member.staff_link.site_names.join(', ')}` : ' · no sites yet'}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -602,6 +645,53 @@ export default function TeamPage() {
           </Card>
         )}
       </div>
+
+      {/* "Works in the field" site picker */}
+      <Dialog open={!!fieldDialog} onOpenChange={(o) => { if (!o) setFieldDialog(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Where does {fieldDialog?.member.full_name || fieldDialog?.member.email} take jobs?</DialogTitle>
+            <DialogDescription>
+              Pick the businesses this person works in the field for. They get a weekly schedule at each one and count toward its availability.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto rounded-md border p-2 space-y-1">
+            {orgSites.map((site) => {
+              const checked = fieldDialog?.selected.includes(site.id) ?? false;
+              return (
+                <label key={site.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() =>
+                      setFieldDialog((d) => d && ({
+                        ...d,
+                        selected: checked ? d.selected.filter((id) => id !== site.id) : [...d.selected, site.id],
+                      }))
+                    }
+                  />
+                  <span className="text-gray-800">{site.name}</span>
+                </label>
+              );
+            })}
+            {orgSites.length === 0 && <p className="p-2 text-sm text-gray-400">No active sites in this account.</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFieldDialog(null)}>Cancel</Button>
+            <Button
+              className="bg-black hover:bg-gray-800"
+              disabled={!fieldDialog || fieldDialog.selected.length === 0 || togglingStaffFor === fieldDialog.member.id}
+              onClick={async () => {
+                if (!fieldDialog) return;
+                const { member, selected } = fieldDialog;
+                setFieldDialog(null);
+                await saveFieldStaff(member, true, selected);
+              }}
+            >
+              {fieldDialog?.member.staff_link ? 'Save sites' : 'Turn on'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Invite Dialog */}
       <InviteMemberDialog

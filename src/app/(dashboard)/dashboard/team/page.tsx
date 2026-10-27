@@ -31,7 +31,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, UserCheck, Pencil } from 'lucide-react';
+import { Users, MoreVertical, UserPlus, Mail, X, Shield, Crown, User, Search, UserCheck, Pencil, Wrench } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { InviteMemberDialog } from '@/components/team/invite-member-dialog';
 import { AddStaffDialog } from '@/components/team/add-staff-dialog';
 import { EditStaffDialog } from '@/components/team/edit-staff-dialog';
@@ -50,9 +51,12 @@ interface TeamMember {
   email: string;
   created_at: string;
   site_assignments: { site_id: string; site_name: string; site_slug: string }[];
+  /** Active staff record linked to this login (null = not schedulable). */
+  staff_link: { id: string; site_names: string[] } | null;
 }
 
 interface StaffMember {
+  profile_id?: string | null;
   id: string;
   full_name: string;
   title: string | null;
@@ -93,6 +97,8 @@ export default function TeamPage() {
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [callerRole, setCallerRole] = useState<UserRole>('user');
+  const [callerProfileId, setCallerProfileId] = useState<string | null>(null);
+  const [togglingStaffFor, setTogglingStaffFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showAddStaffDialog, setShowAddStaffDialog] = useState(false);
@@ -124,6 +130,7 @@ export default function TeamPage() {
       const data = await membersRes.json();
       setMembers(data.members);
       setCallerRole(data.callerRole);
+      setCallerProfileId(data.callerProfileId || null);
     }
 
     if (staffRes.ok) {
@@ -262,6 +269,25 @@ export default function TeamPage() {
 
   const canManageTeam = callerRole === 'owner' || callerRole === 'admin';
 
+  // "Works in the field": create/deactivate the staff record linked to a login
+  const handleToggleFieldStaff = async (member: TeamMember, enabled: boolean) => {
+    setTogglingStaffFor(member.id);
+    try {
+      const res = await fetch(`/api/team/members/${member.id}/staff`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Failed to update');
+      }
+      await fetchTeamData();
+    } finally {
+      setTogglingStaffFor(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col">
@@ -378,8 +404,27 @@ export default function TeamPage() {
                         {member.role !== 'owner' && member.site_assignments.length === 0 && member.role === 'admin' && (
                           <p className="text-xs text-gray-400 mt-0.5">Access: All sites</p>
                         )}
+                        {member.staff_link && (
+                          <p className="text-xs text-emerald-700 mt-0.5 flex items-center gap-1">
+                            <Wrench className="h-3 w-3" /> Schedulable
+                            {member.staff_link.site_names.length > 0 ? ` · ${member.staff_link.site_names.join(', ')}` : ''}
+                          </p>
+                        )}
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-3">
+                    {(canManageTeam || member.id === callerProfileId) && (
+                      <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer" title="Turn on if this person does jobs in the field. They get a staff schedule and count toward availability.">
+                        <span className="hidden sm:inline">Works in the field</span>
+                        <Switch
+                          checked={!!member.staff_link}
+                          disabled={togglingStaffFor === member.id}
+                          onCheckedChange={(v) => handleToggleFieldStaff(member, v)}
+                          aria-label={`${member.full_name || member.email} works in the field`}
+                        />
+                      </label>
+                    )}
 
                     {callerRole === 'owner' && member.role !== 'owner' && (
                       <DropdownMenu>
@@ -415,6 +460,7 @@ export default function TeamPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
+                    </div>
                   </div>
                 ))}
                 {filteredMembers.length === 0 && (
@@ -433,7 +479,7 @@ export default function TeamPage() {
             <div className="flex items-center gap-3">
               <UserCheck className="h-6 w-6 text-gray-400" />
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Staff (No Access)</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Staff (Scheduling &amp; Website)</h2>
                 <p className="text-sm text-gray-500">{filteredStaff.length} member{filteredStaff.length !== 1 ? 's' : ''}</p>
               </div>
             </div>
@@ -467,6 +513,7 @@ export default function TeamPage() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900">{staff.full_name}</span>
                           {roleBadge('staff')}
+                          {staff.profile_id && <Badge variant="outline" className="text-[10px] font-normal">Dashboard user</Badge>}
                         </div>
                         {staff.title && (
                           <p className="text-sm text-gray-600">{staff.title}</p>
@@ -509,7 +556,7 @@ export default function TeamPage() {
                 {filteredStaff.length === 0 && (
                   <div className="p-6 text-center text-sm text-gray-400">
                     {staffMembers.length === 0
-                      ? 'No staff members yet. Add team members who appear on your website without dashboard access.'
+                      ? 'No staff yet. Add field staff here, or flip "Works in the field" on a team user above.'
                       : 'No staff members match your filters'}
                   </div>
                 )}

@@ -60,13 +60,30 @@ export async function GET() {
     }
   }
 
+  // Linked staff records (people who can be scheduled) keyed by profile
+  const { data: linkedStaff } = await adminSupabase
+    .from('staff_members')
+    .select('id, profile_id, is_active, assignments:staff_site_assignments(site_id, site:sites(name))')
+    .in('profile_id', profileIds)
+    .eq('is_active', true);
+  const staffMap = new Map<string, { id: string; site_names: string[] }>();
+  for (const s of linkedStaff || []) {
+    if (!s.profile_id) continue;
+    const rows = (s.assignments || []) as unknown as { site_id: string; site: { name: string } | { name: string }[] | null }[];
+    const names = rows
+      .map((r) => (Array.isArray(r.site) ? r.site[0]?.name : r.site?.name))
+      .filter((n): n is string => !!n);
+    staffMap.set(s.profile_id, { id: s.id, site_names: names });
+  }
+
   const members = profiles.map((p) => ({
     ...p,
     email: emailMap.get(p.user_id) || '',
     site_assignments: assignmentMap.get(p.id) || [],
+    staff_link: staffMap.get(p.id) || null,
   }));
 
-  return NextResponse.json({ members, callerRole: caller.role });
+  return NextResponse.json({ members, callerRole: caller.role, callerProfileId: caller.id });
 }
 
 // PATCH - Update a member's role or profile fields

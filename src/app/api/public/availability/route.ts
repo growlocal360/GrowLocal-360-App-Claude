@@ -5,6 +5,15 @@ import {
   getAvailabilityRange,
   aggregateSlotsForPublic,
 } from '@/lib/scheduling/availability';
+/** Calendar date (YYYY-MM-DD) right now in the given IANA timezone. */
+function todayIn(tz: string | null | undefined): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+}
+
 import type {
   SchedulingConfig,
   StaffSchedule,
@@ -63,7 +72,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         active: true,
         spotsRemaining: 0,
+        totalCapacity: 0,
         availableSlots: [],
+        range: [],
         message: 'No staff configured',
       });
     }
@@ -99,12 +110,13 @@ export async function GET(request: NextRequest) {
       zipCode: zip || undefined,
     };
 
-    // Range query (for calendar widget)
-    if (days && date) {
+    // Range query (calendar widget, hero badge). Start defaults to today in the business's timezone.
+    if (days) {
       const numDays = Math.min(parseInt(days, 10) || 14, 60);
+      const startDate = date || todayIn(typedConfig.timezone);
 
       // Get appointments for the date range
-      const endDate = new Date(date);
+      const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + numDays);
       const endDateStr = endDate.toISOString().split('T')[0];
 
@@ -112,7 +124,7 @@ export async function GET(request: NextRequest) {
         .from('appointments')
         .select('*')
         .eq('site_id', siteId)
-        .gte('scheduled_date', date)
+        .gte('scheduled_date', startDate)
         .lte('scheduled_date', endDateStr)
         .not('status', 'in', '("cancelled","no_show")');
 
@@ -122,7 +134,7 @@ export async function GET(request: NextRequest) {
         (staffBlocks || []) as StaffTimeBlock[],
         (staffAreas || []) as StaffServiceArea[],
         (appointments || []) as Appointment[],
-        date,
+        startDate,
         numDays,
         (overrides || []) as DateOverride[],
         allStaffIds,
@@ -134,6 +146,7 @@ export async function GET(request: NextRequest) {
         range: range.map(day => ({
           date: day.date,
           spotsRemaining: day.spotsRemaining,
+          totalCapacity: day.totalCapacity,
           isBlocked: day.isBlocked,
           slots: aggregateSlotsForPublic(day.availableSlots),
         })),
@@ -141,7 +154,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Single day query
-    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetDate = date || todayIn(typedConfig.timezone);
 
     const { data: appointments } = await supabase
       .from('appointments')

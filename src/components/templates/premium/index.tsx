@@ -168,7 +168,7 @@ export function PremiumTemplate({
               <p className="pm-lede">{heroDescription}</p>
               {showAvailabilityBadge && (
                 <div style={{ marginBottom: 22 }}>
-                  <AvailabilityBadge siteId={site.id} brandColor={secondaryColor} />
+                  <AvailabilityBadge siteId={site.id} brandColor={secondaryColor} tone="onDark" />
                 </div>
               )}
               <div className="pm-actions">

@@ -78,25 +78,12 @@ export default function SchedulingSettingsPage() {
       const overridesData = await overridesRes.json();
       setDateOverrides(Array.isArray(overridesData) ? overridesData : []);
 
-      // Load staff members assigned to this site
-      const { data: assignments } = await supabase
-        .from('staff_site_assignments')
-        .select('staff_member_id')
-        .eq('site_id', siteId);
-
-      if (assignments && assignments.length > 0) {
-        const staffIds = assignments.map(a => a.staff_member_id);
-        const { data: staffData } = await supabase
-          .from('staff_members')
-          .select('*')
-          .in('id', staffIds)
-          .eq('is_active', true)
-          .order('display_order');
-
-        setStaff((staffData || []) as StaffMember[]);
-        if (staffData && staffData.length > 0) {
-          setSelectedStaffId(staffData[0].id);
-        }
+      // Load staff members assigned to this site (server route: staff tables are admin-only under RLS)
+      const staffRes = await fetch(`/api/sites/${siteId}/scheduling/staff`);
+      const staffData = staffRes.ok ? await staffRes.json() : [];
+      if (Array.isArray(staffData) && staffData.length > 0) {
+        setStaff(staffData as StaffMember[]);
+        setSelectedStaffId(staffData[0].id);
       }
 
       setLoading(false);

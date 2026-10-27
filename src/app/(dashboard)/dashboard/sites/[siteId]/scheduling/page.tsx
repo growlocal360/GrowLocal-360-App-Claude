@@ -135,28 +135,16 @@ export default function SchedulingPage() {
       const currentRole = profile?.role || 'user';
       setUserRole(currentRole);
 
-      // Load staff
-      const { data: assignments } = await supabase
-        .from('staff_site_assignments')
-        .select('staff_member_id')
-        .eq('site_id', siteId);
+      // Load staff assigned to this site (server route: staff tables are admin-only under RLS)
+      const staffRes = await fetch(`/api/sites/${siteId}/scheduling/staff`);
+      const staffList = (staffRes.ok ? await staffRes.json() : []) as StaffMember[];
+      setStaff(staffList);
 
-      if (assignments && assignments.length > 0) {
-        const staffIds = assignments.map(a => a.staff_member_id);
-        const { data: staffData } = await supabase
-          .from('staff_members')
-          .select('*')
-          .in('id', staffIds)
-          .eq('is_active', true);
-        const staffList = (staffData || []) as StaffMember[];
-        setStaff(staffList);
-
-        // For 'user' role (technicians): auto-filter to their own schedule
-        if (currentRole === 'user' && profile?.id) {
-          const myStaff = staffList.find(s => s.profile_id === profile.id);
-          if (myStaff) {
-            setStaffFilter(myStaff.id);
-          }
+      // For 'user' role (technicians): auto-filter to their own schedule
+      if (currentRole === 'user' && profile?.id) {
+        const myStaff = staffList.find(s => s.profile_id === profile.id);
+        if (myStaff) {
+          setStaffFilter(myStaff.id);
         }
       }
 

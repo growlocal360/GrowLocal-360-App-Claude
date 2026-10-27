@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, ArrowRight } from 'lucide-react';
 
 interface AvailabilityBadgeProps {
   siteId: string;
@@ -87,9 +87,11 @@ export function AvailabilityBadge({ siteId, brandColor = '#00ef99', tone = 'bran
         role="status"
         aria-live="polite"
       >
-        <span className="relative flex h-3.5 w-3.5 shrink-0" aria-hidden="true">
-          {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ backgroundColor: '#22c55e' }} />}
-          <span className="relative inline-flex h-3.5 w-3.5 rounded-full" style={{ backgroundColor: live ? '#22c55e' : '#f59e0b' }} />
+        <span className="relative flex h-8 w-8 shrink-0" aria-hidden="true">
+          {live && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-50" style={{ backgroundColor: '#22c55e' }} />}
+          <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full pm-availarrow" style={{ backgroundColor: live ? '#22c55e' : '#f59e0b' }}>
+            <ArrowRight style={{ color: '#fff', width: 18, height: 18 }} strokeWidth={3} />
+          </span>
         </span>
         {state.kind === 'today' ? (
           <>

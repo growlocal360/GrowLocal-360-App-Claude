@@ -508,6 +508,42 @@ export default function SchedulingSettingsPage() {
                     })}
                   </div>
                 </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Post button</label>
+                    <select
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                      value={config.post_cta_type || 'BOOK'}
+                      onChange={e => setConfig(prev => prev ? { ...prev, post_cta_type: e.target.value as SchedulingConfig['post_cta_type'] } : prev)}
+                    >
+                      <option value="BOOK">Book</option>
+                      <option value="CALL">Call now</option>
+                      <option value="LEARN_MORE">Learn more</option>
+                      <option value="NONE">No button</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {config.post_cta_type === 'CALL'
+                        ? 'Google dials the phone number on your Business Profile. No link needed.'
+                        : config.post_cta_type === 'NONE'
+                          ? 'The post shows text only.'
+                          : 'Shown under the post on Google Search and Maps.'}
+                    </p>
+                  </div>
+                  {(config.post_cta_type || 'BOOK') !== 'CALL' && (config.post_cta_type || 'BOOK') !== 'NONE' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Button link</label>
+                      <input
+                        type="url"
+                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                        placeholder="Default: your site's /book page"
+                        value={config.post_cta_url || ''}
+                        onChange={e => setConfig(prev => prev ? { ...prev, post_cta_url: e.target.value || null } : prev)}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Leave blank to send people to the booking page on your website.</p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </CardContent>

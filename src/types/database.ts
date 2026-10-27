@@ -863,6 +863,9 @@ export interface SchedulingConfig {
   auto_publish_availability: boolean;
   publish_times: string[];       // e.g. ["07:30","11:00","14:00"]
   publish_days: string[];        // e.g. ["mon","tue","wed","thu","fri"]
+  /** Button on the GBP availability post. CALL dials the profile's phone; the others link to post_cta_url or /book. */
+  post_cta_type: 'BOOK' | 'CALL' | 'LEARN_MORE' | 'NONE';
+  post_cta_url: string | null;
   notification_phone: string | null;
   notification_email: string | null;
   confirmation_message: string | null;

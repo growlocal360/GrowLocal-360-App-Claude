@@ -68,6 +68,7 @@ export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlu
             <Link href={paths.reviewsIndex(locationSlug)}>Reviews</Link>
             <Link href={paths.aboutPage(locationSlug)}>About Us</Link>
             <Link href={paths.contactPage(locationSlug)}>Contact</Link>
+            <Link href={paths.bookPage(locationSlug)}>Book Online</Link>
             {site.has_brands && <Link href={paths.brandsIndex(locationSlug)}>Brands</Link>}
             <Link href={paths.faqPage(locationSlug)}>FAQ</Link>
           </div>

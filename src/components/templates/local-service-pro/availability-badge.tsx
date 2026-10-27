@@ -80,10 +80,12 @@ export function AvailabilityBadge({ siteId, brandColor = '#00ef99', tone = 'bran
     // Conversion moment: the number is the message. Big count, live dot, short label.
     const live = state.kind === 'today';
     const accent = tone === 'onDark' ? '#fff' : brandColor;
+    // Brand tone on a light page: tinted card, dark labels, brand-colored number
+    const lgStyle = tone === 'onDark' ? style : { borderColor: `${brandColor}55`, backgroundColor: `${brandColor}14`, color: '#111827' };
     return (
       <div
         className="inline-flex items-center gap-4 border backdrop-blur"
-        style={{ ...style, padding: '12px 26px 12px 20px', borderRadius: 20 }}
+        style={{ ...lgStyle, padding: '12px 26px 12px 20px', borderRadius: 20 }}
         role="status"
         aria-live="polite"
       >

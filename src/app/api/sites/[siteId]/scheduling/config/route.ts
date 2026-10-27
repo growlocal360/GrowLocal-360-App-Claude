@@ -89,6 +89,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       'scheduling_mode', 'booking_mode', 'cta_style', 'timezone',
       'advance_booking_days', 'booking_buffer_minutes',
       'show_availability_badge', 'auto_publish_availability', 'publish_times', 'publish_days',
+      'post_cta_type', 'post_cta_url',
       'notification_phone', 'notification_email', 'confirmation_message',
       'is_active',
     ];

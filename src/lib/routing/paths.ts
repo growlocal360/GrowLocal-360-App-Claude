@@ -120,6 +120,11 @@ export function contactPage(locationSlug?: string): string {
   return `${base(locationSlug)}/contact`;
 }
 
+/** /book or /{locationSlug}/book — the dedicated booking / estimate page */
+export function bookPage(locationSlug?: string): string {
+  return `${base(locationSlug)}/book`;
+}
+
 /** /work or /{locationSlug}/work */
 export function workHub(locationSlug?: string): string {
   return `${base(locationSlug)}/work`;

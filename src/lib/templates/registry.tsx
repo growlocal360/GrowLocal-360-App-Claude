@@ -39,6 +39,8 @@ import { PremiumLocationPage } from '@/components/templates/premium/location-pag
 import { PremiumWorkDetailPage } from '@/components/templates/premium/work-detail-page';
 import { PremiumLegalPage } from '@/components/templates/premium/legal-page';
 import { LegalPage } from '@/components/templates/local-service-pro/legal-page';
+import { BookPage } from '@/components/templates/local-service-pro/book-page';
+import { PremiumBookPage } from '@/components/templates/premium/book-page';
 
 /**
  * A TemplateComponents set maps each page "role" to the component that renders
@@ -67,6 +69,7 @@ export interface TemplateComponents {
   Reviews: typeof ReviewsPage;
   Location: typeof LocationPage;
   Legal: typeof LegalPage;
+  Book: typeof BookPage;
 }
 
 const BASELINE: TemplateComponents = {
@@ -88,6 +91,7 @@ const BASELINE: TemplateComponents = {
   Reviews: ReviewsPage,
   Location: LocationPage,
   Legal: LegalPage,
+  Book: BookPage,
 };
 
 /**
@@ -116,6 +120,7 @@ const OVERRIDES: Record<TemplateId, Partial<TemplateComponents>> = {
     Location: PremiumLocationPage,
     WorkDetail: PremiumWorkDetailPage,
     Legal: PremiumLegalPage,
+    Book: PremiumBookPage,
     // Full coverage — every page type now has a premium component.
   },
 };

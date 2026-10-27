@@ -222,7 +222,8 @@ export class GBPClient {
       topicType?: 'STANDARD' | 'EVENT' | 'OFFER' | 'ALERT';
       languageCode: string;
       summary: string;
-      callToAction?: { actionType: string; url: string };
+      /** `url` is required for every action type except CALL, which must omit it. */
+      callToAction?: { actionType: string; url?: string };
       media?: { mediaFormat: string; sourceUrl: string }[];
     }
   ): Promise<{ name: string }> {

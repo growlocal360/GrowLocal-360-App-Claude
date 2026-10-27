@@ -100,7 +100,8 @@ export const BG_SCHEMES = {
 
 export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlug, locationSlug, ctaStyle = 'booking', formOnPage = true, children }: ShellProps) {
   const ctaLabel = useCtaLabel(ctaStyle);
-  const ctaHref = formOnPage ? '#pm-form' : `${paths.contactPage(locationSlug)}#pm-form`;
+  // Pages without a form send the CTA to the dedicated booking page.
+  const ctaHref = formOnPage ? '#pm-form' : `${paths.bookPage(locationSlug)}#pm-form`;
   return (
     <CtaHrefContext.Provider value={ctaHref}>
       <div className="tpl-premium" style={premiumThemeStyle(site)}>

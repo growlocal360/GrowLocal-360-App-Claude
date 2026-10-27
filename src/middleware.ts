@@ -180,9 +180,14 @@ async function getSiteBySlug(slug: string, request: NextRequest): Promise<SiteLo
   }
 }
 
+// Browser/crawler icon requests. On client hosts these resolve per site
+// (uploaded favicon or a brand-color letter mark) instead of the app's icon.
+const SITE_ICON_PATHS = new Set(['/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png']);
+
 export async function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
+  const isSiteIconPath = SITE_ICON_PATHS.has(pathname);
 
   // Admin hostnames always go straight to the main app — never the subdomain
   // or custom-domain lookup branches below. Without this an unknown admin
@@ -202,8 +207,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/signup') ||
     pathname.startsWith('/oauth2callback') ||
     pathname.startsWith('/sites/') || // Already routed
-    pathname === '/favicon.ico' ||
-    (!pathname.startsWith('/public/') && pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/))
+    (!isSiteIconPath && !pathname.startsWith('/public/') && pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/))
   ) {
     // For dashboard/login routes, still run auth middleware
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
@@ -214,6 +218,11 @@ export async function middleware(request: NextRequest) {
 
   // Helper to handle site status routing
   const handleSiteRouting = (site: SiteLookupResult, url: URL): NextResponse => {
+    // Icons resolve for every status (a paused site still has a tab icon)
+    if (isSiteIconPath) {
+      url.pathname = `/sites/${site.slug}${pathname}`;
+      return NextResponse.rewrite(url);
+    }
     // Check site status and route accordingly
     switch (site.status) {
       case 'paused':
@@ -293,12 +302,12 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
      *
+     * favicon.ico is matched on purpose: client hosts serve a per-site icon.
      * Note: image extensions are NOT excluded here — /public/ asset paths
      * need middleware rewriting for subdomain/custom domain routing.
      * Static image files are handled by the early-return check in middleware().
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image).*)',
   ],
 };

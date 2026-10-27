@@ -54,6 +54,7 @@ export async function GET(
     heroOverlayStrength: typeof settings.hero_overlay_strength === 'number' ? settings.hero_overlay_strength : 100,
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
+    faviconUrl: toDashboardUrl(settings.favicon_url),
     siteName: site.name,
   });
 }
@@ -84,7 +85,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, heroOverlay, heroOverlayColor, heroOverlayStrength, logoUrl, logoDarkUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, heroOverlay, heroOverlayColor, heroOverlayStrength, logoUrl, logoDarkUrl, faviconUrl } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -130,6 +131,7 @@ export async function PATCH(
 
   const cleanLogoUrl = logoUrl !== undefined ? normalizeLogoPath(logoUrl) : undefined;
   const cleanLogoDarkUrl = logoDarkUrl !== undefined ? normalizeLogoPath(logoDarkUrl) : undefined;
+  const cleanFaviconUrl = faviconUrl !== undefined ? normalizeLogoPath(faviconUrl) : undefined;
 
   // Merge with existing settings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,6 +151,7 @@ export async function PATCH(
     hero_overlay_strength: heroOverlayStrength !== undefined ? Math.round(heroOverlayStrength) : currentSettings.hero_overlay_strength,
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
+    favicon_url: cleanFaviconUrl !== undefined ? cleanFaviconUrl : currentSettings.favicon_url,
   };
 
   // Update site settings (use admin client to bypass RLS)
@@ -196,5 +199,6 @@ export async function PATCH(
     heroOverlayStrength: typeof updatedSettings.hero_overlay_strength === 'number' ? updatedSettings.hero_overlay_strength : 100,
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
+    faviconUrl: toDashboardUrl(updatedSettings.favicon_url),
   });
 }

@@ -202,6 +202,8 @@ export interface SiteSettings {
   hero_overlay_color?: string;  // custom tint
   hero_overlay_strength?: number; // 30-100
   logo_url?: string;
+  /** Square icon for the browser tab / Google result. Stored like logo_url (/public/assets/... or absolute). */
+  favicon_url?: string;
   phone?: string;
   email?: string;
   core_industry?: string;

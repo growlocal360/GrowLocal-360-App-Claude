@@ -85,6 +85,13 @@ export function PremiumFooter({ site, primaryLocation, serviceAreas, locationSlu
             ) : primaryLocation?.city ? (
               <p style={{ fontSize: 13.5, opacity: 0.85 }}>{primaryLocation.city}{primaryLocation.state ? `, ${primaryLocation.state}` : ''}</p>
             ) : null}
+            {site.settings?.profiles?.length > 0 && (
+              <div className="pm-footprofiles">
+                {site.settings.profiles.map((p) => (
+                  <a key={p.key} href={p.url} target="_blank" rel="noopener noreferrer me" title={p.label}>{p.short}</a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import type { SchemaBusinessInput, SchemaLocationInput } from './types';
+import { profileLinks, type SiteProfiles } from '@/lib/sites/profiles';
 
 interface SiteInput {
   name: string;
@@ -12,6 +13,7 @@ interface SiteInput {
     logo_url?: string | null;
     google_average_rating?: number | null;
     google_total_reviews?: number | null;
+    profiles?: unknown;
   };
 }
 
@@ -41,6 +43,7 @@ export function toBusinessInput(
     logoUrl: site.settings?.logo_url || null,
     averageRating: site.settings?.google_average_rating ?? null,
     totalReviews: site.settings?.google_total_reviews ?? null,
+    sameAs: sameAsFrom(site.settings?.profiles),
   };
 }
 
@@ -55,4 +58,13 @@ export function toLocationInput(location: LocationInput): SchemaLocationInput {
     latitude: location.latitude,
     longitude: location.longitude,
   };
+}
+
+/** Accepts the raw settings.profiles map or the already-ordered ProfileLink[] from the public render model. */
+function sameAsFrom(profiles: unknown): string[] {
+  if (!profiles) return [];
+  if (Array.isArray(profiles)) {
+    return profiles.map((p) => (p && typeof p === 'object' ? (p as { url?: string }).url : null)).filter((u): u is string => !!u);
+  }
+  return profileLinks(profiles as SiteProfiles).map((p) => p.url);
 }

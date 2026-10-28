@@ -75,6 +75,9 @@ export function buildLocalBusinessSchema(
   if (business.email) {
     schema.email = business.email;
   }
+  if (business.sameAs && business.sameAs.length > 0) {
+    schema.sameAs = business.sameAs;
+  }
   if (business.logoUrl) {
     // Resolve relative paths (e.g., /public/assets/brand/logo.svg) to absolute URLs
     const logoAbsoluteUrl = business.logoUrl.startsWith('/')

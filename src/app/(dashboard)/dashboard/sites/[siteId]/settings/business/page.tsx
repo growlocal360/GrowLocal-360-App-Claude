@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, AlertCircle, Check, Loader2, ArrowLeft } from 'lucide-react';
+import { Building2, AlertCircle, Check, Loader2, ArrowLeft, Link2 } from 'lucide-react';
+import { PROFILE_DEFS, type SiteProfiles } from '@/lib/sites/profiles';
 
 interface BusinessInfo {
   name: string;
@@ -21,6 +22,8 @@ interface BusinessInfo {
   serviceRegion?: string;
   address?: { line1: string; line2: string; city: string; state: string; zip: string };
   showAddress?: boolean;
+  profiles?: SiteProfiles;
+  suggestedGoogleUrl?: string | null;
 }
 
 export default function BusinessInfoPage() {
@@ -47,6 +50,8 @@ export default function BusinessInfoPage() {
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [showAddress, setShowAddress] = useState(true);
+  const [profiles, setProfiles] = useState<SiteProfiles>({});
+  const [suggestedGoogleUrl, setSuggestedGoogleUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -74,6 +79,8 @@ export default function BusinessInfoPage() {
       setState(data.address?.state || '');
       setZip(data.address?.zip || '');
       setShowAddress(data.showAddress !== false);
+      setProfiles(data.profiles || {});
+      setSuggestedGoogleUrl(data.suggestedGoogleUrl || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load business info');
     } finally {
@@ -95,7 +102,8 @@ export default function BusinessInfoPage() {
     city !== (original?.address?.city || '') ||
     state !== (original?.address?.state || '') ||
     zip !== (original?.address?.zip || '') ||
-    showAddress !== (original?.showAddress !== false);
+    showAddress !== (original?.showAddress !== false) ||
+    PROFILE_DEFS.some((d) => (profiles[d.key] || '') !== (original?.profiles?.[d.key] || ''));
 
   const handleSave = async () => {
     try {
@@ -106,7 +114,7 @@ export default function BusinessInfoPage() {
       const response = await fetch(`/api/sites/${siteId}/settings/business`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress }),
+        body: JSON.stringify({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress, profiles }),
       });
 
       if (!response.ok) {
@@ -114,7 +122,7 @@ export default function BusinessInfoPage() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress });
+      setOriginal({ name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address: { line1: addr1, line2: addr2, city, state, zip }, showAddress, profiles });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -255,6 +263,38 @@ export default function BusinessInfoPage() {
               Show the address on the website (footer and Contact page)
             </label>
             <p className="text-xs text-gray-500">Turn this off for service-area or home-based businesses that don&apos;t receive customers at the address.</p>
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <div className="flex items-start gap-2">
+              <Link2 className="mt-0.5 h-4 w-4 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Business Profiles</p>
+                <p className="text-xs text-gray-500">
+                  Links to this business elsewhere. They go into the site&apos;s structured data (<code>sameAs</code>), the footer, and llms.txt so Google and AI assistants connect the website to these profiles. Leave blank any you don&apos;t have.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PROFILE_DEFS.map((d) => (
+                <div key={d.key}>
+                  <Label htmlFor={`profile-${d.key}`} className="text-xs">{d.label}</Label>
+                  <Input
+                    id={`profile-${d.key}`}
+                    className="mt-1"
+                    value={profiles[d.key] || ''}
+                    onChange={(e) => setProfiles((p) => ({ ...p, [d.key]: e.target.value }))}
+                    placeholder={d.placeholder}
+                    inputMode="url"
+                  />
+                  {d.key === 'google_business' && !profiles.google_business && suggestedGoogleUrl && (
+                    <button type="button" className="mt-1 text-xs text-[#059669] hover:underline" onClick={() => setProfiles((p) => ({ ...p, google_business: suggestedGoogleUrl }))}>
+                      Use the connected Google Business Profile link
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>

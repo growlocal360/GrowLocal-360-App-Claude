@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSiteBySlug } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
+import { profileLinks } from '@/lib/sites/profiles';
 
 /**
  * GET /llms.txt
@@ -79,6 +80,12 @@ export async function GET(
 
   if (data.brands.length > 0) {
     lines.push(`- Brands: ${siteUrl}/brands`);
+  }
+
+  const profiles = profileLinks((site.settings as { profiles?: Parameters<typeof profileLinks>[0] } | null)?.profiles);
+  if (profiles.length > 0) {
+    lines.push('', '## Profiles', `The same business on other platforms:`);
+    for (const p of profiles) lines.push(`- ${p.label}: ${p.url}`);
   }
 
   const content = lines.join('\n') + '\n';

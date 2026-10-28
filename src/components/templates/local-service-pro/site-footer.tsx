@@ -154,6 +154,20 @@ export function SiteFooter({ site, primaryLocation, serviceAreas, siteSlug, loca
                   {email}
                 </a>
               )}
+              {site.settings?.profiles?.length > 0 && (
+                <div className="pt-2">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">Find us on</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {site.settings.profiles.map((p) => (
+                      <li key={p.key}>
+                        <a href={p.url} target="_blank" rel="noopener noreferrer me" title={p.label} className="inline-block rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 transition-colors hover:border-gray-500 hover:text-white">
+                          {p.short}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>

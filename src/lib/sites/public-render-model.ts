@@ -8,6 +8,7 @@
  * (e.g., site.settings?.brand_color) and avoid refactoring rendering logic.
  */
 
+import { profileLinks, type ProfileLink } from '@/lib/sites/profiles';
 import type {
   WebsiteType,
   Profile,
@@ -57,6 +58,8 @@ export interface PublicRenderSettings {
   homepage_is_primary_market: boolean;
   /** Street address shown in footer + Contact page (default true). */
   show_address: boolean;
+  /** Off-site profiles (ordered, only those set) for footer links + schema sameAs. */
+  profiles: ProfileLink[];
   bg_scheme: 'warm' | 'light' | 'custom' | null;
   bg_color: string | null;
   bg_alt_color: string | null;
@@ -375,6 +378,7 @@ export function toPublicSite(
       service_region: s.service_region?.trim() || null,
       homepage_is_primary_market: s.homepage_is_primary_market === true,
       show_address: s.show_address !== false,
+      profiles: profileLinks((s as { profiles?: Parameters<typeof profileLinks>[0] }).profiles),
       bg_scheme: s.bg_scheme || null,
       bg_color: s.bg_color || null,
       bg_alt_color: s.bg_alt_color || null,

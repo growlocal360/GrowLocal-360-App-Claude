@@ -13,6 +13,8 @@ export interface SchemaBusinessInput {
   logoUrl?: string | null;
   averageRating?: number | null;
   totalReviews?: number | null;
+  /** Other profiles of the same entity (GBP, Facebook, Yelp…) → LocalBusiness.sameAs */
+  sameAs?: string[];
 }
 
 export interface SchemaLocationInput {

@@ -202,6 +202,8 @@ export interface SiteSettings {
   hero_overlay_color?: string;  // custom tint
   hero_overlay_strength?: number; // 30-100
   logo_url?: string;
+  /** Off-site profile URLs keyed by platform (see lib/sites/profiles.ts); feeds schema sameAs + footer. */
+  profiles?: Partial<Record<'google_business' | 'facebook' | 'instagram' | 'youtube' | 'yelp' | 'linkedin' | 'tiktok' | 'nextdoor' | 'bbb', string>>;
   /** Square icon for the browser tab / Google result. Stored like logo_url (/public/assets/... or absolute). */
   favicon_url?: string;
   phone?: string;

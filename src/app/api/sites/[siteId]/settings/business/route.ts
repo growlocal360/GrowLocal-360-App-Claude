@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { normalizeProfiles, googleMapsUrlForPlaceId } from '@/lib/sites/profiles';
 
 // GET - Fetch current business info
 export async function GET(
@@ -37,7 +38,7 @@ export async function GET(
   // Primary location: phone fallback + the address shown on the site.
   const { data: primaryLocation } = await supabase
     .from('locations')
-    .select('phone, address_line1, address_line2, city, state, zip_code')
+    .select('phone, address_line1, address_line2, city, state, zip_code, gbp_place_id')
     .eq('site_id', siteId)
     .eq('is_primary', true)
     .limit(1)
@@ -64,6 +65,9 @@ export async function GET(
       zip: primaryLocation?.zip_code || '',
     },
     showAddress: settings.show_address !== false,
+    profiles: normalizeProfiles(settings.profiles),
+    // Prefill suggestion for the Google Business Profile link from the connected location
+    suggestedGoogleUrl: googleMapsUrlForPlaceId(primaryLocation?.gbp_place_id),
   });
 }
 
@@ -92,7 +96,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address, showAddress } = body;
+  const { name, phone, email, coreIndustry, businessDescription, credentials, tagline, serviceRegion, address, showAddress, profiles } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentSettings = (site.settings || {}) as any;
@@ -106,6 +110,7 @@ export async function PATCH(
     ...(tagline !== undefined && { tagline }),
     ...(typeof serviceRegion === 'string' && { service_region: serviceRegion.trim().slice(0, 60) }),
     ...(typeof showAddress === 'boolean' && { show_address: showAddress }),
+    ...(profiles !== undefined && { profiles: normalizeProfiles(profiles) }),
   };
 
   const updateData: Record<string, unknown> = {

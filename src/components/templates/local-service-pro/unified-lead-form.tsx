@@ -154,6 +154,24 @@ export function UnifiedLeadForm({
   const current = steps[step - 1];
   const isLastStep = step === totalSteps;
 
+  // Keep the form in view when the step changes. A tall step (appliance grid,
+  // 14-day calendar) leaves the page scrolled to its bottom; the next step is
+  // shorter, so without this the user lands below the form and has to scroll
+  // back up to find it. Skipped when the form's top is already on screen.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const lastStepRef = useRef(step);
+  useEffect(() => {
+    if (lastStepRef.current === step) return;
+    lastStepRef.current = step;
+    const el = wrapperRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    const header = document.querySelector('header');
+    const offset = (header?.getBoundingClientRect().height ?? 80) + 12;
+    if (top >= offset && top < window.innerHeight * 0.6) return;
+    window.scrollTo({ top: window.scrollY + top - offset, behavior: 'smooth' });
+  }, [step]);
+
   // Address autocomplete - debounced fetch
   useEffect(() => {
     if (addressQuery.length < 3) {
@@ -801,12 +819,12 @@ export function UnifiedLeadForm({
 
   // ---- Layout wrapper ----
   if (variant === 'hero') {
-    return <div>{formContent}</div>;
+    return <div ref={wrapperRef}>{formContent}</div>;
   }
 
   return (
     <section id="booking" className="py-24">
-      <div className="mx-auto max-w-xl px-4">
+      <div ref={wrapperRef} className="mx-auto max-w-xl px-4">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
             {ctaStyle === 'booking' ? 'Schedule Your Service' : 'Get a Free, No-Obligation Estimate'}

@@ -46,7 +46,7 @@ export default async function SiteLayout({
   const supabase = createAdminClient();
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, settings')
+    .select('id, slug, settings, custom_domain, custom_domain_verified')
     .eq('slug', slug)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -54,7 +54,13 @@ export default async function SiteLayout({
   const site = sites?.[0];
   const settings = (site?.settings || {}) as SiteSettings;
 
-  let nav: SiteNav = { services: [], areas: [] };
+  // Absolute origin for schema.org URLs (Google rejects relative ids in BreadcrumbList).
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
+  const siteUrl = site
+    ? `https://${site.custom_domain_verified && site.custom_domain ? site.custom_domain : `${site.slug}.${appDomain}`}`
+    : '';
+
+  let nav: SiteNav = { services: [], areas: [], siteUrl };
   if (site?.id) {
     const [{ data: services }, { data: areas }, plan] = await Promise.all([
       supabase
@@ -69,6 +75,7 @@ export default async function SiteLayout({
     ]);
     const treatment = plan ? cityTreatmentByName(plan) : null;
     nav = {
+      siteUrl,
       services: (services || []).map((s) => {
         const cat = Array.isArray(s.site_category) ? s.site_category[0] : s.site_category;
         const gbp = cat ? (Array.isArray(cat.gbp_category) ? cat.gbp_category[0] : cat.gbp_category) : null;

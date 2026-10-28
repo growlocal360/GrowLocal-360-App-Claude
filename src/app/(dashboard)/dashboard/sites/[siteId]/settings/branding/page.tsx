@@ -33,6 +33,7 @@ interface BrandingConfig {
   ctaColor: string | null;
   logoUrl: string | null;
   logoDarkUrl: string | null;
+  faviconUrl: string | null;
   siteName: string;
 }
 
@@ -41,6 +42,7 @@ export default function BrandingSettingsPage() {
   const siteId = params.siteId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputDarkRef = useRef<HTMLInputElement>(null);
+  const fileInputFaviconRef = useRef<HTMLInputElement>(null);
 
   const [config, setConfig] = useState<BrandingConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,8 @@ export default function BrandingSettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkPreview, setLogoDarkPreview] = useState<string | null>(null);
   const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
 
   // Fetch current branding configuration
   useEffect(() => {
@@ -95,6 +99,7 @@ export default function BrandingSettingsPage() {
       setHeroOverlayStrength(typeof data.heroOverlayStrength === 'number' ? data.heroOverlayStrength : 100);
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
+      setFaviconPreview(data.faviconUrl || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load branding settings');
     } finally {
@@ -140,6 +145,22 @@ export default function BrandingSettingsPage() {
     }
   };
 
+  const handleFaviconFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setError('Favicon must be under 2MB'); return; }
+    setError(null);
+    const reader = new FileReader();
+    reader.onloadend = () => { setFaviconFile(file); setFaviconPreview(reader.result as string); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFavicon = () => {
+    setFaviconFile(null);
+    setFaviconPreview(null);
+    if (fileInputFaviconRef.current) fileInputFaviconRef.current.value = '';
+  };
+
   const handleRemoveLogoDark = () => {
     setLogoDarkFile(null);
     setLogoDarkPreview(null);
@@ -171,8 +192,9 @@ export default function BrandingSettingsPage() {
 
       let newLogoUrl: string | null = config?.logoUrl || null;
       let newLogoDarkUrl: string | null = config?.logoDarkUrl || null;
+      let newFaviconUrl: string | null = config?.faviconUrl || null;
 
-      if (logoFile || logoDarkFile) setUploading(true);
+      if (logoFile || logoDarkFile || faviconFile) setUploading(true);
 
       if (logoFile) {
         newLogoUrl = await uploadFile(logoFile);
@@ -180,10 +202,14 @@ export default function BrandingSettingsPage() {
       if (logoDarkFile) {
         newLogoDarkUrl = await uploadFile(logoDarkFile);
       }
+      if (faviconFile) {
+        newFaviconUrl = await uploadFile(faviconFile);
+      }
 
       // Handle removals (preview cleared but config had a value)
       if (logoPreview === null && config?.logoUrl) newLogoUrl = null;
       if (logoDarkPreview === null && config?.logoDarkUrl) newLogoDarkUrl = null;
+      if (faviconPreview === null && config?.faviconUrl) newFaviconUrl = null;
 
       setUploading(false);
 
@@ -205,6 +231,7 @@ export default function BrandingSettingsPage() {
           heroOverlayStrength,
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
+          faviconUrl: newFaviconUrl,
         }),
       });
 
@@ -217,6 +244,7 @@ export default function BrandingSettingsPage() {
 
       const dashboardLogoUrl = savedData.logoUrl || null;
       const dashboardLogoDarkUrl = savedData.logoDarkUrl || null;
+      const dashboardFaviconUrl = savedData.faviconUrl || null;
       setConfig((prev) =>
         prev
           ? {
@@ -234,13 +262,16 @@ export default function BrandingSettingsPage() {
               heroOverlayStrength,
               logoUrl: dashboardLogoUrl,
               logoDarkUrl: dashboardLogoDarkUrl,
+              faviconUrl: dashboardFaviconUrl,
             }
           : null,
       );
       setLogoPreview(dashboardLogoUrl);
       setLogoDarkPreview(dashboardLogoDarkUrl);
+      setFaviconPreview(dashboardFaviconUrl);
       setLogoFile(null);
       setLogoDarkFile(null);
+      setFaviconFile(null);
       setSuccess(true);
 
       setTimeout(() => setSuccess(false), 3000);
@@ -266,7 +297,9 @@ export default function BrandingSettingsPage() {
     logoFile !== null ||
     logoDarkFile !== null ||
     (logoPreview === null && config?.logoUrl !== null) ||
-    (logoDarkPreview === null && config?.logoDarkUrl !== null);
+    (logoDarkPreview === null && config?.logoDarkUrl !== null) ||
+    faviconFile !== null ||
+    (faviconPreview === null && !!config?.faviconUrl);
 
   if (loading) {
     return (
@@ -445,6 +478,58 @@ export default function BrandingSettingsPage() {
               Replace Dark Logo
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Favicon */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-gray-700" />
+            <h2 className="font-semibold">Favicon <span className="text-sm font-normal text-gray-500">(browser tab icon)</span></h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            The small square icon in the browser tab, bookmarks, and next to your site in Google results.
+            Upload a square PNG or SVG, at least 512×512. Without one, the site shows a letter mark in your brand color.
+          </p>
+
+          <div className="flex items-start gap-4">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border bg-white">
+                {faviconPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={faviconPreview} alt="Favicon preview" className="h-12 w-12 object-contain" />
+                ) : (
+                  <span className="flex h-12 w-12 items-center justify-center rounded-lg text-xl font-bold text-white" style={{ backgroundColor: brandColor }}>
+                    {(config?.siteName || 'G').trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-gray-400">{faviconPreview ? 'Uploaded' : 'Letter mark'}</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button variant="outline" size="sm" onClick={() => fileInputFaviconRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" />
+                {faviconPreview ? 'Replace Favicon' : 'Upload Favicon'}
+              </Button>
+              {faviconPreview && (
+                <Button variant="outline" size="sm" onClick={handleRemoveFavicon} className="text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <input
+            ref={fileInputFaviconRef}
+            type="file"
+            accept="image/png,image/svg+xml,image/webp,image/jpeg"
+            onChange={handleFaviconFile}
+            className="hidden"
+          />
         </CardContent>
       </Card>
 

@@ -7,12 +7,30 @@ import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import type { SiteSettings } from '@/types/database';
 
-export const metadata: Metadata = {
-  title: {
-    default: '',
-    template: '%s',
-  },
-};
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  // Version the icon URLs by the stored favicon reference so browsers pick up
+  // a new upload without waiting for their favicon cache to expire.
+  const supabase = createAdminClient();
+  const { data: rows } = await supabase
+    .from('sites')
+    .select('settings')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const fav = ((rows?.[0]?.settings || {}) as { favicon_url?: string }).favicon_url || '';
+  let h = 0;
+  for (let i = 0; i < fav.length; i++) h = (h * 31 + fav.charCodeAt(i)) >>> 0;
+  const v = fav ? `?v=${h.toString(36)}` : '';
+  return {
+    title: { default: '', template: '%s' },
+    icons: {
+      icon: [{ url: `/favicon.ico${v}`, type: fav ? undefined : 'image/png', sizes: '96x96' }],
+      apple: [{ url: `/apple-touch-icon.png${v}`, sizes: '180x180' }],
+    },
+  };
+}
 
 export default async function SiteLayout({
   children,

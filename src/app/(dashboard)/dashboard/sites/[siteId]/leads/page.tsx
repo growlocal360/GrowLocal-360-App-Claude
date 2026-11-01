@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Inbox, Phone, Mail, Clock, Send, Loader2, Bell } from 'lucide-react';
+import { ArrowLeft, Inbox, Phone, Mail, Clock, Send, Loader2, Bell, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Lead, LeadStatus } from '@/types/database';
 
 const STATUS_OPTIONS: { value: LeadStatus; label: string; color: string }[] = [
@@ -51,6 +52,25 @@ export default function LeadsPage() {
 
     loadData();
   }, [supabase, siteId]);
+
+  const [requestingReview, setRequestingReview] = useState<string | null>(null);
+  const requestReview = async (lead: Lead) => {
+    setRequestingReview(lead.id);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/automation/review-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id, sendNow: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not send');
+      toast.success(`Review request sent to ${lead.name}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send');
+    } finally {
+      setRequestingReview(null);
+    }
+  };
 
   const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
     const { error } = await supabase
@@ -275,8 +295,8 @@ export default function LeadsPage() {
                         )}
                       </div>
 
-                      {/* Status Update */}
-                      <div className="shrink-0">
+                      {/* Status Update + review request */}
+                      <div className="shrink-0 flex flex-col items-end gap-2">
                         <select
                           className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                           value={lead.status}
@@ -288,6 +308,18 @@ export default function LeadsPage() {
                             </option>
                           ))}
                         </select>
+                        {(lead.phone || lead.email) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => requestReview(lead)}
+                            disabled={requestingReview === lead.id}
+                            title="Text/email this customer a link to your Google review form"
+                          >
+                            {requestingReview === lead.id ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Star className="mr-1 h-3.5 w-3.5" />}
+                            Request review
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>

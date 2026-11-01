@@ -5,6 +5,7 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
 import { reviewRepliesEnabled } from '@/lib/automation/review-replies';
 import { isRecentEnough } from '@/lib/automation/policy';
+import { reviewRequestSettings, smsAvailable } from '@/lib/automation/review-requests';
 import type { AutomationMode } from '@/types/database';
 
 /**
@@ -44,8 +45,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
   }
 
   const automation = ((site.settings as { automation?: Record<string, unknown> } | null)?.automation) || {};
+  const [{ count: requestsSent }, sms] = await Promise.all([
+    admin.from('review_requests').select('id', { count: 'exact', head: true }).eq('site_id', siteId).eq('status', 'sent'),
+    smsAvailable(admin, siteId),
+  ]);
 
   return NextResponse.json({
+    reviewRequests: reviewRequestSettings(site.settings),
+    reviewRequestsSent: requestsSent || 0,
+    smsReady: sms,
     automationMode: (site.automation_mode || 'approve') as AutomationMode,
     reviewReplies: reviewRepliesEnabled(site.settings),
     gbpLinked: !!location?.gbp_location_id,
@@ -63,7 +71,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = (await req.json().catch(() => ({}))) as { automationMode?: string; reviewReplies?: boolean };
+  const body = (await req.json().catch(() => ({}))) as {
+    automationMode?: string;
+    reviewReplies?: boolean;
+    reviewRequests?: { enabled?: boolean; followUp?: boolean; delayHours?: number; followUpDays?: number };
+  };
   const admin = createAdminClient();
   const { data: site } = await admin.from('sites').select('settings').eq('id', siteId).single();
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
@@ -75,11 +87,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
     }
     update.automation_mode = body.automationMode;
   }
+  const settings = (site.settings || {}) as Record<string, unknown>;
+  const automation = { ...((settings.automation as Record<string, unknown> | undefined) || {}) };
+  let settingsTouched = false;
   if (typeof body.reviewReplies === 'boolean') {
-    const settings = (site.settings || {}) as Record<string, unknown>;
-    const automation = (settings.automation as Record<string, unknown> | undefined) || {};
-    update.settings = { ...settings, automation: { ...automation, review_replies: body.reviewReplies } };
+    automation.review_replies = body.reviewReplies;
+    settingsTouched = true;
   }
+  if (body.reviewRequests && typeof body.reviewRequests === 'object') {
+    const rr = { ...((automation.review_requests as Record<string, unknown> | undefined) || {}) };
+    const inp = body.reviewRequests;
+    if (typeof inp.enabled === 'boolean') rr.enabled = inp.enabled;
+    if (typeof inp.followUp === 'boolean') rr.follow_up = inp.followUp;
+    if (typeof inp.delayHours === 'number' && inp.delayHours >= 0 && inp.delayHours <= 72) rr.delay_hours = inp.delayHours;
+    if (typeof inp.followUpDays === 'number' && inp.followUpDays >= 1 && inp.followUpDays <= 14) rr.follow_up_days = inp.followUpDays;
+    automation.review_requests = rr;
+    settingsTouched = true;
+  }
+  if (settingsTouched) update.settings = { ...settings, automation };
   if (Object.keys(update).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 
   const { error } = await admin.from('sites').update(update).eq('id', siteId);

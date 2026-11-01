@@ -472,3 +472,51 @@ export async function sendNegativeReviewAlertEmail({
     throw new Error(`Failed to send review alert: ${error.message}`);
   }
 }
+
+interface ReviewRequestEmailParams {
+  to: string;
+  businessName: string;
+  customerName: string;
+  reviewUrl: string;
+  brandColor?: string;
+  subject?: string;
+  followUp?: boolean;
+}
+
+/** Customer-facing "how did we do?" email with one button to the Google review form. */
+export async function sendReviewRequestEmail({
+  to, businessName, customerName, reviewUrl, brandColor = '#00ef99', subject, followUp = false,
+}: ReviewRequestEmailParams) {
+  const resend = getResendClient();
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const first = customerName.trim().split(/\s+/)[0] || customerName;
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
+    to,
+    subject: subject || (followUp ? `Quick favor from ${businessName}` : `How did we do? ${businessName}`),
+    html: `
+      <div style="${EMAIL_STYLES}">
+        <h2 style="color: #111827; margin-bottom: 8px;">${followUp ? `Hi ${esc(first)}, one quick nudge` : `Hi ${esc(first)}, thank you`}</h2>
+        <p style="color: #4b5563; font-size: 16px;">
+          ${followUp
+            ? `In case it slipped your mind, a short Google review for <strong>${esc(businessName)}</strong> would mean a lot. It takes about a minute.`
+            : `Thanks for choosing <strong>${esc(businessName)}</strong>. If we did right by you, would you take a minute to leave a Google review? It helps neighbors find us and it means a lot to a local business.`}
+        </p>
+        <div style="margin: 24px 0;">
+          <a href="${reviewUrl}" style="display: inline-block; background-color: ${brandColor}; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+            Leave a Google review
+          </a>
+        </div>
+        <p style="color: #6b7280; font-size: 13px;">If anything was not right, reply to this email and we will make it right.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+        <p style="color: #9ca3af; font-size: 12px;">${esc(businessName)}</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('Failed to send review request email:', error);
+    throw new Error(`Failed to send review request: ${error.message}`);
+  }
+}

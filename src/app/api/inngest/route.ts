@@ -15,6 +15,7 @@ import { handleLeadCreated } from '@/lib/inngest/functions/lead-notifications';
 import { ensureSiteBuild } from '@/lib/inngest/functions/ensure-site-build';
 import { reviewAutomation } from '@/lib/inngest/functions/review-automation';
 import { appointmentCompletedReviewRequest, reviewRequestFollowUps } from '@/lib/inngest/functions/review-requests';
+import { gbpAutomationDaily, gbpAutomationRequested } from '@/lib/inngest/functions/gbp-automation';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -34,5 +35,7 @@ export const { GET, POST, PUT } = serve({
     reviewAutomation,
     appointmentCompletedReviewRequest,
     reviewRequestFollowUps,
+    gbpAutomationDaily,
+    gbpAutomationRequested,
   ],
 });

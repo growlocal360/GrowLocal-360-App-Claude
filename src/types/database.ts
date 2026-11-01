@@ -768,6 +768,9 @@ export interface JobSnapMedia {
   role: 'primary' | 'before' | 'after' | 'process' | 'detail' | null;
   pair_group: number | null;
   sort_order: number;
+  // Migration 065 — set once the photo drip adds this photo to the GBP gallery
+  gbp_media_name?: string | null;
+  gbp_uploaded_at?: string | null;
   created_at: string;
 }
 

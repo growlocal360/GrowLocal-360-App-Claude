@@ -6,6 +6,7 @@ import { inngest } from '@/lib/inngest/client';
 import { reviewRepliesEnabled } from '@/lib/automation/review-replies';
 import { isRecentEnough } from '@/lib/automation/policy';
 import { reviewRequestSettings, smsAvailable } from '@/lib/automation/review-requests';
+import { gbpPostSettings } from '@/lib/automation/gbp-posts';
 import type { AutomationMode } from '@/types/database';
 
 /**
@@ -50,7 +51,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
     smsAvailable(admin, siteId),
   ]);
 
+  const [{ data: lastPost }, { count: photosLeft }] = await Promise.all([
+    admin.from('pending_actions').select('created_at, status').eq('site_id', siteId).eq('action_type', 'gbp_post').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('job_snap_media').select('id, snap:job_snaps!inner(site_id, is_published_to_website)', { count: 'exact', head: true }).eq('snap.site_id', siteId).eq('snap.is_published_to_website', true).is('gbp_media_name', null),
+  ]);
+
   return NextResponse.json({
+    gbpPosts: gbpPostSettings(site.settings),
+    lastGbpPostAt: lastPost?.created_at || null,
+    photosLeftToUpload: photosLeft || 0,
     reviewRequests: reviewRequestSettings(site.settings),
     reviewRequestsSent: requestsSent || 0,
     smsReady: sms,
@@ -75,6 +84,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
     automationMode?: string;
     reviewReplies?: boolean;
     reviewRequests?: { enabled?: boolean; followUp?: boolean; delayHours?: number; followUpDays?: number };
+    gbpPosts?: { enabled?: boolean; photoDrip?: boolean; cadenceDays?: number; photoEveryDays?: number };
   };
   const admin = createAdminClient();
   const { data: site } = await admin.from('sites').select('settings').eq('id', siteId).single();
@@ -104,6 +114,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
     automation.review_requests = rr;
     settingsTouched = true;
   }
+  if (body.gbpPosts && typeof body.gbpPosts === 'object') {
+    const gp = { ...((automation.gbp_posts as Record<string, unknown> | undefined) || {}) };
+    const inp = body.gbpPosts;
+    if (typeof inp.enabled === 'boolean') gp.enabled = inp.enabled;
+    if (typeof inp.photoDrip === 'boolean') gp.photo_drip = inp.photoDrip;
+    if (typeof inp.cadenceDays === 'number' && inp.cadenceDays >= 1 && inp.cadenceDays <= 30) gp.cadence_days = inp.cadenceDays;
+    if (typeof inp.photoEveryDays === 'number' && inp.photoEveryDays >= 1 && inp.photoEveryDays <= 30) gp.photo_every_days = inp.photoEveryDays;
+    automation.gbp_posts = gp;
+    settingsTouched = true;
+  }
   if (settingsTouched) update.settings = { ...settings, automation };
   if (Object.keys(update).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 
@@ -112,14 +132,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   return NextResponse.json({ ok: true });
 }
 
-/** Body (optional): { includeOlder: true } also drafts for unanswered reviews older than the cron's window. */
+/**
+ * Body (optional):
+ *   { includeOlder: true }  also drafts replies for unanswered reviews older than the cron's window
+ *   { run: 'post' }         draft a GBP post now
+ *   { run: 'photo' }        queue the next gallery photo now
+ */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
   const supabase = await createClient();
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = (await req.json().catch(() => ({}))) as { includeOlder?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { includeOlder?: boolean; run?: 'post' | 'photo' };
+  if (body.run === 'post' || body.run === 'photo') {
+    await inngest.send({ name: 'gbp/automation.requested', data: { siteId, kind: body.run } });
+    return NextResponse.json({ ok: true, message: body.run === 'post' ? 'Drafting a post' : 'Picking a photo' });
+  }
   await inngest.send({ name: 'reviews/sync.requested', data: { siteId, includeOlder: !!body.includeOlder } });
   return NextResponse.json({ ok: true, message: 'Sync started' });
 }

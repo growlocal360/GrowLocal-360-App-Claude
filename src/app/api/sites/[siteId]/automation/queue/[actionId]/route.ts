@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { publishReviewReply } from '@/lib/automation/review-replies';
+import { sendReviewRequest } from '@/lib/automation/review-requests';
 import type { PendingAction } from '@/types/database';
 
 /**
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = (await req.json().catch(() => ({}))) as { decision?: string; reply?: string };
+  const body = (await req.json().catch(() => ({}))) as { decision?: string; reply?: string; sms?: string };
   if (body.decision !== 'approve' && body.decision !== 'reject') {
     return NextResponse.json({ error: 'decision must be approve or reject' }, { status: 400 });
   }
@@ -36,7 +37,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
       .from('pending_actions')
       .update({ status: 'rejected', decided_at: now, decided_by: decidedBy, updated_at: now })
       .eq('id', actionId);
+    if (action.action_type === 'review_request') {
+      await admin.from('review_requests').update({ status: 'skipped', error: 'dismissed', updated_at: now }).eq('pending_action_id', actionId);
+    }
     return NextResponse.json({ ok: true, status: 'rejected' });
+  }
+
+  if (action.action_type === 'review_request') {
+    const sent = await sendReviewRequest(admin, action as PendingAction, {
+      smsOverride: typeof body.sms === 'string' && body.sms.trim() ? body.sms : undefined,
+      decidedBy,
+    });
+    if (!sent.ok) return NextResponse.json({ error: sent.error, status: 'failed' }, { status: 502 });
+    return NextResponse.json({ ok: true, status: 'published', channels: sent.channels });
   }
 
   if (action.action_type !== 'review_reply') {

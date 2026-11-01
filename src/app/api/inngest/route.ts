@@ -14,6 +14,7 @@ import { deliverHighLevel } from '@/lib/inngest/functions/deliver-highlevel';
 import { handleLeadCreated } from '@/lib/inngest/functions/lead-notifications';
 import { ensureSiteBuild } from '@/lib/inngest/functions/ensure-site-build';
 import { reviewAutomation } from '@/lib/inngest/functions/review-automation';
+import { appointmentCompletedReviewRequest, reviewRequestFollowUps } from '@/lib/inngest/functions/review-requests';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -31,5 +32,7 @@ export const { GET, POST, PUT } = serve({
     handleLeadCreated,
     ensureSiteBuild,
     reviewAutomation,
+    appointmentCompletedReviewRequest,
+    reviewRequestFollowUps,
   ],
 });

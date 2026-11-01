@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History } from 'lucide-react';
+import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History, MessageSquare, Mail, Phone, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import type { PendingAction, ReviewReplyContext } from '@/types/database';
+import type { PendingAction, ReviewReplyContext, ReviewRequestContext } from '@/types/database';
 
 interface AutomationState {
   automationMode: 'approve' | 'autopilot';
@@ -19,6 +20,9 @@ interface AutomationState {
   counts: Record<string, number>;
   unansweredRecent: number;
   unansweredOlder: number;
+  reviewRequests: { enabled: boolean; delayHours: number; followUp: boolean; followUpDays: number };
+  reviewRequestsSent: number;
+  smsReady: boolean;
   lastReviewSync: {
     at: string;
     imported: number;
@@ -142,15 +146,20 @@ export default function AutomationPage() {
   const decide = async (action: PendingAction, decision: 'approve' | 'reject') => {
     setBusy((b) => ({ ...b, [action.id]: decision }));
     try {
-      const reply = drafts[action.id];
+      const edited = drafts[action.id];
+      const isRequest = action.action_type === 'review_request';
       const res = await fetch(`/api/sites/${siteId}/automation/queue/${action.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, reply }),
+        body: JSON.stringify(isRequest ? { decision, sms: edited } : { decision, reply: edited }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      toast.success(decision === 'approve' ? 'Reply posted to Google.' : 'Draft dismissed.');
+      toast.success(decision === 'reject'
+        ? 'Dismissed.'
+        : isRequest
+          ? `Review request sent by ${(data.channels || []).join(' and ') || 'email'}.`
+          : 'Reply posted to Google.');
       setActions((prev) => prev.filter((a) => a.id !== action.id));
       await loadState();
     } catch (e) {
@@ -161,8 +170,31 @@ export default function AutomationPage() {
     }
   };
 
+  const [reqForm, setReqForm] = useState({ name: '', phone: '', email: '' });
+  const [sendingReq, setSendingReq] = useState(false);
+  const sendManualRequest = async () => {
+    setSendingReq(true);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/automation/review-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...reqForm, sendNow: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not send');
+      toast.success(`Review request sent to ${reqForm.name.trim() || 'the customer'}.`);
+      setReqForm({ name: '', phone: '', email: '' });
+      await Promise.all([loadState(), loadActions(tab)]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send');
+    } finally {
+      setSendingReq(false);
+    }
+  };
+
   const pendingCount = state?.counts?.pending || 0;
   const ready = !!state?.gbpLinked && !!state?.gbpConnected;
+  const rr = state?.reviewRequests;
 
   return (
     <div className="flex flex-col">
@@ -174,7 +206,7 @@ export default function AutomationPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Bot className="h-6 w-6 text-[#00b875]" /> Automation</h1>
-            <p className="text-gray-500 mt-1">Review replies today. GBP posts, photos and social next. Everything lands here first unless autopilot is on.</p>
+            <p className="text-gray-500 mt-1">Review replies and review requests today. GBP posts, photos and social next. Everything lands here first unless autopilot is on.</p>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="flex gap-2">
@@ -242,6 +274,82 @@ export default function AutomationPage() {
                 aria-label="Draft review replies"
               />
             </div>
+            <div className="flex items-start justify-between gap-4 border-t pt-5">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">Ask customers for reviews</div>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  When an appointment is marked completed, text and email the customer a link to your Google review form.
+                  Autopilot sends it; otherwise it waits here. You can also send one by hand below or from any lead.
+                </p>
+                {rr?.enabled && (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700">
+                    <label className="flex items-center gap-2">
+                      Wait
+                      <select
+                        className="rounded border border-gray-300 px-2 py-1 text-sm"
+                        value={rr.delayHours}
+                        disabled={savingMode}
+                        onChange={(e) => patch({ reviewRequests: { delayHours: Number(e.target.value) } })}
+                      >
+                        <option value={0}>no time</option>
+                        <option value={1}>1 hour</option>
+                        <option value={2}>2 hours</option>
+                        <option value={4}>4 hours</option>
+                        <option value={24}>1 day</option>
+                      </select>
+                      after completion
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <Switch checked={rr.followUp} disabled={savingMode} onCheckedChange={(v) => patch({ reviewRequests: { followUp: v } })} aria-label="Follow up" />
+                      One follow-up after {rr.followUpDays} days if no new review arrives
+                    </label>
+                  </div>
+                )}
+                {rr?.enabled && !state?.smsReady && (
+                  <p className="mt-2 text-xs text-amber-700">Texting is not set up for this site, so requests go by email only. Add a texting number under Scheduling → Settings.</p>
+                )}
+              </div>
+              <Switch
+                checked={!!rr?.enabled}
+                disabled={!state || savingMode}
+                onCheckedChange={(v) => patch({ reviewRequests: { enabled: v } })}
+                aria-label="Ask customers for reviews"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Manual review request */}
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-gray-500" /> Request a review</h2>
+            <p className="text-sm text-gray-500">Just finished a job? Send the customer the review link now. Needs a mobile number or an email.</p>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
+              onSubmit={(e) => { e.preventDefault(); sendManualRequest(); }}
+            >
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Customer name</label>
+                <Input value={reqForm.name} onChange={(e) => setReqForm((f) => ({ ...f, name: e.target.value }))} placeholder="Maria Lopez" required />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Mobile</label>
+                <Input value={reqForm.phone} onChange={(e) => setReqForm((f) => ({ ...f, phone: e.target.value }))} placeholder="(941) 555-0142" inputMode="tel" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Email</label>
+                <Input value={reqForm.email} onChange={(e) => setReqForm((f) => ({ ...f, email: e.target.value }))} placeholder="maria@example.com" inputMode="email" />
+              </div>
+              <Button type="submit" disabled={sendingReq || !ready || !reqForm.name.trim() || (!reqForm.phone.trim() && !reqForm.email.trim())} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                {sendingReq ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Send
+              </Button>
+            </form>
+            {(state?.reviewRequestsSent || 0) > 0 && (
+              <p className="mt-3 text-xs text-gray-500">{state!.reviewRequestsSent} request{state!.reviewRequestsSent === 1 ? '' : 's'} sent so far.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -270,9 +378,60 @@ export default function AutomationPage() {
         ) : (
           <div className="space-y-4">
             {actions.map((action) => {
+              const isPending = action.status === 'pending' || action.status === 'failed';
+              if (action.action_type === 'review_request') {
+                const rq = action.context as unknown as ReviewRequestContext;
+                const sms = drafts[action.id] ?? String((action.payload as { sms?: string }).sms || '');
+                const sentVia = (action.payload as { channels?: string[] }).channels;
+                return (
+                  <Card key={action.id}>
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">Review request · {rq.customer_name}</span>
+                            <span className="text-xs text-gray-400">{fmt(action.created_at)}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+                            {rq.customer_phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" /> {rq.customer_phone}</span>}
+                            {rq.customer_email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {rq.customer_email}</span>}
+                            <span>{rq.source === 'appointment_completed' ? 'after completed appointment' : rq.source === 'lead' ? 'from a lead' : 'manual'}</span>
+                            {sentVia?.length ? <span>sent by {sentVia.join(' and ')}</span> : null}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[action.status] || ''}`}>
+                          {action.status === 'published' ? (action.auto_published ? 'sent · autopilot' : 'sent') : action.status}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Text message</div>
+                        {isPending ? (
+                          <Textarea value={sms} onChange={(e) => setDrafts((d) => ({ ...d, [action.id]: e.target.value }))} rows={3} className="text-sm" />
+                        ) : (
+                          <p className="text-sm text-gray-700 rounded-lg bg-gray-50 p-3">{sms}</p>
+                        )}
+                        {rq.customer_email && <p className="mt-1 text-xs text-gray-400">The email version uses the same link with a button.</p>}
+                        {action.error && <p className="mt-1 text-xs text-red-600">{action.error}</p>}
+                      </div>
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => decide(action, 'approve')} disabled={!!busy[action.id]} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                            {busy[action.id] === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Send request
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
+                            {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                            Dismiss
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              }
               const ctx = action.context as unknown as ReviewReplyContext;
               const reply = drafts[action.id] ?? String((action.payload as { reply?: string }).reply || '');
-              const isPending = action.status === 'pending' || action.status === 'failed';
               return (
                 <Card key={action.id}>
                   <CardContent className="pt-6 space-y-4">

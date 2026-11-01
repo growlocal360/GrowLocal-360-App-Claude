@@ -147,6 +147,42 @@ export interface ReviewReplyContext {
   review_date: string | null;
 }
 
+/** Context stored on a review_request action. */
+export interface ReviewRequestContext {
+  review_request_id: string;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_email: string | null;
+  source: ReviewRequestSource;
+  review_url: string;
+}
+
+export type ReviewRequestSource = 'manual' | 'lead' | 'appointment_completed';
+export type ReviewRequestStatus = 'queued' | 'sent' | 'failed' | 'skipped';
+
+export interface ReviewRequest {
+  id: string;
+  site_id: string;
+  appointment_id: string | null;
+  lead_id: string | null;
+  pending_action_id: string | null;
+  source: ReviewRequestSource;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_email: string | null;
+  review_url: string;
+  status: ReviewRequestStatus;
+  channels: string[];
+  sms_sid: string | null;
+  sent_at: string | null;
+  follow_up_due_at: string | null;
+  follow_up_sent_at: string | null;
+  follow_up_note: string | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PendingAction {
   id: string;
   site_id: string;

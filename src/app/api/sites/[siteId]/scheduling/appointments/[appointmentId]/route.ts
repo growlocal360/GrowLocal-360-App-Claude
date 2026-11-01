@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
+import { inngest } from '@/lib/inngest/client';
 
 interface RouteParams {
   params: Promise<{ siteId: string; appointmentId: string }>;
@@ -42,6 +43,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }
 
+    // Remember the prior status so a move to "completed" can kick off the review request.
+    const { data: before } = await supabase.from('appointments').select('status').eq('id', appointmentId).eq('site_id', siteId).maybeSingle();
+
     const { data, error } = await supabase
       .from('appointments')
       .update(updates)
@@ -53,6 +57,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (error) {
       console.error('Failed to update appointment:', error);
       return NextResponse.json({ error: 'Failed to update appointment' }, { status: 500 });
+    }
+
+    if (updates.status === 'completed' && before?.status !== 'completed') {
+      await inngest.send({ name: 'appointment/completed', data: { siteId, appointmentId } }).catch((e) => {
+        console.error('Failed to queue review request event:', e);
+      });
     }
 
     return NextResponse.json(data);

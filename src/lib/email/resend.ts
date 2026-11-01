@@ -417,3 +417,58 @@ export async function sendDailyScheduleSummaryEmail({
     console.error('Failed to send daily schedule summary email:', error);
   }
 }
+
+interface NegativeReviewAlertParams {
+  to: string;
+  businessName: string;
+  rating: number;
+  authorName: string;
+  comment: string | null;
+  draftReply: string;
+  queueUrl: string;
+  brandColor?: string;
+}
+
+/**
+ * Owner alert for a 1-2 star review. Includes the drafted reply so they can
+ * approve it from the queue; autopilot never posts these on its own.
+ */
+export async function sendNegativeReviewAlertEmail({
+  to, businessName, rating, authorName, comment, draftReply, queueUrl, brandColor = '#00ef99',
+}: NegativeReviewAlertParams) {
+  const resend = getResendClient();
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
+    to,
+    subject: `${rating}-star review on ${businessName} needs a reply`,
+    html: `
+      <div style="${EMAIL_STYLES}">
+        <h2 style="color: #111827; margin-bottom: 8px;">A ${rating}-star review just came in</h2>
+        <p style="color: #4b5563; font-size: 16px;">On the Google Business Profile for <strong>${esc(businessName)}</strong>. We drafted a reply, but low ratings always wait for you.</p>
+        <div style="background: #fef2f2; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #ef4444;">
+          <p style="margin: 0 0 6px; color: #b91c1c; font-size: 18px; letter-spacing: 2px;">${stars}</p>
+          <p style="margin: 4px 0; color: #374151;"><strong>${esc(authorName)}</strong></p>
+          ${comment ? `<p style="margin: 8px 0 0; color: #4b5563; font-style: italic;">${esc(comment)}</p>` : '<p style="margin: 8px 0 0; color: #9ca3af;">No written comment.</p>'}
+        </div>
+        <p style="color: #374151; margin: 0 0 6px;"><strong>Suggested reply</strong></p>
+        <div style="background: #f9fafb; border-radius: 12px; padding: 16px 20px; margin: 0 0 20px; border-left: 4px solid ${brandColor}; color: #374151;">${esc(draftReply)}</div>
+        <div style="margin: 24px 0;">
+          <a href="${queueUrl}" style="display: inline-block; background-color: ${brandColor}; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px;">
+            Review and approve
+          </a>
+        </div>
+        <p style="color: #6b7280; font-size: 13px;">Replying within a day shows every future reader that you handle problems. You can edit the draft before it posts.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+        <p style="color: #9ca3af; font-size: 12px;">${esc(businessName)} &mdash; Powered by GrowLocal 360</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error('Failed to send negative review alert:', error);
+    throw new Error(`Failed to send review alert: ${error.message}`);
+  }
+}

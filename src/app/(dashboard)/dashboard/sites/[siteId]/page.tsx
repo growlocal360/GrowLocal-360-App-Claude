@@ -42,6 +42,7 @@ import {
   UserRound,
   ClipboardList,
   FileText,
+  Bot,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
@@ -100,6 +101,21 @@ export default function SiteDashboardPage() {
     avatarUrl: undefined as string | undefined,
   });
   const [userRole, setUserRole] = useState<string>('owner');
+  // Automation queue badge (review replies etc. waiting for approval)
+  const [pendingActionCount, setPendingActionCount] = useState(0);
+  const [automationMode, setAutomationMode] = useState<'approve' | 'autopilot' | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/sites/${siteId}/automation`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        setPendingActionCount(d.counts?.pending || 0);
+        setAutomationMode(d.automationMode || 'approve');
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [siteId]);
 
   const router = useRouter();
   const supabase = createClient();
@@ -1067,6 +1083,37 @@ export default function SiteDashboardPage() {
 
           {/* Reputation */}
           <ReputationCard siteId={siteId} />
+
+          {/* Automation: review replies now, GBP posts / photos / social next */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Automation</h3>
+                  <p className="text-sm text-gray-500">
+                    {automationMode === 'autopilot' ? 'Autopilot on' : automationMode === 'approve' ? 'Approve first' : 'Review replies'}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                {pendingActionCount > 0 ? (
+                  <span className="text-yellow-700 font-medium">{pendingActionCount} draft{pendingActionCount !== 1 ? 's' : ''} waiting for you</span>
+                ) : (
+                  'Nothing waiting for approval'
+                )}
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/automation`}>
+                  {pendingActionCount > 0 ? 'Review drafts' : 'Open Automation'}
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Brands — only for applicable industries */}
           {((site.site_brands?.length || 0) > 0 ||

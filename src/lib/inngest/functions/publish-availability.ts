@@ -1,6 +1,7 @@
 import { inngest } from '@/lib/inngest/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { GBPClient } from '@/lib/google/gbp-client';
+import { getStoredGoogleToken } from '@/lib/google/stored-token';
 import { generateAvailabilityPost } from '@/lib/scheduling/availability-publisher';
 import { getAvailableSlots } from '@/lib/scheduling/availability';
 import type {
@@ -11,78 +12,6 @@ import type {
   Appointment,
   DateOverride,
 } from '@/types/database';
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-/**
- * Retrieves a Google token from social_connections, refreshing if expired.
- * Duplicated from generate-site-content.ts for module independence.
- */
-async function getStoredGoogleToken(
-  supabase: SupabaseClient,
-  siteId: string
-): Promise<string | null> {
-  // A site can have multiple active google_business connections (e.g. a leftover
-  // "default" placeholder). `.single()` errors on >1 row and returns null, which
-  // silently looks like "no token". Select all and pick deterministically:
-  // prefer a real GBP account over "default", then most recently updated.
-  const { data: connections } = await supabase
-    .from('social_connections')
-    .select('id, access_token, refresh_token, token_expires_at, account_id')
-    .eq('site_id', siteId)
-    .eq('platform', 'google_business')
-    .eq('is_active', true)
-    .order('updated_at', { ascending: false });
-
-  if (!connections || connections.length === 0) return null;
-
-  const connection =
-    connections.find((c) => c.account_id && c.account_id !== 'default') ?? connections[0];
-
-  if (connection.token_expires_at) {
-    const expiresAt = new Date(connection.token_expires_at).getTime();
-    const bufferMs = 5 * 60 * 1000;
-    if (expiresAt - bufferMs > Date.now()) {
-      return connection.access_token;
-    }
-  }
-
-  if (connection.refresh_token) {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    if (!clientId || !clientSecret) return null;
-
-    try {
-      const res = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: connection.refresh_token,
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      if (!res.ok) return null;
-      const { access_token, expires_in } = await res.json();
-
-      await supabase
-        .from('social_connections')
-        .update({
-          access_token,
-          token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', connection.id);
-
-      return access_token;
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
 
 // ============================================================
 // Cron: Publish availability to GBP

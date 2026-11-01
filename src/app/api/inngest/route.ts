@@ -13,6 +13,7 @@ import { dispatchWebhook, deliverWebhook } from '@/lib/inngest/functions/deliver
 import { deliverHighLevel } from '@/lib/inngest/functions/deliver-highlevel';
 import { handleLeadCreated } from '@/lib/inngest/functions/lead-notifications';
 import { ensureSiteBuild } from '@/lib/inngest/functions/ensure-site-build';
+import { reviewAutomation } from '@/lib/inngest/functions/review-automation';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -29,5 +30,6 @@ export const { GET, POST, PUT } = serve({
     deliverHighLevel,
     handleLeadCreated,
     ensureSiteBuild,
+    reviewAutomation,
   ],
 });

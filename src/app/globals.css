@@ -177,7 +177,8 @@
 .tpl-premium .pm-icon.sm { width:44px; height:44px; } .tpl-premium .pm-icon.sm svg { width:20px; height:20px; }
 
 /* header */
-.tpl-premium .pm-header { position: sticky; top: 0; z-index: 50; background: rgba(250,249,246,.72); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid var(--line); }
+/* Header follows the Page Background setting (--paper) instead of hard-coding the cream. */
+.tpl-premium .pm-header { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(16px) saturate(1.4); border-bottom: 1px solid var(--line); }
 .tpl-premium .pm-nav { display: flex; align-items: center; justify-content: space-between; height: 112px; }
 @media (max-width: 640px){ .tpl-premium .pm-nav { height: 76px; } }
 /* logo: 72px tall on desktop, tighter on phones so the nav CTA still fits */

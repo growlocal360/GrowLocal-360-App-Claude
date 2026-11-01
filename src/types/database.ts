@@ -115,6 +115,9 @@ export interface Site {
   status_message: string | null;
   status_updated_at: string;
   settings: SiteSettings;
+  // Migration 063 — 'approve' parks automated drafts in the queue; 'autopilot'
+  // publishes safe ones on its own.
+  automation_mode: AutomationMode;
   // Migration 050 — Site scope (used by the v4 onboarding analysis module to
   // filter GSC data to the geography the site is being built for).
   scope_type: ScopeType | null;
@@ -128,6 +131,38 @@ export interface Site {
 }
 
 export type ScopeType = 'FULL_BUSINESS' | 'MICROSITE' | 'CITY_SPECIFIC';
+
+// ── Automation queue (migration 063) ───────────────────────────────────────
+export type AutomationMode = 'approve' | 'autopilot';
+export type PendingActionType = 'review_reply' | 'gbp_post' | 'social_post' | 'photo_upload' | 'review_request';
+export type PendingActionStatus = 'pending' | 'approved' | 'rejected' | 'published' | 'failed';
+
+/** Context stored on a review_reply action: the review being answered. */
+export interface ReviewReplyContext {
+  google_review_id: string;
+  google_review_name: string; // accounts/*/locations/*/reviews/*
+  rating: number;
+  author_name: string;
+  comment: string | null;
+  review_date: string | null;
+}
+
+export interface PendingAction {
+  id: string;
+  site_id: string;
+  action_type: PendingActionType;
+  status: PendingActionStatus;
+  payload: Record<string, unknown>; // review_reply: { reply: string }
+  context: Record<string, unknown>; // review_reply: ReviewReplyContext
+  source_key: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  published_at: string | null;
+  auto_published: boolean;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
  * Migration 050 — one row per onboarding analysis run for a site.

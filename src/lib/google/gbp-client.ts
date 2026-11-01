@@ -157,6 +157,26 @@ export class GBPClient {
     return response.json();
   }
 
+  private async put<T>(url: string, body: unknown): Promise<T> {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.error?.message || `GBP API error: ${response.status}`
+      );
+    }
+
+    return response.json();
+  }
+
   // Get all accounts the user has access to
   async getAccounts(): Promise<GBPAccount[]> {
     const response = await this.fetch<GBPAccountsResponse>(
@@ -210,6 +230,19 @@ export class GBPClient {
     // accountName: "accounts/123", locationName: "locations/456"
     const url = `${this.reviewsUrl}/${accountName}/${locationName}/reviews?pageSize=${pageSize}&orderBy=updateTime desc`;
     return this.fetch<GBPReviewsResponse>(url);
+  }
+
+  /**
+   * Post (or overwrite) the owner's reply to a review.
+   * API: PUT https://mybusiness.googleapis.com/v4/{reviewName}/reply
+   * reviewName is the review's full resource name: accounts/*\/locations/*\/reviews/*
+   */
+  async replyToReview(
+    reviewName: string,
+    comment: string
+  ): Promise<{ comment: string; updateTime: string }> {
+    const url = `${this.reviewsUrl}/${reviewName}/reply`;
+    return this.put<{ comment: string; updateTime: string }>(url, { comment });
   }
 
   // Create a Local Post on a GBP location

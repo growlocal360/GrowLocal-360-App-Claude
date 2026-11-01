@@ -264,6 +264,24 @@ export class GBPClient {
     return this.post<{ name: string }>(url, payload);
   }
 
+  /**
+   * Add a photo to the location's gallery (not a post).
+   * API: POST https://mybusiness.googleapis.com/v4/{accountName}/{locationName}/media
+   */
+  async createMedia(
+    accountName: string,
+    locationName: string,
+    payload: {
+      mediaFormat: 'PHOTO' | 'VIDEO';
+      sourceUrl: string;
+      locationAssociation: { category: 'COVER' | 'PROFILE' | 'LOGO' | 'EXTERIOR' | 'INTERIOR' | 'PRODUCT' | 'AT_WORK' | 'FOOD_AND_DRINK' | 'MENU' | 'COMMON_AREA' | 'ROOMS' | 'TEAMS' | 'ADDITIONAL' };
+      description?: string;
+    }
+  ): Promise<{ name: string }> {
+    const url = `${this.reviewsUrl}/${accountName}/${locationName}/media`;
+    return this.post<{ name: string }>(url, payload);
+  }
+
   // Get all locations across all accounts (fetches all pages)
   async getAllLocations(): Promise<{ account: GBPAccount; locations: GBPLocation[] }[]> {
     const accounts = await this.getAccounts();

@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History, MessageSquare, Mail, Phone, Send } from 'lucide-react';
+import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History, MessageSquare, Mail, Phone, Send, Newspaper, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { PendingAction, ReviewReplyContext, ReviewRequestContext } from '@/types/database';
+import type { GbpPostContext, PhotoUploadContext } from '@/lib/automation/gbp-posts';
 
 interface AutomationState {
   automationMode: 'approve' | 'autopilot';
@@ -20,6 +21,9 @@ interface AutomationState {
   counts: Record<string, number>;
   unansweredRecent: number;
   unansweredOlder: number;
+  gbpPosts: { enabled: boolean; cadenceDays: number; photoDrip: boolean; photoEveryDays: number };
+  lastGbpPostAt: string | null;
+  photosLeftToUpload: number;
   reviewRequests: { enabled: boolean; delayHours: number; followUp: boolean; followUpDays: number };
   reviewRequestsSent: number;
   smsReady: boolean;
@@ -147,19 +151,28 @@ export default function AutomationPage() {
     setBusy((b) => ({ ...b, [action.id]: decision }));
     try {
       const edited = drafts[action.id];
-      const isRequest = action.action_type === 'review_request';
+      const t = action.action_type;
+      const bodyFor =
+        t === 'review_request' ? { decision, sms: edited }
+        : t === 'gbp_post' ? { decision, summary: edited }
+        : t === 'photo_upload' ? { decision, caption: edited }
+        : { decision, reply: edited };
       const res = await fetch(`/api/sites/${siteId}/automation/queue/${action.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isRequest ? { decision, sms: edited } : { decision, reply: edited }),
+        body: JSON.stringify(bodyFor),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
       toast.success(decision === 'reject'
         ? 'Dismissed.'
-        : isRequest
+        : t === 'review_request'
           ? `Review request sent by ${(data.channels || []).join(' and ') || 'email'}.`
-          : 'Reply posted to Google.');
+          : t === 'gbp_post'
+            ? 'Post published to your Google Business Profile.'
+            : t === 'photo_upload'
+              ? 'Photo added to your Google Business Profile.'
+              : 'Reply posted to Google.');
       setActions((prev) => prev.filter((a) => a.id !== action.id));
       await loadState();
     } catch (e) {
@@ -192,9 +205,25 @@ export default function AutomationPage() {
     }
   };
 
+  const [running, setRunning] = useState<'post' | 'photo' | null>(null);
+  const runNow = async (kind: 'post' | 'photo') => {
+    setRunning(kind);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/automation`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run: kind }) });
+      if (!res.ok) throw new Error((await res.json()).error || 'Could not start');
+      toast.success(kind === 'post' ? 'Writing a post from your site. It lands below in about half a minute.' : 'Picking the next photo. It lands below in a few seconds.');
+      [8000, 25000, 50000].forEach((ms) => setTimeout(async () => { await Promise.all([loadState(), loadActions(tab)]); }, ms));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not start');
+    } finally {
+      setRunning(null);
+    }
+  };
+
   const pendingCount = state?.counts?.pending || 0;
   const ready = !!state?.gbpLinked && !!state?.gbpConnected;
   const rr = state?.reviewRequests;
+  const gp = state?.gbpPosts;
 
   return (
     <div className="flex flex-col">
@@ -206,7 +235,7 @@ export default function AutomationPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Bot className="h-6 w-6 text-[#00b875]" /> Automation</h1>
-            <p className="text-gray-500 mt-1">Review replies and review requests today. GBP posts, photos and social next. Everything lands here first unless autopilot is on.</p>
+            <p className="text-gray-500 mt-1">Review replies, review requests, Google posts and gallery photos. Everything lands here first unless autopilot is on.</p>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="flex gap-2">
@@ -273,6 +302,59 @@ export default function AutomationPage() {
                 onCheckedChange={(v) => patch({ reviewReplies: v })}
                 aria-label="Draft review replies"
               />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t pt-5">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">Google posts</div>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Writes a post for your Business Profile from your own site: a service, a recent job, a 5-star review, or a seasonal tip, rotating so it never repeats. Each has a Learn more button to the matching page.
+                </p>
+                {gp?.enabled && (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700">
+                    <label className="flex items-center gap-2">
+                      Every
+                      <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={gp.cadenceDays} disabled={savingMode} onChange={(e) => patch({ gbpPosts: { cadenceDays: Number(e.target.value) } })}>
+                        <option value={3}>3 days</option>
+                        <option value={7}>week</option>
+                        <option value={14}>2 weeks</option>
+                      </select>
+                    </label>
+                    {state?.lastGbpPostAt && <span className="text-xs text-gray-500">Last post drafted {ago(state.lastGbpPostAt)}</span>}
+                    <Button size="sm" variant="outline" onClick={() => runNow('post')} disabled={!ready || running !== null}>
+                      {running === 'post' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Newspaper className="mr-2 h-3.5 w-3.5" />}
+                      Draft a post now
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Switch checked={!!gp?.enabled} disabled={!state || savingMode} onCheckedChange={(v) => patch({ gbpPosts: { enabled: v } })} aria-label="Google posts" />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t pt-5">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">Photo drip</div>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Adds one published Job Snap photo to your Business Profile gallery at a time, so the profile keeps getting fresh real photos instead of a dump all at once.
+                </p>
+                {gp?.photoDrip && (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700">
+                    <label className="flex items-center gap-2">
+                      One photo every
+                      <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={gp.photoEveryDays} disabled={savingMode} onChange={(e) => patch({ gbpPosts: { photoEveryDays: Number(e.target.value) } })}>
+                        <option value={1}>day</option>
+                        <option value={2}>2 days</option>
+                        <option value={3}>3 days</option>
+                        <option value={7}>week</option>
+                      </select>
+                    </label>
+                    <span className="text-xs text-gray-500">{state?.photosLeftToUpload || 0} photo{state?.photosLeftToUpload === 1 ? '' : 's'} not yet on Google</span>
+                    <Button size="sm" variant="outline" onClick={() => runNow('photo')} disabled={!ready || running !== null || !(state?.photosLeftToUpload || 0)}>
+                      {running === 'photo' ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="mr-2 h-3.5 w-3.5" />}
+                      Pick the next photo now
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Switch checked={!!gp?.photoDrip} disabled={!state || savingMode} onCheckedChange={(v) => patch({ gbpPosts: { photoDrip: v } })} aria-label="Photo drip" />
             </div>
             <div className="flex items-start justify-between gap-4 border-t pt-5">
               <div className="flex-1">
@@ -372,13 +454,112 @@ export default function AutomationPage() {
                 ? 'No history yet.'
                 : (state?.unansweredOlder || 0) > 0
                   ? `Nothing waiting. ${state!.unansweredOlder} older review${state!.unansweredOlder === 1 ? ' has' : 's have'} no reply yet. New reviews are checked hourly; use the button above to catch up on the older ones.`
-                  : 'Nothing waiting. New reviews are checked every hour and drafts appear here.'}
+                  : 'Nothing waiting. Reviews are checked hourly; posts and photos are drafted on their schedule, or use the buttons above.'}
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
             {actions.map((action) => {
               const isPending = action.status === 'pending' || action.status === 'failed';
+              if (action.action_type === 'gbp_post') {
+                const pc = action.context as unknown as GbpPostContext;
+                const summary = drafts[action.id] ?? String((action.payload as { summary?: string }).summary || '');
+                const label = pc.source === 'service' ? 'Service spotlight' : pc.source === 'work' ? 'Recent job' : pc.source === 'review' ? 'Customer review' : 'Seasonal tip';
+                return (
+                  <Card key={action.id}>
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Newspaper className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">Google post · {label}</span>
+                            <span className="text-xs text-gray-400">{fmt(action.created_at)}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+                            <span>{pc.source_label}</span>
+                            <a href={pc.cta_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">Learn more → {pc.cta_url.replace(/^https?:\/\//, '')} <ExternalLink className="h-3 w-3" /></a>
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[action.status] || ''}`}>
+                          {action.status === 'published' ? (action.auto_published ? 'posted · autopilot' : 'posted') : action.status}
+                        </span>
+                      </div>
+                      <div className={pc.media_url ? 'grid gap-4 sm:grid-cols-[160px_1fr]' : ''}>
+                        {pc.media_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={pc.media_url} alt="" className="h-40 w-full rounded-lg object-cover sm:h-full" />
+                        )}
+                        <div>
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Post</div>
+                          {isPending ? (
+                            <Textarea value={summary} onChange={(e) => setDrafts((d) => ({ ...d, [action.id]: e.target.value }))} rows={6} className="text-sm" />
+                          ) : (
+                            <p className="whitespace-pre-line text-sm text-gray-700 rounded-lg bg-gray-50 p-3">{summary}</p>
+                          )}
+                          {action.error && <p className="mt-1 text-xs text-red-600">{action.error}</p>}
+                        </div>
+                      </div>
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => decide(action, 'approve')} disabled={!!busy[action.id] || !ready} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                            {busy[action.id] === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                            Publish post
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
+                            {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                            Dismiss
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              }
+              if (action.action_type === 'photo_upload') {
+                const ph = action.context as unknown as PhotoUploadContext;
+                const caption = drafts[action.id] ?? String((action.payload as { caption?: string }).caption || '');
+                return (
+                  <Card key={action.id}>
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">Gallery photo · {ph.snap_title}</span>
+                          <span className="text-xs text-gray-400">{fmt(action.created_at)}</span>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[action.status] || ''}`}>
+                          {action.status === 'published' ? (action.auto_published ? 'added · autopilot' : 'added') : action.status}
+                        </span>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="" className="h-40 w-full rounded-lg object-cover" />
+                        <div>
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Caption (optional)</div>
+                          {isPending ? (
+                            <Input value={caption} onChange={(e) => setDrafts((d) => ({ ...d, [action.id]: e.target.value }))} className="text-sm" maxLength={200} />
+                          ) : (
+                            <p className="text-sm text-gray-700">{caption || <span className="text-gray-400">No caption</span>}</p>
+                          )}
+                          {action.error && <p className="mt-1 text-xs text-red-600">{action.error}</p>}
+                        </div>
+                      </div>
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => decide(action, 'approve')} disabled={!!busy[action.id] || !ready} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                            {busy[action.id] === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                            Add to Google
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
+                            {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                            Skip
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              }
               if (action.action_type === 'review_request') {
                 const rq = action.context as unknown as ReviewRequestContext;
                 const sms = drafts[action.id] ?? String((action.payload as { sms?: string }).sms || '');

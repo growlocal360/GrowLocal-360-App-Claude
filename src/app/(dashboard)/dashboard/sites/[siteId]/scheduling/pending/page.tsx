@@ -3,11 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import {
   ArrowLeft, CheckCircle2, XCircle, Clock, Phone, Mail,
   User, CalendarDays, AlertCircle,
@@ -38,7 +36,6 @@ export default function PendingApprovalsPage() {
 
   const [appointments, setAppointments] = useState<PendingAppointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
 
@@ -50,23 +47,6 @@ export default function PendingApprovalsPage() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      const activeOrgId = getActiveOrgIdClient();
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-      const profile = (activeOrgId
-        ? profiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
-        : profiles?.[0]) || profiles?.[0] || null;
-
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
-
       await loadPending();
       setLoading(false);
     }
@@ -93,7 +73,6 @@ export default function PendingApprovalsPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <Header title="Pending Approvals" user={userData} />
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-1/3 rounded bg-gray-200" />
@@ -106,7 +85,6 @@ export default function PendingApprovalsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Pending Approvals" user={userData} />
 
       <div className="space-y-6 p-6">
         <Link

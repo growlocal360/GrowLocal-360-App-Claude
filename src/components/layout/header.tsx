@@ -15,6 +15,10 @@ import {
 
 interface HeaderProps {
   title: string;
+  /** Small label above the title, e.g. "Site" when the title is a client site name. */
+  eyebrow?: string;
+  /** When set, the globe icon opens the live site in a new tab. */
+  siteUrl?: string;
   user?: {
     name: string;
     email: string;
@@ -22,15 +26,26 @@ interface HeaderProps {
   };
 }
 
-export function Header({ title, user }: HeaderProps) {
+export function Header({ title, eyebrow, siteUrl, user }: HeaderProps) {
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-      <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-6">
+      <div className="min-w-0">
+        {eyebrow && <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 leading-none mb-0.5">{eyebrow}</div>}
+        <h1 className="truncate text-xl font-semibold text-gray-900">{title}</h1>
+      </div>
 
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Globe className="h-5 w-5 text-gray-500" />
-        </Button>
+        {siteUrl ? (
+          <Button variant="ghost" size="icon" asChild title="Open live site">
+            <a href={siteUrl} target="_blank" rel="noopener noreferrer" aria-label="Open live site">
+              <Globe className="h-5 w-5 text-gray-500" />
+            </a>
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon">
+            <Globe className="h-5 w-5 text-gray-500" />
+          </Button>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

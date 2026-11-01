@@ -9,6 +9,7 @@ import {
   isNegativeReview,
   sanitizeReply,
   REVIEW_REPLY_MAX_PER_SYNC,
+  REVIEW_REPLY_MAX_PER_BACKFILL,
 } from './policy';
 import type { AutomationMode, PendingAction, ReviewReplyContext, SiteSettings } from '@/types/database';
 
@@ -61,7 +62,49 @@ export function reviewRepliesEnabled(settings: SiteSettings | null | undefined):
   return auto?.review_replies !== false; // default on
 }
 
-export async function syncSiteReviews(supabase: SupabaseClient, siteId: string): Promise<SyncSummary> {
+export interface SyncOptions {
+  /**
+   * Also draft for unanswered reviews older than REVIEW_REPLY_MAX_AGE_DAYS
+   * (the "catch up on my backlog" button). Those drafts always wait for a
+   * human, even on autopilot, and the per-run cap is raised.
+   */
+  includeOlder?: boolean;
+}
+
+export async function syncSiteReviews(supabase: SupabaseClient, siteId: string, opts: SyncOptions = {}): Promise<SyncSummary> {
+  const summary = await runSync(supabase, siteId, opts);
+  await recordLastSync(supabase, siteId, summary);
+  return summary;
+}
+
+/** Persist the outcome on the site so the dashboard can say what the last check did. */
+async function recordLastSync(supabase: SupabaseClient, siteId: string, summary: SyncSummary) {
+  const { data: site } = await supabase.from('sites').select('settings').eq('id', siteId).maybeSingle();
+  if (!site) return;
+  const settings = (site.settings || {}) as Record<string, unknown>;
+  const automation = (settings.automation as Record<string, unknown> | undefined) || {};
+  await supabase
+    .from('sites')
+    .update({
+      settings: {
+        ...settings,
+        automation: {
+          ...automation,
+          last_review_sync: {
+            at: new Date().toISOString(),
+            imported: summary.imported,
+            drafted: summary.drafted,
+            auto_published: summary.autoPublished,
+            skipped: summary.skipped || null,
+            errors: summary.errors.slice(0, 3),
+          },
+        },
+      },
+    })
+    .eq('id', siteId);
+}
+
+async function runSync(supabase: SupabaseClient, siteId: string, opts: SyncOptions): Promise<SyncSummary> {
   const summary: SyncSummary = { siteId, imported: 0, drafted: 0, autoPublished: 0, alerted: 0, errors: [] };
 
   const [{ data: site }, { data: location }] = await Promise.all([
@@ -130,8 +173,8 @@ export async function syncSiteReviews(supabase: SupabaseClient, siteId: string):
 
   if (!reviewRepliesEnabled(typedSite.settings)) return { ...summary, skipped: 'review replies disabled' };
 
-  // 2. Which reviews need a draft: unanswered, recent, not already queued
-  const candidates = reviews.filter((r) => !r.reviewReply?.comment && isRecentEnough(r.createTime));
+  // 2. Which reviews need a draft: unanswered, recent (unless catching up on the backlog), not already queued
+  const candidates = reviews.filter((r) => !r.reviewReply?.comment && (opts.includeOlder || isRecentEnough(r.createTime)));
   if (candidates.length === 0) return summary;
 
   const { data: existing } = await supabase
@@ -142,7 +185,8 @@ export async function syncSiteReviews(supabase: SupabaseClient, siteId: string):
     .in('source_key', candidates.map((r) => `review_reply:${r.reviewId}`));
   const already = new Set((existing || []).map((e) => e.source_key));
 
-  const todo = candidates.filter((r) => !already.has(`review_reply:${r.reviewId}`)).slice(0, REVIEW_REPLY_MAX_PER_SYNC);
+  const cap = opts.includeOlder ? REVIEW_REPLY_MAX_PER_BACKFILL : REVIEW_REPLY_MAX_PER_SYNC;
+  const todo = candidates.filter((r) => !already.has(`review_reply:${r.reviewId}`)).slice(0, cap);
   if (todo.length === 0) return summary;
 
   const { data: services } = await supabase.from('services').select('name').eq('site_id', siteId).limit(12);
@@ -185,8 +229,9 @@ export async function syncSiteReviews(supabase: SupabaseClient, siteId: string):
       continue;
     }
     summary.drafted += 1;
+    const recent = isRecentEnough(review.createTime);
 
-    if (isNegativeReview(rating)) {
+    if (recent && isNegativeReview(rating)) {
       try {
         await alertOwner(supabase, typedSite, context, reply);
         summary.alerted += 1;
@@ -195,7 +240,8 @@ export async function syncSiteReviews(supabase: SupabaseClient, siteId: string):
       }
     }
 
-    if (shouldAutoPublishReply(typedSite.automation_mode, rating)) {
+    // Backlog drafts are old enough that a surprise auto-reply would look odd; always queue them.
+    if (recent && shouldAutoPublishReply(typedSite.automation_mode, rating)) {
       const result = await publishReviewReply(supabase, action as PendingAction, { client, autoPublished: true });
       if (result.ok) summary.autoPublished += 1;
       else summary.errors.push(`publish ${review.reviewId}: ${result.error}`);
@@ -277,6 +323,7 @@ export function buildReviewReplyPrompt(input: {
   const { review } = input;
   const firstName = review.author_name.split(' ')[0];
   const negative = isNegativeReview(review.rating);
+  const old = !isRecentEnough(review.review_date);
   return `You are the owner of ${input.businessName}, a local service business in ${input.city}, ${input.state}, replying publicly to a Google review.
 ${input.serviceNames.length ? `Services offered: ${input.serviceNames.join(', ')}` : ''}
 ${input.directives}
@@ -293,6 +340,7 @@ ${review.comment ? `Text: """${review.comment}"""` : 'Text: (no written comment,
 - Never offer discounts, refunds, credits or promises. Never mention competitors. Never ask them to change the rating.
 - Do not invent facts about the business, the job, the technician or the timeline. Only use what the review says.
 - No hashtags, no emojis, no exclamation marks beyond one, no all-caps, no em dashes.
+${old ? '- This review was left a while ago and is only being answered now. Do not pretend it is recent and do not dwell on the delay; at most a brief acknowledgment, then the thanks.' : ''}
 ${negative
   ? `- This is a negative review. Apologize once, plainly, without excuses or arguing. Say you want to make it right and invite them to reach out directly${input.phone ? ` at ${input.phone}` : ''}. Do not dispute their account in public, even if it seems unfair.`
   : `- Thank them, be warm but not gushing, and if natural mention you look forward to helping again.`}

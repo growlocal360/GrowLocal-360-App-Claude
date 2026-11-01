@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
 import { reviewRepliesEnabled } from '@/lib/automation/review-replies';
+import { isRecentEnough } from '@/lib/automation/policy';
 import type { AutomationMode } from '@/types/database';
 
 /**
@@ -18,16 +19,31 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const admin = createAdminClient();
-  const [{ data: site }, { data: location }, { data: connection }, { data: counts }] = await Promise.all([
+  const [{ data: site }, { data: location }, { data: connection }, { data: counts }, { data: unanswered }] = await Promise.all([
     admin.from('sites').select('automation_mode, settings').eq('id', siteId).single(),
     admin.from('locations').select('gbp_location_id').eq('site_id', siteId).not('gbp_location_id', 'is', null).limit(1).maybeSingle(),
     admin.from('social_connections').select('id').eq('site_id', siteId).eq('platform', 'google_business').eq('is_active', true).limit(1).maybeSingle(),
-    admin.from('pending_actions').select('status').eq('site_id', siteId),
+    admin.from('pending_actions').select('status, source_key').eq('site_id', siteId),
+    admin.from('google_reviews').select('google_review_id, review_date').eq('site_id', siteId).is('review_reply', null),
   ]);
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
 
   const byStatus: Record<string, number> = {};
-  for (const row of counts || []) byStatus[row.status] = (byStatus[row.status] || 0) + 1;
+  const queued = new Set<string>();
+  for (const row of counts || []) {
+    byStatus[row.status] = (byStatus[row.status] || 0) + 1;
+    if (row.source_key && row.status !== 'rejected' && row.status !== 'failed') queued.add(row.source_key);
+  }
+  // Unanswered reviews with no draft yet, split by the cron's age window.
+  let unansweredRecent = 0;
+  let unansweredOlder = 0;
+  for (const r of unanswered || []) {
+    if (queued.has(`review_reply:${r.google_review_id}`)) continue;
+    if (isRecentEnough(r.review_date)) unansweredRecent += 1;
+    else unansweredOlder += 1;
+  }
+
+  const automation = ((site.settings as { automation?: Record<string, unknown> } | null)?.automation) || {};
 
   return NextResponse.json({
     automationMode: (site.automation_mode || 'approve') as AutomationMode,
@@ -35,6 +51,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
     gbpLinked: !!location?.gbp_location_id,
     gbpConnected: !!connection,
     counts: byStatus,
+    unansweredRecent,
+    unansweredOlder,
+    lastReviewSync: automation.last_review_sync || null,
   });
 }
 
@@ -68,12 +87,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   return NextResponse.json({ ok: true });
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
+/** Body (optional): { includeOlder: true } also drafts for unanswered reviews older than the cron's window. */
+export async function POST(req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
   const supabase = await createClient();
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  await inngest.send({ name: 'reviews/sync.requested', data: { siteId } });
+  const body = (await req.json().catch(() => ({}))) as { includeOlder?: boolean };
+  await inngest.send({ name: 'reviews/sync.requested', data: { siteId, includeOlder: !!body.includeOlder } });
   return NextResponse.json({ ok: true, message: 'Sync started' });
 }

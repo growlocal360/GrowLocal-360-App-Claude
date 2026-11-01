@@ -20,6 +20,25 @@ interface AutomationState {
   gbpLinked: boolean;
   gbpConnected: boolean;
   counts: Record<string, number>;
+  unansweredRecent: number;
+  unansweredOlder: number;
+  lastReviewSync: {
+    at: string;
+    imported: number;
+    drafted: number;
+    auto_published: number;
+    skipped: string | null;
+    errors: string[];
+  } | null;
+}
+
+function ago(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  return fmt(iso);
 }
 
 function Stars({ rating }: { rating: number }) {
@@ -107,17 +126,26 @@ export default function AutomationPage() {
     }
   };
 
-  const syncNow = async () => {
-    setSyncing(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const syncNow = async (includeOlder = false) => {
+    const setFlag = includeOlder ? setBackfilling : setSyncing;
+    setFlag(true);
     try {
-      const res = await fetch(`/api/sites/${siteId}/automation`, { method: 'POST' });
+      const res = await fetch(`/api/sites/${siteId}/automation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ includeOlder }),
+      });
       if (!res.ok) throw new Error((await res.json()).error || 'Sync failed to start');
-      toast.success('Checking Google for new reviews. New drafts show up here in about a minute.');
-      setTimeout(async () => { await Promise.all([loadState(), loadActions(tab)]); }, 45000);
+      toast.success(includeOlder
+        ? 'Drafting replies for older reviews. They land in the list below over the next minute or two.'
+        : 'Checking Google for new reviews. New drafts show up here in about a minute.');
+      // Drafting takes a few seconds per review; refresh a couple of times.
+      [20000, 50000, 90000].forEach((ms) => setTimeout(async () => { await Promise.all([loadState(), loadActions(tab)]); }, ms));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Sync failed');
     } finally {
-      setSyncing(false);
+      setFlag(false);
     }
   };
 
@@ -159,10 +187,29 @@ export default function AutomationPage() {
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Bot className="h-6 w-6 text-[#00b875]" /> Automation</h1>
             <p className="text-gray-500 mt-1">Review replies today. GBP posts, photos and social next. Everything lands here first unless autopilot is on.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={syncNow} disabled={syncing || !ready}>
-            {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Check for new reviews
-          </Button>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => syncNow(false)} disabled={syncing || backfilling || !ready}>
+                {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Check for new reviews
+              </Button>
+              {(state?.unansweredOlder || 0) > 0 && (
+                <Button size="sm" onClick={() => syncNow(true)} disabled={syncing || backfilling || !ready || !state?.reviewReplies} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                  {backfilling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4" />}
+                  Draft replies for {state!.unansweredOlder} older review{state!.unansweredOlder === 1 ? '' : 's'}
+                </Button>
+              )}
+            </div>
+            {state?.lastReviewSync && (
+              <p className="text-xs text-gray-500">
+                Last checked {ago(state.lastReviewSync.at)}: {state.lastReviewSync.imported} review{state.lastReviewSync.imported === 1 ? '' : 's'} on Google,
+                {' '}{state.lastReviewSync.drafted} new draft{state.lastReviewSync.drafted === 1 ? '' : 's'}
+                {state.lastReviewSync.auto_published > 0 ? `, ${state.lastReviewSync.auto_published} posted on autopilot` : ''}
+                {state.lastReviewSync.skipped ? ` (${state.lastReviewSync.skipped})` : ''}
+                {state.lastReviewSync.errors?.length ? <span className="text-red-600"> · {state.lastReviewSync.errors[0]}</span> : null}
+              </p>
+            )}
+          </div>
         </div>
 
         {state && !ready && (
@@ -197,7 +244,7 @@ export default function AutomationPage() {
             <div className="flex items-start justify-between gap-4 border-t pt-5">
               <div>
                 <div className="font-medium text-gray-900">Draft review replies</div>
-                <p className="text-sm text-gray-500 mt-0.5">Checks Google every hour for new reviews and writes a reply in your voice. 1 and 2 star reviews also email you right away.</p>
+                <p className="text-sm text-gray-500 mt-0.5">Checks Google every hour for new reviews (last 60 days) and writes a reply in your voice. 1 and 2 star reviews also email you right away. Older unanswered reviews can be drafted on demand with the button above.</p>
               </div>
               <Switch
                 checked={!!state?.reviewReplies}
@@ -224,7 +271,11 @@ export default function AutomationPage() {
         ) : actions.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-gray-500">
-              {tab === 'pending' ? 'Nothing waiting. New review drafts appear here within an hour of the review.' : 'No history yet.'}
+              {tab !== 'pending'
+                ? 'No history yet.'
+                : (state?.unansweredOlder || 0) > 0
+                  ? `Nothing waiting. ${state!.unansweredOlder} older review${state!.unansweredOlder === 1 ? ' has' : 's have'} no reply yet. New reviews are checked hourly; use the button above to catch up on the older ones.`
+                  : 'Nothing waiting. New reviews are checked every hour and drafts appear here.'}
             </CardContent>
           </Card>
         ) : (

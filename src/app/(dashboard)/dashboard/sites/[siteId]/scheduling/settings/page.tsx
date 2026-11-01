@@ -3,11 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import {
   ArrowLeft, Save, Loader2, Clock, CalendarDays, Bell,
   Megaphone, Users, Plus, Trash2, MapPin,
@@ -45,29 +43,11 @@ export default function SchedulingSettingsPage() {
   const [dateOverrides, setDateOverrides] = useState<DateOverride[]>([]);
   const [newOverrideDate, setNewOverrideDate] = useState('');
   const [newOverrideReason, setNewOverrideReason] = useState('');
-  const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      const activeOrgId = getActiveOrgIdClient();
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-      const profile = (activeOrgId
-        ? profiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
-        : profiles?.[0]) || profiles?.[0] || null;
-
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
-
       // Load scheduling config
       const configRes = await fetch(`/api/sites/${siteId}/scheduling/config`);
       const configData = await configRes.json();
@@ -212,7 +192,6 @@ export default function SchedulingSettingsPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <Header title="Scheduling Settings" user={userData} />
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-1/3 rounded bg-gray-200" />
@@ -225,7 +204,6 @@ export default function SchedulingSettingsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Scheduling Settings" user={userData} />
 
       <div className="space-y-6 p-6">
         <Link

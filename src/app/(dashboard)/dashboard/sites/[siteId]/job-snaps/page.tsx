@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { startGbpConnect } from '@/lib/google/start-connect';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,6 @@ import {
   Search,
   ArrowLeft,
 } from 'lucide-react';
-import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import { JobSnapCard, type JobSnapCardData } from '@/components/job-snaps/job-snap-card';
 import { toast } from 'sonner';
 import type { JobStatus } from '@/types/database';
@@ -33,30 +31,11 @@ export default function SiteJobSnapsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
 
   const supabase = createClient();
 
   const loadData = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const activeOrgId = getActiveOrgIdClient();
-      const { data: allProfiles } = await supabase
-        .from('profiles')
-        .select('*, organization:organizations(*)')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-      const profile = (activeOrgId
-        ? allProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
-        : allProfiles?.[0]) || allProfiles?.[0] || null;
-
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
-
       // Load the site name + workspace_only flag
       const { data: site } = await supabase
         .from('sites')
@@ -283,7 +262,6 @@ export default function SiteJobSnapsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Job Snaps" user={userData} />
 
       <div className="p-6">
         {/* Back + header */}

@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
@@ -96,7 +95,6 @@ export default function SchedulingPage() {
     time_window_start: '07:00', time_window_end: '11:00',
     staff_member_id: '', source: 'manual',
   });
-  const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
   const [userRole, setUserRole] = useState<string>('owner');
   const [pendingCount, setPendingCount] = useState(0);
   const [availabilityPosts, setAvailabilityPosts] = useState<AvailabilityPost[]>([]);
@@ -127,11 +125,6 @@ export default function SchedulingPage() {
         ? profiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
         : profiles?.[0]) || profiles?.[0] || null;
 
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
       const currentRole = profile?.role || 'user';
       setUserRole(currentRole);
 
@@ -245,7 +238,6 @@ export default function SchedulingPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <Header title="Scheduling" user={userData} />
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-1/3 rounded bg-gray-200" />
@@ -258,7 +250,6 @@ export default function SchedulingPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={userRole === 'user' ? 'My Schedule' : 'Scheduling'} user={userData} />
 
       <div className="space-y-6 p-6">
         {/* Top Nav */}

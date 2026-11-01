@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -95,11 +94,6 @@ export default function SiteDashboardPage() {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [revalidating, setRevalidating] = useState(false);
-  const [userData, setUserData] = useState({
-    name: 'User',
-    email: '',
-    avatarUrl: undefined as string | undefined,
-  });
   const [userRole, setUserRole] = useState<string>('owner');
   // Automation queue badge (review replies etc. waiting for approval)
   const [pendingActionCount, setPendingActionCount] = useState(0);
@@ -138,11 +132,6 @@ export default function SiteDashboardPage() {
         ? allProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
         : allProfiles?.[0]) || allProfiles?.[0] || null;
 
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
 
       // Check site access for non-owners
       const role = (profile?.role as string) || 'user';
@@ -357,7 +346,6 @@ export default function SiteDashboardPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <Header title="Site Dashboard" user={userData} />
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>
@@ -371,7 +359,6 @@ export default function SiteDashboardPage() {
   if (!site) {
     return (
       <div className="flex flex-col">
-        <Header title="Site Not Found" user={userData} />
         <div className="p-6">
           <p className="text-gray-500">The requested site could not be found.</p>
           <Button asChild className="mt-4">
@@ -388,7 +375,6 @@ export default function SiteDashboardPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title={site.name} user={userData} />
 
       <div className="p-6 space-y-6">
         {/* Back Link */}

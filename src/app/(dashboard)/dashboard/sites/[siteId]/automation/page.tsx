@@ -3,15 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History } from 'lucide-react';
 import { toast } from 'sonner';
-import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import type { PendingAction, ReviewReplyContext } from '@/types/database';
 
 interface AutomationState {
@@ -67,9 +64,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default function AutomationPage() {
   const params = useParams();
   const siteId = params.siteId as string;
-  const supabase = createClient();
 
-  const [userData, setUserData] = useState({ name: 'User', email: '', avatarUrl: undefined as string | undefined });
   const [state, setState] = useState<AutomationState | null>(null);
   const [tab, setTab] = useState<'pending' | 'history'>('pending');
   const [actions, setActions] = useState<PendingAction[]>([]);
@@ -94,11 +89,6 @@ export default function AutomationPage() {
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      const activeOrgId = getActiveOrgIdClient();
-      const { data: profiles } = await supabase.from('profiles').select('*').eq('user_id', user?.id).order('created_at', { ascending: false });
-      const profile = (activeOrgId ? profiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId) : profiles?.[0]) || profiles?.[0] || null;
-      setUserData({ name: profile?.full_name || user?.user_metadata?.full_name || 'User', email: user?.email || '', avatarUrl: profile?.avatar_url });
       await Promise.all([loadState(), loadActions('pending')]);
       setLoading(false);
     }
@@ -176,7 +166,6 @@ export default function AutomationPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Automation" user={userData} />
       <div className="p-6 space-y-6 max-w-4xl">
         <Link href={`/dashboard/sites/${siteId}`} className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to site

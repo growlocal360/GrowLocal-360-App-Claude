@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Inbox, Phone, Mail, Clock, Send, Loader2, Bell } from 'lucide-react';
 import type { Lead, LeadStatus } from '@/types/database';
-import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 
 const STATUS_OPTIONS: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'new', label: 'New', color: 'bg-green-100 text-green-800' },
@@ -36,36 +34,11 @@ export default function LeadsPage() {
   const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
-  const [userData, setUserData] = useState({
-    name: 'User',
-    email: '',
-    avatarUrl: undefined as string | undefined,
-  });
 
   const supabase = createClient();
 
   useEffect(() => {
     async function loadData() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const activeOrgId = getActiveOrgIdClient();
-      const { data: leadProfiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-      const profile = (activeOrgId
-        ? leadProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
-        : leadProfiles?.[0]) || leadProfiles?.[0] || null;
-
-      setUserData({
-        name: profile?.full_name || user?.user_metadata?.full_name || 'User',
-        email: user?.email || '',
-        avatarUrl: profile?.avatar_url,
-      });
-
       const { data: leadsData } = await supabase
         .from('leads')
         .select('*')
@@ -130,7 +103,6 @@ export default function LeadsPage() {
   if (loading) {
     return (
       <div className="flex flex-col">
-        <Header title="Leads" user={userData} />
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 w-1/3 rounded bg-gray-200"></div>
@@ -143,7 +115,6 @@ export default function LeadsPage() {
 
   return (
     <div className="flex flex-col">
-      <Header title="Leads" user={userData} />
 
       <div className="space-y-6 p-6">
         {/* Back Link */}

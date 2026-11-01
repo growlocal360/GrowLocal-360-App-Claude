@@ -12,7 +12,9 @@ export const reviewAutomation = inngest.createFunction(
   [{ cron: '20 * * * *' }, { event: 'reviews/sync.requested' }],
   async ({ event, step }) => {
     const supabase = createAdminClient();
-    const requestedSiteId = (event?.data as { siteId?: string } | undefined)?.siteId;
+    const requested = (event?.data as { siteId?: string; includeOlder?: boolean } | undefined) || {};
+    const requestedSiteId = requested.siteId;
+    const includeOlder = !!requestedSiteId && !!requested.includeOlder;
 
     const siteIds = await step.run('list-sites', async () => {
       if (requestedSiteId) return [requestedSiteId];
@@ -27,7 +29,7 @@ export const reviewAutomation = inngest.createFunction(
 
     const results: SyncSummary[] = [];
     for (const siteId of siteIds) {
-      const summary = await step.run(`sync-${siteId}`, () => syncSiteReviews(supabase, siteId));
+      const summary = await step.run(`sync-${siteId}`, () => syncSiteReviews(supabase, siteId, { includeOlder }));
       results.push(summary);
     }
 

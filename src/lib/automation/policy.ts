@@ -4,6 +4,8 @@ import type { AutomationMode } from '@/types/database';
 export const REVIEW_REPLY_MAX_AGE_DAYS = 60;
 /** Cap drafts per site per sync so a backlog doesn't burn tokens or flood the queue. */
 export const REVIEW_REPLY_MAX_PER_SYNC = 10;
+/** Higher cap for the explicit "draft replies for older reviews" action. */
+export const REVIEW_REPLY_MAX_PER_BACKFILL = 30;
 /** Autopilot publishes replies at or above this rating; lower ones always wait for a human. */
 export const AUTOPILOT_MIN_RATING = 4;
 /** Ratings at or below this trigger an owner alert. */

@@ -111,11 +111,19 @@ interface Material {
 }
 
 async function gatherMaterial(supabase: SupabaseClient, site: SiteRow, location: LocationRow, origin: string, recentIds: Set<string>): Promise<Material> {
-  const [{ data: services }, { data: cats }, { data: work }, { data: reviews }] = await Promise.all([
+  const [{ data: services }, { data: cats }, { data: work }, { data: reviews }, { data: pushedSnaps }, { data: usedPosts }] = await Promise.all([
     supabase.from('services').select('id, name, slug, intro_copy, description, site_category_id').eq('site_id', site.id).eq('is_active', true).order('sort_order').limit(30),
     supabase.from('site_categories').select('id, is_primary, gbp_category:gbp_categories(display_name)').eq('site_id', site.id),
-    supabase.from('work_items').select('id, slug, title, description, images').eq('site_id', site.id).eq('status', 'published').order('created_at', { ascending: false }).limit(10),
+    supabase.from('work_items').select('id, slug, title, description, images').eq('site_id', site.id).eq('status', 'published').order('created_at', { ascending: false }).limit(20),
     supabase.from('google_reviews').select('google_review_id, author_name, comment').eq('site_id', site.id).eq('is_visible', true).eq('rating', 5).not('comment', 'is', null).order('review_date', { ascending: false }).limit(15),
+    // Jobs the owner already pushed to GBP from Job Snaps: never feature them again as a post.
+    supabase.from('job_snaps').select('work_item_id').eq('site_id', site.id).eq('is_published_to_gbp', true).not('work_item_id', 'is', null),
+    // Jobs already used by a published weekly post, ever.
+    supabase.from('pending_actions').select('context').eq('site_id', site.id).eq('action_type', 'gbp_post').eq('status', 'published'),
+  ]);
+  const workUsed = new Set<string>([
+    ...(pushedSnaps || []).map((r) => r.work_item_id as string),
+    ...(usedPosts || []).map((a) => (a.context as unknown as GbpPostContext)).filter((c) => c.source === 'work' && c.source_id).map((c) => c.source_id as string),
   ]);
 
   const catById = new Map<string, { slug: string; isPrimary: boolean }>();
@@ -133,8 +141,10 @@ async function gatherMaterial(supabase: SupabaseClient, site: SiteRow, location:
       })()
     : null;
 
-  const workPool = (work || []) as { id: string; slug: string; title: string; description: string | null; images: { url: string; role?: string }[] | null }[];
-  const w = workPool.find((x) => !recentIds.has(x.id)) || workPool[0] || null;
+  const workPool = ((work || []) as { id: string; slug: string; title: string; description: string | null; images: { url: string; role?: string }[] | null }[])
+    .filter((x) => !workUsed.has(x.id) && !recentIds.has(x.id));
+  // No fallback here: a job already on the profile is never posted twice.
+  const w = workPool[0] || null;
   const workItem = w
     ? (() => {
         const imgs = w.images || [];

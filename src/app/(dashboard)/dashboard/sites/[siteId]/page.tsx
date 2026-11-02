@@ -42,6 +42,7 @@ import {
   ClipboardList,
   FileText,
   Bot,
+  BarChart3,
 } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar, isRegenerating } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, TemplateId } from '@/types/database';
@@ -1059,6 +1060,31 @@ export default function SiteDashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/dashboard/sites/${siteId}/settings/search-performance`}>
                   View Data
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Monthly report */}
+          <Card className="hover:border-[#00ef99]/20 transition-colors">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <BarChart3 className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Monthly Report</h3>
+                  <p className="text-sm text-gray-500">Google, search, leads, reviews</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                What Google showed, what customers did, and what was done for you, month by month. Emailed on the 1st.
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/dashboard/sites/${siteId}/reports`}>
+                  View Report
                 </Link>
               </Button>
             </CardContent>

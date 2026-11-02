@@ -520,3 +520,51 @@ export async function sendReviewRequestEmail({
     throw new Error(`Failed to send review request: ${error.message}`);
   }
 }
+
+interface MonthlyReportEmailParams {
+  to: string;
+  businessName: string;
+  periodLabel: string;
+  tiles: { label: string; value: string; change?: string | null }[];
+  highlights: string[];
+  reportUrl: string;
+  brandColor?: string;
+}
+
+/** The 1st-of-month "here's what happened" email, with a link to the full report. */
+export async function sendMonthlyReportEmail({ to, businessName, periodLabel, tiles, highlights, reportUrl, brandColor = '#00ef99' }: MonthlyReportEmailParams) {
+  const resend = getResendClient();
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tileCells = tiles.map(
+    (t) => `<td style="padding: 6px; width: 33%;"><div style="background:#f9fafb;border-radius:12px;padding:14px 12px;text-align:center;">
+        <div style="font-size:26px;font-weight:800;color:#111827;line-height:1;">${esc(t.value)}</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:6px;">${esc(t.label)}</div>
+        ${t.change ? `<div style="font-size:12px;color:${t.change.startsWith('-') ? '#b91c1c' : '#047857'};margin-top:2px;">${esc(t.change)} vs last month</div>` : ''}
+      </div></td>`
+  );
+  const rows: string[] = [];
+  for (let i = 0; i < tileCells.length; i += 3) rows.push(`<tr>${tileCells.slice(i, i + 3).join('')}</tr>`);
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
+    to,
+    subject: `${businessName}: your ${periodLabel} numbers`,
+    html: `
+      <div style="${EMAIL_STYLES}">
+        <h2 style="color:#111827;margin-bottom:4px;">${esc(periodLabel)} at a glance</h2>
+        <p style="color:#4b5563;font-size:15px;margin-top:0;">${esc(businessName)}</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;margin:16px 0;">${rows.join('')}</table>
+        ${highlights.length ? `<ul style="color:#374151;font-size:15px;line-height:1.5;padding-left:20px;">${highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>` : ''}
+        <div style="margin:24px 0;">
+          <a href="${reportUrl}" style="display:inline-block;background-color:${brandColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">See the full report</a>
+        </div>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
+        <p style="color:#9ca3af;font-size:12px;">${esc(businessName)} &mdash; Powered by GrowLocal 360</p>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('Failed to send monthly report email:', error);
+    throw new Error(`Failed to send monthly report: ${error.message}`);
+  }
+}

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS ai_visibility_checks (
   model_id text NOT NULL,
   prompt text NOT NULL,
   mentioned boolean NOT NULL,
+  answered boolean NOT NULL DEFAULT true,   -- false when the assistant declined to name any business
   position int,
   competitors jsonb NOT NULL DEFAULT '[]'::jsonb,
   answer text,

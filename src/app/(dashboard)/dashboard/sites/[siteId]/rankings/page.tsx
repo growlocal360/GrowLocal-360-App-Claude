@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { rankTone, type ScannedPoint, type ScanSummary } from '@/lib/rank/grid';
 
 interface ScanRow { id: string; keyword: string; grid_size: number; spacing_miles: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
-interface AiCheckRow { model: string; model_id: string; prompt: string; mentioned: boolean; position: number | null; competitors: string[]; error: string | null }
+interface AiCheckRow { model: string; model_id: string; prompt: string; mentioned: boolean; position: number | null; competitors: string[]; answered?: boolean; error: string | null }
 interface RankingsResponse {
   settings: { enabled: boolean; keywords: string[]; gridSize: number; spacingMiles: number; keywordsAreDefaults: boolean };
   providerConfigured: boolean;
@@ -272,7 +272,7 @@ export default function RankingsPage() {
                         {data.ai.byModel.flatMap((m) => m.checks.map((c, i) => (
                           <div key={`${m.model}-${i}`} className="rounded-lg border p-2.5">
                             <div className="text-xs text-gray-400">{m.model === 'claude' ? 'Claude' : 'ChatGPT'} · {c.prompt}</div>
-                            <div className={`mt-1 font-medium ${c.mentioned ? 'text-emerald-700' : 'text-gray-700'}`}>{c.error ? `Error: ${c.error}` : c.mentioned ? `Named${c.position ? `, #${c.position} in the list` : ''}` : 'Not named'}</div>
+                            <div className={`mt-1 font-medium ${c.mentioned ? 'text-emerald-700' : 'text-gray-700'}`}>{c.error ? `Error: ${c.error}` : c.mentioned ? `Named${c.position ? `, #${c.position} in the list` : ''}` : c.answered === false ? 'Declined to name any business' : 'Not named'}</div>
                             {c.competitors.length > 0 && <div className="text-xs text-gray-500">Also named: {c.competitors.join(', ')}</div>}
                           </div>
                         )))}

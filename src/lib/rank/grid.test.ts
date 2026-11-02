@@ -48,6 +48,12 @@ describe('ai visibility', () => {
     expect(a.competitors).toEqual(['Sarasota Appliance Pros', 'Gulf Coast Appliance']);
     expect(analyzeAnswer('I cannot recommend specific businesses.', 'Fix It or Free Appliance Repair').mentioned).toBe(false);
   });
+  it('treats directory advice as a declined answer, not competitors', () => {
+    const refusal = `I don't have reliable local data.\n\n**Here's what I'd suggest for finding accurate results:**\n- Google Maps\n- Yelp\n- Angi\n- BBB\n- Nextdoor`;
+    const a = analyzeAnswer(refusal, 'Fix It or Free Appliance Repair');
+    expect(a.answered).toBe(false);
+    expect(a.competitors).toEqual([]);
+  });
   it('builds customer-style prompts', () => {
     const p = visibilityPrompts('Appliance repair service', 'Sarasota', 'FL');
     expect(p).toHaveLength(3);

@@ -93,6 +93,8 @@ export default function LocationsSettingsPage() {
         body: JSON.stringify({
           locationId: location.id,
           ...edit,
+          addressLine1: edit.address_line1,
+          zipCode: edit.zip_code,
           representativeCity: edit.representative_city,
           representativeState: edit.representative_state,
         }),
@@ -161,7 +163,17 @@ export default function LocationsSettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`address-${location.id}`}>Street address</Label>
+              <Input
+                id={`address-${location.id}`}
+                value={getEditValue(location, 'address_line1')}
+                onChange={(e) => updateEdit(location.id, 'address_line1', e.target.value)}
+                placeholder="123 Main St (used to centre the rankings grid; leave blank for a service-area business)"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor={`city-${location.id}`}>City</Label>
                 <Input
@@ -176,6 +188,14 @@ export default function LocationsSettingsPage() {
                   id={`state-${location.id}`}
                   value={getEditValue(location, 'state')}
                   onChange={(e) => updateEdit(location.id, 'state', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`zip-${location.id}`}>ZIP</Label>
+                <Input
+                  id={`zip-${location.id}`}
+                  value={getEditValue(location, 'zip_code')}
+                  onChange={(e) => updateEdit(location.id, 'zip_code', e.target.value)}
                 />
               </div>
             </div>

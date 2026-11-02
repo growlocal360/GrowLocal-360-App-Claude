@@ -44,7 +44,7 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { locationId, city, state, phone, representativeCity, representativeState } = body;
+  const { locationId, city, state, phone, addressLine1, zipCode, representativeCity, representativeState } = body;
 
   if (!locationId) {
     return NextResponse.json({ error: 'locationId is required' }, { status: 400 });
@@ -69,6 +69,13 @@ export async function PATCH(
   if (city !== undefined) update.city = city;
   if (state !== undefined) update.state = state;
   if (phone !== undefined) update.phone = phone;
+  if (addressLine1 !== undefined) update.address_line1 = addressLine1 || null;
+  if (zipCode !== undefined) update.zip_code = zipCode || null;
+  // Address changed: drop cached coordinates so the next rankings load re-geocodes.
+  if (addressLine1 !== undefined || zipCode !== undefined || city !== undefined || state !== undefined) {
+    update.latitude = null;
+    update.longitude = null;
+  }
   if (representativeCity !== undefined) update.representative_city = representativeCity || null;
   if (representativeState !== undefined) update.representative_state = representativeState || null;
 

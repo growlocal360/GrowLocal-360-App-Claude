@@ -45,7 +45,7 @@ interface Center { lat: number; lng: number; placeId: string | null; city: strin
 export async function resolveCenter(supabase: SupabaseClient, siteId: string): Promise<Center | null> {
   const { data: loc } = await supabase
     .from('locations')
-    .select('id, latitude, longitude, gbp_place_id, address_line1, city, state, postal_code')
+    .select('id, latitude, longitude, gbp_place_id, address_line1, city, state, zip_code')
     .eq('site_id', siteId)
     .order('is_primary', { ascending: false })
     .limit(1)
@@ -55,10 +55,12 @@ export async function resolveCenter(supabase: SupabaseClient, siteId: string): P
     return { lat: loc.latitude, lng: loc.longitude, placeId: loc.gbp_place_id, city: loc.city };
   }
   const key = process.env.GOOGLE_PLACES_API_KEY;
-  const address = [loc.address_line1, loc.city, loc.state, loc.postal_code].filter(Boolean).join(', ');
-  if (!key || !address) return null;
+  const address = [loc.address_line1, loc.city, loc.state, loc.zip_code].filter(Boolean).join(', ');
+  // A street address the owner entered wins; otherwise the GBP place id gives the exact pin.
+  const query = loc.address_line1 && address ? `address=${encodeURIComponent(address)}` : loc.gbp_place_id ? `place_id=${encodeURIComponent(loc.gbp_place_id)}` : null;
+  if (!key || !query) return null;
   try {
-    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`);
+    const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${query}&key=${key}`);
     const json = (await res.json()) as { results?: { geometry?: { location?: { lat: number; lng: number } } }[] };
     const g = json.results?.[0]?.geometry?.location;
     if (!g) return null;

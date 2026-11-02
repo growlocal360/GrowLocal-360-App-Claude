@@ -568,3 +568,79 @@ export async function sendMonthlyReportEmail({ to, businessName, periodLabel, ti
     throw new Error(`Failed to send monthly report: ${error.message}`);
   }
 }
+
+interface WeeklyDigestEmailParams {
+  to: string;
+  businessName: string;
+  rangeLabel: string;
+  lines: string[];
+  pendingApprovals: number;
+  profileChanges: { label: string; before: string; after: string }[];
+  automationUrl: string;
+  brandColor?: string;
+}
+
+/** Monday morning "last week in one screen" email. Only sent when there is something to say. */
+export async function sendWeeklyDigestEmail({ to, businessName, rangeLabel, lines, pendingApprovals, profileChanges, automationUrl, brandColor = '#00ef99' }: WeeklyDigestEmailParams) {
+  const resend = getResendClient();
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
+    to,
+    subject: `${businessName}: last week in 30 seconds`,
+    html: `
+      <div style="${EMAIL_STYLES}">
+        <h2 style="color:#111827;margin-bottom:4px;">Last week at ${esc(businessName)}</h2>
+        <p style="color:#6b7280;font-size:13px;margin-top:0;">${esc(rangeLabel)}</p>
+        <ul style="color:#374151;font-size:15px;line-height:1.6;padding-left:20px;">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+        ${pendingApprovals > 0 ? `<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:12px 16px;margin:16px 0;color:#92400e;font-size:14px;"><strong>${pendingApprovals} item${pendingApprovals === 1 ? '' : 's'} waiting for your OK</strong>: review replies, posts or photos drafted for you. They go out only when you approve them.</div>` : ''}
+        ${profileChanges.length ? `<div style="background:#fef2f2;border:1px solid #ef4444;border-radius:10px;padding:12px 16px;margin:16px 0;color:#7f1d1d;font-size:14px;"><strong>Your Google profile changed</strong><ul style="margin:8px 0 0;padding-left:18px;">${profileChanges.map((c) => `<li>${esc(c.label)}: ${esc(c.before)} &rarr; ${esc(c.after)}</li>`).join('')}</ul><div style="margin-top:6px;">If you did not make these changes, fix them on Google now.</div></div>` : ''}
+        <div style="margin:24px 0;">
+          <a href="${automationUrl}" style="display:inline-block;background-color:${brandColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${pendingApprovals > 0 ? 'Review and approve' : 'Open the dashboard'}</a>
+        </div>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
+        <p style="color:#9ca3af;font-size:12px;">${esc(businessName)} &mdash; Powered by GrowLocal 360</p>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('Failed to send weekly digest:', error);
+    throw new Error(`Failed to send weekly digest: ${error.message}`);
+  }
+}
+
+interface ProfileChangeAlertEmailParams {
+  to: string;
+  businessName: string;
+  changes: { label: string; before: string; after: string }[];
+  mapsUrl: string | null;
+  brandColor?: string;
+}
+
+/** Same-day alert when a watched field on the Google Business Profile changed. */
+export async function sendProfileChangeAlertEmail({ to, businessName, changes, mapsUrl, brandColor = '#00ef99' }: ProfileChangeAlertEmailParams) {
+  const resend = getResendClient();
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'GrowLocal 360 <noreply@send.growlocal360.com>',
+    to,
+    subject: `Your Google Business Profile changed: ${changes.map((c) => c.label.toLowerCase()).join(', ')}`,
+    html: `
+      <div style="${EMAIL_STYLES}">
+        <h2 style="color:#111827;margin-bottom:8px;">Something changed on the Google profile for ${esc(businessName)}</h2>
+        <p style="color:#4b5563;font-size:15px;">We check it every night. Since yesterday:</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;color:#374151;">
+          ${changes.map((c) => `<tr><td style="padding:8px 0;border-top:1px solid #e5e7eb;font-weight:600;width:34%;vertical-align:top;">${esc(c.label)}</td><td style="padding:8px 0;border-top:1px solid #e5e7eb;vertical-align:top;"><span style="color:#9ca3af;text-decoration:line-through;">${esc(c.before)}</span><br/>${esc(c.after)}</td></tr>`).join('')}
+        </table>
+        <p style="color:#4b5563;font-size:14px;">If you made this change, nothing to do. If you did not, Google may have applied a suggested edit; change it back on your profile.</p>
+        ${mapsUrl ? `<div style="margin:24px 0;"><a href="${mapsUrl}" style="display:inline-block;background-color:${brandColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open the profile</a></div>` : ''}
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
+        <p style="color:#9ca3af;font-size:12px;">${esc(businessName)} &mdash; Powered by GrowLocal 360</p>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error('Failed to send profile change alert:', error);
+    throw new Error(`Failed to send profile change alert: ${error.message}`);
+  }
+}

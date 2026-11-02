@@ -21,6 +21,9 @@ interface AutomationState {
   counts: Record<string, number>;
   unansweredRecent: number;
   unansweredOlder: number;
+  weeklyDigest: boolean;
+  profileAlerts: boolean;
+  recentProfileChanges: { detected_at: string; changes: { label: string; before: string; after: string }[] }[];
   gbpPosts: { enabled: boolean; cadenceDays: number; photoDrip: boolean; photoEveryDays: number };
   lastGbpPostAt: string | null;
   photosLeftToUpload: number;
@@ -397,6 +400,30 @@ export default function AutomationPage() {
                 onCheckedChange={(v) => patch({ reviewRequests: { enabled: v } })}
                 aria-label="Ask customers for reviews"
               />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t pt-5">
+              <div>
+                <div className="font-medium text-gray-900">Weekly email</div>
+                <p className="text-sm text-gray-500 mt-0.5">Monday morning, one screen: what Google showed, what came in, what was done for you, and anything waiting for approval. Skipped when the week was quiet.</p>
+              </div>
+              <Switch checked={!!state?.weeklyDigest} disabled={!state || savingMode} onCheckedChange={(v) => patch({ weeklyDigest: v })} aria-label="Weekly email" />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t pt-5">
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">Profile change alerts</div>
+                <p className="text-sm text-gray-500 mt-0.5">Every night we snapshot the Google Business Profile (name, phone, website, address, categories, hours, open status, description) and email you if anything changed. Catches edits you did not make.</p>
+                {(state?.recentProfileChanges?.length || 0) > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {state!.recentProfileChanges.map((c, i) => (
+                      <div key={i} className="rounded-lg border border-red-100 bg-red-50 p-2.5 text-xs text-red-900">
+                        <div className="font-medium">{fmt(c.detected_at)}</div>
+                        {c.changes.map((ch, j) => <div key={j}>{ch.label}: <span className="line-through opacity-60">{ch.before}</span> → {ch.after}</div>)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Switch checked={!!state?.profileAlerts} disabled={!state || savingMode} onCheckedChange={(v) => patch({ profileAlerts: v })} aria-label="Profile change alerts" />
             </div>
           </CardContent>
         </Card>

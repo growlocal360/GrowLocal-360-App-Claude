@@ -60,7 +60,7 @@ export interface MonthlyReportData {
 // ── Periods ─────────────────────────────────────────────────────────────────
 
 const pad = (n: number) => String(n).padStart(2, '0');
-const iso = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+export const iso = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
 /** 'YYYY-MM' -> inclusive start/end. The current month ends today (month to date). */
 export function monthPeriod(key: string, now = new Date()): MonthPeriod {
@@ -98,12 +98,12 @@ export function pctChange(current: number, previous: number): number | null {
 // ── Builders ────────────────────────────────────────────────────────────────
 
 /** Exclusive upper bound for timestamp filters: the day after `end`. */
-function dayAfter(end: string): string {
+export function dayAfter(end: string): string {
   const [y, m, d] = end.split('-').map(Number);
   return iso(new Date(Date.UTC(y, m - 1, d + 1)));
 }
 
-async function googleFor(token: string | null, locationResource: string | null, p: MonthPeriod): Promise<GoogleSummary> {
+export async function googleFor(token: string | null, locationResource: string | null, p: Pick<MonthPeriod, 'start' | 'end'>): Promise<GoogleSummary> {
   const empty: GoogleSummary = { available: false, impressionsMaps: 0, impressionsSearch: 0, impressions: 0, calls: 0, websiteClicks: 0, directions: 0, conversations: 0, bookings: 0 };
   if (!locationResource) return { ...empty, reason: 'No Google Business Profile location linked.' };
   if (!token) return { ...empty, reason: 'Google connection expired. Reconnect the Business Profile.' };
@@ -118,7 +118,7 @@ async function googleFor(token: string | null, locationResource: string | null, 
   }
 }
 
-async function searchFor(token: string | null, propertyUrl: string | null, p: MonthPeriod, full: boolean): Promise<SearchSummary> {
+export async function searchFor(token: string | null, propertyUrl: string | null, p: Pick<MonthPeriod, 'start' | 'end'>, full: boolean): Promise<SearchSummary> {
   const empty: SearchSummary = { available: false, clicks: 0, impressions: 0, ctr: 0, position: null, topQueries: [], topPages: [] };
   if (!propertyUrl) return { ...empty, reason: 'Search Console is not connected for this site.' };
   if (!token) return { ...empty, reason: 'Google connection expired. Reconnect to refresh Search Console data.' };
@@ -150,7 +150,7 @@ async function searchFor(token: string | null, propertyUrl: string | null, p: Mo
   }
 }
 
-async function countsFor(supabase: SupabaseClient, siteId: string, p: MonthPeriod) {
+export async function countsFor(supabase: SupabaseClient, siteId: string, p: Pick<MonthPeriod, 'start' | 'end'>) {
   const from = `${p.start}T00:00:00Z`;
   const to = `${dayAfter(p.end)}T00:00:00Z`;
   const [leads, apptsCreated, apptsCompleted, reviews, actions, requests, jobs] = await Promise.all([

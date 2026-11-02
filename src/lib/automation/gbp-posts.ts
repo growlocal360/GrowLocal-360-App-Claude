@@ -319,14 +319,29 @@ export async function publishGbpPost(
 
 // ── Photo drip ──────────────────────────────────────────────────────────────
 
+export interface PhotoUploadItem { media_id: string; url: string; role: string | null }
 export interface PhotoUploadContext {
-  media_id: string;
   job_snap_id: string;
   snap_title: string;
-  url: string;
+  /** All of this job's photos going to the gallery together (max PHOTOS_PER_JOB). */
+  photos: PhotoUploadItem[];
+  /** @deprecated single-photo shape from the first release; kept so old queue rows still render/publish */
+  media_id?: string;
+  url?: string;
+}
+export const PHOTOS_PER_JOB = 4;
+
+/** Photos of a queued action, tolerant of the older one-photo shape. */
+export function photosOf(ctx: PhotoUploadContext): PhotoUploadItem[] {
+  if (Array.isArray(ctx.photos) && ctx.photos.length) return ctx.photos;
+  return ctx.media_id && ctx.url ? [{ media_id: ctx.media_id, url: ctx.url, role: null }] : [];
 }
 
-/** Pick the next published Job Snap photo that has not been added to the profile gallery. */
+/**
+ * Pick the next published Job Snap whose photos are not yet in the profile
+ * gallery and queue the whole job as one action, so the gallery reads like a
+ * job log (one job every few days) instead of the same job trickling out.
+ */
 export async function queueNextPhoto(supabase: SupabaseClient, siteId: string, opts: { sendNow?: boolean; decidedBy?: string | null } = {}): Promise<
   { ok: true; status: 'queued' | 'published' | 'nothing'; actionId?: string } | { ok: false; error: string }
 > {
@@ -335,37 +350,49 @@ export async function queueNextPhoto(supabase: SupabaseClient, siteId: string, o
 
   const { data: rows } = await supabase
     .from('job_snap_media')
-    .select('id, storage_path, role, alt_text, ai_generated_name, created_at, snap:job_snaps!inner(id, site_id, title, ai_generated_title, is_published_to_website)')
+    .select('id, storage_path, role, sort_order, created_at, snap:job_snaps!inner(id, site_id, title, ai_generated_title, is_published_to_website, created_at)')
     .eq('snap.site_id', siteId)
     .eq('snap.is_published_to_website', true)
     .is('gbp_media_name', null)
     .order('created_at', { ascending: false })
-    .limit(40);
+    .limit(120);
 
-  const pool = ((rows || []) as unknown as { id: string; storage_path: string; role: string | null; alt_text: string | null; ai_generated_name: string | null; snap: { id: string; title: string | null; ai_generated_title: string | null } }[])
-    .filter((m) => m.role !== 'before');
+  type Row = { id: string; storage_path: string; role: string | null; sort_order: number; snap: { id: string; title: string | null; ai_generated_title: string | null; created_at: string } };
+  const pool = ((rows || []) as unknown as Row[]).filter((m) => m.role !== 'before');
   if (pool.length === 0) return { ok: true, status: 'nothing' };
 
-  // Skip photos already sitting in the queue.
+  // Jobs already waiting in the queue are skipped.
   const { data: queued } = await supabase.from('pending_actions').select('context').eq('site_id', siteId).eq('action_type', 'photo_upload').in('status', ['pending', 'approved']);
-  const queuedIds = new Set((queued || []).map((q) => (q.context as unknown as PhotoUploadContext).media_id));
-  const pick = pool.find((m) => !queuedIds.has(m.id));
-  if (!pick) return { ok: true, status: 'nothing' };
+  const queuedSnaps = new Set((queued || []).map((q) => (q.context as unknown as PhotoUploadContext).job_snap_id));
 
-  const { data: urlData } = supabase.storage.from('job-snap-media').getPublicUrl(pick.storage_path);
-  const context: PhotoUploadContext = {
-    media_id: pick.id,
-    job_snap_id: pick.snap.id,
-    snap_title: pick.snap.title || pick.snap.ai_generated_title || 'Recent work',
-    url: urlData.publicUrl,
-  };
-  const caption = (pick.alt_text || pick.snap.title || pick.snap.ai_generated_title || '').slice(0, 200);
+  // Group by job, newest job first.
+  const bySnap = new Map<string, Row[]>();
+  for (const m of pool) {
+    if (queuedSnaps.has(m.snap.id)) continue;
+    const list = bySnap.get(m.snap.id) || [];
+    list.push(m);
+    bySnap.set(m.snap.id, list);
+  }
+  const nextSnap = [...bySnap.values()].sort((a, b) => b[0].snap.created_at.localeCompare(a[0].snap.created_at))[0];
+  if (!nextSnap) return { ok: true, status: 'nothing' };
+
+  const roleRank = (r: string | null) => (r === 'after' ? 0 : r === 'primary' ? 1 : r === 'detail' ? 2 : r === 'process' ? 3 : 4);
+  const chosen = nextSnap.sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.sort_order - b.sort_order).slice(0, PHOTOS_PER_JOB);
+  const photos: PhotoUploadItem[] = chosen.map((m) => ({
+    media_id: m.id,
+    url: supabase.storage.from('job-snap-media').getPublicUrl(m.storage_path).data.publicUrl,
+    role: m.role,
+  }));
+  const snap = chosen[0].snap;
+  const context: PhotoUploadContext = { job_snap_id: snap.id, snap_title: snap.title || snap.ai_generated_title || 'Recent work', photos };
+  const caption = (snap.title || snap.ai_generated_title || '').slice(0, 200);
+
   const { data: action, error } = await supabase
     .from('pending_actions')
-    .insert({ site_id: siteId, action_type: 'photo_upload', status: 'pending', payload: { caption }, context, source_key: `photo_upload:${pick.id}` })
+    .insert({ site_id: siteId, action_type: 'photo_upload', status: 'pending', payload: { caption }, context, source_key: `photo_upload:snap:${snap.id}` })
     .select('*')
     .single();
-  if (error || !action) return { ok: false, error: error?.message || 'Could not queue the photo' };
+  if (error || !action) return { ok: false, error: error?.message || 'Could not queue the photos' };
 
   if (opts.sendNow || site.automation_mode === 'autopilot') {
     const pub = await publishPhotoUpload(supabase, action as PendingAction, { decidedBy: opts.decidedBy ?? null, autoPublished: !opts.sendNow });
@@ -375,35 +402,61 @@ export async function queueNextPhoto(supabase: SupabaseClient, siteId: string, o
   return { ok: true, status: 'queued', actionId: action.id };
 }
 
+/** Upload every photo of the job; the action succeeds if at least one lands, and reports the rest. */
 export async function publishPhotoUpload(
   supabase: SupabaseClient,
   action: PendingAction,
   opts: { captionOverride?: string; decidedBy?: string | null; autoPublished?: boolean } = {}
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; uploaded: number; failed: number } | { ok: false; error: string }> {
   const ctx = action.context as unknown as PhotoUploadContext;
+  const photos = photosOf(ctx);
+  if (photos.length === 0) return fail(supabase, action.id, 'No photos on this action');
+
   const { data: location } = await supabase.from('locations').select('gbp_account_id, gbp_location_id').eq('site_id', action.site_id).order('is_primary', { ascending: false }).limit(1).maybeSingle();
   if (!location?.gbp_account_id || !location.gbp_location_id) return fail(supabase, action.id, 'No Google Business Profile location linked');
   const token = await getStoredGoogleToken(supabase, action.site_id);
   if (!token) return fail(supabase, action.id, 'No Google token. Reconnect the Business Profile.');
 
   const caption = (opts.captionOverride ?? String((action.payload as { caption?: string }).caption || '')).trim().slice(0, 200);
-  try {
-    const client = new GBPClient(token);
-    const res = await client.createMedia(withPrefix(location.gbp_account_id, 'accounts'), withPrefix(location.gbp_location_id, 'locations'), {
-      mediaFormat: 'PHOTO',
-      sourceUrl: ctx.url,
-      locationAssociation: { category: 'ADDITIONAL' },
-      ...(caption ? { description: caption } : {}),
-    });
-    const now = new Date().toISOString();
-    await Promise.all([
-      supabase.from('pending_actions').update({ status: 'published', payload: { ...action.payload, caption, gbp_media_name: res.name }, published_at: now, decided_at: now, decided_by: opts.decidedBy ?? null, auto_published: !!opts.autoPublished, error: null, updated_at: now }).eq('id', action.id),
-      supabase.from('job_snap_media').update({ gbp_media_name: res.name, gbp_uploaded_at: now }).eq('id', ctx.media_id),
-    ]);
-    return { ok: true };
-  } catch (e) {
-    return fail(supabase, action.id, e instanceof Error ? e.message : String(e));
+  const client = new GBPClient(token);
+  const account = withPrefix(location.gbp_account_id, 'accounts');
+  const loc = withPrefix(location.gbp_location_id, 'locations');
+  const now = new Date().toISOString();
+  const results: { media_id: string; gbp_media_name?: string; error?: string }[] = [];
+
+  for (const photo of photos) {
+    try {
+      const res = await client.createMedia(account, loc, {
+        mediaFormat: 'PHOTO',
+        sourceUrl: photo.url,
+        locationAssociation: { category: 'ADDITIONAL' },
+        ...(caption ? { description: caption } : {}),
+      });
+      await supabase.from('job_snap_media').update({ gbp_media_name: res.name, gbp_uploaded_at: now }).eq('id', photo.media_id);
+      results.push({ media_id: photo.media_id, gbp_media_name: res.name });
+    } catch (e) {
+      results.push({ media_id: photo.media_id, error: e instanceof Error ? e.message : String(e) });
+    }
   }
+
+  const uploaded = results.filter((r) => r.gbp_media_name).length;
+  const failures = results.filter((r) => r.error);
+  if (uploaded === 0) return fail(supabase, action.id, failures[0]?.error || 'Upload failed');
+
+  await supabase
+    .from('pending_actions')
+    .update({
+      status: 'published',
+      payload: { ...action.payload, caption, results },
+      published_at: now,
+      decided_at: now,
+      decided_by: opts.decidedBy ?? null,
+      auto_published: !!opts.autoPublished,
+      error: failures.length ? `${failures.length} of ${photos.length} failed: ${failures[0].error}` : null,
+      updated_at: now,
+    })
+    .eq('id', action.id);
+  return { ok: true, uploaded, failed: failures.length };
 }
 
 async function fail(supabase: SupabaseClient, actionId: string, error: string): Promise<{ ok: false; error: string }> {

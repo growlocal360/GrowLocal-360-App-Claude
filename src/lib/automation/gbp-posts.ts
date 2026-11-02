@@ -5,6 +5,7 @@ import { createAnthropicClient, buildContentDirectives, withRetry } from '@/lib/
 import { resolvePublicOrigin } from '@/lib/sites/public-origin';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
+import { ensureBrandedPhoto, loadBrandContext } from './branded-photo';
 import type { AutomationMode, PendingAction, SiteSettings } from '@/types/database';
 
 /**
@@ -21,7 +22,9 @@ import type { AutomationMode, PendingAction, SiteSettings } from '@/types/databa
  * human, autopilot publishes.
  */
 
-export type PostSource = 'service' | 'work' | 'review' | 'tip';
+import { photosOf, type PostSource, type GbpPostContext, type PhotoUploadItem, type PhotoUploadContext } from './gbp-types';
+export { photosOf };
+export type { PostSource, GbpPostContext, PhotoUploadItem, PhotoUploadContext };
 const ROTATION: PostSource[] = ['service', 'work', 'review', 'tip'];
 /** GBP rejects summaries over 1500 characters. */
 export const GBP_SUMMARY_MAX = 1500;
@@ -95,13 +98,6 @@ interface SiteRow {
 }
 interface LocationRow { id: string; city: string; state: string; gbp_account_id: string | null; gbp_location_id: string | null }
 
-export interface GbpPostContext {
-  source: PostSource;
-  source_id: string | null;
-  source_label: string;
-  cta_url: string;
-  media_url: string | null;
-}
 
 interface Material {
   service: { id: string; name: string; slug: string; intro: string; url: string } | null;
@@ -263,7 +259,7 @@ export async function createGbpPostDraft(supabase: SupabaseClient, siteId: strin
     source === 'service' && material.service
       ? { source, source_id: material.service.id, source_label: material.service.name, cta_url: material.service.url, media_url: null }
       : source === 'work' && material.work
-        ? { source, source_id: material.work.id, source_label: material.work.title, cta_url: material.work.url, media_url: material.work.imageUrl }
+        ? { source, source_id: material.work.id, source_label: material.work.title, cta_url: material.work.url, media_url: material.work.imageUrl ? await ensureBrandedPhoto(supabase, siteId, material.work.imageUrl, { title: material.work.title }) : null }
         : source === 'review' && material.review
           ? { source, source_id: material.review.id, source_label: `Review from ${material.review.author}`, cta_url: material.review.url, media_url: null }
           : { source: 'tip', source_id: null, source_label: `${seasonFor()} tip`, cta_url: material.tip.url, media_url: null };
@@ -319,23 +315,8 @@ export async function publishGbpPost(
 
 // ── Photo drip ──────────────────────────────────────────────────────────────
 
-export interface PhotoUploadItem { media_id: string; url: string; role: string | null }
-export interface PhotoUploadContext {
-  job_snap_id: string;
-  snap_title: string;
-  /** All of this job's photos going to the gallery together (max PHOTOS_PER_JOB). */
-  photos: PhotoUploadItem[];
-  /** @deprecated single-photo shape from the first release; kept so old queue rows still render/publish */
-  media_id?: string;
-  url?: string;
-}
 export const PHOTOS_PER_JOB = 4;
 
-/** Photos of a queued action, tolerant of the older one-photo shape. */
-export function photosOf(ctx: PhotoUploadContext): PhotoUploadItem[] {
-  if (Array.isArray(ctx.photos) && ctx.photos.length) return ctx.photos;
-  return ctx.media_id && ctx.url ? [{ media_id: ctx.media_id, url: ctx.url, role: null }] : [];
-}
 
 /**
  * Pick the next published Job Snap whose photos are not yet in the profile
@@ -378,12 +359,15 @@ export async function queueNextPhoto(supabase: SupabaseClient, siteId: string, o
 
   const roleRank = (r: string | null) => (r === 'after' ? 0 : r === 'primary' ? 1 : r === 'detail' ? 2 : r === 'process' ? 3 : 4);
   const chosen = nextSnap.sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.sort_order - b.sort_order).slice(0, PHOTOS_PER_JOB);
-  const photos: PhotoUploadItem[] = chosen.map((m) => ({
-    media_id: m.id,
-    url: supabase.storage.from('job-snap-media').getPublicUrl(m.storage_path).data.publicUrl,
-    role: m.role,
-  }));
   const snap = chosen[0].snap;
+  const snapTitle = snap.title || snap.ai_generated_title || null;
+  // Branded variants (logo + title overlay) when the site has that on; originals otherwise.
+  const brandCtx = await loadBrandContext(supabase, siteId);
+  const photos: PhotoUploadItem[] = [];
+  for (const m of chosen) {
+    const original = supabase.storage.from('job-snap-media').getPublicUrl(m.storage_path).data.publicUrl;
+    photos.push({ media_id: m.id, url: await ensureBrandedPhoto(supabase, siteId, original, { title: snapTitle }, brandCtx), role: m.role });
+  }
   const context: PhotoUploadContext = { job_snap_id: snap.id, snap_title: snap.title || snap.ai_generated_title || 'Recent work', photos };
   const caption = (snap.title || snap.ai_generated_title || '').slice(0, 200);
 

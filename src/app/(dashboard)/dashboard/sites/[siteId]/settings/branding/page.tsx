@@ -17,6 +17,7 @@ import {
   Check,
   Loader2,
   ArrowLeft,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface BrandingConfig {
@@ -68,6 +69,19 @@ export default function BrandingSettingsPage() {
   const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  // Branded photos (logo + title overlay on photos sent to Google)
+  const [bpEnabled, setBpEnabled] = useState(false);
+  const [bpLogo, setBpLogo] = useState(true);
+  const [bpTitle, setBpTitle] = useState(true);
+  const [bpCity, setBpCity] = useState(true);
+  const [bpPhone, setBpPhone] = useState(false);
+  const [bpStyle, setBpStyle] = useState<'bar' | 'badge'>('bar');
+  const [bpPreviewKey, setBpPreviewKey] = useState(0);
+  const [bpPreviewLoading, setBpPreviewLoading] = useState(false);
+  // Google Business Profile logo / cover
+  const [gbpMedia, setGbpMedia] = useState<{ gbpLinked: boolean; hasLogo: boolean; logoSetAt: string | null; coverSetAt: string | null; photos: { id: string; url: string; title: string }[] } | null>(null);
+  const [gbpBusy, setGbpBusy] = useState<string | null>(null);
+  const [gbpMsg, setGbpMsg] = useState<string | null>(null);
 
   // Fetch current branding configuration
   useEffect(() => {
@@ -100,6 +114,15 @@ export default function BrandingSettingsPage() {
       setLogoPreview(data.logoUrl);
       setLogoDarkPreview(data.logoDarkUrl);
       setFaviconPreview(data.faviconUrl || null);
+      if (data.brandedPhotos) {
+        setBpEnabled(!!data.brandedPhotos.enabled);
+        setBpLogo(data.brandedPhotos.showLogo !== false);
+        setBpTitle(data.brandedPhotos.showTitle !== false);
+        setBpCity(data.brandedPhotos.showCity !== false);
+        setBpPhone(data.brandedPhotos.showPhone === true);
+        setBpStyle(data.brandedPhotos.style === 'badge' ? 'badge' : 'bar');
+      }
+      fetch(`/api/sites/${siteId}/gbp-media`).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setGbpMedia(d); }).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load branding settings');
     } finally {
@@ -184,6 +207,23 @@ export default function BrandingSettingsPage() {
     return data.url as string;
   };
 
+  const setGbp = async (kind: 'logo' | 'cover', sourceUrl?: string) => {
+    setGbpBusy(kind === 'logo' ? 'logo' : sourceUrl || 'cover');
+    setGbpMsg(null);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/gbp-media`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, sourceUrl }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setGbpMsg(kind === 'logo' ? 'Logo sent to Google. It can take a few minutes to show on the profile.' : 'Cover photo sent to Google. It can take a few minutes to show on the profile.');
+      const refreshed = await fetch(`/api/sites/${siteId}/gbp-media`);
+      if (refreshed.ok) setGbpMedia(await refreshed.json());
+    } catch (e) {
+      setGbpMsg(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setGbpBusy(null);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -232,6 +272,7 @@ export default function BrandingSettingsPage() {
           logoUrl: newLogoUrl,
           logoDarkUrl: newLogoDarkUrl,
           faviconUrl: newFaviconUrl,
+          brandedPhotos: { enabled: bpEnabled, showLogo: bpLogo, showTitle: bpTitle, showCity: bpCity, showPhone: bpPhone, style: bpStyle },
         }),
       });
 
@@ -530,6 +571,105 @@ export default function BrandingSettingsPage() {
             onChange={handleFaviconFile}
             className="hidden"
           />
+        </CardContent>
+      </Card>
+
+      {/* Branded photos */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-gray-700" />
+            <h2 className="font-semibold">Branded photos <span className="text-sm font-normal text-gray-500">(Google Business Profile)</span></h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Stamp your logo and the job title on Job Snap photos before they go to Google, both the gallery photo drip and post photos.
+            The website keeps the clean original. Keep it modest: Google allows a small logo and a caption, but can reject photos that look like ads, so the phone number is off by default.
+          </p>
+          <label className="flex items-center gap-3">
+            <input type="checkbox" className="h-4 w-4" checked={bpEnabled} onChange={(e) => setBpEnabled(e.target.checked)} />
+            <span className="text-sm font-medium text-gray-900">Brand photos sent to Google</span>
+          </label>
+          {bpEnabled && (
+            <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+              <div className="space-y-3 text-sm">
+                <div className="font-medium text-gray-700">Show</div>
+                <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4" checked={bpLogo} onChange={(e) => { setBpLogo(e.target.checked); setBpPreviewKey((k) => k + 1); }} /> Logo {!logoPreview && <span className="text-xs text-amber-600">(upload a logo above)</span>}</label>
+                <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4" checked={bpTitle} onChange={(e) => { setBpTitle(e.target.checked); setBpPreviewKey((k) => k + 1); }} /> Job title</label>
+                <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4" checked={bpCity} onChange={(e) => { setBpCity(e.target.checked); setBpPreviewKey((k) => k + 1); }} /> City</label>
+                <label className="flex items-center gap-2"><input type="checkbox" className="h-4 w-4" checked={bpPhone} onChange={(e) => { setBpPhone(e.target.checked); setBpPreviewKey((k) => k + 1); }} /> Phone number <span className="text-xs text-gray-400">(riskier with Google)</span></label>
+                <div className="font-medium text-gray-700 pt-2">Style</div>
+                <div className="flex gap-2">
+                  {(['bar', 'badge'] as const).map((st) => (
+                    <button key={st} type="button" onClick={() => { setBpStyle(st); setBpPreviewKey((k) => k + 1); }} className={`rounded-lg border px-3 py-1.5 text-sm ${bpStyle === st ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-700'}`}>
+                      {st === 'bar' ? 'Bottom bar' : 'Corner badge'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-500 mb-1">Preview on your newest job photo</div>
+                <div className="relative overflow-hidden rounded-xl border bg-gray-100" style={{ minHeight: 180 }}>
+                  {bpPreviewLoading && <div className="absolute inset-0 flex items-center justify-center bg-white/60"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={bpPreviewKey}
+                    src={`/api/sites/${siteId}/settings/branding/photo-preview?logo=${bpLogo ? 1 : 0}&title=${bpTitle ? 1 : 0}&city=${bpCity ? 1 : 0}&phone=${bpPhone ? 1 : 0}&style=${bpStyle}&v=${bpPreviewKey}`}
+                    alt="Branded photo preview"
+                    className="block w-full"
+                    onLoadStart={() => setBpPreviewLoading(true)}
+                    onLoad={() => setBpPreviewLoading(false)}
+                    onError={() => setBpPreviewLoading(false)}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-400">Uses the saved logo and brand color. Save to apply to future uploads.</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Google profile logo + cover */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-gray-700" />
+            <h2 className="font-semibold">Google profile logo &amp; cover photo</h2>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-500">
+            The two slots at the top of the Business Profile&apos;s Photos page. Send your site logo as the Google logo, and pick one of your real job photos as the cover.
+          </p>
+          {gbpMedia && !gbpMedia.gbpLinked && (
+            <p className="text-sm text-amber-700">Connect the Google Business Profile for this site first.</p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" disabled={!gbpMedia?.gbpLinked || !gbpMedia?.hasLogo || gbpBusy !== null} onClick={() => setGbp('logo')}>
+              {gbpBusy === 'logo' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {gbpMedia?.logoSetAt ? 'Send logo to Google again' : 'Set as Google logo'}
+            </Button>
+            {gbpMedia?.logoSetAt && <span className="text-xs text-gray-500">Logo sent {new Date(gbpMedia.logoSetAt).toLocaleDateString()}</span>}
+            {gbpMedia?.coverSetAt && <span className="text-xs text-gray-500">Cover sent {new Date(gbpMedia.coverSetAt).toLocaleDateString()}</span>}
+          </div>
+          <div>
+            <div className="text-xs font-medium text-gray-500 mb-2">Pick a cover photo (cropped to 16:9 for you)</div>
+            {gbpMedia && gbpMedia.photos.length === 0 ? (
+              <p className="text-sm text-gray-400">No published Job Snap photos yet. Publish a job to the website and its photos appear here.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                {(gbpMedia?.photos || []).map((p) => (
+                  <button key={p.id} type="button" title={p.title} disabled={!gbpMedia?.gbpLinked || gbpBusy !== null} onClick={() => setGbp('cover', p.url)} className="group relative aspect-video overflow-hidden rounded-lg border hover:border-gray-900 disabled:opacity-60">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={p.title} className="h-full w-full object-cover" />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[10px] text-white opacity-0 group-hover:opacity-100">{gbpBusy === p.url ? 'Sending…' : 'Use as cover'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {gbpMsg && <p className="text-sm text-gray-700">{gbpMsg}</p>}
         </CardContent>
       </Card>
 

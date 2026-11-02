@@ -7,6 +7,7 @@ import { rankSettings, resolveKeywords, latestScans, resolveCenter } from '@/lib
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility } from '@/lib/rank/ai-visibility';
 import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
+import { getBalance, orgIdForSite, spendCredits, CREDIT_PACKS } from '@/lib/rank/credits';
 
 /**
  * GET   -> settings (with resolved keywords), readiness, latest scan per keyword (+previous), AI visibility roll-up
@@ -23,13 +24,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
   const { data: site } = await admin.from('sites').select('settings, name').eq('id', siteId).single();
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
   const settings = rankSettings(site.settings);
-  const [keywords, scans, ai, center] = await Promise.all([
+  const orgId = await orgIdForSite(admin, siteId);
+  const [keywords, scans, ai, center, balance] = await Promise.all([
     resolveKeywords(admin, siteId, settings),
     latestScans(admin, siteId),
     latestAiVisibility(admin, siteId),
     resolveCenter(admin, siteId),
+    orgId ? getBalance(admin, orgId) : Promise.resolve(0),
   ]);
   return NextResponse.json({
+    credits: { balance, perManualScan: keywords.length, packs: CREDIT_PACKS },
     settings: { ...settings, keywords, keywordsAreDefaults: settings.keywords.length === 0 },
     providerConfigured: dataForSeoConfigured(),
     aiModels: aiModelsAvailable(),
@@ -75,6 +79,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
   if (!dataForSeoConfigured()) return NextResponse.json({ error: 'Rank tracking needs the DataForSEO account connected (DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD).' }, { status: 400 });
 
   const body = (await req.json().catch(() => ({}))) as { keywords?: string[]; ai?: boolean };
-  await inngest.send({ name: 'rank/scan.requested', data: { siteId, keywords: body.keywords, ai: body.ai } });
-  return NextResponse.json({ ok: true });
+  const admin = createAdminClient();
+  const { data: site } = await admin.from('sites').select('settings, organization_id').eq('id', siteId).single();
+  if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
+
+  // Manual scans spend one credit per keyword; the weekly scheduled scan is free.
+  const settings = rankSettings(site.settings);
+  const keywords = (body.keywords?.length ? body.keywords : await resolveKeywords(admin, siteId, settings)).slice(0, MAX_KEYWORDS);
+  if (keywords.length === 0) return NextResponse.json({ error: 'Add at least one keyword first' }, { status: 400 });
+  const spend = await spendCredits(admin, site.organization_id, keywords.length, 'manual_scan', siteId);
+  if (!spend.ok) {
+    return NextResponse.json({ error: `This scan needs ${keywords.length} credit${keywords.length === 1 ? '' : 's'} and you have ${spend.balance}. Buy credits or wait for the weekly scan.`, needCredits: keywords.length, balance: spend.balance }, { status: 402 });
+  }
+
+  await inngest.send({ name: 'rank/scan.requested', data: { siteId, keywords, ai: body.ai, charged: true } });
+  return NextResponse.json({ ok: true, balance: spend.balance, charged: keywords.length });
 }

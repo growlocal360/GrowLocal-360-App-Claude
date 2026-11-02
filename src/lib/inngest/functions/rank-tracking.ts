@@ -2,11 +2,12 @@ import { inngest } from '@/lib/inngest/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runRankScans } from '@/lib/rank/scan';
 import { runAiVisibility } from '@/lib/rank/ai-visibility';
+import { grantCredits, orgIdForSite } from '@/lib/rank/credits';
 
-/** 1st of the month, 3:00 ET (before the 8:00 report): grid scans + AI checks for every active site. */
-export const rankTrackingMonthly = inngest.createFunction(
-  { id: 'rank-tracking-monthly', name: 'Maps grid scans + AI visibility', concurrency: { limit: 2 } },
-  { cron: 'TZ=America/New_York 0 3 1 * *' },
+/** Weekly, Monday 3:00 ET (before the 8:00 digest; the 1st-of-month report uses the latest scans): grid scans + AI checks. Included with the plan. */
+export const rankTrackingWeekly = inngest.createFunction(
+  { id: 'rank-tracking-weekly', name: 'Maps grid scans + AI visibility (weekly)', concurrency: { limit: 2 } },
+  { cron: 'TZ=America/New_York 0 3 * * 1' },
   async ({ step }) => {
     const supabase = createAdminClient();
     const siteIds = await step.run('list-sites', async () => {
@@ -32,9 +33,20 @@ export const rankTrackingRequested = inngest.createFunction(
   { id: 'rank-tracking-requested', name: 'Rank scan on demand' },
   { event: 'rank/scan.requested' },
   async ({ event, step }) => {
-    const { siteId, keywords, ai } = event.data as { siteId: string; keywords?: string[]; ai?: boolean };
+    const { siteId, keywords, ai, charged } = event.data as { siteId: string; keywords?: string[]; ai?: boolean; charged?: boolean };
     const supabase = createAdminClient();
     const scans = await step.run(`scan-${siteId}`, () => runRankScans(supabase, siteId, keywords));
+    // A manual scan was paid for up front: give back the credit for any keyword that did not produce a scan.
+    if (charged) {
+      await step.run(`refund-${siteId}`, async () => {
+        const failed = scans.skipped ? (keywords?.length || 0) : scans.results.filter((r) => r.error).length;
+        if (!failed) return { refunded: 0 };
+        const orgId = await orgIdForSite(supabase, siteId);
+        if (!orgId) return { refunded: 0 };
+        await grantCredits(supabase, orgId, failed, scans.skipped ? `refund:${scans.skipped}` : 'refund:failed keywords', { siteId });
+        return { refunded: failed };
+      });
+    }
     const aiRes = ai === false ? null : await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId));
     return { scans, ai: aiRes };
   }

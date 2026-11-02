@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { grantCredits } from '@/lib/rank/credits';
 // The build itself is triggered from the success page after onboarding; the
 // webhook only schedules a fallback that starts it if that never happens.
 import { inngest } from '@/lib/inngest/client';
@@ -74,6 +75,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const supabase = createAdminClient();
 
   const metadata = session.metadata || {};
+
+  // ── Branch: one-time scan credit pack (no plan, no site creation) ──────
+  if (metadata.kind === 'scan_credits') {
+    const credits = parseInt(metadata.credits || '0', 10);
+    if (!metadata.organization_id || !credits) {
+      console.error('scan_credits checkout missing metadata', metadata);
+      return;
+    }
+    const r = await grantCredits(supabase, metadata.organization_id, credits, `purchase:${metadata.pack_id || 'pack'}`, {
+      siteId: metadata.site_id || null,
+      stripeSessionId: session.id,
+    });
+    console.log(`[credits] +${credits} for org ${metadata.organization_id} (balance ${r.balance}${r.duplicate ? ', duplicate event ignored' : ''})`);
+    return;
+  }
+
   const userId = metadata.user_id;
   const planName = metadata.plan_name;
 

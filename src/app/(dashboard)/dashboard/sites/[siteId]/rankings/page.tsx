@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ interface RankingsResponse {
   scans: { keyword: string; latest: ScanRow; previous: ScanRow | null }[];
   ai: { batchAt: string; mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number; checks: AiCheckRow[] }[]; topCompetitors: { name: string; count: number }[] } | null;
   estimatedCostPerScan: number;
+  credits: { balance: number; perManualScan: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[] };
 }
 
 const TONE_CLASS: Record<ReturnType<typeof rankTone>, string> = {
@@ -60,8 +61,29 @@ function Change({ now, before, invert = false, suffix = '' }: { now: number | nu
 
 export default function RankingsPage() {
   const params = useParams();
+  const search = useSearchParams();
   const siteId = params.siteId as string;
   const [data, setData] = useState<RankingsResponse | null>(null);
+  const [buying, setBuying] = useState<string | null>(null);
+  const [showPacks, setShowPacks] = useState(false);
+  useEffect(() => {
+    const c = search.get('credits');
+    if (c === 'purchased') toast.success('Credits added. Thank you!');
+    if (c === 'cancelled') toast.message('Purchase cancelled.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const buy = async (packId: string) => {
+    setBuying(packId);
+    try {
+      const r = await fetch(`/api/sites/${siteId}/rankings/credits`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId }) });
+      const d = await r.json();
+      if (!r.ok || !d.url) throw new Error(d.error || 'Could not start checkout');
+      window.location.href = d.url;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not start checkout');
+      setBuying(null);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -109,8 +131,10 @@ export default function RankingsPage() {
     const before = data?.scans.map((s) => s.latest.id).join(',') || '';
     try {
       const r = await fetch(`/api/sites/${siteId}/rankings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-      if (!r.ok) throw new Error((await r.json()).error || 'Could not start');
-      toast.success('Scanning Google Maps across the grid. A few minutes for all keywords; results appear as they land.');
+      const d = await r.json();
+      if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
+      if (!r.ok) throw new Error(d.error || 'Could not start');
+      toast.success(`Scanning Google Maps across the grid (${d.charged} credit${d.charged === 1 ? '' : 's'} used, ${d.balance} left). Results appear as they land.`);
       let tries = 0;
       pollRef.current = setInterval(async () => {
         tries += 1;
@@ -137,13 +161,37 @@ export default function RankingsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Grid3x3 className="h-6 w-6 text-rose-600" /> Rankings</h1>
-            <p className="text-gray-500 mt-1">Where the business shows up on Google Maps from different spots around town, and whether AI assistants recommend it. Scanned on the 1st of each month.</p>
+            <p className="text-gray-500 mt-1">Where the business shows up on Google Maps from different spots around town, and whether AI assistants recommend it. Scanned every Monday; scan any time with credits.</p>
           </div>
-          <Button size="sm" onClick={scanNow} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
-            {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Scan now{data ? ` (~$${data.estimatedCostPerScan.toFixed(2)})` : ''}
-          </Button>
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <div className="flex gap-2">
+              <Button size="sm" onClick={scanNow} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Scan now{data ? ` · ${data.credits.perManualScan} credit${data.credits.perManualScan === 1 ? '' : 's'}` : ''}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowPacks((v) => !v)}>Buy credits</Button>
+            </div>
+            {data && <span className="text-xs text-gray-500">{data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left · weekly scans are included, Scan now uses 1 credit per keyword</span>}
+          </div>
         </div>
+
+        {showPacks && data && (
+          <Card>
+            <CardHeader><h2 className="font-semibold">Scan credits</h2><p className="text-sm text-gray-500">One credit scans one keyword across your whole grid, right now. The Monday scan never uses credits.</p></CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {data.credits.packs.map((p) => (
+                  <button key={p.id} type="button" onClick={() => buy(p.id)} disabled={buying !== null} className="rounded-xl border p-4 text-left hover:border-gray-900 disabled:opacity-60">
+                    <div className="text-2xl font-extrabold text-gray-900">${(p.priceCents / 100).toFixed(0)}</div>
+                    <div className="font-medium text-gray-900">{p.label}</div>
+                    <div className="text-xs text-gray-500">{p.note}</div>
+                    {buying === p.id && <Loader2 className="mt-2 h-4 w-4 animate-spin text-gray-400" />}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {data && !data.providerConfigured && (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

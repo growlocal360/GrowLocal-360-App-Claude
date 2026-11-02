@@ -18,7 +18,7 @@ import { appointmentCompletedReviewRequest, reviewRequestFollowUps } from '@/lib
 import { gbpAutomationDaily, gbpAutomationRequested } from '@/lib/inngest/functions/gbp-automation';
 import { monthlyReports, monthlyReportRequested } from '@/lib/inngest/functions/monthly-report';
 import { weeklyDigest, profileWatchNightly } from '@/lib/inngest/functions/digest-and-watch';
-import { rankTrackingMonthly, rankTrackingRequested } from '@/lib/inngest/functions/rank-tracking';
+import { rankTrackingWeekly, rankTrackingRequested } from '@/lib/inngest/functions/rank-tracking';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -44,7 +44,7 @@ export const { GET, POST, PUT } = serve({
     monthlyReportRequested,
     weeklyDigest,
     profileWatchNightly,
-    rankTrackingMonthly,
+    rankTrackingWeekly,
     rankTrackingRequested,
   ],
 });

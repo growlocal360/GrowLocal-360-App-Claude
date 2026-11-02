@@ -258,6 +258,47 @@ export default function ReportsPage() {
               </div>
             </section>
 
+            {/* Rankings */}
+            {(d.rankings?.length || d.aiVisibility) && (
+              <section className="space-y-3">
+                <h2 className="font-semibold text-gray-900">Rankings</h2>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {d.rankings?.length > 0 && (
+                    <Card>
+                      <CardHeader><h3 className="text-sm font-semibold">Google Maps, across town</h3></CardHeader>
+                      <CardContent>
+                        <table className="w-full text-sm">
+                          <thead><tr className="text-left text-xs text-gray-500"><th className="pb-2 font-medium">Keyword</th><th className="pb-2 text-right font-medium">Top 3</th><th className="pb-2 text-right font-medium">Top 10</th><th className="pb-2 text-right font-medium">Visibility</th></tr></thead>
+                          <tbody>
+                            {d.rankings.map((r) => (
+                              <tr key={r.keyword} className="border-t">
+                                <td className="py-1.5 pr-2 text-gray-800">{r.keyword}</td>
+                                <td className="py-1.5 text-right">{r.top3Points}/{r.totalPoints}</td>
+                                <td className="py-1.5 text-right text-gray-500">{r.top10Points}/{r.totalPoints}</td>
+                                <td className="py-1.5 text-right"><span className="font-semibold">{r.visibility}</span>{r.previousVisibility !== null && <span className={`ml-1 text-xs ${r.visibility >= r.previousVisibility ? 'text-emerald-700' : 'text-red-600'}`}>{r.visibility >= r.previousVisibility ? '+' : ''}{r.visibility - r.previousVisibility}</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p className="mt-2 text-xs text-gray-400">Visibility 0 to 100: 100 means #1 from every point on the grid. <Link href={`/dashboard/sites/${siteId}/rankings`} className="underline">See the heatmaps</Link>.</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                  {d.aiVisibility && (
+                    <Card>
+                      <CardHeader><h3 className="text-sm font-semibold">AI assistants</h3></CardHeader>
+                      <CardContent className="space-y-2">
+                        <div className="text-3xl font-extrabold text-gray-900">{d.aiVisibility.mentionedShare}%</div>
+                        <p className="text-sm text-gray-600">of customer-style questions (&ldquo;best service in city&rdquo;) named this business{d.aiVisibility.previousShare !== null ? `, from ${d.aiVisibility.previousShare}% last month` : ''}.</p>
+                        <div className="flex gap-4 text-sm">{d.aiVisibility.byModel.map((m) => <span key={m.model}><span className="font-semibold">{m.mentionedShare}%</span> <span className="text-gray-500">{m.model === 'claude' ? 'Claude' : m.model === 'openai' ? 'ChatGPT' : m.model}</span></span>)}</div>
+                        {d.aiVisibility.topCompetitors.length > 0 && <p className="text-xs text-gray-500">Named instead: {d.aiVisibility.topCompetitors.map((c) => c.name).join(', ')}</p>}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </section>
+            )}
+
             {/* Activity */}
             <section className="space-y-3">
               <h2 className="font-semibold text-gray-900">Done for you</h2>

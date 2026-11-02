@@ -46,6 +46,10 @@ export interface MonthlyReportData {
     latest: { author: string; rating: number; comment: string | null; date: string | null }[];
   };
   activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number };
+  /** Latest Maps grid scan per keyword inside the period, with the previous scan for deltas. */
+  rankings: { keyword: string; visibility: number; top3Points: number; top10Points: number; totalPoints: number; averageRank: number | null; previousVisibility: number | null; scannedAt: string }[];
+  /** Share of customer-style AI prompts that named the business in the period's latest batch. */
+  aiVisibility: { mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number }[]; topCompetitors: { name: string; count: number }[] } | null;
   previous: {
     period: MonthPeriod;
     google: Pick<GoogleSummary, 'available' | 'impressions' | 'calls' | 'websiteClicks' | 'directions'>;
@@ -193,6 +197,65 @@ export async function countsFor(supabase: SupabaseClient, siteId: string, p: Pic
   };
 }
 
+async function rankingsFor(supabase: SupabaseClient, siteId: string, p: MonthPeriod): Promise<MonthlyReportData['rankings']> {
+  const { data } = await supabase
+    .from('rank_scans')
+    .select('keyword, summary, scanned_at')
+    .eq('site_id', siteId)
+    .lt('scanned_at', `${dayAfter(p.end)}T00:00:00Z`)
+    .order('scanned_at', { ascending: false })
+    .limit(200);
+  const seen = new Map<string, { latest?: { summary: ScanSummaryLite; scanned_at: string }; previous?: { summary: ScanSummaryLite } }>();
+  for (const row of data || []) {
+    const e = seen.get(row.keyword) || {};
+    if (!e.latest) {
+      // Only count as "this month" when the latest scan falls inside the period.
+      if (row.scanned_at < `${p.start}T00:00:00Z`) continue;
+      e.latest = { summary: row.summary as ScanSummaryLite, scanned_at: row.scanned_at };
+    } else if (!e.previous) e.previous = { summary: row.summary as ScanSummaryLite };
+    seen.set(row.keyword, e);
+  }
+  return [...seen.entries()]
+    .filter(([, e]) => e.latest)
+    .map(([keyword, e]) => ({
+      keyword,
+      visibility: e.latest!.summary.visibility,
+      top3Points: e.latest!.summary.top3Points,
+      top10Points: e.latest!.summary.top10Points,
+      totalPoints: e.latest!.summary.totalPoints,
+      averageRank: e.latest!.summary.averageRank,
+      previousVisibility: e.previous?.summary.visibility ?? null,
+      scannedAt: e.latest!.scanned_at,
+    }))
+    .sort((a, b) => b.visibility - a.visibility);
+}
+type ScanSummaryLite = { visibility: number; top3Points: number; top10Points: number; totalPoints: number; averageRank: number | null };
+
+async function aiVisibilityFor(supabase: SupabaseClient, siteId: string, p: MonthPeriod): Promise<MonthlyReportData['aiVisibility']> {
+  const { data } = await supabase
+    .from('ai_visibility_checks')
+    .select('batch_at, model, mentioned, competitors')
+    .eq('site_id', siteId)
+    .lt('batch_at', `${dayAfter(p.end)}T00:00:00Z`)
+    .order('batch_at', { ascending: false })
+    .limit(60);
+  const rows = data || [];
+  if (!rows.length || rows[0].batch_at < `${p.start}T00:00:00Z`) return null;
+  const latest = rows[0].batch_at;
+  const batch = rows.filter((r) => r.batch_at === latest);
+  const prevAt = rows.find((r) => r.batch_at !== latest)?.batch_at;
+  const prev = prevAt ? rows.filter((r) => r.batch_at === prevAt) : [];
+  const share = (l: typeof rows) => (l.length ? Math.round((l.filter((r) => r.mentioned).length / l.length) * 100) : 0);
+  const counts = new Map<string, number>();
+  for (const r of batch) for (const c of (r.competitors as string[]) || []) counts.set(c, (counts.get(c) || 0) + 1);
+  return {
+    mentionedShare: share(batch),
+    previousShare: prev.length ? share(prev) : null,
+    byModel: Array.from(new Set(batch.map((r) => r.model as string))).map((m) => ({ model: m, mentionedShare: share(batch.filter((r) => r.model === m)) })),
+    topCompetitors: [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count })),
+  };
+}
+
 export async function buildMonthlyReport(supabase: SupabaseClient, siteId: string, key: string, now = new Date()): Promise<MonthlyReportData> {
   const period = monthPeriod(key, now);
   const prevPeriod = monthPeriod(previousMonthKey(key), now);
@@ -207,6 +270,7 @@ export async function buildMonthlyReport(supabase: SupabaseClient, siteId: strin
   const locationResource = location?.gbp_location_id || null;
   const propertyUrl = settings.gsc_property_url || null;
 
+  const [rankings, aiVisibility] = await Promise.all([rankingsFor(supabase, siteId, period), aiVisibilityFor(supabase, siteId, period)]);
   const [google, search, counts, prevGoogle, prevSearch, prevCounts] = await Promise.all([
     googleFor(token, locationResource, period),
     searchFor(token, propertyUrl, period, true),
@@ -236,6 +300,8 @@ export async function buildMonthlyReport(supabase: SupabaseClient, siteId: strin
       averageRating: typeof settings.google_average_rating === 'number' ? settings.google_average_rating : null,
     },
     activity: counts.activity,
+    rankings,
+    aiVisibility,
     previous: {
       period: prevPeriod,
       google: { available: prevGoogle.available, impressions: prevGoogle.impressions, calls: prevGoogle.calls, websiteClicks: prevGoogle.websiteClicks, directions: prevGoogle.directions },
@@ -270,6 +336,11 @@ export function reportHighlights(d: MonthlyReportData): string[] {
   if (d.search.available) out.push(`The website earned ${d.search.clicks.toLocaleString()} clicks from ${d.search.impressions.toLocaleString()} Google searches${up(d.search.clicks, d.previous.search.clicks)}.`);
   if (d.leads.total || d.bookings.created) out.push(`${d.leads.total} lead${d.leads.total === 1 ? '' : 's'} and ${d.bookings.created} booking${d.bookings.created === 1 ? '' : 's'} came through the site${up(d.leads.total, d.previous.leads)}.`);
   if (d.reviews.newCount) out.push(`${d.reviews.newCount} new Google review${d.reviews.newCount === 1 ? '' : 's'}${d.reviews.newAverage ? `, averaging ${d.reviews.newAverage} stars` : ''}.`);
+  if (d.rankings.length) {
+    const best = d.rankings[0];
+    out.push(`On Google Maps, "${best.keyword}" shows in the top 3 from ${best.top3Points} of ${best.totalPoints} spots around town${best.previousVisibility !== null ? up(best.visibility, best.previousVisibility).replace('up', 'visibility up').replace('down', 'visibility down') : ''}.`);
+  }
+  if (d.aiVisibility) out.push(`AI assistants named the business in ${d.aiVisibility.mentionedShare}% of customer-style questions${d.aiVisibility.previousShare !== null ? ` (${d.aiVisibility.previousShare}% last time)` : ''}.`);
   const a = d.activity;
   const did = [
     a.repliesPosted ? `${a.repliesPosted} review repl${a.repliesPosted === 1 ? 'y' : 'ies'}` : null,

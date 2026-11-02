@@ -215,7 +215,7 @@ export default function RankingsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold">What to track</h2>
-                  <label className="flex items-center gap-2 text-sm text-gray-700"><Switch checked={s.enabled} disabled={saving} onCheckedChange={(v) => patch({ enabled: v })} aria-label="Rank tracking" /> Monthly scans</label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700"><Switch checked={s.enabled} disabled={saving} onCheckedChange={(v) => patch({ enabled: v })} aria-label="Rank tracking" /> Weekly scans</label>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -296,7 +296,7 @@ export default function RankingsPage() {
             <section className="space-y-3">
               <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Bot className="h-4 w-4 text-gray-500" /> Do AI assistants recommend you?</h2>
               {!data.ai ? (
-                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run with the monthly scan{data.aiModels.length ? ` using ${data.aiModels.join(' and ')}` : ''}.</CardContent></Card>
+                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run with the weekly scan{data.aiModels.length ? ` using ${data.aiModels.join(' and ')}` : ''}.</CardContent></Card>
               ) : (
                 <Card>
                   <CardContent className="pt-6 space-y-4">

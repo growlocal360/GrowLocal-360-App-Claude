@@ -11,7 +11,7 @@ import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox,
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { PendingAction, ReviewReplyContext, ReviewRequestContext } from '@/types/database';
-import { photosOf, type GbpPostContext, type PhotoUploadContext } from '@/lib/automation/gbp-posts';
+import { photosOf, type GbpPostContext, type PhotoUploadContext } from '@/lib/automation/gbp-types';
 
 interface AutomationState {
   automationMode: 'approve' | 'autopilot';

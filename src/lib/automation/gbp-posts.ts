@@ -22,7 +22,9 @@ import type { AutomationMode, PendingAction, SiteSettings } from '@/types/databa
  * human, autopilot publishes.
  */
 
-export type PostSource = 'service' | 'work' | 'review' | 'tip';
+import { photosOf, type PostSource, type GbpPostContext, type PhotoUploadItem, type PhotoUploadContext } from './gbp-types';
+export { photosOf };
+export type { PostSource, GbpPostContext, PhotoUploadItem, PhotoUploadContext };
 const ROTATION: PostSource[] = ['service', 'work', 'review', 'tip'];
 /** GBP rejects summaries over 1500 characters. */
 export const GBP_SUMMARY_MAX = 1500;
@@ -96,13 +98,6 @@ interface SiteRow {
 }
 interface LocationRow { id: string; city: string; state: string; gbp_account_id: string | null; gbp_location_id: string | null }
 
-export interface GbpPostContext {
-  source: PostSource;
-  source_id: string | null;
-  source_label: string;
-  cta_url: string;
-  media_url: string | null;
-}
 
 interface Material {
   service: { id: string; name: string; slug: string; intro: string; url: string } | null;
@@ -320,23 +315,8 @@ export async function publishGbpPost(
 
 // ── Photo drip ──────────────────────────────────────────────────────────────
 
-export interface PhotoUploadItem { media_id: string; url: string; role: string | null }
-export interface PhotoUploadContext {
-  job_snap_id: string;
-  snap_title: string;
-  /** All of this job's photos going to the gallery together (max PHOTOS_PER_JOB). */
-  photos: PhotoUploadItem[];
-  /** @deprecated single-photo shape from the first release; kept so old queue rows still render/publish */
-  media_id?: string;
-  url?: string;
-}
 export const PHOTOS_PER_JOB = 4;
 
-/** Photos of a queued action, tolerant of the older one-photo shape. */
-export function photosOf(ctx: PhotoUploadContext): PhotoUploadItem[] {
-  if (Array.isArray(ctx.photos) && ctx.photos.length) return ctx.photos;
-  return ctx.media_id && ctx.url ? [{ media_id: ctx.media_id, url: ctx.url, role: null }] : [];
-}
 
 /**
  * Pick the next published Job Snap whose photos are not yet in the profile

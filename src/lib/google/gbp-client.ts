@@ -221,6 +221,13 @@ export class GBPClient {
     );
   }
 
+  /** Everything the profile-change watch compares, including hours, open status and description. */
+  async getLocationProfile(locationName: string): Promise<GBPLocation & { openInfo?: { status?: string }; profile?: { description?: string } }> {
+    return this.fetch(
+      `${this.businessInfoUrl}/${locationName}?readMask=name,title,storefrontAddress,phoneNumbers,categories,websiteUri,regularHours,openInfo,profile`
+    );
+  }
+
   // Get reviews for a specific location
   async getReviews(
     accountName: string,

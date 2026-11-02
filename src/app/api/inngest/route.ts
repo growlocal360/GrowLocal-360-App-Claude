@@ -17,6 +17,7 @@ import { reviewAutomation } from '@/lib/inngest/functions/review-automation';
 import { appointmentCompletedReviewRequest, reviewRequestFollowUps } from '@/lib/inngest/functions/review-requests';
 import { gbpAutomationDaily, gbpAutomationRequested } from '@/lib/inngest/functions/gbp-automation';
 import { monthlyReports, monthlyReportRequested } from '@/lib/inngest/functions/monthly-report';
+import { weeklyDigest, profileWatchNightly } from '@/lib/inngest/functions/digest-and-watch';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -40,5 +41,7 @@ export const { GET, POST, PUT } = serve({
     gbpAutomationRequested,
     monthlyReports,
     monthlyReportRequested,
+    weeklyDigest,
+    profileWatchNightly,
   ],
 });

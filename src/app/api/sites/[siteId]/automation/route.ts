@@ -56,7 +56,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
     admin.from('job_snap_media').select('id, snap:job_snaps!inner(site_id, is_published_to_website)', { count: 'exact', head: true }).eq('snap.site_id', siteId).eq('snap.is_published_to_website', true).is('gbp_media_name', null),
   ]);
 
+  const { data: recentChanges } = await admin.from('gbp_profile_changes').select('changes, detected_at').eq('site_id', siteId).order('detected_at', { ascending: false }).limit(5);
+  const flags = (automation as { digest?: { enabled?: boolean }; profile_alerts?: { enabled?: boolean } });
+
   return NextResponse.json({
+    weeklyDigest: flags.digest?.enabled !== false,
+    profileAlerts: flags.profile_alerts?.enabled !== false,
+    recentProfileChanges: recentChanges || [],
     gbpPosts: gbpPostSettings(site.settings),
     lastGbpPostAt: lastPost?.created_at || null,
     photosLeftToUpload: photosLeft || 0,
@@ -85,6 +91,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
     reviewReplies?: boolean;
     reviewRequests?: { enabled?: boolean; followUp?: boolean; delayHours?: number; followUpDays?: number };
     gbpPosts?: { enabled?: boolean; photoDrip?: boolean; cadenceDays?: number; photoEveryDays?: number };
+    weeklyDigest?: boolean;
+    profileAlerts?: boolean;
   };
   const admin = createAdminClient();
   const { data: site } = await admin.from('sites').select('settings').eq('id', siteId).single();
@@ -124,6 +132,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
     automation.gbp_posts = gp;
     settingsTouched = true;
   }
+  if (typeof body.weeklyDigest === 'boolean') { automation.digest = { ...((automation.digest as Record<string, unknown> | undefined) || {}), enabled: body.weeklyDigest }; settingsTouched = true; }
+  if (typeof body.profileAlerts === 'boolean') { automation.profile_alerts = { ...((automation.profile_alerts as Record<string, unknown> | undefined) || {}), enabled: body.profileAlerts }; settingsTouched = true; }
   if (settingsTouched) update.settings = { ...settings, automation };
   if (Object.keys(update).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
 

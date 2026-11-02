@@ -277,6 +277,10 @@ export interface SiteSettings {
   profiles?: Partial<Record<'google_business' | 'facebook' | 'instagram' | 'youtube' | 'yelp' | 'linkedin' | 'tiktok' | 'nextdoor' | 'bbb', string>>;
   /** Square icon for the browser tab / Google result. Stored like logo_url (/public/assets/... or absolute). */
   favicon_url?: string;
+  /** Logo + title overlay on photos sent to Google (see lib/automation/branded-photo.ts). Off until the owner turns it on. */
+  branded_photos?: { enabled?: boolean; show_logo?: boolean; show_title?: boolean; show_city?: boolean; show_phone?: boolean; style?: 'bar' | 'badge' };
+  gbp_logo_set_at?: string;
+  gbp_cover_set_at?: string;
   phone?: string;
   email?: string;
   core_industry?: string;

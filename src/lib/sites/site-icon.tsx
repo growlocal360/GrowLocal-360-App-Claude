@@ -57,7 +57,7 @@ export async function siteIconResponse(slug: string, size: number): Promise<Resp
 }
 
 /** Resolve a stored asset reference (/public/assets/... or absolute URL) to bytes. */
-async function loadStoredImage(
+export async function loadStoredImage(
   supabase: ReturnType<typeof createAdminClient>,
   siteId: string,
   stored: string

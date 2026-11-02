@@ -26,6 +26,25 @@ function authHeader(): string {
   return 'Basic ' + Buffer.from(`${process.env.DATAFORSEO_LOGIN}:${process.env.DATAFORSEO_PASSWORD}`).toString('base64');
 }
 
+/**
+ * Free account-info call: proves the login works and reports the balance before a
+ * run spends hundreds of requests that would all fail the same way.
+ */
+export async function checkDataForSeoAccount(): Promise<{ ok: true; balance: number } | { ok: false; error: string }> {
+  if (!dataForSeoConfigured()) return { ok: false, error: 'DataForSEO not configured' };
+  try {
+    const res = await fetch('https://api.dataforseo.com/v3/appendix/user_data', { headers: { Authorization: authHeader() } });
+    const json = (await res.json().catch(() => ({}))) as { status_code?: number; status_message?: string; tasks?: { result?: { money?: { balance?: number } }[] }[] };
+    if (json.status_code === 40100 || res.status === 401) return { ok: false, error: 'DataForSEO rejected the API login. Use the API password from app.dataforseo.com/api-access, not the account password.' };
+    if (json.status_code !== 20000) return { ok: false, error: `DataForSEO: ${json.status_message || `HTTP ${res.status}`}` };
+    const balance = json.tasks?.[0]?.result?.[0]?.money?.balance ?? 0;
+    if (balance <= 0) return { ok: false, error: 'DataForSEO balance is empty. Add funds at app.dataforseo.com.' };
+    return { ok: true, balance };
+  } catch (e) {
+    return { ok: false, error: `DataForSEO unreachable: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 export interface MapsSearchResult { items: MapsItem[]; cost: number }
 
 /** Google Maps results as seen from one coordinate. Zoom 15z ≈ a neighbourhood view. */

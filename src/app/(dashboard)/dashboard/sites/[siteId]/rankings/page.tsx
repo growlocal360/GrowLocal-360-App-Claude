@@ -18,6 +18,7 @@ interface RankingsResponse {
   providerConfigured: boolean;
   aiModels: string[];
   hasCenter: boolean;
+  lastRun: { at: string; ok: boolean; message: string; scanned: number; failed: number } | null;
   center: { lat: number; lng: number; city: string | null } | null;
   scans: { keyword: string; latest: ScanRow; previous: ScanRow | null }[];
   ai: { batchAt: string; mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number; checks: AiCheckRow[] }[]; topCompetitors: { name: string; count: number }[] } | null;
@@ -128,21 +129,28 @@ export default function RankingsPage() {
 
   const scanNow = async () => {
     setScanning(true);
-    const before = data?.scans.map((s) => s.latest.id).join(',') || '';
+    const startedAt = Date.now();
     try {
       const r = await fetch(`/api/sites/${siteId}/rankings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       const d = await r.json();
       if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
       if (!r.ok) throw new Error(d.error || 'Could not start');
       toast.success(`Scanning Google Maps across the grid (${d.charged} credit${d.charged === 1 ? '' : 's'} used, ${d.balance} left). Results appear as they land.`);
+      // The run records its outcome on the site when it finishes (success or not); poll for that.
       let tries = 0;
       pollRef.current = setInterval(async () => {
         tries += 1;
         const d = await load();
-        const after = d?.scans.map((s) => s.latest.id).join(',') || '';
-        if ((after && after !== before && (d?.scans.length || 0) >= (d?.settings.keywords.length || 1)) || tries > 80) {
+        const finished = d?.lastRun && new Date(d.lastRun.at).getTime() >= startedAt;
+        if (finished || tries > 120) {
           if (pollRef.current) clearInterval(pollRef.current);
           setScanning(false);
+          if (finished && d?.lastRun) {
+            if (d.lastRun.ok) toast.success(d.lastRun.message);
+            else toast.error(`Scan did not complete: ${d.lastRun.message}${d.lastRun.failed ? ' Credits for failed keywords were returned.' : ''}`);
+          } else if (!finished) {
+            toast.error('The scan is taking longer than expected. Results will appear here when it finishes.');
+          }
         }
       }, 5000);
     } catch (e) {
@@ -197,6 +205,12 @@ export default function RankingsPage() {
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <span>Map scans need a DataForSEO account connected to the app (DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD). Until then keywords and settings can be prepared here, and AI visibility checks still run.</span>
+          </div>
+        )}
+        {data?.lastRun && !data.lastRun.ok && !scanning && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Last scan ({new Date(data.lastRun.at).toLocaleString()}) did not complete: {data.lastRun.message}{data.lastRun.failed ? ' Credits for the failed keywords were returned.' : ''}</span>
           </div>
         )}
         {data && !data.hasCenter && (
@@ -255,7 +269,7 @@ export default function RankingsPage() {
             <section className="space-y-3">
               <h2 className="font-semibold text-gray-900">Google Maps heatmaps</h2>
               {data.scans.length === 0 ? (
-                <Card><CardContent className="py-10 text-center text-gray-500">No scans yet. {data.providerConfigured ? 'Click Scan now, or wait for the 1st of the month.' : 'Connect DataForSEO to start scanning.'}</CardContent></Card>
+                <Card><CardContent className="py-10 text-center text-gray-500">No scans yet. {data.providerConfigured ? 'Click Scan now, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}</CardContent></Card>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {data.scans.map(({ keyword, latest, previous }) => (

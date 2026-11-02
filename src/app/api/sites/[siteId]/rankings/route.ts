@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
-import { rankSettings, resolveKeywords, latestScans, resolveCenter } from '@/lib/rank/scan';
+import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility } from '@/lib/rank/ai-visibility';
 import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
@@ -38,6 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
     providerConfigured: dataForSeoConfigured(),
     aiModels: aiModelsAvailable(),
     hasCenter: !!center,
+    lastRun: lastRunOf(site.settings),
     center: center ? { lat: center.lat, lng: center.lng, city: center.city } : null,
     scans,
     ai,

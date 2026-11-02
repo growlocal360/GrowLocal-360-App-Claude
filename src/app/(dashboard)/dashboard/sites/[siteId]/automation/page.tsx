@@ -11,7 +11,7 @@ import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox,
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { PendingAction, ReviewReplyContext, ReviewRequestContext } from '@/types/database';
-import type { GbpPostContext, PhotoUploadContext } from '@/lib/automation/gbp-posts';
+import { photosOf, type GbpPostContext, type PhotoUploadContext } from '@/lib/automation/gbp-posts';
 
 interface AutomationState {
   automationMode: 'approve' | 'autopilot';
@@ -333,12 +333,12 @@ export default function AutomationPage() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900">Photo drip</div>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Adds one published Job Snap photo to your Business Profile gallery at a time, so the profile keeps getting fresh real photos instead of a dump all at once.
+                  Adds the photos from one published Job Snap to your Business Profile gallery at a time (up to 4 per job), so the gallery fills in like a job log instead of a dump all at once.
                 </p>
                 {gp?.photoDrip && (
                   <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700">
                     <label className="flex items-center gap-2">
-                      One photo every
+                      One job every
                       <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={gp.photoEveryDays} disabled={savingMode} onChange={(e) => patch({ gbpPosts: { photoEveryDays: Number(e.target.value) } })}>
                         <option value={1}>day</option>
                         <option value={2}>2 days</option>
@@ -517,6 +517,7 @@ export default function AutomationPage() {
               }
               if (action.action_type === 'photo_upload') {
                 const ph = action.context as unknown as PhotoUploadContext;
+                const photos = photosOf(ph);
                 const caption = drafts[action.id] ?? String((action.payload as { caption?: string }).caption || '');
                 return (
                   <Card key={action.id}>
@@ -524,16 +525,21 @@ export default function AutomationPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <ImageIcon className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-900">Gallery photo · {ph.snap_title}</span>
+                          <span className="font-medium text-gray-900">Gallery photo{photos.length === 1 ? '' : 's'} · {ph.snap_title}</span>
+                          <span className="text-xs text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>
                           <span className="text-xs text-gray-400">{fmt(action.created_at)}</span>
                         </div>
                         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[action.status] || ''}`}>
                           {action.status === 'published' ? (action.auto_published ? 'added · autopilot' : 'added') : action.status}
                         </span>
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={ph.url} alt="" className="h-40 w-full rounded-lg object-cover" />
+                      <div className="grid gap-4 sm:grid-cols-[minmax(0,320px)_1fr]">
+                        <div className={`grid gap-2 ${photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                          {photos.map((p) => (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={p.media_id} src={p.url} alt="" className={`w-full rounded-lg object-cover ${photos.length > 1 ? 'h-24' : 'h-40'}`} />
+                          ))}
+                        </div>
                         <div>
                           <div className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Caption (optional)</div>
                           {isPending ? (
@@ -548,7 +554,7 @@ export default function AutomationPage() {
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => decide(action, 'approve')} disabled={!!busy[action.id] || !ready} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
                             {busy[action.id] === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                            Add to Google
+                            Add {photos.length === 1 ? 'photo' : `${photos.length} photos`} to Google
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
                             {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}

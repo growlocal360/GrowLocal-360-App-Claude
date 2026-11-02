@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
       decidedBy,
     });
     if (!pub.ok) return NextResponse.json({ error: pub.error, status: 'failed' }, { status: 502 });
-    return NextResponse.json({ ok: true, status: 'published' });
+    return NextResponse.json({ ok: true, status: 'published', uploaded: pub.uploaded, failed: pub.failed });
   }
 
   if (action.action_type !== 'review_reply') {

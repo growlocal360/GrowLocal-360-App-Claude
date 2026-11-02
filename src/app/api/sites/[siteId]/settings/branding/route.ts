@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { brandedPhotoSettings } from '@/lib/automation/branded-photo';
 
 // GET - Fetch current branding settings
 export async function GET(
@@ -55,6 +56,7 @@ export async function GET(
     logoUrl: toDashboardUrl(settings.logo_url),
     logoDarkUrl: toDashboardUrl(settings.logo_dark_url),
     faviconUrl: toDashboardUrl(settings.favicon_url),
+    brandedPhotos: brandedPhotoSettings(settings),
     siteName: site.name,
   });
 }
@@ -85,7 +87,7 @@ export async function PATCH(
 
   // Parse request body
   const body = await request.json();
-  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, heroOverlay, heroOverlayColor, heroOverlayStrength, logoUrl, logoDarkUrl, faviconUrl } = body;
+  const { brandColor, secondaryColor, ctaColor, darkColor, tagline, bgScheme, bgColor, bgAltColor, heroOverlay, heroOverlayColor, heroOverlayStrength, logoUrl, logoDarkUrl, faviconUrl, brandedPhotos } = body;
 
   // Validate brand color format
   if (brandColor !== undefined && brandColor !== null) {
@@ -152,6 +154,16 @@ export async function PATCH(
     logo_url: cleanLogoUrl !== undefined ? cleanLogoUrl : currentSettings.logo_url,
     logo_dark_url: cleanLogoDarkUrl !== undefined ? cleanLogoDarkUrl : currentSettings.logo_dark_url,
     favicon_url: cleanFaviconUrl !== undefined ? cleanFaviconUrl : currentSettings.favicon_url,
+    branded_photos: brandedPhotos && typeof brandedPhotos === 'object'
+      ? {
+          enabled: brandedPhotos.enabled === true,
+          show_logo: brandedPhotos.showLogo !== false,
+          show_title: brandedPhotos.showTitle !== false,
+          show_city: brandedPhotos.showCity !== false,
+          show_phone: brandedPhotos.showPhone === true,
+          style: brandedPhotos.style === 'badge' ? 'badge' : 'bar',
+        }
+      : currentSettings.branded_photos,
   };
 
   // Update site settings (use admin client to bypass RLS)
@@ -200,5 +212,6 @@ export async function PATCH(
     logoUrl: toDashboardUrl(updatedSettings.logo_url),
     logoDarkUrl: toDashboardUrl(updatedSettings.logo_dark_url),
     faviconUrl: toDashboardUrl(updatedSettings.favicon_url),
+    brandedPhotos: brandedPhotoSettings(updatedSettings),
   });
 }

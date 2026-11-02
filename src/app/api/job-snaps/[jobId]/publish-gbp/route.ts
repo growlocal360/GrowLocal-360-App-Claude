@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { GBPClient } from '@/lib/google/gbp-client';
+import { ensureBrandedPhoto } from '@/lib/automation/branded-photo';
 import { getGoogleToken } from '@/lib/google/get-google-token';
 import { toGbpPostPayload } from '@/lib/job-snaps/transforms';
 import type { JobSnapWithRelations } from '@/types/database';
@@ -192,7 +193,10 @@ export async function POST(
       const { data: urlData } = adminClient.storage
         .from('job-snap-media')
         .getPublicUrl(bestImage.storage_path);
-      primaryImageUrl = urlData.publicUrl;
+      primaryImageUrl = await ensureBrandedPhoto(adminClient, snap.site_id, urlData.publicUrl, {
+        title: typedSnap.title || typedSnap.ai_generated_title || null,
+        city: (typedSnap as { city?: string | null }).city || null,
+      });
     }
 
     const payload = toGbpPostPayload(typedSnap, publicUrl, primaryImageUrl);

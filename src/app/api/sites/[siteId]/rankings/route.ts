@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
-import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf } from '@/lib/rank/scan';
+import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, scanHistory } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility } from '@/lib/rank/ai-visibility';
 import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
@@ -14,13 +14,17 @@ import { getBalance, orgIdForSite, spendCredits, CREDIT_PACKS } from '@/lib/rank
  * PATCH -> { enabled?, keywords?, gridSize?, spacingMiles? }
  * POST  -> { keywords?: string[] } start a scan now (background; page polls GET)
  */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
   const supabase = await createClient();
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const admin = createAdminClient();
+  // ?keyword=... -> every scan for that keyword, newest first (the compare view).
+  const keyword = req.nextUrl.searchParams.get('keyword');
+  if (keyword) return NextResponse.json({ history: await scanHistory(admin, siteId, keyword) });
+
   const { data: site } = await admin.from('sites').select('settings, name').eq('id', siteId).single();
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
   const settings = rankSettings(site.settings);

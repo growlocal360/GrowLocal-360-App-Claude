@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildGrid, defaultKeywords, findRank, summarize, GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, type ScannedPoint, type ScanSummary } from './grid';
-import { mapsSearch, mapLimit, dataForSeoConfigured } from './dataforseo';
+import { mapsSearch, mapLimit, dataForSeoConfigured, checkDataForSeoAccount } from './dataforseo';
 import type { SiteSettings } from '@/types/database';
 
 /**
@@ -120,8 +120,41 @@ export async function scanKeyword(
 
 export interface SiteScanRun { siteId: string; skipped?: string; results: ScanResult[]; totalCost: number }
 
+export interface RankLastRun { at: string; ok: boolean; message: string; scanned: number; failed: number }
+
+/** Outcome of the most recent run, kept on the site so the dashboard can show why nothing appeared. */
+export async function recordLastRun(supabase: SupabaseClient, siteId: string, run: SiteScanRun): Promise<RankLastRun> {
+  const scanned = run.results.filter((r) => !r.error).length;
+  const failed = run.results.filter((r) => r.error).length;
+  const message = run.skipped
+    ? run.skipped
+    : failed === 0
+      ? `Scanned ${scanned} keyword${scanned === 1 ? '' : 's'}`
+      : scanned === 0
+        ? run.results[0]?.error || 'Every keyword failed'
+        : `${scanned} scanned, ${failed} failed: ${run.results.find((r) => r.error)?.error}`;
+  const last: RankLastRun = { at: new Date().toISOString(), ok: !run.skipped && failed === 0 && scanned > 0, message, scanned, failed };
+  const { data: site } = await supabase.from('sites').select('settings').eq('id', siteId).single();
+  const settings = (site?.settings as Record<string, unknown> | null) || {};
+  const automation = (settings.automation as Record<string, unknown> | undefined) || {};
+  const rank = (automation.rank_tracking as Record<string, unknown> | undefined) || {};
+  await supabase.from('sites').update({ settings: { ...settings, automation: { ...automation, rank_tracking: { ...rank, last_run: last } } } }).eq('id', siteId);
+  return last;
+}
+
+export function lastRunOf(settings: SiteSettings | null | undefined): RankLastRun | null {
+  const raw = ((settings as { automation?: { rank_tracking?: { last_run?: RankLastRun } } } | null)?.automation?.rank_tracking?.last_run) || null;
+  return raw && typeof raw.at === 'string' ? raw : null;
+}
+
 /** Scan every keyword for a site (the monthly cron and "Scan now"). */
 export async function runRankScans(supabase: SupabaseClient, siteId: string, only?: string[]): Promise<SiteScanRun> {
+  const run = await runRankScansInner(supabase, siteId, only);
+  await recordLastRun(supabase, siteId, run).catch(() => undefined);
+  return run;
+}
+
+async function runRankScansInner(supabase: SupabaseClient, siteId: string, only?: string[]): Promise<SiteScanRun> {
   const out: SiteScanRun = { siteId, results: [], totalCost: 0 };
   if (!dataForSeoConfigured()) return { ...out, skipped: 'DataForSEO not configured' };
   const { data: site } = await supabase.from('sites').select('name, settings, status').eq('id', siteId).single();
@@ -132,6 +165,8 @@ export async function runRankScans(supabase: SupabaseClient, siteId: string, onl
   if (!center) return { ...out, skipped: 'no coordinates for the business address' };
   const keywords = (only && only.length ? only : await resolveKeywords(supabase, siteId, settings)).slice(0, MAX_KEYWORDS);
   if (keywords.length === 0) return { ...out, skipped: 'no keywords' };
+  const account = await checkDataForSeoAccount();
+  if (!account.ok) return { ...out, skipped: account.error };
 
   for (const keyword of keywords) {
     const r = await scanKeyword(supabase, siteId, keyword, settings, center, site.name);

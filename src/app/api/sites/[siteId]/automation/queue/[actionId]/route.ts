@@ -5,6 +5,7 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import { publishReviewReply } from '@/lib/automation/review-replies';
 import { sendReviewRequest } from '@/lib/automation/review-requests';
 import { publishGbpPost, publishPhotoUpload } from '@/lib/automation/gbp-posts';
+import { publishSocialPost } from '@/lib/social/fanout';
 import type { PendingAction } from '@/types/database';
 
 /**
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = (await req.json().catch(() => ({}))) as { decision?: string; reply?: string; sms?: string; summary?: string; caption?: string };
+  const body = (await req.json().catch(() => ({}))) as { decision?: string; reply?: string; sms?: string; summary?: string; caption?: string; message?: string };
   if (body.decision !== 'approve' && body.decision !== 'reject') {
     return NextResponse.json({ error: 'decision must be approve or reject' }, { status: 400 });
   }
@@ -69,6 +70,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
     });
     if (!pub.ok) return NextResponse.json({ error: pub.error, status: 'failed' }, { status: 502 });
     return NextResponse.json({ ok: true, status: 'published', uploaded: pub.uploaded, failed: pub.failed });
+  }
+
+  if (action.action_type === 'social_post') {
+    const pub = await publishSocialPost(admin, action as PendingAction, {
+      messageOverride: typeof body.message === 'string' && body.message.trim() ? body.message : undefined,
+      decidedBy,
+    });
+    if (!pub.ok) return NextResponse.json({ error: pub.error, status: 'failed' }, { status: 502 });
+    return NextResponse.json({ ok: true, status: 'published', url: pub.url });
   }
 
   if (action.action_type !== 'review_reply') {

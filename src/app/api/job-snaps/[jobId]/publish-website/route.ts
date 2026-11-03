@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { jobSnapToWorkItemPayload, slugifyTitle } from '@/lib/job-snaps/transforms';
 import { emitJobSnapEvent } from '@/lib/webhooks/emit';
+import { queueSnapSocialPosts } from '@/lib/social/fanout';
 import type { JobSnapWithRelations, WorkItemImage } from '@/types/database';
 
 /**
@@ -114,7 +115,7 @@ export async function POST(
     // ── Resolve the work_item slug ────────────────────────────────────────────
     // Prefer the naming engine's pre-computed snap.slug. Legacy snaps with null
     // slug fall back to slugifyTitle. Collisions get the snap's short_id suffix.
-    let workItemId: string | null = typedSnap.work_item_id || null;
+    const workItemId: string | null = typedSnap.work_item_id || null;
     let workSlug: string;
 
     if (workItemId) {
@@ -212,11 +213,24 @@ export async function POST(
       jobId
     );
 
+    // Share to connected Facebook / Instagram channels (first publish only; re-publishes
+    // refresh the page, they are not news). Queued or autopilot per the site's automation mode.
+    let social: { queued: number; published: number; errors: string[] } | null = null;
+    if (!workItemId) {
+      try {
+        const r = await queueSnapSocialPosts(adminClient, jobId, { decidedBy: user.id });
+        if (!r.skippedAll) social = { queued: r.queued, published: r.published, errors: r.errors };
+      } catch (e) {
+        console.warn('[publish-website] social fan-out skipped:', e instanceof Error ? e.message : e);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       workItemId: upsertedId,
       workSlug,
       publicUrl,
+      social,
     });
   } catch (error) {
     console.error('Publish to website failed:', error);

@@ -18,7 +18,7 @@ export interface WeeklyDigest {
   bookings: number;
   newReviews: number;
   newReviewAverage: number | null;
-  activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number };
+  activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number; socialPosts: number };
   pendingApprovals: number;
   profileChanges: { detectedAt: string; changes: ProfileChange[] }[];
   unansweredReviews: number;
@@ -70,7 +70,7 @@ export function digestHasNews(d: WeeklyDigest): boolean {
   const a = d.activity;
   return (
     d.leads + d.bookings + d.newReviews + d.pendingApprovals + d.profileChanges.length > 0 ||
-    a.repliesPosted + a.requestsSent + a.postsPublished + a.photosAdded + a.jobsPublished > 0 ||
+    a.repliesPosted + a.requestsSent + a.postsPublished + a.photosAdded + a.jobsPublished + a.socialPosts > 0 ||
     (d.google.available && d.google.calls + d.google.websiteClicks + d.google.directions > 0)
   );
 }

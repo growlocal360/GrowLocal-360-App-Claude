@@ -39,12 +39,13 @@ export const weeklyDigest = inngest.createFunction(
               d.google.available ? `${d.google.impressions.toLocaleString()} people saw you on Google; ${d.google.calls} called, ${d.google.websiteClicks} visited the site, ${d.google.directions} asked for directions.` : null,
               d.leads || d.bookings ? `${d.leads} new lead${d.leads === 1 ? '' : 's'} and ${d.bookings} booking${d.bookings === 1 ? '' : 's'} from the website.` : null,
               d.newReviews ? `${d.newReviews} new Google review${d.newReviews === 1 ? '' : 's'}${d.newReviewAverage ? ` averaging ${d.newReviewAverage} stars` : ''}${d.unansweredReviews ? ` (${d.unansweredReviews} still unanswered)` : ''}.` : null,
-              a.repliesPosted + a.requestsSent + a.postsPublished + a.photosAdded + a.jobsPublished > 0
+              a.repliesPosted + a.requestsSent + a.postsPublished + a.photosAdded + a.jobsPublished + a.socialPosts > 0
                 ? `Done for you: ${[
                     a.repliesPosted ? `${a.repliesPosted} review repl${a.repliesPosted === 1 ? 'y' : 'ies'}` : null,
                     a.requestsSent ? `${a.requestsSent} review request${a.requestsSent === 1 ? '' : 's'}` : null,
                     a.postsPublished ? `${a.postsPublished} Google post${a.postsPublished === 1 ? '' : 's'}` : null,
                     a.photosAdded ? `${a.photosAdded} photo${a.photosAdded === 1 ? '' : 's'} added to Google` : null,
+                    a.socialPosts ? `${a.socialPosts} Facebook or Instagram post${a.socialPosts === 1 ? '' : 's'}` : null,
                     a.jobsPublished ? `${a.jobsPublished} job${a.jobsPublished === 1 ? '' : 's'} published` : null,
                   ].filter(Boolean).join(', ')}.`
                 : null,

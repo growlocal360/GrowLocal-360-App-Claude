@@ -11,7 +11,7 @@ describe('weekly digest', () => {
       siteId: 's', siteName: 'S', start: 'a', end: 'b',
       google: { available: false, impressionsMaps: 0, impressionsSearch: 0, impressions: 0, calls: 0, websiteClicks: 0, directions: 0, conversations: 0, bookings: 0 },
       leads: 0, bookings: 0, newReviews: 0, newReviewAverage: null,
-      activity: { repliesPosted: 0, requestsSent: 0, postsPublished: 0, photosAdded: 0, jobsPublished: 0 },
+      activity: { repliesPosted: 0, requestsSent: 0, postsPublished: 0, photosAdded: 0, jobsPublished: 0, socialPosts: 0 },
       pendingApprovals: 0, profileChanges: [], unansweredReviews: 0,
     };
     expect(digestHasNews(quiet)).toBe(false);

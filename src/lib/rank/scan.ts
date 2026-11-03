@@ -122,6 +122,53 @@ export interface SiteScanRun { siteId: string; skipped?: string; results: ScanRe
 
 export interface RankLastRun { at: string; ok: boolean; message: string; scanned: number; failed: number }
 
+/** A run that was started (and paid for) but has not reported back yet. */
+export interface RankPendingRun { at: string; keywords: string[] }
+
+/** Everything a run needs, resolved once so each keyword can be its own step. */
+export interface ScanPrep { settings: RankSettings; center: Center; keywords: string[]; businessName: string }
+
+export async function prepareRankScan(supabase: SupabaseClient, siteId: string, only?: string[]): Promise<{ skipped: string } | ScanPrep> {
+  if (!dataForSeoConfigured()) return { skipped: 'DataForSEO not configured' };
+  const { data: site } = await supabase.from('sites').select('name, settings, status').eq('id', siteId).single();
+  if (!site || site.status !== 'active') return { skipped: 'site inactive' };
+  const settings = rankSettings(site.settings);
+  if (!settings.enabled) return { skipped: 'rank tracking off' };
+  const center = await resolveCenter(supabase, siteId);
+  if (!center) return { skipped: 'no coordinates for the business address' };
+  const keywords = (only && only.length ? only : await resolveKeywords(supabase, siteId, settings)).slice(0, MAX_KEYWORDS);
+  if (keywords.length === 0) return { skipped: 'no keywords' };
+  const account = await checkDataForSeoAccount();
+  if (!account.ok) return { skipped: account.error };
+  return { settings, center, keywords, businessName: site.name as string };
+}
+
+async function updateRankTracking(supabase: SupabaseClient, siteId: string, patch: Record<string, unknown>): Promise<void> {
+  const { data: site } = await supabase.from('sites').select('settings').eq('id', siteId).single();
+  const settings = (site?.settings as Record<string, unknown> | null) || {};
+  const automation = (settings.automation as Record<string, unknown> | undefined) || {};
+  const rank = (automation.rank_tracking as Record<string, unknown> | undefined) || {};
+  await supabase.from('sites').update({ settings: { ...settings, automation: { ...automation, rank_tracking: { ...rank, ...patch } } } }).eq('id', siteId);
+}
+
+/** Mark a run as started so the page can keep showing progress after a reload. Cleared by recordLastRun. */
+export async function recordPendingRun(supabase: SupabaseClient, siteId: string, keywords: string[]): Promise<RankPendingRun> {
+  const pending: RankPendingRun = { at: new Date().toISOString(), keywords };
+  await updateRankTracking(supabase, siteId, { pending_run: pending });
+  return pending;
+}
+
+/** The run in progress, if one started in the last hour and has not reported back. */
+export function pendingRunOf(settings: SiteSettings | null | undefined): RankPendingRun | null {
+  const rt = ((settings as { automation?: { rank_tracking?: { pending_run?: RankPendingRun; last_run?: RankLastRun } } } | null)?.automation?.rank_tracking) || {};
+  const p = rt.pending_run;
+  if (!p || typeof p.at !== 'string') return null;
+  const started = new Date(p.at).getTime();
+  if (Number.isNaN(started) || Date.now() - started > 60 * 60 * 1000) return null;
+  if (rt.last_run && new Date(rt.last_run.at).getTime() >= started) return null;
+  return p;
+}
+
 /** Outcome of the most recent run, kept on the site so the dashboard can show why nothing appeared. */
 export async function recordLastRun(supabase: SupabaseClient, siteId: string, run: SiteScanRun): Promise<RankLastRun> {
   const scanned = run.results.filter((r) => !r.error).length;
@@ -134,11 +181,7 @@ export async function recordLastRun(supabase: SupabaseClient, siteId: string, ru
         ? run.results[0]?.error || 'Every keyword failed'
         : `${scanned} scanned, ${failed} failed: ${run.results.find((r) => r.error)?.error}`;
   const last: RankLastRun = { at: new Date().toISOString(), ok: !run.skipped && failed === 0 && scanned > 0, message, scanned, failed };
-  const { data: site } = await supabase.from('sites').select('settings').eq('id', siteId).single();
-  const settings = (site?.settings as Record<string, unknown> | null) || {};
-  const automation = (settings.automation as Record<string, unknown> | undefined) || {};
-  const rank = (automation.rank_tracking as Record<string, unknown> | undefined) || {};
-  await supabase.from('sites').update({ settings: { ...settings, automation: { ...automation, rank_tracking: { ...rank, last_run: last } } } }).eq('id', siteId);
+  await updateRankTracking(supabase, siteId, { last_run: last, pending_run: null });
   return last;
 }
 
@@ -156,20 +199,10 @@ export async function runRankScans(supabase: SupabaseClient, siteId: string, onl
 
 async function runRankScansInner(supabase: SupabaseClient, siteId: string, only?: string[]): Promise<SiteScanRun> {
   const out: SiteScanRun = { siteId, results: [], totalCost: 0 };
-  if (!dataForSeoConfigured()) return { ...out, skipped: 'DataForSEO not configured' };
-  const { data: site } = await supabase.from('sites').select('name, settings, status').eq('id', siteId).single();
-  if (!site || site.status !== 'active') return { ...out, skipped: 'site inactive' };
-  const settings = rankSettings(site.settings);
-  if (!settings.enabled) return { ...out, skipped: 'rank tracking off' };
-  const center = await resolveCenter(supabase, siteId);
-  if (!center) return { ...out, skipped: 'no coordinates for the business address' };
-  const keywords = (only && only.length ? only : await resolveKeywords(supabase, siteId, settings)).slice(0, MAX_KEYWORDS);
-  if (keywords.length === 0) return { ...out, skipped: 'no keywords' };
-  const account = await checkDataForSeoAccount();
-  if (!account.ok) return { ...out, skipped: account.error };
-
-  for (const keyword of keywords) {
-    const r = await scanKeyword(supabase, siteId, keyword, settings, center, site.name);
+  const prep = await prepareRankScan(supabase, siteId, only);
+  if ('skipped' in prep) return { ...out, skipped: prep.skipped };
+  for (const keyword of prep.keywords) {
+    const r = await scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName);
     out.results.push(r);
     out.totalCost += r.cost || 0;
   }

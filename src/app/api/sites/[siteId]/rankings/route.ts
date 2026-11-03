@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
-import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, scanHistory } from '@/lib/rank/scan';
+import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, pendingRunOf, recordPendingRun, scanHistory } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility } from '@/lib/rank/ai-visibility';
 import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
@@ -29,15 +29,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
   const settings = rankSettings(site.settings);
   const orgId = await orgIdForSite(admin, siteId);
-  const [keywords, scans, ai, center, balance] = await Promise.all([
+  const [keywords, scans, ai, center, balance, org] = await Promise.all([
     resolveKeywords(admin, siteId, settings),
     latestScans(admin, siteId),
     latestAiVisibility(admin, siteId),
     resolveCenter(admin, siteId),
     orgId ? getBalance(admin, orgId) : Promise.resolve(0),
+    orgId ? admin.from('organizations').select('name').eq('id', orgId).maybeSingle().then((r) => r.data) : Promise.resolve(null),
   ]);
   return NextResponse.json({
-    credits: { balance, perManualScan: keywords.length, packs: CREDIT_PACKS },
+    // Credits belong to the organization: every site in the account draws from the same balance.
+    credits: { balance, perManualScan: keywords.length, packs: CREDIT_PACKS, orgName: org?.name || null },
+    pendingRun: pendingRunOf(site.settings),
     settings: { ...settings, keywords, keywordsAreDefaults: settings.keywords.length === 0 },
     providerConfigured: dataForSeoConfigured(),
     aiModels: aiModelsAvailable(),
@@ -101,6 +104,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
     return NextResponse.json({ error: `This scan needs ${keywords.length} credit${keywords.length === 1 ? '' : 's'} and you have ${spend.balance}. Buy credits or wait for the weekly scan.`, needCredits: keywords.length, balance: spend.balance }, { status: 402 });
   }
 
+  // Remember the run before it starts so the page can show progress even after a reload,
+  // and so a run that never reports back is visible instead of silently losing credits.
+  const pending = await recordPendingRun(admin, siteId, keywords);
   await inngest.send({ name: 'rank/scan.requested', data: { siteId, keywords, ai: body.ai, charged: true } });
-  return NextResponse.json({ ok: true, balance: spend.balance, charged: keywords.length });
+  return NextResponse.json({ ok: true, balance: spend.balance, charged: keywords.length, pendingRun: pending });
 }

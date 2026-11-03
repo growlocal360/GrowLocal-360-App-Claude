@@ -152,9 +152,13 @@ export default function RankingsPage() {
     await patch({ keywords: [...data.settings.keywords, k] });
     setNewKw('');
   };
+  // Removing a suggested keyword saves the remaining suggestions as the site's own list.
+  // Removing the last keyword brings the suggestions back (an empty list means "use defaults").
   const removeKeyword = async (k: string) => {
     if (!data) return;
-    await patch({ keywords: data.settings.keywords.filter((x) => x !== k) });
+    const rest = data.settings.keywords.filter((x) => x !== k);
+    if (rest.length === 0) toast.message('No keywords left, so the suggestions are back. Add your own or remove the ones you do not want.');
+    await patch({ keywords: rest });
   };
 
   const scanNow = async () => {
@@ -264,12 +268,15 @@ export default function RankingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-2">Keywords {s.keywordsAreDefaults && <span className="font-normal text-gray-400">(suggested from your services; add your own to replace them)</span>}</div>
+                  <div className="mb-2 flex flex-wrap items-center gap-x-3 text-sm font-medium text-gray-700">
+                    <span>Keywords {s.keywordsAreDefaults && <span className="font-normal text-gray-400">(suggested from your services; remove any you do not want, or add your own)</span>}</span>
+                    {!s.keywordsAreDefaults && <button type="button" onClick={() => patch({ keywords: [] })} disabled={saving} className="text-xs font-normal text-gray-400 underline-offset-2 hover:text-gray-700 hover:underline">Reset to suggestions</button>}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {s.keywords.map((k) => (
                       <span key={k} className="inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-sm text-gray-800">
                         {k}
-                        {!s.keywordsAreDefaults && <button type="button" onClick={() => removeKeyword(k)} className="text-gray-400 hover:text-red-600" aria-label={`Remove ${k}`}><X className="h-3.5 w-3.5" /></button>}
+                        <button type="button" onClick={() => removeKeyword(k)} disabled={saving} className="text-gray-400 hover:text-red-600" aria-label={`Remove ${k}`}><X className="h-3.5 w-3.5" /></button>
                       </span>
                     ))}
                   </div>

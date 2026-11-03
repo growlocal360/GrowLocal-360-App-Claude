@@ -16,11 +16,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's Stripe customer ID
-    const { data: profile } = await supabase
+    // One profile per organization; the Stripe customer lives on whichever row has it.
+    const { data: profiles } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
+    const profile = (profiles || []).find((p) => p.stripe_customer_id) || null;
 
     if (!profile?.stripe_customer_id) {
       return NextResponse.json(

@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Grid3x3, Loader2, RefreshCw, AlertCircle, Plus, X, Bot, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowLeft, Grid3x3, MapPin, Loader2, RefreshCw, AlertCircle, Plus, X, Bot, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { rankTone, type ScannedPoint, type ScanSummary } from '@/lib/rank/grid';
+import { rankTone, type ScannedPoint, type ScanSummary, fitZoom, mapPercent } from '@/lib/rank/grid';
 
-interface ScanRow { id: string; keyword: string; grid_size: number; spacing_miles: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
+interface ScanRow { id: string; keyword: string; grid_size: number; spacing_miles: number; center_lat: number; center_lng: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
 interface AiCheckRow { model: string; model_id: string; prompt: string; mentioned: boolean; position: number | null; competitors: string[]; answered?: boolean; error: string | null }
 interface RankingsResponse {
   settings: { enabled: boolean; keywords: string[]; gridSize: number; spacingMiles: number; keywordsAreDefaults: boolean };
@@ -37,15 +37,45 @@ function fmt(d: string | null | undefined) {
   try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; }
 }
 
-function Heatmap({ scan }: { scan: ScanRow }) {
+const MAP_PX = 400; // CSS width the static map is requested at; it scales down responsively
+
+/** Rank dots placed by true lat/lng over a muted street map centred on the business. Falls back to a plain grid if the map cannot load. */
+function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
+  const [mapFailed, setMapFailed] = useState(false);
   const size = scan.grid_size;
+  const hasCenter = typeof scan.center_lat === 'number' && typeof scan.center_lng === 'number';
+  if (mapFailed || !hasCenter) {
+    return (
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, maxWidth: size * 44 }}>
+        {scan.points.map((p) => (
+          <div key={`${p.row}-${p.col}`} title={`${p.rank === null ? 'Not in top 20' : `#${p.rank}`} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`} className={`flex aspect-square items-center justify-center rounded text-[11px] font-semibold ${TONE_CLASS[rankTone(p.rank)]}`}>
+            {p.rank === null ? '20+' : p.rank}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  const zoom = fitZoom(scan.points, MAP_PX);
+  const dotPct = (82 / Math.max(1, size - 1)) * 0.6; // dot diameter as % of map width: 60% of the gap between points, so streets stay readable
+  const src = `/api/sites/${siteId}/rankings/map?lat=${scan.center_lat}&lng=${scan.center_lng}&zoom=${zoom}&size=${MAP_PX}`;
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, maxWidth: size * 44 }}>
-      {scan.points.map((p) => (
-        <div key={`${p.row}-${p.col}`} title={`${p.rank === null ? 'Not in top 20' : `#${p.rank}`} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`} className={`flex aspect-square items-center justify-center rounded text-[11px] font-semibold ${TONE_CLASS[rankTone(p.rank)]}`}>
-          {p.rank === null ? '20+' : p.rank}
-        </div>
-      ))}
+    <div className="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-100" style={{ maxWidth: MAP_PX, aspectRatio: '1 / 1' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" onError={() => setMapFailed(true)} draggable={false} />
+      {scan.points.map((p) => {
+        const pos = mapPercent(p.lat, p.lng, scan.center_lat, scan.center_lng, zoom, MAP_PX);
+        return (
+          <div
+            key={`${p.row}-${p.col}`}
+            title={`${p.rank === null ? 'Not in top 20' : `#${p.rank}`} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}
+            className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.35)] ring-2 ring-white/90 ${TONE_CLASS[rankTone(p.rank)]}`}
+            style={{ left: `${pos.left}%`, top: `${pos.top}%`, width: `${dotPct}%`, aspectRatio: '1 / 1' }}
+          >
+            {p.rank === null ? '20+' : p.rank}
+          </div>
+        );
+      })}
+      <MapPin className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-full fill-gray-900 text-white drop-shadow" aria-label="Business location" />
     </div>
   );
 }
@@ -273,7 +303,7 @@ export default function RankingsPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <Heatmap scan={latest} />
+                        <Heatmap scan={latest} siteId={siteId} />
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <div><div className="font-semibold text-gray-900">{latest.summary.top3Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={latest.summary.top3Points} before={previous?.summary.top3Points} /></div>
                           <div><div className="font-semibold text-gray-900">{latest.summary.top10Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">in top 10</div><Change now={latest.summary.top10Points} before={previous?.summary.top10Points} /></div>

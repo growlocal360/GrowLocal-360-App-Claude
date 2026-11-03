@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, rankTone } from './grid';
+import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, rankTone, fitZoom, mapPercent } from './grid';
 import { analyzeAnswer, visibilityPrompts } from './ai-visibility';
 
 describe('rank grid', () => {
@@ -59,5 +59,29 @@ describe('ai visibility', () => {
     expect(p).toHaveLength(3);
     expect(p[0]).toContain('appliance repair');
     expect(p[0]).toContain('Sarasota, FL');
+  });
+});
+
+
+describe('map overlay helpers', () => {
+  const grid = buildGrid(27.302749, -82.5225185, 7, 1);
+  it('fits a 7x7 1-mile grid on a 400px map at a sensible zoom', () => {
+    const z = fitZoom(grid, 400);
+    expect(z).toBeGreaterThanOrEqual(10);
+    expect(z).toBeLessThanOrEqual(13);
+  });
+  it('places the centre point at 50%/50% and keeps every point inside the map', () => {
+    const z = fitZoom(grid, 400);
+    const c = mapPercent(27.302749, -82.5225185, 27.302749, -82.5225185, z, 400);
+    expect(c.left).toBeCloseTo(50, 5);
+    expect(c.top).toBeCloseTo(50, 5);
+    for (const p of grid) {
+      const pos = mapPercent(p.lat, p.lng, 27.302749, -82.5225185, z, 400);
+      expect(pos.left).toBeGreaterThan(5); expect(pos.left).toBeLessThan(95);
+      expect(pos.top).toBeGreaterThan(5); expect(pos.top).toBeLessThan(95);
+    }
+    // North-west corner is up and left of the centre.
+    const nw = mapPercent(grid[0].lat, grid[0].lng, 27.302749, -82.5225185, z, 400);
+    expect(nw.left).toBeLessThan(50); expect(nw.top).toBeLessThan(50);
   });
 });

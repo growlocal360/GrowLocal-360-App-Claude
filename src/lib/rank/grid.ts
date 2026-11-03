@@ -105,3 +105,38 @@ export function findRank(
   });
   return hit?.rank_group ?? null;
 }
+
+/**
+ * Web Mercator helpers for drawing scanned points over a Google Static Map.
+ * At zoom z the world is 256 * 2^z pixels wide; a point's offset from the map
+ * centre in pixels is the difference of their projected coordinates.
+ */
+function mercator(lat: number, lng: number, zoom: number): { x: number; y: number } {
+  const world = 256 * Math.pow(2, zoom);
+  const sin = Math.sin((Math.min(85, Math.max(-85, lat)) * Math.PI) / 180);
+  return {
+    x: ((lng + 180) / 360) * world,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world,
+  };
+}
+
+/** Largest integer zoom at which the whole grid fits within `fill` of a square map `sizePx` wide. */
+export function fitZoom(points: { lat: number; lng: number }[], sizePx: number, fill = 0.82): number {
+  if (points.length === 0) return 12;
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  const n = Math.max(...lats), s = Math.min(...lats), e = Math.max(...lngs), w = Math.min(...lngs);
+  for (let z = 16; z >= 6; z--) {
+    const a = mercator(n, w, z);
+    const b = mercator(s, e, z);
+    if (Math.abs(b.x - a.x) <= sizePx * fill && Math.abs(b.y - a.y) <= sizePx * fill) return z;
+  }
+  return 6;
+}
+
+/** Position of a point on a square static map centred on (cLat, cLng), as percentages of the map's width and height. */
+export function mapPercent(lat: number, lng: number, cLat: number, cLng: number, zoom: number, sizePx: number): { left: number; top: number } {
+  const c = mercator(cLat, cLng, zoom);
+  const p = mercator(lat, lng, zoom);
+  return { left: ((p.x - c.x) / sizePx + 0.5) * 100, top: ((p.y - c.y) / sizePx + 0.5) * 100 };
+}

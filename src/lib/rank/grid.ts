@@ -140,3 +140,8 @@ export function mapPercent(lat: number, lng: number, cLat: number, cLng: number,
   const p = mercator(lat, lng, zoom);
   return { left: ((p.x - c.x) / sizePx + 0.5) * 100, top: ((p.y - c.y) / sizePx + 0.5) * 100 };
 }
+
+/** Display names for the assistants checked for AI visibility. Browser-safe. */
+export function aiModelLabel(model: string): string {
+  return model === 'claude' ? 'Claude' : model === 'openai' ? 'ChatGPT' : model === 'google_ai' ? 'Google AI Mode' : model;
+}

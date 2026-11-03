@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Grid3x3, MapPin, Loader2, RefreshCw, AlertCircle, Plus, X, Bot, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { rankTone, type ScannedPoint, type ScanSummary, fitZoom, mapPercent } from '@/lib/rank/grid';
+import { rankTone, type ScannedPoint, type ScanSummary, fitZoom, mapPercent, aiModelLabel } from '@/lib/rank/grid';
 
 interface ScanRow { id: string; keyword: string; grid_size: number; spacing_miles: number; center_lat: number; center_lng: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
 interface AiCheckRow { model: string; model_id: string; prompt: string; mentioned: boolean; position: number | null; competitors: string[]; answered?: boolean; error: string | null }
@@ -345,9 +345,12 @@ export default function RankingsPage() {
 
             {/* AI visibility */}
             <section className="space-y-3">
-              <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Bot className="h-4 w-4 text-gray-500" /> Do AI assistants recommend you?</h2>
+              <div>
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Bot className="h-4 w-4 text-gray-500" /> Do AI assistants recommend you?</h2>
+                <p className="mt-1 text-xs text-gray-500">Each assistant is asked with web search on and the searcher placed in your city, the way the apps answer real customers. Checked every other week.</p>
+              </div>
               {!data.ai ? (
-                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run with the weekly scan{data.aiModels.length ? ` using ${data.aiModels.join(' and ')}` : ''}.</CardContent></Card>
+                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run every other week with the Monday scan{data.aiModels.length ? ` (${data.aiModels.map(aiModelLabel).join(', ')})` : ''}, or with Scan now.</CardContent></Card>
               ) : (
                 <Card>
                   <CardContent className="pt-6 space-y-4">
@@ -358,19 +361,19 @@ export default function RankingsPage() {
                         <Change now={data.ai.mentionedShare} before={data.ai.previousShare} suffix=" pts" />
                       </div>
                       {data.ai.byModel.map((m) => (
-                        <div key={m.model}><div className="text-xl font-bold text-gray-900">{m.mentionedShare}%</div><div className="text-xs text-gray-500">{m.model === 'claude' ? 'Claude' : m.model === 'openai' ? 'ChatGPT' : m.model}</div></div>
+                        <div key={m.model}><div className="text-xl font-bold text-gray-900">{m.mentionedShare}%</div><div className="text-xs text-gray-500">{aiModelLabel(m.model)}</div></div>
                       ))}
                       <div className="text-xs text-gray-400">checked {fmt(data.ai.batchAt)}</div>
                     </div>
                     {data.ai.topCompetitors.length > 0 && (
-                      <div className="text-sm text-gray-700"><span className="font-medium">Names that came up instead:</span> {data.ai.topCompetitors.map((c) => `${c.name} (${c.count})`).join(', ')}</div>
+                      <div className="text-sm text-gray-700"><span className="font-medium">Other businesses the assistants named:</span> {data.ai.topCompetitors.map((c) => `${c.name} (${c.count})`).join(', ')}</div>
                     )}
                     <details className="text-sm">
                       <summary className="cursor-pointer text-gray-600">See each question</summary>
                       <div className="mt-2 space-y-2">
                         {data.ai.byModel.flatMap((m) => m.checks.map((c, i) => (
                           <div key={`${m.model}-${i}`} className="rounded-lg border p-2.5">
-                            <div className="text-xs text-gray-400">{m.model === 'claude' ? 'Claude' : 'ChatGPT'} · {c.prompt}</div>
+                            <div className="text-xs text-gray-400">{aiModelLabel(m.model)} · {c.prompt}</div>
                             <div className={`mt-1 font-medium ${c.mentioned ? 'text-emerald-700' : 'text-gray-700'}`}>{c.error ? `Error: ${c.error}` : c.mentioned ? `Named${c.position ? `, #${c.position} in the list` : ''}` : c.answered === false ? 'Declined to name any business' : 'Not named'}</div>
                             {c.competitors.length > 0 && <div className="text-xs text-gray-500">Also named: {c.competitors.join(', ')}</div>}
                           </div>

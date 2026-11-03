@@ -93,3 +93,29 @@ export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, in
   await Promise.all(workers);
   return out;
 }
+
+export interface AiModeResult { markdown: string; references: { title: string; domain: string; url: string }[]; cost: number }
+
+/**
+ * Google AI Mode answer for a question, as seen by a searcher at (lat, lng).
+ * https://docs.dataforseo.com/v3/serp/google/ai_mode/live/advanced/ (about $0.004 per call).
+ */
+export async function aiModeSearch(keyword: string, lat: number, lng: number): Promise<AiModeResult> {
+  const body = [{ keyword, location_coordinate: `${lat.toFixed(6)},${lng.toFixed(6)}`, language_code: 'en' }];
+  const res = await fetch('https://api.dataforseo.com/v3/serp/google/ai_mode/live/advanced', {
+    method: 'POST',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    status_code?: number; status_message?: string;
+    tasks?: { status_code?: number; status_message?: string; cost?: number; result?: { items?: { type?: string; markdown?: string; items?: { text?: string; title?: string }[]; references?: { title?: string; domain?: string; url?: string }[] }[] }[] }[];
+  };
+  const task = json.tasks?.[0];
+  if (!res.ok || json.status_code !== 20000) throw new Error(`DataForSEO ${json.status_code ?? res.status}: ${json.status_message || 'request failed'}`);
+  if (!task || (task.status_code && task.status_code !== 20000)) throw new Error(`DataForSEO task ${task?.status_code}: ${task?.status_message || 'failed'}`);
+  const block = task.result?.[0]?.items?.find((i) => i.type === 'ai_overview') || task.result?.[0]?.items?.[0];
+  const markdown = block?.markdown || (block?.items || []).map((i) => [i.title, i.text].filter(Boolean).join('\n')).join('\n') || '';
+  const references = (block?.references || []).map((r) => ({ title: r.title || '', domain: r.domain || '', url: r.url || '' }));
+  return { markdown, references, cost: task.cost ?? 0 };
+}

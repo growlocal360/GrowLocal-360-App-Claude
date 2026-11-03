@@ -7,11 +7,19 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History, MessageSquare, Mail, Phone, Send, Newspaper, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Bot, Check, X, Loader2, RefreshCw, Star, AlertCircle, Inbox, History, MessageSquare, Mail, Phone, Send, Newspaper, Image as ImageIcon, ExternalLink, Share2, Facebook, Instagram, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { PendingAction, ReviewReplyContext, ReviewRequestContext } from '@/types/database';
 import { photosOf, type GbpPostContext, type PhotoUploadContext } from '@/lib/automation/gbp-types';
+import { SOCIAL_PLATFORM_LABEL, type SocialPostContext, type SocialConnectionView, type SocialSettings } from '@/lib/social/types';
+
+interface SocialState {
+  configured: boolean;
+  connections: SocialConnectionView[];
+  settings: SocialSettings;
+  counts: Record<string, number>;
+}
 
 interface AutomationState {
   automationMode: 'approve' | 'autopilot';
@@ -90,6 +98,12 @@ export default function AutomationPage() {
     if (res.ok) setState(await res.json());
   }, [siteId]);
 
+  const [social, setSocial] = useState<SocialState | null>(null);
+  const loadSocial = useCallback(async () => {
+    const res = await fetch(`/api/sites/${siteId}/social`);
+    if (res.ok) setSocial(await res.json());
+  }, [siteId]);
+
   const loadActions = useCallback(async (which: 'pending' | 'history') => {
     const res = await fetch(`/api/sites/${siteId}/automation/queue?status=${which}`);
     if (res.ok) {
@@ -100,10 +114,25 @@ export default function AutomationPage() {
 
   useEffect(() => {
     async function init() {
-      await Promise.all([loadState(), loadActions('pending')]);
+      await Promise.all([loadState(), loadActions('pending'), loadSocial()]);
       setLoading(false);
     }
     init();
+    // Back from Facebook Login: say what happened, then drop the query string.
+    const q = new URLSearchParams(window.location.search);
+    const outcome = q.get('social');
+    if (outcome) {
+      if (outcome === 'connected') {
+        const pages = Number(q.get('pages') || 0);
+        const ig = Number(q.get('instagram') || 0);
+        toast.success(pages === 1
+          ? `Facebook Page connected${ig ? ' with its Instagram account' : ''}. New Job Snaps and Google posts will be shared there.`
+          : `${pages} Facebook Pages found${ig ? ` (${ig} with Instagram)` : ''}. Switch on the ones this business should post to.`);
+      } else {
+        toast.error(q.get('reason') || 'Could not connect Facebook.');
+      }
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId]);
 
@@ -159,6 +188,7 @@ export default function AutomationPage() {
         t === 'review_request' ? { decision, sms: edited }
         : t === 'gbp_post' ? { decision, summary: edited }
         : t === 'photo_upload' ? { decision, caption: edited }
+        : t === 'social_post' ? { decision, message: edited }
         : { decision, reply: edited };
       const res = await fetch(`/api/sites/${siteId}/automation/queue/${action.id}`, {
         method: 'POST',
@@ -175,7 +205,9 @@ export default function AutomationPage() {
             ? 'Post published to your Google Business Profile.'
             : t === 'photo_upload'
               ? 'Photo added to your Google Business Profile.'
-              : 'Reply posted to Google.');
+              : t === 'social_post'
+                ? `Posted to ${(action.context as unknown as SocialPostContext).account_name}.`
+                : 'Reply posted to Google.');
       setActions((prev) => prev.filter((a) => a.id !== action.id));
       await loadState();
     } catch (e) {
@@ -223,6 +255,24 @@ export default function AutomationPage() {
     }
   };
 
+  const [socialBusy, setSocialBusy] = useState(false);
+  const patchSocial = async (body: Record<string, unknown>) => {
+    setSocialBusy(true);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/social`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error((await res.json()).error || 'Save failed');
+      await loadSocial();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSocialBusy(false);
+    }
+  };
+  const connectMeta = () => {
+    window.location.href = `/api/sites/${siteId}/social/meta/start?next=${encodeURIComponent(`/dashboard/sites/${siteId}/automation`)}`;
+  };
+  const socialOn = (social?.connections || []).filter((c) => c.is_active);
+
   const pendingCount = state?.counts?.pending || 0;
   const ready = !!state?.gbpLinked && !!state?.gbpConnected;
   const rr = state?.reviewRequests;
@@ -238,7 +288,7 @@ export default function AutomationPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Bot className="h-6 w-6 text-[#00b875]" /> Automation</h1>
-            <p className="text-gray-500 mt-1">Review replies, review requests, Google posts and gallery photos. Everything lands here first unless autopilot is on.</p>
+            <p className="text-gray-500 mt-1">Review replies, review requests, Google posts, gallery photos, and Facebook and Instagram sharing. Everything lands here first unless autopilot is on.</p>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="flex gap-2">
@@ -358,6 +408,63 @@ export default function AutomationPage() {
                 )}
               </div>
               <Switch checked={!!gp?.photoDrip} disabled={!state || savingMode} onCheckedChange={(v) => patch({ gbpPosts: { photoDrip: v } })} aria-label="Photo drip" />
+            </div>
+            <div className="border-t pt-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 flex items-center gap-2"><Share2 className="h-4 w-4 text-gray-400" /> Facebook and Instagram</div>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Every Job Snap published to the website and every Google post is shared to the connected Facebook Page and Instagram account, photos included. Approve each one here, or let autopilot post them.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={connectMeta} disabled={!social?.configured}>
+                  <Facebook className="mr-2 h-3.5 w-3.5" /> {social?.connections.length ? 'Reconnect Facebook' : 'Connect Facebook'}
+                </Button>
+              </div>
+              {social && !social.configured && (
+                <p className="mt-2 text-xs text-amber-700">Facebook sharing is not set up on this server yet (META_APP_ID and META_APP_SECRET).</p>
+              )}
+              {(social?.connections.length || 0) > 0 && (
+                <div className="mt-3 space-y-2">
+                  {social!.connections.map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
+                      {c.picture ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.picture} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                          {c.platform === 'instagram' ? <Instagram className="h-4 w-4" /> : <Facebook className="h-4 w-4" />}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-900">{c.account_name}</div>
+                        <div className="text-xs text-gray-500">{SOCIAL_PLATFORM_LABEL[c.platform]}{c.page_name ? ` · via ${c.page_name}` : ''}</div>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-gray-600">
+                        Post here
+                        <Switch checked={c.is_active} disabled={socialBusy} onCheckedChange={(v) => patchSocial({ connection: { id: c.id, active: v } })} aria-label={`Post to ${c.account_name}`} />
+                      </label>
+                      <button type="button" className="text-gray-400 hover:text-red-600" title="Remove" aria-label={`Remove ${c.account_name}`} disabled={socialBusy} onClick={() => { if (confirm(`Remove ${c.account_name}? Nothing already posted is affected.`)) patchSocial({ connection: { id: c.id, remove: true } }); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {socialOn.length === 0 && <p className="text-xs text-amber-700">Nothing is switched on yet. Turn on Post here for the Page and Instagram account this business uses.</p>}
+                </div>
+              )}
+              {socialOn.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700">
+                  <label className="flex items-center gap-2">
+                    <Switch checked={!!social?.settings.snaps} disabled={socialBusy} onCheckedChange={(v) => patchSocial({ settings: { snaps: v } })} aria-label="Share Job Snaps" />
+                    Share Job Snaps when published
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <Switch checked={!!social?.settings.gbpPosts} disabled={socialBusy} onCheckedChange={(v) => patchSocial({ settings: { gbpPosts: v } })} aria-label="Share Google posts" />
+                    Share Google posts
+                  </label>
+                  {(social?.counts.published || 0) > 0 && <span className="text-xs text-gray-500">{social!.counts.published} shared so far</span>}
+                </div>
+              )}
             </div>
             <div className="flex items-start justify-between gap-4 border-t pt-5">
               <div className="flex-1">
@@ -586,6 +693,68 @@ export default function AutomationPage() {
                           <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
                             {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
                             Skip
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              }
+              if (action.action_type === 'social_post') {
+                const sc = action.context as unknown as SocialPostContext;
+                const message = drafts[action.id] ?? String((action.payload as { message?: string }).message || '');
+                const postUrl = (action.payload as { post_url?: string | null }).post_url;
+                const Icon = sc.platform === 'instagram' ? Instagram : Facebook;
+                return (
+                  <Card key={action.id}>
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">{SOCIAL_PLATFORM_LABEL[sc.platform]} · {sc.account_name}</span>
+                            <span className="text-xs text-gray-400">{fmt(action.created_at)}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+                            <span>{sc.source === 'snap' ? 'Job Snap' : 'Google post'} · {sc.source_label}</span>
+                            {postUrl ? (
+                              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">View post <ExternalLink className="h-3 w-3" /></a>
+                            ) : (
+                              <a href={sc.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">{sc.link.replace(/^https?:\/\//, '')} <ExternalLink className="h-3 w-3" /></a>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[action.status] || ''}`}>
+                          {action.status === 'published' ? (action.auto_published ? 'posted · autopilot' : 'posted') : action.status}
+                        </span>
+                      </div>
+                      <div className={sc.image_urls.length ? 'grid gap-4 sm:grid-cols-[160px_1fr]' : ''}>
+                        {sc.image_urls.length > 0 && (
+                          <div className="space-y-1">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={sc.image_urls[0]} alt="" className="h-40 w-full rounded-lg object-cover" />
+                            {sc.image_urls.length > 1 && <div className="text-center text-xs text-gray-500">+{sc.image_urls.length - 1} more photo{sc.image_urls.length === 2 ? '' : 's'}</div>}
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">{sc.platform === 'instagram' ? 'Caption' : 'Post'}</div>
+                          {isPending ? (
+                            <Textarea value={message} onChange={(e) => setDrafts((d) => ({ ...d, [action.id]: e.target.value }))} rows={6} className="text-sm" />
+                          ) : (
+                            <p className="whitespace-pre-line text-sm text-gray-700 rounded-lg bg-gray-50 p-3">{message}</p>
+                          )}
+                          {action.error && <p className="mt-1 text-xs text-red-600">{action.error}</p>}
+                        </div>
+                      </div>
+                      {isPending && (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => decide(action, 'approve')} disabled={!!busy[action.id]} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+                            {busy[action.id] === 'approve' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                            Post to {SOCIAL_PLATFORM_LABEL[sc.platform]}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => decide(action, 'reject')} disabled={!!busy[action.id]}>
+                            {busy[action.id] === 'reject' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                            Dismiss
                           </Button>
                         </div>
                       )}

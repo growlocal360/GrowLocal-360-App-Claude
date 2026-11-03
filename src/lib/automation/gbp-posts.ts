@@ -6,6 +6,7 @@ import { resolvePublicOrigin } from '@/lib/sites/public-origin';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import { ensureBrandedPhoto, loadBrandContext } from './branded-photo';
+import { queueGbpPostSocial } from '@/lib/social/fanout';
 import type { AutomationMode, PendingAction, SiteSettings } from '@/types/database';
 
 /**
@@ -307,6 +308,12 @@ export async function publishGbpPost(
       .from('pending_actions')
       .update({ status: 'published', payload: { ...action.payload, summary, gbp_post_name: res.name }, published_at: now, decided_at: now, decided_by: opts.decidedBy ?? null, auto_published: !!opts.autoPublished, error: null, updated_at: now })
       .eq('id', action.id);
+    // Same post to the connected Facebook / Instagram channels (queue or autopilot). Never fails the Google post.
+    try {
+      await queueGbpPostSocial(supabase, { ...action, payload: { ...action.payload, summary } } as PendingAction, summary, { decidedBy: opts.decidedBy ?? null });
+    } catch (e) {
+      console.warn('[gbp-posts] social fan-out skipped:', e instanceof Error ? e.message : e);
+    }
     return { ok: true };
   } catch (e) {
     return fail(supabase, action.id, e instanceof Error ? e.message : String(e));

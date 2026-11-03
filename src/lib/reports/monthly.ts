@@ -45,7 +45,7 @@ export interface MonthlyReportData {
     averageRating: number | null;
     latest: { author: string; rating: number; comment: string | null; date: string | null }[];
   };
-  activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number };
+  activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number; socialPosts: number };
   /** Latest Maps grid scan per keyword inside the period, with the previous scan for deltas. */
   rankings: { keyword: string; visibility: number; top3Points: number; top10Points: number; totalPoints: number; averageRank: number | null; previousVisibility: number | null; scannedAt: string }[];
   /** Share of customer-style AI prompts that named the business in the period's latest batch. */
@@ -172,10 +172,11 @@ export async function countsFor(supabase: SupabaseClient, siteId: string, p: Pic
     const k = (l.service_type as string | null)?.trim() || 'Not specified';
     byService.set(k, (byService.get(k) || 0) + 1);
   }
-  const activity = { repliesPosted: 0, requestsSent: requests.count || 0, postsPublished: 0, photosAdded: 0, jobsPublished: jobs.count || 0 };
+  const activity = { repliesPosted: 0, requestsSent: requests.count || 0, postsPublished: 0, photosAdded: 0, jobsPublished: jobs.count || 0, socialPosts: 0 };
   for (const a of actions.data || []) {
     if (a.action_type === 'review_reply') activity.repliesPosted += 1;
     else if (a.action_type === 'gbp_post') activity.postsPublished += 1;
+    else if (a.action_type === 'social_post') activity.socialPosts += 1;
     else if (a.action_type === 'photo_upload') {
       const results = (a.payload as { results?: { gbp_media_name?: string }[] } | null)?.results;
       activity.photosAdded += Array.isArray(results) ? results.filter((r) => r.gbp_media_name).length : 1;
@@ -347,6 +348,7 @@ export function reportHighlights(d: MonthlyReportData): string[] {
     a.requestsSent ? `${a.requestsSent} review request${a.requestsSent === 1 ? '' : 's'}` : null,
     a.postsPublished ? `${a.postsPublished} Google post${a.postsPublished === 1 ? '' : 's'}` : null,
     a.photosAdded ? `${a.photosAdded} profile photo${a.photosAdded === 1 ? '' : 's'}` : null,
+    a.socialPosts ? `${a.socialPosts} Facebook or Instagram post${a.socialPosts === 1 ? '' : 's'}` : null,
     a.jobsPublished ? `${a.jobsPublished} job${a.jobsPublished === 1 ? '' : 's'} published to the site` : null,
   ].filter(Boolean);
   if (did.length) out.push(`Done for you this month: ${did.join(', ')}.`);

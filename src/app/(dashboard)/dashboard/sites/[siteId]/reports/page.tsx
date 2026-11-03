@@ -302,11 +302,12 @@ export default function ReportsPage() {
             {/* Activity */}
             <section className="space-y-3">
               <h2 className="font-semibold text-gray-900">Done for you</h2>
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Tile label="Review replies posted" value={String(d.activity.repliesPosted)} />
                 <Tile label="Review requests sent" value={String(d.activity.requestsSent)} />
                 <Tile label="Google posts published" value={String(d.activity.postsPublished)} />
                 <Tile label="Photos added to Google" value={String(d.activity.photosAdded)} />
+                <Tile label="Facebook & Instagram posts" value={String(d.activity.socialPosts ?? 0)} />
                 <Tile label="Jobs published to the site" value={String(d.activity.jobsPublished)} />
               </div>
             </section>

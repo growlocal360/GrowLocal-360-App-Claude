@@ -23,7 +23,8 @@ interface RankingsResponse {
   scans: { keyword: string; latest: ScanRow; previous: ScanRow | null }[];
   ai: { batchAt: string; mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number; checks: AiCheckRow[] }[]; topCompetitors: { name: string; count: number }[] } | null;
   estimatedCostPerScan: number;
-  credits: { balance: number; perManualScan: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[] };
+  credits: { balance: number; perManualScan: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[]; orgName: string | null };
+  pendingRun: { at: string; keywords: string[] } | null;
 }
 
 const TONE_CLASS: Record<ReturnType<typeof rankTone>, string> = {
@@ -164,10 +165,41 @@ export default function RankingsPage() {
     return null;
   }, [siteId]);
 
-  useEffect(() => {
-    load().then(() => setLoading(false));
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  // The run being watched: when it started and how many keywords it covers, so progress can be shown.
+  const [run, setRun] = useState<{ startedAt: number; keywords: number } | null>(null);
+
+  /** Poll until the run records its outcome (up to 30 minutes); heatmaps land one keyword at a time meanwhile. */
+  const watchRun = useCallback((startedAt: number, keywords: number) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setScanning(true);
+    setRun({ startedAt, keywords });
+    let tries = 0;
+    pollRef.current = setInterval(async () => {
+      tries += 1;
+      const d = await load();
+      const finished = d?.lastRun && new Date(d.lastRun.at).getTime() >= startedAt;
+      if (finished || tries > 360) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setScanning(false);
+        setRun(null);
+        if (finished && d?.lastRun) {
+          if (d.lastRun.ok) toast.success(d.lastRun.message);
+          else toast.error(`Scan did not complete: ${d.lastRun.message}${d.lastRun.failed ? ' Credits for failed keywords were returned.' : ''}`);
+        } else if (!finished) {
+          toast.error('The scan has not reported back after 30 minutes. Reload this page later; results appear when it finishes.');
+        }
+      }
+    }, 5000);
   }, [load]);
+
+  useEffect(() => {
+    load().then((d) => {
+      setLoading(false);
+      // A scan started earlier (maybe from another tab) is still running: keep showing it.
+      if (d?.pendingRun) watchRun(new Date(d.pendingRun.at).getTime(), d.pendingRun.keywords.length);
+    });
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [load, watchRun]);
 
   useEffect(() => {
     if (filterKeyword === 'all') { setHistory(null); return; }
@@ -221,24 +253,8 @@ export default function RankingsPage() {
       const d = await r.json();
       if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
       if (!r.ok) throw new Error(d.error || 'Could not start');
-      toast.success(`Scanning Google Maps across the grid (${d.charged} credit${d.charged === 1 ? '' : 's'} used, ${d.balance} left). Results appear as they land.`);
-      // The run records its outcome on the site when it finishes (success or not); poll for that.
-      let tries = 0;
-      pollRef.current = setInterval(async () => {
-        tries += 1;
-        const d = await load();
-        const finished = d?.lastRun && new Date(d.lastRun.at).getTime() >= startedAt;
-        if (finished || tries > 120) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setScanning(false);
-          if (finished && d?.lastRun) {
-            if (d.lastRun.ok) toast.success(d.lastRun.message);
-            else toast.error(`Scan did not complete: ${d.lastRun.message}${d.lastRun.failed ? ' Credits for failed keywords were returned.' : ''}`);
-          } else if (!finished) {
-            toast.error('The scan is taking longer than expected. Results will appear here when it finishes.');
-          }
-        }
-      }, 5000);
+      toast.success(`Scanning ${d.charged} keyword${d.charged === 1 ? '' : 's'} across the grid (${d.charged} credit${d.charged === 1 ? '' : 's'}, ${d.balance} left). Each heatmap appears as its keyword finishes; a full scan takes a few minutes.`);
+      watchRun(startedAt, d.charged || 1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not start');
       setScanning(false);
@@ -271,7 +287,11 @@ export default function RankingsPage() {
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowPacks((v) => !v)}>Buy credits</Button>
             </div>
-            {data && <span className="text-xs text-gray-500">{data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left · weekly scans are included, manual scans use 1 credit per keyword</span>}
+            {data && (
+              <span className="text-xs text-gray-500">
+                {data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left{data.credits.orgName ? ` for ${data.credits.orgName}` : ''} · one balance for every site in this account · weekly scans are included, manual scans use 1 credit per keyword
+              </span>
+            )}
           </div>
         </div>
 
@@ -299,6 +319,19 @@ export default function RankingsPage() {
             <span>Map scans need a DataForSEO account connected to the app (DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD). Until then keywords and settings can be prepared here, and AI visibility checks still run.</span>
           </div>
         )}
+        {scanning && run && data && (() => {
+          const done = data.scans.filter((sc) => new Date(sc.latest.scanned_at).getTime() >= run.startedAt).length;
+          const mins = Math.round((Date.now() - run.startedAt) / 60000);
+          return (
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+              <span>
+                Scanning: {done} of {run.keywords} keyword{run.keywords === 1 ? '' : 's'} done{mins >= 1 ? ` · started ${mins} min ago` : ''}.
+                {done === 0 ? ' The first heatmap usually appears within a minute or two; right after an app update it can take 10 to 15 minutes to get going.' : ' Each heatmap appears below as its keyword finishes.'} You can leave this page and come back.
+              </span>
+            </div>
+          );
+        })()}
         {data?.lastRun && !data.lastRun.ok && !scanning && (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -375,7 +408,7 @@ export default function RankingsPage() {
                 )}
               </div>
               {data.scans.length === 0 ? (
-                <Card><CardContent className="py-10 text-center text-gray-500">No scans yet. {data.providerConfigured ? 'Click Scan now, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}</CardContent></Card>
+                <Card><CardContent className="py-10 text-center text-gray-500">{scanning ? 'Scanning now. The first heatmap appears here as soon as its keyword finishes.' : `No scans yet. ${data.providerConfigured ? 'Click Scan all, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}`}</CardContent></Card>
               ) : filterKeyword !== 'all' ? (
                 historyLoading && !history ? (
                   <Card><CardContent className="py-10 text-center text-gray-500"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></CardContent></Card>

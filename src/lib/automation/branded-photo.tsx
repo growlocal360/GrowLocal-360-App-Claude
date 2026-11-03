@@ -4,6 +4,7 @@ import { ImageResponse } from 'next/og';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadStoredImage } from '@/lib/sites/site-icon';
 import type { SiteSettings } from '@/types/database';
+import { carryGeotag } from '@/lib/job-snaps/geotag';
 
 /**
  * Branded photos: a Job Snap photo with the business logo, the job title and
@@ -210,7 +211,9 @@ export async function ensureBrandedPhoto(
     const res = await fetch(sourceUrl);
     if (!res.ok) return sourceUrl;
     const photo = Buffer.from(await res.arrayBuffer());
-    const out = await renderBrandedPhoto(photo, input);
+    // sharp drops EXIF on re-encode; put the job's geotag and identity back on the branded copy.
+    const rendered = await renderBrandedPhoto(photo, input);
+    const out = await carryGeotag(photo, rendered, { title: job.title || undefined, city: job.city ?? ctx.city, businessName: ctx.site.name });
 
     const key = createHash('sha1').update(sourceUrl).digest('hex').slice(0, 20);
     const storagePath = `branded/${siteId}/${key}-${signature}.jpg`;

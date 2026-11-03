@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { geotagJpeg } from '@/lib/job-snaps/geotag';
 import { toPublicAddress } from '@/lib/job-snaps/address';
 import { computeJobSnapNaming } from '@/lib/job-snaps/naming';
 import { getIndustryArchetype } from '@/lib/job-snaps/industry-config';
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
     // the site's organization rather than assuming a single row.
     const [{ data: profiles }, { data: site }] = await Promise.all([
       admin.from('profiles').select('organization_id, id').eq('user_id', user.id),
-      admin.from('sites').select('id, organization_id').eq('id', body.siteId).single(),
+      admin.from('sites').select('id, organization_id, name').eq('id', body.siteId).single(),
     ]);
 
     if (!profiles || profiles.length === 0) {
@@ -205,6 +206,9 @@ export async function POST(request: Request) {
 
     // ── Upload images to storage (SEO-friendly filenames per naming engine) ─
     const uploadedPaths: string[] = [];
+    const uploadedSizes: number[] = [];
+    const geotagged: boolean[] = [];
+    const takenAt = new Date();
 
     for (let i = 0; i < body.images.length; i++) {
       const img = body.images[i];
@@ -212,7 +216,20 @@ export async function POST(request: Request) {
       const fileName = `${naming.image_filename_base}-${i + 1}.${ext}`;
       const storagePath = `${body.siteId}/${snapId}/${fileName}`;
 
-      const buffer = Buffer.from(img.base64, 'base64');
+      let buffer: Buffer = Buffer.from(img.base64, 'base64');
+      // The browser's resize dropped the camera EXIF; write the job's position and
+      // identity back into the JPEG so every copy that leaves here is geotagged.
+      let tagged = false;
+      if (img.mimeType === 'image/jpeg' && typeof loc?.lat === 'number' && typeof loc?.lng === 'number') {
+        try {
+          buffer = geotagJpeg(buffer, { lat: loc.lat, lng: loc.lng, title: body.title ?? body.aiGeneratedTitle ?? null, businessName: site.name, city: loc.city || null, takenAt });
+          tagged = true;
+        } catch (e) {
+          console.warn('[job-snaps/save] geotag skipped:', e instanceof Error ? e.message : e);
+        }
+      }
+      geotagged.push(tagged);
+      uploadedSizes.push(buffer.length);
 
       const { error: uploadError } = await admin.storage
         .from('job-snap-media')
@@ -303,7 +320,8 @@ export async function POST(request: Request) {
       file_name: uploadedPaths[i].split('/').pop() ?? img.fileName,
       alt_text: naming.alt_text_default,
       mime_type: img.mimeType,
-      file_size: Math.round((img.base64.length * 3) / 4), // approximate from base64 length
+      file_size: uploadedSizes[i],
+      exif_data: geotagged[i] && loc ? { gps: { lat: loc.lat, lng: loc.lng }, geotagged_at: takenAt.toISOString() } : null,
       role: img.role ?? null,
       sort_order: img.sortOrder,
     }));

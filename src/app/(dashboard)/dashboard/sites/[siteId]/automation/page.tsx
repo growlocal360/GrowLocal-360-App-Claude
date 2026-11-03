@@ -259,7 +259,7 @@ export default function AutomationPage() {
                 {' '}{state.lastReviewSync.drafted} new draft{state.lastReviewSync.drafted === 1 ? '' : 's'}
                 {state.lastReviewSync.auto_published > 0 ? `, ${state.lastReviewSync.auto_published} posted on autopilot` : ''}
                 {state.lastReviewSync.skipped ? ` (${state.lastReviewSync.skipped})` : ''}
-                {state.lastReviewSync.errors?.length ? <span className="text-red-600"> · {state.lastReviewSync.errors[0]}</span> : null}
+                {state.lastReviewSync.errors?.length ? <span className="text-red-600"> · {state.lastReviewSync.errors[0]}</span> : state.lastReviewSync.skipped ? <span className="text-amber-700"> · {state.lastReviewSync.skipped}</span> : null}
               </p>
             )}
           </div>

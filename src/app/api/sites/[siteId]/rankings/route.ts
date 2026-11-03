@@ -86,7 +86,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
 
   // Manual scans spend one credit per keyword; the weekly scheduled scan is free.
   const settings = rankSettings(site.settings);
-  const keywords = (body.keywords?.length ? body.keywords : await resolveKeywords(admin, siteId, settings)).slice(0, MAX_KEYWORDS);
+  // A subset (e.g. keywords added since the last scan) is allowed, but only from the site's own list.
+  const tracked = await resolveKeywords(admin, siteId, settings);
+  const requested = Array.isArray(body.keywords) ? Array.from(new Set(body.keywords.map((k) => cleanKeyword(String(k))))) : [];
+  const keywords = (requested.length ? tracked.filter((k) => requested.includes(k)) : tracked).slice(0, MAX_KEYWORDS);
+  if (requested.length && keywords.length === 0) return NextResponse.json({ error: 'None of those keywords are on this site' }, { status: 400 });
   if (keywords.length === 0) return NextResponse.json({ error: 'Add at least one keyword first' }, { status: 400 });
   const spend = await spendCredits(admin, site.organization_id, keywords.length, 'manual_scan', siteId);
   if (!spend.ok) {

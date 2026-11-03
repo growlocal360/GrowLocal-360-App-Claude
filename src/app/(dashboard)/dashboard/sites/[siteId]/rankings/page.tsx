@@ -161,11 +161,15 @@ export default function RankingsPage() {
     await patch({ keywords: rest });
   };
 
-  const scanNow = async () => {
+  // Keywords the site tracks that have never been scanned (added since the last run).
+  const unscanned = data ? data.settings.keywords.filter((k) => !data.scans.some((sc) => sc.keyword === k)) : [];
+
+  /** Scan every keyword, or only `only` (e.g. the ones added since the last scan). */
+  const scanNow = async (only?: string[]) => {
     setScanning(true);
     const startedAt = Date.now();
     try {
-      const r = await fetch(`/api/sites/${siteId}/rankings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const r = await fetch(`/api/sites/${siteId}/rankings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(only?.length ? { keywords: only, ai: false } : {}) });
       const d = await r.json();
       if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
       if (!r.ok) throw new Error(d.error || 'Could not start');
@@ -207,13 +211,19 @@ export default function RankingsPage() {
           </div>
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <div className="flex gap-2">
-              <Button size="sm" onClick={scanNow} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]">
+              {unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) && (
+                <Button size="sm" onClick={() => scanNow(unscanned)} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]" title={`Only: ${unscanned.join(', ')}`}>
+                  {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Scan {unscanned.length} new keyword{unscanned.length === 1 ? '' : 's'} · {unscanned.length} credit{unscanned.length === 1 ? '' : 's'}
+                </Button>
+              )}
+              <Button size="sm" variant={unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) ? 'outline' : 'default'} onClick={() => scanNow()} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className={unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) ? '' : 'bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]'}>
                 {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                Scan now{data ? ` · ${data.credits.perManualScan} credit${data.credits.perManualScan === 1 ? '' : 's'}` : ''}
+                Scan all{data ? ` · ${data.credits.perManualScan} credit${data.credits.perManualScan === 1 ? '' : 's'}` : ''}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowPacks((v) => !v)}>Buy credits</Button>
             </div>
-            {data && <span className="text-xs text-gray-500">{data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left · weekly scans are included, Scan now uses 1 credit per keyword</span>}
+            {data && <span className="text-xs text-gray-500">{data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left · weekly scans are included, manual scans use 1 credit per keyword</span>}
           </div>
         </div>
 

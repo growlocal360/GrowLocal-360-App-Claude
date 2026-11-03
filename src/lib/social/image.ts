@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { BRANDED_BUCKET } from '@/lib/automation/branded-photo';
+import { carryGeotag } from '@/lib/job-snaps/geotag';
 
 /**
  * Instagram only accepts JPEG between 4:5 (portrait) and 1.91:1 (landscape),
@@ -39,7 +40,8 @@ export async function ensureInstagramPhoto(supabase: SupabaseClient, siteId: str
     }
     const res = await fetch(sourceUrl);
     if (!res.ok) return sourceUrl;
-    const out = await fitForInstagram(Buffer.from(await res.arrayBuffer()));
+    const original = Buffer.from(await res.arrayBuffer());
+    const out = await carryGeotag(original, await fitForInstagram(original));
     const key = createHash('sha1').update(sourceUrl).digest('hex').slice(0, 16);
     const storagePath = `social/${siteId}/${key}-ig.jpg`;
     const { error: upErr } = await supabase.storage.from(BRANDED_BUCKET).upload(storagePath, out, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });

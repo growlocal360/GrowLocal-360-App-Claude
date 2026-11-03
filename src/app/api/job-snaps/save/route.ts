@@ -128,23 +128,19 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
 
     // ── Org access check ────────────────────────────────────────────────────
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id, id')
-      .eq('user_id', user.id)
-      .single();
+    // A user has one profile row per organization they belong to (an owner who
+    // is also an admin on a client's account has two), so pick the profile for
+    // the site's organization rather than assuming a single row.
+    const [{ data: profiles }, { data: site }] = await Promise.all([
+      admin.from('profiles').select('organization_id, id').eq('user_id', user.id),
+      admin.from('sites').select('id, organization_id').eq('id', body.siteId).single(),
+    ]);
 
-    if (!profile) {
+    if (!profiles || profiles.length === 0) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 403 });
     }
-
-    const { data: site } = await admin
-      .from('sites')
-      .select('id, organization_id')
-      .eq('id', body.siteId)
-      .single();
-
-    if (!site || site.organization_id !== profile.organization_id) {
+    const profile = site ? profiles.find((p) => p.organization_id === site.organization_id) : undefined;
+    if (!site || !profile) {
       return NextResponse.json({ error: 'Site not found or access denied' }, { status: 403 });
     }
 

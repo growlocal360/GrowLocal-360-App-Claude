@@ -17,7 +17,8 @@ export const rankTrackingWeekly = inngest.createFunction(
     const results: { siteId: string; scans?: string; ai?: string }[] = [];
     for (const siteId of siteIds) {
       const scans = await step.run(`scan-${siteId}`, () => runRankScans(supabase, siteId));
-      const ai = await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId));
+      // AI checks every other week (search-grounded calls cost more than Maps points); Maps scans stay weekly.
+      const ai = await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId, { minIntervalDays: 13 }));
       results.push({
         siteId,
         scans: scans.skipped || `${scans.results.filter((r) => !r.error).length}/${scans.results.length} keywords, $${scans.totalCost.toFixed(2)}`,
@@ -47,7 +48,7 @@ export const rankTrackingRequested = inngest.createFunction(
         return { refunded: failed };
       });
     }
-    const aiRes = ai === false ? null : await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId));
+    const aiRes = ai === false ? null : await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId, { minIntervalDays: 1 }));
     return { scans, ai: aiRes };
   }
 );

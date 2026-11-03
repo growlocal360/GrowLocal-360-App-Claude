@@ -85,3 +85,42 @@ describe('map overlay helpers', () => {
     expect(nw.left).toBeLessThan(50); expect(nw.top).toBeLessThan(50);
   });
 });
+
+describe('analyzeAnswer on search-grounded answers', () => {
+  it('reads ChatGPT bold markdown links and Claude numbered bold entries', () => {
+    const chatgpt = `If you're seeking graphic design services, here are several local businesses:\n\n**[Graphic Works](https://www.google.com/maps/search/Graphic+Works?utm_source=openai)**\n_Lake Charles, LA_\nA full-service design shop.\n\n**[The Lab Design Group](https://maps.google.com/x)**\n_Lake Charles, LA_\nA creative agency.\n\n**[FASTSIGNS® of Lake Charles, LA](https://maps.google.com/y)**\nSignage.`;
+    const a = analyzeAnswer(chatgpt, 'Graphic Works Advertising & Design Shop');
+    expect(a.mentioned).toBe(true);
+    expect(a.position).toBe(1);
+    expect(a.answered).toBe(true);
+    expect(a.competitors).toEqual(['The Lab Design Group', 'FASTSIGNS of Lake Charles, LA']);
+
+    const claude = `### 🎨 Top Graphic Design Companies\n\n1. **Graphic Works Advertising & Design Shop**\n   - 📍 318 Pujo St\n2. **Parker Brand Creative Services**\n   - 🌐 parkerbrandcreative.com\n3. **The Lab Design Group, LLC**\n   - 📞 (337) 214-4357`;
+    const b = analyzeAnswer(claude, 'Graphic Works Advertising & Design Shop');
+    expect(b.position).toBe(1);
+    expect(b.competitors).toEqual(['Parker Brand Creative Services', 'The Lab Design Group, LLC']);
+  });
+  it('does not count directories or advice as competitors', () => {
+    const txt = `I can't name specific businesses. Try:\n- LinkedIn\n- Clutch.co\n- Lake Charles/Southwest Louisiana Chamber of Commerce\n- Businesses that have closed\n- Portfolio relevant to your industry`;
+    const a = analyzeAnswer(txt, 'Graphic Works');
+    expect(a.answered).toBe(false);
+    expect(a.competitors).toEqual([]);
+  });
+});
+
+describe('Google AI Mode cards', () => {
+  it('reads "Name 5.0 (87)" business cards into a ranked list', async () => {
+    const { analyzeAnswer: analyze } = await import('./ai-visibility');
+    const md = `Several top-rated local agencies stand out.\n\n![](https://cdn/x)\nGraphic Works 5.0 (87)  \nGraphic designer\nClosed 318 Pujo St 0.1 mi\n![](https://cdn/y)\nHoneywave Creative 5.0 (135)  \nWebsite designer\nThe Lab Design Group 4.9 (21)  \n`;
+    const cards: string[] = [];
+    for (const line of md.split('\n')) {
+      const m = line.trim().match(/^(?:\*\*)?([A-Za-z0-9][^|*]{1,70}?)(?:\*\*)?\s+([1-5]\.\d)\s*\((\d[\d,]*)\)/);
+      if (m && !cards.includes(m[1].trim())) cards.push(m[1].trim());
+    }
+    expect(cards).toEqual(['Graphic Works', 'Honeywave Creative', 'The Lab Design Group']);
+    const a = analyze(cards.map((c, i) => `${i + 1}. ${c}`).join('\n') + '\n\n' + md, 'Graphic Works Advertising & Design Shop');
+    expect(a.mentioned).toBe(true);
+    expect(a.position).toBe(1);
+    expect(a.competitors).toEqual(['Honeywave Creative', 'The Lab Design Group']);
+  });
+});

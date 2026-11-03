@@ -81,6 +81,39 @@ function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
   );
 }
 
+/** One heatmap card: a keyword's latest scan on the overview, or one dated scan in the per-keyword history. */
+function ScanCard({ title, latest, previous, siteId, onPick }: { title: string; latest: ScanRow; previous: ScanRow | null; siteId: string; onPick?: () => void }) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            {onPick ? (
+              <button type="button" onClick={onPick} className="text-left font-semibold text-gray-900 underline-offset-2 hover:underline" title="Show every scan of this keyword">{title}</button>
+            ) : (
+              <h3 className="font-semibold text-gray-900">{title}</h3>
+            )}
+            <p className="text-xs text-gray-400">{onPick ? `${fmt(latest.scanned_at)} · ` : ''}{latest.grid_size}×{latest.grid_size} grid, {latest.spacing_miles} mi{latest.failed_points ? ` · ${latest.failed_points} points failed` : ''}</p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-extrabold text-gray-900">{latest.summary.visibility}<span className="text-sm font-medium text-gray-400">/100</span></div>
+            <div className="text-[11px] text-gray-500">visibility</div>
+            <Change now={latest.summary.visibility} before={previous?.summary.visibility} />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Heatmap scan={latest} siteId={siteId} />
+        <div className="grid grid-cols-3 gap-2 text-sm">
+          <div><div className="font-semibold text-gray-900">{latest.summary.top3Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={latest.summary.top3Points} before={previous?.summary.top3Points} /></div>
+          <div><div className="font-semibold text-gray-900">{latest.summary.top10Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">in top 10</div><Change now={latest.summary.top10Points} before={previous?.summary.top10Points} /></div>
+          <div><div className="font-semibold text-gray-900">{latest.summary.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. rank when found</div><Change now={latest.summary.averageRank} before={previous?.summary.averageRank} invert /></div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Change({ now, before, invert = false, suffix = '' }: { now: number | null; before: number | null | undefined; invert?: boolean; suffix?: string }) {
   if (now === null || before === null || before === undefined) return null;
   const diff = now - before;
@@ -119,6 +152,10 @@ export default function RankingsPage() {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [newKw, setNewKw] = useState('');
+  // Heatmap filter: 'all' shows the latest scan per keyword; a keyword shows its whole history for comparison.
+  const [filterKeyword, setFilterKeyword] = useState<string>('all');
+  const [history, setHistory] = useState<ScanRow[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -131,6 +168,17 @@ export default function RankingsPage() {
     load().then(() => setLoading(false));
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [load]);
+
+  useEffect(() => {
+    if (filterKeyword === 'all') { setHistory(null); return; }
+    let cancelled = false;
+    setHistoryLoading(true);
+    fetch(`/api/sites/${siteId}/rankings?keyword=${encodeURIComponent(filterKeyword)}`)
+      .then((r) => (r.ok ? r.json() : { history: [] }))
+      .then((d: { history: ScanRow[] }) => { if (!cancelled) setHistory(d.history || []); })
+      .finally(() => { if (!cancelled) setHistoryLoading(false); });
+    return () => { cancelled = true; };
+  }, [filterKeyword, siteId, data?.scans]);
 
   const patch = async (body: Record<string, unknown>) => {
     setSaving(true);
@@ -314,34 +362,37 @@ export default function RankingsPage() {
 
             {/* Heatmaps */}
             <section className="space-y-3">
-              <h2 className="font-semibold text-gray-900">Google Maps heatmaps</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold text-gray-900">Google Maps heatmaps</h2>
+                {data.scans.length > 0 && (
+                  <label className="flex items-center gap-2 text-sm text-gray-600">
+                    Show
+                    <select className="rounded border border-gray-300 bg-white px-2 py-1 text-sm" value={filterKeyword} onChange={(e) => setFilterKeyword(e.target.value)}>
+                      <option value="all">All keywords · latest scan</option>
+                      {data.scans.map((sc) => <option key={sc.keyword} value={sc.keyword}>{sc.keyword} · every scan</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
               {data.scans.length === 0 ? (
                 <Card><CardContent className="py-10 text-center text-gray-500">No scans yet. {data.providerConfigured ? 'Click Scan now, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}</CardContent></Card>
+              ) : filterKeyword !== 'all' ? (
+                historyLoading && !history ? (
+                  <Card><CardContent className="py-10 text-center text-gray-500"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></CardContent></Card>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-500">{history?.length || 0} scan{history?.length === 1 ? '' : 's'} of &ldquo;{filterKeyword}&rdquo;, newest first. Each card compares with the scan before it.</p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {(history || []).map((scan, i) => (
+                        <ScanCard key={scan.id} title={fmt(scan.scanned_at)} latest={scan} previous={history?.[i + 1] || null} siteId={siteId} />
+                      ))}
+                    </div>
+                  </>
+                )
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {data.scans.map(({ keyword, latest, previous }) => (
-                    <Card key={keyword}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{keyword}</h3>
-                            <p className="text-xs text-gray-400">{fmt(latest.scanned_at)} · {latest.grid_size}×{latest.grid_size} grid, {latest.spacing_miles} mi{latest.failed_points ? ` · ${latest.failed_points} points failed` : ''}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-extrabold text-gray-900">{latest.summary.visibility}<span className="text-sm font-medium text-gray-400">/100</span></div>
-                            <div className="text-[11px] text-gray-500">visibility</div>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <Heatmap scan={latest} siteId={siteId} />
-                        <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div><div className="font-semibold text-gray-900">{latest.summary.top3Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={latest.summary.top3Points} before={previous?.summary.top3Points} /></div>
-                          <div><div className="font-semibold text-gray-900">{latest.summary.top10Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">in top 10</div><Change now={latest.summary.top10Points} before={previous?.summary.top10Points} /></div>
-                          <div><div className="font-semibold text-gray-900">{latest.summary.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. rank when found</div><Change now={latest.summary.averageRank} before={previous?.summary.averageRank} invert /></div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <ScanCard key={keyword} title={keyword} latest={latest} previous={previous} siteId={siteId} onPick={() => setFilterKeyword(keyword)} />
                   ))}
                 </div>
               )}

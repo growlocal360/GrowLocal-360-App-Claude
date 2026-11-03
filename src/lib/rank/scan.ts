@@ -192,3 +192,15 @@ export async function latestScans(supabase: SupabaseClient, siteId: string) {
   }
   return [...byKeyword.entries()].map(([keyword, rows]) => ({ keyword, latest: rows![0], previous: rows![1] || null }));
 }
+
+/** Every scan for one keyword, newest first, for side-by-side comparison on the Rankings page. */
+export async function scanHistory(supabase: SupabaseClient, siteId: string, keyword: string, limit = 12) {
+  const { data } = await supabase
+    .from('rank_scans')
+    .select('id, keyword, grid_size, spacing_miles, center_lat, center_lng, points, summary, scanned_at, cost_usd, failed_points')
+    .eq('site_id', siteId)
+    .eq('keyword', keyword)
+    .order('scanned_at', { ascending: false })
+    .limit(limit);
+  return data || [];
+}

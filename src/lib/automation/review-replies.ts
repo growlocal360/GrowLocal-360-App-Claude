@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GBPClient, starRatingToNumber, type GBPReview } from '@/lib/google/gbp-client';
-import { getStoredGoogleToken } from '@/lib/google/stored-token';
+import { getStoredGoogleToken, GOOGLE_RECONNECT_MESSAGE, isGoogleAuthError } from '@/lib/google/stored-token';
 import { createAnthropicClient, buildContentDirectives, withRetry } from '@/lib/content/generators';
 import { sendNegativeReviewAlertEmail } from '@/lib/email/resend';
 import {
@@ -122,7 +122,7 @@ async function runSync(supabase: SupabaseClient, siteId: string, opts: SyncOptio
   if (!location?.gbp_account_id || !location.gbp_location_id) return { ...summary, skipped: 'no GBP location linked' };
 
   const token = await getStoredGoogleToken(supabase, siteId);
-  if (!token) return { ...summary, skipped: 'no Google token' };
+  if (!token) return { ...summary, skipped: 'no Google token', errors: [GOOGLE_RECONNECT_MESSAGE] };
 
   const typedSite = site as SiteRow;
   const typedLocation = location as LocationRow;
@@ -167,7 +167,8 @@ async function runSync(supabase: SupabaseClient, siteId: string, opts: SyncOptio
         .eq('id', siteId);
     }
   } catch (e) {
-    summary.errors.push(`import: ${e instanceof Error ? e.message : String(e)}`);
+    const msg = e instanceof Error ? e.message : String(e);
+    summary.errors.push(isGoogleAuthError(msg) ? GOOGLE_RECONNECT_MESSAGE : `import: ${msg}`);
     return summary;
   }
 

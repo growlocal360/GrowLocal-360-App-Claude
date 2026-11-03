@@ -1,5 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/** What to tell an owner when the stored Google connection cannot be used any more. */
+export const GOOGLE_RECONNECT_MESSAGE = 'Google connection expired. Open the site page and click Reconnect on the Google Business Profile card.';
+
+/** True for the errors Google returns when an access token is dead or missing. */
+export function isGoogleAuthError(message: string): boolean {
+  return /invalid authentication credentials|UNAUTHENTICATED|invalid_grant|401/i.test(message);
+}
+
 /**
  * Server-side Google access token for a site, with refresh. For background
  * jobs (Inngest) where there is no user session to borrow a provider_token
@@ -57,7 +65,10 @@ async function freshOrRefreshed(
     const bufferMs = 5 * 60 * 1000;
     if (new Date(conn.token_expires_at).getTime() - bufferMs > Date.now()) return conn.access_token;
   }
-  if (!conn.refresh_token) return conn.access_token || null;
+  // No refresh token: an expired access token is useless, so say so (null) rather
+  // than hand back a dead one that fails every call with a cryptic auth error.
+  // Only when the expiry is unknown do we try the token we have.
+  if (!conn.refresh_token) return conn.token_expires_at ? null : conn.access_token || null;
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;

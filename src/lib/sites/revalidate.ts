@@ -14,7 +14,7 @@ import type { GenerationScope } from '@/types/database';
  *
  * Covers: root listings, every category/service/area/neighborhood/brand/work
  * detail page, the home page, /about, /contact, /faq, /reviews,
- * and v5 city hubs (/{city}/) + Pattern 1 (/{service}/{city}/) pages.
+ * and v6 town pages (/service-areas/{city}/) + their silo pages.
  */
 export async function revalidateSite(siteId: string) {
   console.log('[revalidateSite] start', { siteId });
@@ -90,22 +90,20 @@ export async function revalidateSite(siteId: string) {
     revalidatePath(`${base}/${service.slug}`, 'page');
   }
 
-  // v5: GBP-anchored city hubs (/{city}/ + /{city}/{service}/) + Pattern 1
-  // (/{service}/{city}/). Neighborhoods unchanged.
-  const primaryServiceSlugs = (services || [])
-    .filter((s) => { const c = s.site_category_id ? catSlugMap.get(s.site_category_id) : null; return c?.isPrimary; })
-    .map((s) => s.slug);
+  // v6: every town page, plus the silo beneath promoted (GBP-anchored) towns:
+  // one page per main-service entry (primary services + secondary categories).
+  // Revalidating a path that doesn't exist is a harmless no-op.
+  const mainSlugs = [
+    ...(services || [])
+      .filter((s) => { const c = s.site_category_id ? catSlugMap.get(s.site_category_id) : null; return !c || c.isPrimary; })
+      .map((s) => s.slug),
+    ...[...catSlugMap.values()].filter((c) => !c.isPrimary).map((c) => c.slug),
+  ];
   for (const area of serviceAreas || []) {
+    revalidatePath(`${base}/service-areas/${area.slug}`, 'page');
     if ((area as { is_anchor?: boolean }).is_anchor) {
-      revalidatePath(`${base}/${area.slug}`, 'page'); // city hub
-      for (const sslug of primaryServiceSlugs) {
-        revalidatePath(`${base}/${area.slug}/${sslug}`, 'page'); // city-hub service
-      }
-    } else {
-      // Pattern 1 pages for primary services × this city (built only for top
-      // services; revalidating extras is harmless — non-existent paths no-op).
-      for (const sslug of primaryServiceSlugs) {
-        revalidatePath(`${base}/${sslug}/${area.slug}`, 'page');
+      for (const slug of mainSlugs) {
+        revalidatePath(`${base}/service-areas/${area.slug}/${slug}`, 'page');
       }
     }
   }
@@ -213,16 +211,14 @@ export async function revalidatePages(siteId: string, scope: GenerationScope) {
     }
 
     case 'service-areas': {
-      // v5: single /service-areas/ page; anchored cities also get a /{city}/ hub.
+      // v6: the hub + each town page (silo pages are refreshed by the full revalidate).
       const { data: areas } = await supabase
         .from('service_areas')
-        .select('slug, is_anchor')
+        .select('slug')
         .in('id', scope.serviceAreaIds);
 
       for (const area of areas || []) {
-        if ((area as { is_anchor?: boolean }).is_anchor) {
-          revalidatePath(`${base}/${area.slug}`, 'page');
-        }
+        revalidatePath(`${base}/service-areas/${area.slug}`, 'page');
       }
       revalidatePath(`${base}/service-areas`, 'page');
       break;

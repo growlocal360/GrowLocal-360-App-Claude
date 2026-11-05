@@ -1,22 +1,23 @@
 /**
- * v5 Site Plan store + helpers.
+ * v6 Site Plan store + helpers.
  * ----------------------------------------------------------------------------
  * Bridges the pure planSite() planner (src/lib/onboarding/site-plan.ts) and the
  * database. The build pipeline computes a SitePlan and persists a JSON-stable
  * projection of it to `settings.site_plan`. The sitemap, the request-time
- * routing gate, and the /service-areas/ page read it back as the source of
- * truth for which v5 URLs actually exist.
+ * routing gate, the nav and the /service-areas/ hub read it back as the source
+ * of truth for which town pages (and silo pages) actually exist.
  *
- * Canonical spec: docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5)
+ * Canonical spec: docs/architecture/growlocal360_master_prompt_v6.md
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { planSite, type PlanInputs, type SitePlan, type BusinessType } from '@/lib/onboarding/site-plan';
+import { planSite, citySlug, type PlanInputs, type SitePlan, type BusinessType } from '@/lib/onboarding/site-plan';
 import { resolvePrimaryMarket } from '@/lib/onboarding/primary-market';
-import { resolveNichesFromNames } from '@/lib/forms/niche-forms';
 import type { SiteSettings, StoredSitePlan, ServiceAreaDB } from '@/types/database';
 
-/** Normalize a public path for set membership ("/Appliance-Repair/Peoria/" → "appliance-repair/peoria"). */
+export const SITE_PLAN_VERSION = 6;
+
+/** Normalize a public path for set membership ("/Service-Areas/Peoria/" → "service-areas/peoria"). */
 export function normalizePublicPath(path: string): string {
   return path.toLowerCase().replace(/^\/+|\/+$/g, '');
 }
@@ -27,10 +28,12 @@ export function toStoredSitePlan(
   meta: { travelStrategy: StoredSitePlan['travel_strategy']; primaryMarket: { city: string; state: string }; generatedAt: string },
 ): StoredSitePlan {
   return {
+    version: SITE_PLAN_VERSION,
     generated_at: meta.generatedAt,
     travel_strategy: meta.travelStrategy,
     primary_market: meta.primaryMarket,
     gbp_website_link_recommendation: plan.gbpWebsiteLinkRecommendation,
+    gbp_website_links: plan.gbpWebsiteLinks,
     pages: plan.pages.map((p) => ({
       url: p.url,
       page_type: p.pageType,
@@ -40,10 +43,12 @@ export function toStoredSitePlan(
     cities: plan.cities.map((c) => ({
       city: c.city,
       state: c.state,
+      slug: c.slug,
       treatment: c.treatment,
       has_page: c.hasPage,
       page_url: c.pageUrl,
       distance_from_primary_market: c.distanceFromPrimaryMarket,
+      reason: c.reason,
     })),
     do_not_build: plan.doNotBuild,
   };
@@ -51,19 +56,19 @@ export function toStoredSitePlan(
 
 /**
  * Build planSite() inputs from loaded site data. Derives the Primary Market
- * (stored v5 settings, else inferred) and the city list (anchored + distance).
- *
- * `businessType` is derived simply: a primary location with a street address is
- * treated as Physical, otherwise SAB. (There's no dedicated field yet; this only
- * affects copy framing, not the URL rules that the test relies on.)
+ * (stored settings, else inferred) and the town list (anchored + distance +
+ * priority), plus the primary-category services that lead the main service list.
  */
 export function buildPlanInputs(args: {
   settings: SiteSettings | null | undefined;
   primaryLocation: { city: string | null; state: string | null; address?: string | null } | null | undefined;
   /** GBP category display names, primary first. */
   gbpCategories: string[];
+  /** Services of the PRIMARY category ({ name, slug }) in display order. */
+  primaryServices?: Array<{ name: string; slug: string }>;
   serviceAreas: Pick<ServiceAreaDB, 'name' | 'state' | 'is_anchor' | 'distance_miles' | 'is_priority'>[];
   subServicesByService?: Record<string, string[]>;
+  neighborhoods?: string[];
 }): { inputs: PlanInputs; primaryMarket: { city: string; state: string }; travelStrategy: PlanInputs['travelStrategy']; needsReview: boolean } {
   const resolved = resolvePrimaryMarket(args.settings, {
     fallbackCity: args.primaryLocation?.city,
@@ -78,30 +83,14 @@ export function buildPlanInputs(args: {
   const hasAddress = !!(args.primaryLocation?.address && args.primaryLocation.address.trim());
   const businessType: BusinessType = hasAddress ? 'physical' : 'sab';
 
-  const gbpCategories = args.gbpCategories.filter(Boolean);
-
-  // Top-services policy (which services get Pattern 1 city-page depth). The v5
-  // rule is "top 2-3 services only" to prevent thin-page bloat. Until services
-  // are ranked by real demand (GSC/keyword volume — see the GSC feedback loop),
-  // we default to the top 3 GBP categories by list order. Top 3 (not 2) so a
-  // high-demand service like washer/dryer repair isn't dropped just for being
-  // listed third. This is a deliberate heuristic; the proper fix ranks by
-  // evidence rather than order.
-  const TOP_SERVICES_COUNT = 3;
-  const topServices = gbpCategories.slice(0, TOP_SERVICES_COUNT);
-
-  // Distinct niches (e.g. HVAC + Appliance) → one dedicated-city page per niche.
-  const niches = resolveNichesFromNames(gbpCategories);
-
   const inputs: PlanInputs = {
     businessType,
     travelStrategy: resolved.travelStrategy,
     primaryMarket: { city: resolved.city, state: resolved.state },
-    gbpCategories,
-    topServices,
-    niches,
-    homepageIsPrimaryMarket: args.settings?.homepage_is_primary_market === true,
+    gbpCategories: args.gbpCategories.filter(Boolean),
+    primaryServices: args.primaryServices,
     subServicesByService: args.subServicesByService,
+    neighborhoods: args.neighborhoods,
     serviceAreaCities: args.serviceAreas.map((a) => ({
       city: a.name,
       state: a.state || resolved.state,
@@ -125,7 +114,7 @@ export function computeSitePlan(args: Parameters<typeof buildPlanInputs>[0]): {
   return { plan: planSite(inputs), primaryMarket, travelStrategy, needsReview };
 }
 
-/** Read the persisted plan for a site (null for pre-v5 sites — callers fall back). */
+/** Read the persisted plan for a site (null for sites never planned — callers fall back). */
 export async function getStoredSitePlan(siteId: string): Promise<StoredSitePlan | null> {
   const supabase = createAdminClient();
   const { data } = await supabase.from('sites').select('settings').eq('id', siteId).single();
@@ -133,42 +122,50 @@ export async function getStoredSitePlan(siteId: string): Promise<StoredSitePlan 
   return plan ?? null;
 }
 
+/** True when the stored plan was produced by the v6 planner (town pages under /service-areas/). */
+export function isV6Plan(plan: StoredSitePlan | null | undefined): boolean {
+  return !!plan && (plan.version ?? 0) >= SITE_PLAN_VERSION;
+}
+
 /**
- * The set of normalized public paths the plan says EXIST (city hubs + their
- * services + Pattern 1 + Primary Market hub/services). The routing gate uses
- * this to 404 un-planned city/service combos (proximity-covered, non-top
- * services) so thin pages never render.
+ * The set of normalized public paths the plan says EXIST for towns: every
+ * town page and every silo page under a promoted town. The routing gate uses
+ * this to 404 towns that are text-only (proximity-covered / over the cap) and
+ * silo URLs under towns that are not promoted.
  */
 export function plannedCityPathSet(plan: StoredSitePlan): Set<string> {
-  const cityPageTypes = new Set([
-    'primary_market_hub',
-    'primary_market_service',
-    'pattern_1_city',
-    'city_hub',
-    'city_hub_service',
-  ]);
+  const townPageTypes = new Set(['town_page', 'town_service']);
   const set = new Set<string>();
   for (const p of plan.pages) {
-    if (cityPageTypes.has(p.page_type)) set.add(normalizePublicPath(p.url));
+    if (townPageTypes.has(p.page_type)) set.add(normalizePublicPath(p.url));
   }
   return set;
 }
 
 /**
- * Does the plan say this two-segment city/service public path EXISTS? Used by the
- * routing gate so proximity-covered cities and non-top services 404 instead of
- * rendering a thin page. Backwards-compat: pre-v5 sites have no plan → permissive
- * (returns true) so existing sites keep working.
+ * Does the plan say this town / silo public path EXISTS? Sites that were never
+ * planned (or still carry a v5 plan) are permissive so nothing 404s before the
+ * next regenerate.
  */
 export async function isPlannedCityPath(siteId: string, publicPath: string): Promise<boolean> {
   const plan = await getStoredSitePlan(siteId);
-  if (!plan) return true; // no plan (pre-v5) → don't gate
-  return plannedCityPathSet(plan).has(normalizePublicPath(publicPath));
+  if (!isV6Plan(plan)) return true;
+  return plannedCityPathSet(plan!).has(normalizePublicPath(publicPath));
 }
 
-/** Look up a city's treatment by name (case-insensitive) for the /service-areas/ listing. */
+/** Look up a town's treatment by name (case-insensitive) for listings/nav. */
 export function cityTreatmentByName(plan: StoredSitePlan): Map<string, StoredSitePlan['cities'][number]> {
   const map = new Map<string, StoredSitePlan['cities'][number]>();
   for (const c of plan.cities) map.set(c.city.trim().toLowerCase(), c);
   return map;
+}
+
+/** Look up a town's treatment by its URL slug. Old (v5) plans have no slug → derive from the name. */
+export function cityTreatmentBySlug(plan: StoredSitePlan, slug: string): StoredSitePlan['cities'][number] | null {
+  const want = slug.toLowerCase();
+  for (const c of plan.cities) {
+    const s = (c.slug || citySlug(c.city)).toLowerCase();
+    if (s === want) return c;
+  }
+  return null;
 }

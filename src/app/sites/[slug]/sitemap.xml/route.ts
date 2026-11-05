@@ -73,33 +73,22 @@ export async function GET(
     }
   }
 
-  // v5: the single Service Areas page (no per-area detail pages).
+  // v6: the /service-areas/ hub, then every town page + silo page the persisted
+  // Site Plan says exists (the source of truth that keeps text-only towns OUT of
+  // the sitemap). Sites still carrying a v5 plan (or none) fall back to listing
+  // the GBP-anchored towns only, until their next regenerate rebuilds the plan.
   entries.push({ url: `${baseUrl}/service-areas`, lastmod, changefreq: 'weekly', priority: 0.7 });
-
-  // v5 city pages come from the persisted Site Plan (the source of truth for
-  // which Primary Market / Pattern 1 / city-hub URLs actually exist). This is
-  // what keeps thin/proximity-covered cities OUT of the sitemap. Pre-v5 sites
-  // have no plan → fall back to emitting anchored hubs only.
   const sitePlan = (site.settings as SiteSettings | null)?.site_plan;
-  if (sitePlan) {
-    const cityPageTypes = new Set([
-      'primary_market_hub',
-      'primary_market_service',
-      'pattern_1_city',
-      'city_hub',
-      'city_hub_service',
-    ]);
+  if (sitePlan && (sitePlan.version ?? 0) >= 6) {
     for (const p of sitePlan.pages) {
-      if (!cityPageTypes.has(p.page_type)) continue;
-      const path = p.url.replace(/\/+$/, ''); // strip trailing slash for canonical form
-      const priority = p.page_type === 'primary_market_hub' ? 0.8 : 0.7;
-      entries.push({ url: `${baseUrl}${path}`, lastmod, changefreq: 'monthly', priority });
+      if (p.page_type !== 'town_page' && p.page_type !== 'town_service') continue;
+      const path = p.url.replace(/\/+$/, '');
+      entries.push({ url: `${baseUrl}${path}`, lastmod, changefreq: 'monthly', priority: p.page_type === 'town_page' ? 0.7 : 0.6 });
     }
   } else {
-    // Pre-v5 fallback: GBP-anchored cities get a city-first hub at root (/{city}/).
     for (const area of serviceAreas || []) {
       if ((area as { is_anchor?: boolean }).is_anchor) {
-        entries.push({ url: `${baseUrl}/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.7 });
+        entries.push({ url: `${baseUrl}/service-areas/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.7 });
       }
     }
   }

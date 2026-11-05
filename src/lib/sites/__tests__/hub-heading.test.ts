@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { hubCityFor, servedCommunitiesLabel, brandPlaceLabel } from '../hub-heading';
 
-describe('hubCityFor (v5 rule 11 for brand-level hubs)', () => {
-  it('is brand-level for a single-location site unless the home page is the Primary Market page', () => {
-    expect(hubCityFor({ website_type: 'single_location', settings: {} }, 'Englewood')).toBeNull();
-    expect(hubCityFor({ website_type: 'single_location', settings: { homepage_is_primary_market: false } }, 'Englewood')).toBeNull();
+describe('hubCityFor (v6: the single-location home page IS the Primary Market page)', () => {
+  it('names the city for a single-location site regardless of the retired v5 flag', () => {
+    expect(hubCityFor({ website_type: 'single_location', settings: {} }, 'Englewood')).toBe('Englewood');
+    expect(hubCityFor({ website_type: 'single_location', settings: { homepage_is_primary_market: false } }, 'Englewood')).toBe('Englewood');
     expect(hubCityFor({ website_type: 'single_location', settings: { homepage_is_primary_market: true } }, 'Englewood')).toBe('Englewood');
   });
   it('is always brand-level for multi-location sites', () => {
@@ -26,11 +26,11 @@ describe('servedCommunitiesLabel', () => {
 });
 
 describe('brandPlaceLabel', () => {
-  const base = { website_type: 'single_location', settings: { homepage_is_primary_market: false, service_region: null } };
-  it('uses the shop city only when the home page is the Primary Market page', () => {
-    expect(brandPlaceLabel({ ...base, settings: { ...base.settings, homepage_is_primary_market: true } }, 'Englewood')).toBe('Englewood');
+  const base = { website_type: 'multi_location', settings: { homepage_is_primary_market: false, service_region: null } };
+  it('uses the shop city on a single-location site', () => {
+    expect(brandPlaceLabel({ ...base, website_type: 'single_location' }, 'Englewood')).toBe('Englewood');
   });
-  it('falls back to the service region, then to nothing', () => {
+  it('multi-location: falls back to the service region, then to nothing', () => {
     expect(brandPlaceLabel({ ...base, settings: { ...base.settings, service_region: 'Southwest Florida' } }, 'Englewood')).toBe('Southwest Florida');
     expect(brandPlaceLabel(base, 'Englewood')).toBeNull();
     expect(brandPlaceLabel({ ...base, settings: { ...base.settings, service_region: '   ' } }, 'Englewood')).toBeNull();

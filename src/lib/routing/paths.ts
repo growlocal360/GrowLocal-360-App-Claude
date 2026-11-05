@@ -1,18 +1,17 @@
 /**
- * Centralized path builder — v5 Primary Market URL structure.
- * See docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5).
+ * Centralized path builder — v6 Town Page URL structure.
+ * See docs/architecture/growlocal360_master_prompt_v6.md.
  *
- * v5 flattens the old "/locations/{loc}/" silo: GBP-anchored cities become
- * city-first hubs at ROOT — "/{city}/". The `locationSlug` argument therefore
- * now means "this link is scoped to a city hub" and is prefixed at root
- * (NOT under /locations/). Single-market sites pass `locationSlug` = undefined
- * and everything lives at "/".
+ *   /                                 home = primary category in the Primary Market
+ *   /{service}/                       main service pages, flat at root
+ *   /{category}/{service}/            secondary-category services under their hub
+ *   /service-areas/                   locations hub
+ *   /service-areas/{city}/            town page (plain or promoted)
+ *   /service-areas/{city}/{service}/  silo page under a PROMOTED town
+ *   /neighborhoods/{slug}/            Primary Market neighborhoods
  *
- * Key v5 changes vs v4:
- *  - `/areas/` (folder) → `/service-areas/` (single page); area detail pages are
- *    GONE — every city is either a city hub, a Pattern-1 page, or a text mention.
- *  - `/locations/{loc}/` prefix → `/{loc}/` (flat city hub at root).
- *  - New: `cityHub()` and `serviceCityPage()` (Pattern 1).
+ * `locationSlug` is a legacy multi-location prefix; single-market sites pass
+ * undefined and everything lives at "/".
  */
 
 function base(locationSlug?: string): string {
@@ -24,14 +23,25 @@ export function locationHome(locationSlug?: string): string {
   return locationSlug ? `/${locationSlug}` : '/';
 }
 
-/** City-first hub for a GBP-anchored city: "/{city}/". */
-export function cityHub(citySlug: string): string {
-  return `/${citySlug}`;
+/** v6 town page: "/service-areas/{city}". */
+export function townPage(citySlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/service-areas/${citySlug}`;
 }
 
-/** Pattern 1 — non-anchored city page for a service: "/{service}/{city}/". */
-export function serviceCityPage(serviceSlug: string, citySlug: string, locationSlug?: string): string {
-  return `${base(locationSlug)}/${serviceSlug}/${citySlug}`;
+/** v6 silo page under a PROMOTED town: "/service-areas/{city}/{service}". */
+export function townServicePage(citySlug: string, serviceSlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/service-areas/${citySlug}/${serviceSlug}`;
+}
+
+/** @deprecated v5 city-first hub. v6 has no /{city}/ at root — resolves to the town page. */
+export function cityHub(citySlug: string): string {
+  return townPage(citySlug);
+}
+
+/** @deprecated v5 Pattern 1. v6 has no /{service}/{city}/ — resolves to the town page. */
+export function serviceCityPage(_serviceSlug: string, citySlug: string, locationSlug?: string): string {
+  void _serviceSlug;
+  return townPage(citySlug, locationSlug);
 }
 
 /** /services or /{city}/services */
@@ -39,24 +49,21 @@ export function servicesIndex(locationSlug?: string): string {
   return `${base(locationSlug)}/services`;
 }
 
-/** v5: the single Service Areas page. "/service-areas/" — never a folder. */
+/** The locations hub: "/service-areas/". Town pages are its children. */
 export function serviceAreasIndex(locationSlug?: string): string {
   return `${base(locationSlug)}/service-areas`;
 }
 
-/**
- * @deprecated v5 has no per-area detail pages. Kept as an alias so legacy
- * callers compile; it now points at the single /service-areas/ page.
- */
+/** Alias of serviceAreasIndex(). */
 export function areasIndex(locationSlug?: string): string {
   return serviceAreasIndex(locationSlug);
 }
 
 /**
- * @deprecated v5 removed area detail pages. A served city is either a city hub
- * (/{city}/), a Pattern-1 page (/{service}/{city}/), or a text mention on
- * /service-areas/. This now resolves to the /service-areas/ page so old links
- * don't 404; callers should migrate to cityHub() / serviceCityPage().
+ * Link target for a served town from generic listings (footer, areas sections)
+ * that don't know whether the town earned a page. Points at the hub so no link
+ * can 404; surfaces that DO know (nav, /service-areas/, town pages) use the
+ * plan's page_url / townPage() instead.
  */
 export function areaPage(_areaSlug: string, locationSlug?: string): string {
   void _areaSlug;

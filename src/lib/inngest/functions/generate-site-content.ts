@@ -393,9 +393,9 @@ export const generateSiteContent = inngest.createFunction(
       });
     };
 
-    // Step 2b: v5 Site Plan — compute the Primary Market page inventory and
-    // persist it so the sitemap, routing gate, and /service-areas/ page agree on
-    // which v5 URLs exist. Runs on full builds AND service-areas scope — the
+    // Step 2b: v6 Site Plan — compute the town-page inventory and persist it so
+    // the sitemap, routing gate, nav and /service-areas/ hub agree on which town
+    // and silo URLs exist. Runs on full builds AND service-areas scope — the
     // latter so toggling a city's "Dedicated Page" (is_priority) actually
     // rebuilds the plan and creates/removes the Pattern-1 page (otherwise the
     // priority city 404s). Other selective scopes keep the existing plan.
@@ -407,6 +407,9 @@ export const generateSiteContent = inngest.createFunction(
         );
         const gbpCategories = orderedCats.map((c) => getCategoryName(c));
 
+        const primaryServices = allServices
+          .filter((svc) => svc.site_category_id === primaryCategory.id || !svc.site_category_id)
+          .map((svc) => ({ name: svc.name, slug: svc.slug }));
         const { plan, primaryMarket, travelStrategy, needsReview } = computeSitePlan({
           settings,
           primaryLocation: {
@@ -415,12 +418,14 @@ export const generateSiteContent = inngest.createFunction(
             address: primaryLocation.address_line1 ?? null,
           },
           gbpCategories,
+          primaryServices,
           serviceAreas: allServiceAreas,
+          neighborhoods: allNeighborhoods.map((n) => n.name),
         });
 
-        // Sync is_anchor on service_areas with a city-hub treatment (match by name).
+        // Keep is_anchor in step with the plan's PROMOTED towns (match by name).
         const anchoredCityNames = new Set(
-          plan.cities.filter((c) => c.treatment === 'has_city_hub').map((c) => c.city.trim().toLowerCase()),
+          plan.cities.filter((c) => c.treatment === 'promoted').map((c) => c.city.trim().toLowerCase()),
         );
         for (const area of allServiceAreas) {
           const shouldAnchor = anchoredCityNames.has(area.name.trim().toLowerCase());
@@ -581,7 +586,8 @@ export const generateSiteContent = inngest.createFunction(
             site.website_type,
             contentDirectives,
             isMicrosite ? { service: msService, brand: msSelectedBrand } : undefined,
-            { homepageIsPrimaryMarket: settings.homepage_is_primary_market === true, areaContext }
+            // v6: a single-location home page IS the Primary Market page (primary category + city).
+            { homepageIsPrimaryMarket: true, areaContext }
           );
 
           // Filter to only the requested pages
@@ -1260,38 +1266,32 @@ export const generateSiteContent = inngest.createFunction(
       });
     }
 
-    // Step 9.5: Generate anti-doorway intros for each category × city page.
-    // Pattern 1 / city-hub / PM-service pages otherwise reuse the city's single
-    // body across all categories (same copy, swapped H1) — a doorway-page risk.
-    // This generates ONE short, page-specific intro per planned combo so each
-    // page reads distinctly. Full builds only; reads the persisted Site Plan.
+    // Step 9.5: Generate anti-doorway intros for each town page and silo page.
+    // Town pages otherwise share the town's single generated body; this writes
+    // ONE short, page-specific intro per planned town / silo page so each reads
+    // distinctly. Full builds only; reads the persisted Site Plan.
     if (isFullBuild) {
       await step.run('generate-city-page-intros', async () => {
         const { data: freshSite } = await supabase.from('sites').select('settings').eq('id', siteId).single();
         const plan = (freshSite?.settings as SiteSettings | null)?.site_plan;
         if (!plan) return;
 
-        const catSlugs = new Set(siteCategories.map((c) => normalizeCategorySlug(getCategoryName(c))));
         const primarySlug = normalizeCategorySlug(categoryName);
-        const cityPageTypes = new Set(['primary_market_hub', 'primary_market_service', 'pattern_1_city', 'city_hub', 'city_hub_service']);
 
-        // Build the unique set of (categorySlug, citySlug) combos to introduce.
+        // Unique (serviceSlug, citySlug) combos: the town page itself is keyed by
+        // the primary category; silo pages by their own slug.
         const combos = new Map<string, { categorySlug: string; citySlug: string; categoryName: string; cityName: string }>();
         for (const p of plan.pages) {
-          if (!cityPageTypes.has(p.page_type)) continue;
-          const segs = p.url.split('/').filter(Boolean);
-          let categorySlug: string, citySlug: string;
-          if (segs.length === 2) {
-            if (catSlugs.has(segs[0])) { categorySlug = segs[0]; citySlug = segs[1]; }
-            else { categorySlug = segs[1]; citySlug = segs[0]; }
-          } else if (segs.length === 1) {
-            categorySlug = primarySlug; citySlug = segs[0];
-          } else { continue; }
+          if (p.page_type !== 'town_page' && p.page_type !== 'town_service') continue;
+          const segs = p.url.split('/').filter(Boolean); // ['service-areas', city, (slug)]
+          if (segs[0] !== 'service-areas' || !segs[1]) continue;
+          const citySlug = segs[1];
+          const categorySlug = p.page_type === 'town_service' && segs[2] ? segs[2] : primarySlug;
           const key = `${categorySlug}/${citySlug}`.toLowerCase();
           if (combos.has(key)) continue;
           combos.set(key, {
             categorySlug, citySlug,
-            categoryName: p.associated_service || categoryName,
+            categoryName: p.page_type === 'town_service' ? (p.associated_service || categoryName) : categoryName,
             cityName: p.associated_city || citySlug,
           });
         }

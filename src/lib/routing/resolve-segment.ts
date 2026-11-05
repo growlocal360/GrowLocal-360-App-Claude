@@ -146,3 +146,57 @@ export async function matchCategorySlug(
   }
   return null;
 }
+
+// ─── v6: where a RETIRED v5 city URL should 301 ────────────────────────────
+//   /{city}/              → /service-areas/{city}/   (or "/" for the Primary Market)
+//   /{city}/{category}/   → /service-areas/{city}/{category}/ if the town is promoted,
+//                           else /service-areas/{city}/; Primary Market → /{category}/
+//   /{category}/{city}/   → same as above (Pattern 1)
+// The v6 spec: docs/architecture/growlocal360_master_prompt_v6.md
+
+import { getStoredSitePlan, isV6Plan, cityTreatmentBySlug } from '@/lib/sites/site-plan-store';
+
+export interface LegacyCityTarget {
+  /** Public path to 301 to (no trailing slash). */
+  path: string;
+}
+
+async function townState(siteId: string, citySlugValue: string): Promise<{ isPrimaryMarket: boolean; promoted: boolean; hasPage: boolean }> {
+  const supabase = createAdminClient();
+  const [{ data: siteRow }, { data: area }, { data: primaryLoc }, plan] = await Promise.all([
+    supabase.from('sites').select('settings').eq('id', siteId).maybeSingle(),
+    supabase.from('service_areas').select('slug, is_anchor').eq('site_id', siteId).eq('slug', citySlugValue).maybeSingle(),
+    supabase.from('locations').select('city').eq('site_id', siteId).eq('is_primary', true).maybeSingle(),
+    getStoredSitePlan(siteId),
+  ]);
+  const settings = (siteRow?.settings as SiteSettings | null) || null;
+  // The Primary Market: the stored setting, else the primary location's city (same fallback as the planner).
+  const pmCity = settings?.primary_market_city || primaryLoc?.city || null;
+  const pmSlug = pmCity ? citySlugify(pmCity) : null;
+  const treatment = isV6Plan(plan) && plan ? cityTreatmentBySlug(plan, citySlugValue) : null;
+  const isPrimaryMarket = treatment?.treatment === 'primary_market' || (!!pmSlug && pmSlug === citySlugValue);
+  const promoted = treatment ? treatment.treatment === 'promoted' : !!(area as { is_anchor?: boolean } | null)?.is_anchor;
+  const hasPage = treatment ? !!treatment.has_page : !!area;
+  return { isPrimaryMarket, promoted, hasPage };
+}
+
+/** 301 target for a v5 "/{city}/" hub URL. */
+export async function legacyCityHubTarget(siteId: string, citySlugValue: string): Promise<LegacyCityTarget> {
+  const st = await townState(siteId, citySlugValue);
+  if (st.isPrimaryMarket) return { path: '/' };
+  return { path: st.hasPage ? `/service-areas/${citySlugValue}` : '/service-areas' };
+}
+
+/** 301 target for a v5 category×city URL (either segment order). */
+export async function legacyCategoryCityTarget(
+  siteId: string,
+  categorySlug: string,
+  citySlugValue: string,
+  categoryIsPrimary: boolean,
+): Promise<LegacyCityTarget> {
+  const st = await townState(siteId, citySlugValue);
+  if (st.isPrimaryMarket) return { path: categoryIsPrimary ? '/' : `/${categorySlug}` };
+  if (!st.hasPage) return { path: '/service-areas' };
+  if (st.promoted && !categoryIsPrimary) return { path: `/service-areas/${citySlugValue}/${categorySlug}` };
+  return { path: `/service-areas/${citySlugValue}` };
+}

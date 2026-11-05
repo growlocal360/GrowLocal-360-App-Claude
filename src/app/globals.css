@@ -318,7 +318,7 @@
 .tpl-premium .pm-dark .pm-eyebrow { color: var(--brand); }
 .tpl-premium .pm-dark .pm-sechead h2 { color:var(--dark-ink); }
 .tpl-premium .pm-dark .pm-sechead p { color: color-mix(in srgb, var(--dark-ink) 60%, transparent); }
-.tpl-premium .pm-tstcard { background:color-mix(in srgb, var(--dark-ink) 45%, transparent); border:1px solid color-mix(in srgb, var(--dark-ink) 10%, transparent); border-radius:var(--radius); padding:28px; }
+.tpl-premium .pm-tstcard { background:color-mix(in srgb, var(--dark-ink) 10%, transparent); border:1px solid color-mix(in srgb, var(--dark-ink) 10%, transparent); border-radius:var(--radius); padding:28px; }
 .tpl-premium .pm-tstcard .pm-stars { margin-bottom:14px; }
 .tpl-premium .pm-tstcard .pm-quote { font-size:16.5px; line-height:1.6; color:color-mix(in srgb, var(--dark-ink) 92%, transparent); margin-bottom:20px; }
 .tpl-premium .pm-who { display:flex; align-items:center; gap:12px; }

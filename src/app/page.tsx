@@ -99,20 +99,20 @@ export default function Home() {
           <div className="mt-12 grid gap-6 lg:grid-cols-3">
             <WebsiteTypeCard
               title="Single Location"
-              description="Perfect for businesses with one GBP. Homepage targets your primary category + city."
+              description="For businesses with one GBP, storefront or service area. Your primary market hub is the GBP landing page."
               features={[
-                'Homepage = GBP landing page',
-                'Category silos for services',
-                'Service area pages',
+                'Primary market hub at /{city}/',
+                'A page for every service, flat at the root',
+                'City pages only where there is real demand',
               ]}
             />
             <WebsiteTypeCard
               title="Multi-Location"
-              description="For businesses with multiple GBPs. Each location gets its own optimized landing page."
+              description="For businesses with multiple GBPs. Each listing gets its own city hub as its landing page."
               features={[
-                'Brand-focused homepage',
-                '/locations/{city}/ structure',
-                'Per-location category silos',
+                'Brand-level homepage',
+                '/{city}/ hub for every listing',
+                '/{city}/{service}/ beneath each hub',
               ]}
               highlighted
             />

@@ -18,36 +18,34 @@ interface WebsiteTypeOption {
   icon: typeof MapPin;
   features: string[];
   bestFor: string;
-  badge?: string;
 }
 
 const websiteTypeOptions: WebsiteTypeOption[] = [
   {
     type: 'single_location',
     title: 'Single Location',
-    description: 'One GBP, one physical location. Homepage targets primary category + city.',
+    description: 'One Google Business Profile, storefront or service area. One primary market, one site.',
     icon: MapPin,
     features: [
-      'Homepage = GBP landing page',
-      'Primary category targets homepage',
-      'Secondary categories get silos',
-      'No /locations/ directory needed',
+      'Primary market hub at /{city}/ is your GBP landing page',
+      'Every service gets its own page at the root, with /{city}/{service}/ under the hub',
+      'Supporting city pages only where your travel strategy and demand call for them',
+      'One /service-areas/ page lists every town you cover',
     ],
-    bestFor: 'Businesses with exactly ONE Google Business Profile',
+    bestFor: 'Businesses with exactly ONE Google Business Profile, including service area businesses',
   },
   {
     type: 'multi_location',
     title: 'Multi-Location',
-    description: 'Multiple GBPs, multiple cities. Each location gets its own landing page.',
+    description: 'Several Google Business Profiles in different cities. Each one gets its own city hub.',
     icon: Building2,
     features: [
-      'Brand-focused homepage (no city keywords)',
-      '/locations/{city}/ structure',
-      'Each city = separate GBP landing page',
-      'Primary category lives at location root',
+      'Brand-level homepage, no city in the headline',
+      'City hub at /{city}/ for every GBP, with /{city}/{service}/ beneath it',
+      'Each hub is that listing\'s GBP landing page',
+      'Shared service pages and one /service-areas/ page across all markets',
     ],
-    bestFor: 'Businesses serving multiple cities with physical offices',
-    badge: 'Recommended',
+    bestFor: 'Businesses with more than one Google Business Profile, physical or service area',
   },
   {
     type: 'microsite',
@@ -196,10 +194,10 @@ export function StepWebsiteType() {
       <div className="flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-3">
         <MapPin className="h-4 w-4 text-gray-500" />
         <span className="text-sm text-gray-700">
-          You have <strong>{locations.length}</strong> location{locations.length !== 1 ? 's' : ''} configured.
+          You have <strong>{locations.length}</strong> Google Business Profile{locations.length !== 1 ? 's' : ''} connected.
           {locations.length > 1
             ? ' Multi-location is recommended.'
-            : ' Single location or microsite works best.'}
+            : ' Single location fits one profile, whether you work from a shop or travel to customers.'}
         </span>
       </div>
 

@@ -1281,17 +1281,20 @@ export const generateSiteContent = inngest.createFunction(
         // Unique (serviceSlug, citySlug) combos: the town page itself is keyed by
         // the primary category; silo pages by their own slug.
         const combos = new Map<string, { categorySlug: string; citySlug: string; categoryName: string; cityName: string }>();
+        const siloTypes = new Set(['town_service', 'location_service']);
+        const pageTypes = new Set(['town_page', 'location_page', ...siloTypes]);
         for (const p of plan.pages) {
-          if (p.page_type !== 'town_page' && p.page_type !== 'town_service') continue;
-          const segs = p.url.split('/').filter(Boolean); // ['service-areas', city, (slug)]
-          if (segs[0] !== 'service-areas' || !segs[1]) continue;
+          if (!pageTypes.has(p.page_type)) continue;
+          const segs = p.url.split('/').filter(Boolean); // ['service-areas'|'locations', city, (slug)]
+          if ((segs[0] !== 'service-areas' && segs[0] !== 'locations') || !segs[1]) continue;
           const citySlug = segs[1];
-          const categorySlug = p.page_type === 'town_service' && segs[2] ? segs[2] : primarySlug;
+          const isSilo = siloTypes.has(p.page_type);
+          const categorySlug = isSilo && segs[2] ? segs[2] : primarySlug;
           const key = `${categorySlug}/${citySlug}`.toLowerCase();
           if (combos.has(key)) continue;
           combos.set(key, {
             categorySlug, citySlug,
-            categoryName: p.page_type === 'town_service' ? (p.associated_service || categoryName) : categoryName,
+            categoryName: isSilo ? (p.associated_service || categoryName) : categoryName,
             cityName: p.associated_city || citySlug,
           });
         }

@@ -1,13 +1,14 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { loadTown, renderTownPage } from '@/lib/sites/render-town';
+import { loadTown, renderTownPage, canonicalTownPath } from '@/lib/sites/render-town';
 import { withOpenGraph, getSiteOgImage } from '@/lib/sites/og-metadata';
 
 /**
- * v6 TOWN PAGE — /service-areas/{city}/
- * One page per served town, listing the full main service list. The Primary
- * Market redirects to the home page (its page IS the home page). Towns the
- * plan left as text-only 404 here so thin pages never render.
+ * v6 PLAIN TOWN PAGE — /service-areas/{city}/
+ * One page per served town WITHOUT its own GBP, listing the full main service
+ * list. The Primary Market redirects to the home page (its page IS the home
+ * page). A town WITH its own GBP lives at /locations/{city}/ and 301s there.
+ * Towns the plan left as text-only 404 here so thin pages never render.
  */
 
 export const revalidate = 60;
@@ -17,7 +18,7 @@ interface Props { params: Promise<{ slug: string; city: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, city } = await params;
   const ctx = await loadTown(slug, city);
-  if (!ctx || ctx === 'primary_market' || !ctx.hasPage) return { title: 'Page Not Found' };
+  if (!ctx || ctx === 'primary_market' || !ctx.hasPage || ctx.promoted) return { title: 'Page Not Found' };
   const { site } = ctx.base;
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
   const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
@@ -36,6 +37,7 @@ export default async function TownPageRoute({ params }: Props) {
   const ctx = await loadTown(slug, city);
   if (!ctx) notFound();
   if (ctx === 'primary_market') redirect('/');
+  if (ctx.promoted) permanentRedirect(canonicalTownPath(ctx));
   if (!ctx.hasPage) notFound();
   const rendered = await renderTownPage(ctx, slug);
   if (!rendered) notFound();

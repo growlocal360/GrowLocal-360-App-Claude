@@ -2,7 +2,7 @@
 
 ## Project context
 
-GrowLocal 360 is a website builder for local service businesses. The onboarding flow analyzes Google Business Profile (GBP) and Google Search Console (GSC) data, builds the site on the **Town Page model** (home = primary category + Primary Market; one town page per served city under `/service-areas/`; a town is promoted into a silo only when it gets its own GBP), and generates SEO-optimized sites with auto-routed job snap content.
+GrowLocal 360 is a website builder for local service businesses. The onboarding flow analyzes Google Business Profile (GBP) and Google Search Console (GSC) data, builds the site on the **Town Page model** (home = primary category + Primary Market; one page per served town under `/service-areas/`; a town with its own GBP becomes `/locations/{city}/` with a service silo beneath it), and generates SEO-optimized sites with auto-routed job snap content.
 
 ## Architecture references
 
@@ -20,10 +20,13 @@ When working on the onboarding analysis module, GSC integration, site generation
 - All main service pages live FLAT at root (never under `/services/`); sub-services nest one level under their parent service
 - The **main service list** = every primary-category service at `/{service}/` + every secondary GBP category as a hub at `/{category}/` (with `/{category}/{service}/` beneath). Home, every town page, footer and sitemap render this same list in the same order. Never filter it by category
 - Washer and dryer always combined as `/washer-dryer-repair/`
-- `/service-areas/` is the locations hub and IS a folder: every town page is `/service-areas/{city}/`. The index lists every served town (linked when a page exists, plain text when not)
+- `/service-areas/` IS a folder: every town WITHOUT its own GBP that earns a page is `/service-areas/{city}/`. The index lists every served town (linked when a page exists, plain text when not)
+- `/locations/` IS a folder for pages WITH their own GBP: `/locations/{city}/`. A town never appears under `/locations/` without a GBP. "Own GBP" is the only test for which folder
 - A **plain town page** lists the full main service list with cards linking to the ROOT service pages. It has no children
-- A town page is **promoted** only when that town has its own GBP listing. Then its cards link to `/service-areas/{city}/{service}/`, that silo plus `/service-areas/{city}/{neighborhood}/` is generated, and that GBP's website link points at the town page. Removing the GBP demotes it (children 301 to the town page)
-- NEVER build `/{service}/{city}/`, `/{city}/` at root, or anything under `/locations/`
+- A town is **promoted** only when it has its own GBP listing. Then it moves to `/locations/{city}/` (301 from the town URL), its cards link to `/locations/{city}/{service}/`, that silo is generated, and that GBP's website link points at the location page. Removing the GBP demotes it back
+- NEVER build `/{service}/{city}/` or `/{city}/` at root
+- An existing home page is NEVER demoted when branches are added. A brand-centric home (no Primary Market) is only for a business that is multi-location on day one
+- Click depth is about LINKS, not folders: home links directly to every location page; a location page links directly to its silo and suburb pages
 - Travel strategy (Local / Regional / Metro) sets only HOW MANY towns get a page (0 / ~6–9 / ~9–12). It never changes a page's shape. "Multi-market" = promoted town pages, not a different site type (Microsite is still its own type)
 - The Primary Market never gets a town page; `/service-areas/{primary-market}/` redirects to `/`. Towns within ~10 mi of the Primary Market are text on the index unless marked priority
 - Sub-services never link to town pages; town pages never link to sub-services

@@ -14,7 +14,7 @@ import type { GenerationScope } from '@/types/database';
  *
  * Covers: root listings, every category/service/area/neighborhood/brand/work
  * detail page, the home page, /about, /contact, /faq, /reviews,
- * and v6 town pages (/service-areas/{city}/) + their silo pages.
+ * and v6 town pages (/service-areas/{city}/), location pages (/locations/{city}/) + their silos.
  */
 export async function revalidateSite(siteId: string) {
   console.log('[revalidateSite] start', { siteId });
@@ -99,11 +99,13 @@ export async function revalidateSite(siteId: string) {
       .map((s) => s.slug),
     ...[...catSlugMap.values()].filter((c) => !c.isPrimary).map((c) => c.slug),
   ];
+  revalidatePath(`${base}/locations`, 'page');
   for (const area of serviceAreas || []) {
     revalidatePath(`${base}/service-areas/${area.slug}`, 'page');
+    revalidatePath(`${base}/locations/${area.slug}`, 'page');
     if ((area as { is_anchor?: boolean }).is_anchor) {
       for (const slug of mainSlugs) {
-        revalidatePath(`${base}/service-areas/${area.slug}/${slug}`, 'page');
+        revalidatePath(`${base}/locations/${area.slug}/${slug}`, 'page');
       }
     }
   }
@@ -219,8 +221,10 @@ export async function revalidatePages(siteId: string, scope: GenerationScope) {
 
       for (const area of areas || []) {
         revalidatePath(`${base}/service-areas/${area.slug}`, 'page');
+        revalidatePath(`${base}/locations/${area.slug}`, 'page');
       }
       revalidatePath(`${base}/service-areas`, 'page');
+      revalidatePath(`${base}/locations`, 'page');
       break;
     }
 

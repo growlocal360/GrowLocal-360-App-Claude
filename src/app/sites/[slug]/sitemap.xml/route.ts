@@ -80,15 +80,17 @@ export async function GET(
   entries.push({ url: `${baseUrl}/service-areas`, lastmod, changefreq: 'weekly', priority: 0.7 });
   const sitePlan = (site.settings as SiteSettings | null)?.site_plan;
   if (sitePlan && (sitePlan.version ?? 0) >= 6) {
+    const townTypes: Record<string, number> = { locations_index: 0.7, location_page: 0.8, location_service: 0.6, town_page: 0.7, town_service: 0.6 };
     for (const p of sitePlan.pages) {
-      if (p.page_type !== 'town_page' && p.page_type !== 'town_service') continue;
+      const priority = townTypes[p.page_type];
+      if (priority === undefined) continue;
       const path = p.url.replace(/\/+$/, '');
-      entries.push({ url: `${baseUrl}${path}`, lastmod, changefreq: 'monthly', priority: p.page_type === 'town_page' ? 0.7 : 0.6 });
+      entries.push({ url: `${baseUrl}${path}`, lastmod, changefreq: 'monthly', priority });
     }
   } else {
     for (const area of serviceAreas || []) {
       if ((area as { is_anchor?: boolean }).is_anchor) {
-        entries.push({ url: `${baseUrl}/service-areas/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.7 });
+        entries.push({ url: `${baseUrl}/locations/${area.slug}`, lastmod, changefreq: 'monthly', priority: 0.8 });
       }
     }
   }

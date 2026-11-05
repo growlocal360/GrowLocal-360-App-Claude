@@ -22,33 +22,36 @@ interface PremiumServiceAreasListingPageProps {
   formCategories?: PublicRenderCategory[];
   schedulingActive?: boolean;
   ctaStyle?: 'booking' | 'estimate';
+  /** 'areas' (default): towns we serve. 'locations': our branches / listings with their own GBP. */
+  mode?: 'areas' | 'locations';
 }
 
 export function PremiumServiceAreasListingPage({
-  site, primaryLocation, serviceAreas, neighborhoods, siteSlug, locationSlug, ctaStyle = 'booking',
+  site, primaryLocation, serviceAreas, neighborhoods, siteSlug, locationSlug, ctaStyle = 'booking', mode = 'areas',
 }: PremiumServiceAreasListingPageProps) {
   const phone = site.settings?.phone || primaryLocation?.phone;
+  const isLocations = mode === 'locations';
 
   const breadcrumb = buildBreadcrumbSchema([
     { name: 'Home', url: paths.locationHome(locationSlug) },
-    { name: 'Service Areas', url: paths.areasIndex(locationSlug) },
+    { name: isLocations ? 'Locations' : 'Service Areas', url: isLocations ? paths.locationsIndex(locationSlug) : paths.areasIndex(locationSlug) },
   ]);
 
   return (
     <PremiumShell formOnPage={false} site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
       <JsonLd data={[breadcrumb]} />
       <PremiumPageHero
-        crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Service Areas' }]}
-        eyebrow="Service Areas"
-        title={`Proudly serving ${primaryLocation?.city || 'your area'} & beyond`}
-        accent={primaryLocation?.city || undefined}
-        lede="Find your community below — we provide expert service across the region."
+        crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: isLocations ? 'Locations' : 'Service Areas' }]}
+        eyebrow={isLocations ? 'Locations' : 'Service Areas'}
+        title={isLocations ? `${site.name} locations` : `Proudly serving ${primaryLocation?.city || 'your area'} & beyond`}
+        accent={isLocations ? undefined : primaryLocation?.city || undefined}
+        lede={isLocations ? 'Each location has its own local team, phone number and reviews. Pick the one nearest you.' : 'Find your community below — we provide expert service across the region.'}
       />
       <section className="pm-block">
         <div className="pm-wrap">
           {serviceAreas.length > 0 && (
             <>
-              <div className="pm-sechead"><span className="pm-eyebrow">Cities</span><h2>Cities we serve</h2></div>
+              <div className="pm-sechead"><span className="pm-eyebrow">{isLocations ? 'Locations' : 'Cities'}</span><h2>{isLocations ? 'Our locations' : 'Cities we serve'}</h2></div>
               <div className="pm-areas" style={{ marginBottom: 48 }}>
                 {serviceAreas.map(a => {
                   const label = <>{<span className="pm-pin"><PmIconPin /></span>}{a.state ? `${a.name}, ${a.state}` : a.name}</>;
@@ -76,7 +79,7 @@ export function PremiumServiceAreasListingPage({
           )}
         </div>
       </section>
-      <PremiumFinalCta heading="Don't see your area?" sub="Reach out — we likely serve your neighborhood too." ctaStyle={ctaStyle} phone={phone} />
+      <PremiumFinalCta heading={isLocations ? 'Not sure which location to call?' : "Don't see your area?"} sub={isLocations ? 'Call the main line and we will route you to the right team.' : 'Reach out — we likely serve your neighborhood too.'} ctaStyle={ctaStyle} phone={phone} />
     </PremiumShell>
   );
 }

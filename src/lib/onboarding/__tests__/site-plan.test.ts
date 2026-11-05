@@ -141,43 +141,54 @@ describe('planSite — a second GBP PROMOTES a town page', () => {
   });
   const urls = urlsOf(plan);
 
-  it('promoted town page + a silo page per main-service entry beneath it', () => {
-    expect(urls.has('/service-areas/lafayette/')).toBe(true);
+  it('a town with its own GBP lives under /locations/ with a silo page per main-service entry', () => {
+    expect(urls.has('/locations/lafayette/')).toBe(true);
+    expect(urls.has('/service-areas/lafayette/')).toBe(false);
+    expect(plan.pages.find((p) => p.url === '/locations/lafayette/')?.pageType).toBe('location_page');
     for (const u of [
-      '/service-areas/lafayette/dishwasher-repair/',
-      '/service-areas/lafayette/oven-range-repair/',
-      '/service-areas/lafayette/refrigerator-repair/',
-      '/service-areas/lafayette/washer-dryer-repair/',
+      '/locations/lafayette/dishwasher-repair/',
+      '/locations/lafayette/oven-range-repair/',
+      '/locations/lafayette/refrigerator-repair/',
+      '/locations/lafayette/washer-dryer-repair/',
     ]) {
       expect(urls.has(u), u).toBe(true);
-      expect(plan.pages.find((p) => p.url === u)?.pageType).toBe('town_service');
+      expect(plan.pages.find((p) => p.url === u)?.pageType).toBe('location_service');
     }
     expect(plan.cities.find((c) => c.city === 'Lafayette')?.treatment).toBe('promoted');
+    expect(plan.cities.find((c) => c.city === 'Lafayette')?.pageUrl).toBe('/locations/lafayette/');
   });
 
-  it('promoted town cards link into the silo, not the root pages', () => {
-    const town = plan.pages.find((p) => p.url === '/service-areas/lafayette/')!;
-    expect(town.links).toContain('/service-areas/lafayette/refrigerator-repair/');
-    expect(town.links).not.toContain('/refrigerator-repair/');
+  it('the /locations/ hub exists only once a location exists, and home links straight to every location page', () => {
+    expect(urls.has('/locations/')).toBe(true);
+    const home = plan.pages.find((p) => p.pageType === 'homepage')!;
+    expect(home.links).toContain('/locations/lafayette/');
+    expect(urlsOf(planSite(ALEXANDRIA)).has('/locations/')).toBe(false);
   });
 
-  it('silo pages link UP to their town page and SIDEWAYS to the root page', () => {
-    const silo = plan.pages.find((p) => p.url === '/service-areas/lafayette/refrigerator-repair/')!;
-    expect(silo.links).toContain('/service-areas/lafayette/');
+  it('location cards link into the silo, not the root pages', () => {
+    const loc = plan.pages.find((p) => p.url === '/locations/lafayette/')!;
+    expect(loc.links).toContain('/locations/lafayette/refrigerator-repair/');
+    expect(loc.links).not.toContain('/refrigerator-repair/');
+  });
+
+  it('silo pages link UP to their location page and SIDEWAYS to the root page', () => {
+    const silo = plan.pages.find((p) => p.url === '/locations/lafayette/refrigerator-repair/')!;
+    expect(silo.links).toContain('/locations/lafayette/');
     expect(silo.links).toContain('/refrigerator-repair/');
   });
 
-  it('each GBP gets its own website-link recommendation; promoted towns do not count against the cap', () => {
+  it('each GBP gets its own website-link recommendation; locations do not count against the cap', () => {
     expect(plan.gbpWebsiteLinks).toEqual([
       { city: 'Alexandria', url: '/' },
-      { city: 'Lafayette', url: '/service-areas/lafayette/' },
+      { city: 'Lafayette', url: '/locations/lafayette/' },
     ]);
     expect(plan.cities.find((c) => c.city === 'Colfax')?.treatment).toBe('plain_page');
   });
 
-  it('never gives a /{city}/ root hub to an anchored town (v5 retired)', () => {
+  it('never gives a /{city}/ root hub to an anchored town (v5 retired), never /locations/ to a plain town', () => {
     expect(urls.has('/lafayette/')).toBe(false);
     expect(urls.has('/lafayette/refrigerator-repair/')).toBe(false);
+    expect(urls.has('/locations/colfax/')).toBe(false);
   });
 });
 

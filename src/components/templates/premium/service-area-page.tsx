@@ -17,10 +17,11 @@ import { PmIconWrench, PmIconLayers, PmIconArrow, PmIconStar, PmIconShield, PmIc
 import { PremiumCityMap } from './city-map';
 
 /**
- * v6 TOWN PAGE — /service-areas/{city}/
+ * v6 TOWN PAGE — /service-areas/{city}/ (plain) or /locations/{city}/ (promoted)
  * One page per served town. Lists the FULL main service list in home-page
  * order. Plain town: cards link to the root service pages. Promoted town (has
- * its own GBP): cards link into the town's silo (/service-areas/{city}/{slug}/).
+ * its own GBP): cards link into the location's silo (/locations/{city}/{slug}/)
+ * and the page shows that branch's own contact details.
  */
 export interface ServiceAreaPageProps {
   data: {
@@ -34,6 +35,8 @@ export interface ServiceAreaPageProps {
     mainServices: MainServiceEntry[];
     /** Town has its own GBP → cards link into the silo. */
     promoted: boolean;
+    /** The branch's own address / phone (promoted towns with a locations row). */
+    branch?: PublicRenderLocation | null;
     primaryCategoryName: string;
   };
   siteSlug: string;
@@ -53,9 +56,13 @@ export function PremiumServiceAreaPage({
   data, siteSlug, locationSlug, googleReviews = [], recentWorkItems, recentWorkTitle, intro, workItemsCount = 0,
   formCategories, schedulingActive = false, ctaStyle = 'booking',
 }: ServiceAreaPageProps) {
-  const { site, location, serviceArea, allServiceAreas, mainServices, promoted, primaryCategoryName } = data;
+  const { site, location, serviceArea, allServiceAreas, mainServices, promoted, branch, primaryCategoryName } = data;
   const ctaColor = site.settings?.cta_color || site.settings?.brand_color || '#00ef99';
-  const phone = site.settings?.phone || location?.phone;
+  const phone = (promoted && branch?.phone) || site.settings?.phone || location?.phone;
+  const hubLabel = promoted ? 'Locations' : 'Service Areas';
+  const hubHref = promoted ? paths.locationsIndex(locationSlug) : paths.serviceAreasIndex(locationSlug);
+  const selfHref = promoted ? paths.locationPage(serviceArea.slug, locationSlug) : paths.townPage(serviceArea.slug, locationSlug);
+  const branchAddress = promoted && branch?.address_line1 ? [branch.address_line1, branch.address_line2].filter(Boolean).join(', ') : null;
   const phoneHref = phone ? `tel:${phone.replace(/\D/g, '')}` : undefined;
   const ctaLabel = useCtaLabel(ctaStyle);
   const city = serviceArea.name;
@@ -70,14 +77,15 @@ export function PremiumServiceAreaPage({
   const reviews = googleReviews.filter((r) => r.comment).slice(0, 3);
   const otherTowns = allServiceAreas.filter((a) => a.id !== serviceArea.id);
 
-  const businessInput = toBusinessInput(site, location);
-  const localBusiness = buildLocalBusinessSchema(businessInput, toLocationInput(location), {
+  const schemaLocation = promoted && branch ? branch : location;
+  const businessInput = toBusinessInput(site, schemaLocation);
+  const localBusiness = buildLocalBusinessSchema(businessInput, toLocationInput(schemaLocation), {
     areaServed: { '@type': 'City', name: city, ...(state ? { containedInPlace: { '@type': 'State', name: state } } : {}) },
   });
   const breadcrumb = buildBreadcrumbSchema([
     { name: 'Home', url: paths.locationHome(locationSlug) },
-    { name: 'Service Areas', url: paths.serviceAreasIndex(locationSlug) },
-    { name: city, url: paths.townPage(serviceArea.slug, locationSlug) },
+    { name: hubLabel, url: hubHref },
+    { name: city, url: selfHref },
   ]);
 
   const proof = (
@@ -96,7 +104,8 @@ export function PremiumServiceAreaPage({
     <PremiumShell site={site} primaryLocation={location} serviceAreas={allServiceAreas} siteSlug={siteSlug} locationSlug={locationSlug} ctaStyle={ctaStyle}>
       <JsonLd data={[localBusiness, breadcrumb]} />
       <PremiumPageHero
-        crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: 'Service Areas', href: paths.serviceAreasIndex(locationSlug) }, { label: city }]}
+        crumbs={[{ label: 'Home', href: paths.locationHome(locationSlug) }, { label: hubLabel, href: hubHref }, { label: city }]}
+        eyebrow={promoted ? 'Our location' : undefined}
         title={h1}
         accent={city}
         lede={lede}
@@ -158,7 +167,8 @@ export function PremiumServiceAreaPage({
               <div className="pm-aside" id="pm-form">
                 <UnifiedLeadForm siteId={site.id} accentColor={ctaColor} categories={formCategories} schedulingActive={schedulingActive} ctaStyle={ctaStyle} variant="hero" />
                 <div className="pm-asidetrust">
-                  <div className="pm-t"><span className="pm-ic"><PmIconCheck /></span>{promoted ? `Based in ${city}` : `Serving ${city} and nearby`}</div>
+                  {branchAddress && <div className="pm-t"><span className="pm-ic"><PmIconPin /></span>{branchAddress}, {branch?.city}{branch?.state ? `, ${branch.state}` : ''} {branch?.zip_code}</div>}
+                  <div className="pm-t"><span className="pm-ic"><PmIconCheck /></span>{promoted ? `Our ${city} team` : `Serving ${city} and nearby`}</div>
                   <div className="pm-t"><span className="pm-ic"><PmIconShield /></span>Satisfaction guaranteed</div>
                   <div className="pm-t"><span className="pm-ic"><PmIconClock /></span>Fast response times</div>
                 </div>

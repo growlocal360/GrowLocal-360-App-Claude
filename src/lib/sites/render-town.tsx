@@ -1,8 +1,10 @@
 /**
  * v6 town pages — shared loader + renderers.
  * ----------------------------------------------------------------------------
- *   /service-areas/{city}/            → renderTownPage()      (plain or promoted)
- *   /service-areas/{city}/{service}/  → renderTownService()   (promoted towns only)
+ *   /service-areas/{city}/            → renderTownPage()      (plain town, no GBP)
+ *   /locations/{city}/                → renderTownPage()      (location: town with its own GBP)
+ *   /locations/{city}/{service}/      → renderTownService()   (silo under a location)
+ * The routes 301 between the two folders so each town has ONE canonical URL.
  *
  * Canonical spec: docs/architecture/growlocal360_master_prompt_v6.md
  */
@@ -25,7 +27,8 @@ import {
   toPublicSite, toPublicLocation, toPublicAreaDetail, toPublicAreaListing, toPublicCategory,
   toPublicServiceListing, toPublicServiceDetail, toPublicReview, toPublicWorkItem,
 } from '@/lib/sites/public-render-model';
-import type { ServiceAreaDB, SiteSettings, StoredSitePlan } from '@/types/database';
+import type { ServiceAreaDB, SiteSettings, StoredSitePlan, Location } from '@/types/database';
+import * as paths from '@/lib/routing/paths';
 
 export interface TownContext {
   base: PublicSiteData;
@@ -35,10 +38,17 @@ export interface TownContext {
   isPrimaryMarket: boolean;
   /** The plan says this town has a page (always true for unplanned / v5-planned sites). */
   hasPage: boolean;
-  /** Own GBP → silo beneath the town page. */
+  /** Own GBP → lives under /locations/ with a silo beneath it. */
   promoted: boolean;
+  /** The branch's own locations row (address, phone) when one matches the town. */
+  branch: Location | null;
   primaryCategoryName: string;
   primaryCategorySlug: string;
+}
+
+/** The one canonical public path for a town: /locations/{city} when promoted, else /service-areas/{city}. */
+export function canonicalTownPath(ctx: TownContext): string {
+  return ctx.promoted ? paths.locationPage(ctx.area.slug) : paths.townPage(ctx.area.slug);
 }
 
 /**
@@ -63,6 +73,11 @@ export async function loadTown(siteSlug: string, townSlug: string): Promise<Town
   const { categories } = await getCategoriesWithServices(base.site.id);
   const primary = categories.find((c) => c.is_primary) || categories[0];
   const primaryCategoryName = primary?.gbp_category?.display_name || settings.core_industry || 'Services';
+  const promoted = v6 ? treatment?.treatment === 'promoted' : !!area.is_anchor;
+  const areaKey = area.name.trim().toLowerCase();
+  const branch = promoted
+    ? base.locations.find((l) => !l.is_primary && (l.slug === townSlug || (l.representative_city || l.city || '').trim().toLowerCase() === areaKey)) || null
+    : null;
 
   return {
     base,
@@ -70,7 +85,8 @@ export async function loadTown(siteSlug: string, townSlug: string): Promise<Town
     plan,
     isPrimaryMarket,
     hasPage: v6 ? !!treatment?.has_page : true,
-    promoted: v6 ? treatment?.treatment === 'promoted' : !!area.is_anchor,
+    promoted,
+    branch,
     primaryCategoryName,
     primaryCategorySlug: normalizeCategorySlug(primaryCategoryName),
   };
@@ -124,6 +140,7 @@ export async function renderTownPage(ctx: TownContext, siteSlug: string) {
         categories: categories.map(toPublicCategory),
         mainServices,
         promoted: ctx.promoted,
+        branch: ctx.branch ? toPublicLocation(ctx.branch) : null,
         primaryCategoryName: ctx.primaryCategoryName,
       }}
       siteSlug={siteSlug}

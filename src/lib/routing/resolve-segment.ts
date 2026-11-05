@@ -148,8 +148,9 @@ export async function matchCategorySlug(
 }
 
 // ─── v6: where a RETIRED v5 city URL should 301 ────────────────────────────
-//   /{city}/              → /service-areas/{city}/   (or "/" for the Primary Market)
-//   /{city}/{category}/   → /service-areas/{city}/{category}/ if the town is promoted,
+//   /{city}/              → /locations/{city}/ if the town has its own GBP, else
+//                           /service-areas/{city}/   (or "/" for the Primary Market)
+//   /{city}/{category}/   → /locations/{city}/{category}/ if the town is promoted,
 //                           else /service-areas/{city}/; Primary Market → /{category}/
 //   /{category}/{city}/   → same as above (Pattern 1)
 // The v6 spec: docs/architecture/growlocal360_master_prompt_v6.md
@@ -184,6 +185,7 @@ async function townState(siteId: string, citySlugValue: string): Promise<{ isPri
 export async function legacyCityHubTarget(siteId: string, citySlugValue: string): Promise<LegacyCityTarget> {
   const st = await townState(siteId, citySlugValue);
   if (st.isPrimaryMarket) return { path: '/' };
+  if (st.promoted) return { path: `/locations/${citySlugValue}` };
   return { path: st.hasPage ? `/service-areas/${citySlugValue}` : '/service-areas' };
 }
 
@@ -196,7 +198,7 @@ export async function legacyCategoryCityTarget(
 ): Promise<LegacyCityTarget> {
   const st = await townState(siteId, citySlugValue);
   if (st.isPrimaryMarket) return { path: categoryIsPrimary ? '/' : `/${categorySlug}` };
+  if (st.promoted) return { path: categoryIsPrimary ? `/locations/${citySlugValue}` : `/locations/${citySlugValue}/${categorySlug}` };
   if (!st.hasPage) return { path: '/service-areas' };
-  if (st.promoted && !categoryIsPrimary) return { path: `/service-areas/${citySlugValue}/${categorySlug}` };
   return { path: `/service-areas/${citySlugValue}` };
 }

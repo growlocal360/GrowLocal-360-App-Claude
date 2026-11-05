@@ -54,6 +54,8 @@ export interface ServiceAreaPageProps {
     mainServices: MainServiceEntry[];
     /** Town has its own GBP → cards link into the silo. */
     promoted: boolean;
+    /** The branch's own address / phone (promoted towns with a locations row). */
+    branch?: PublicRenderLocation | null;
     primaryCategoryName: string;
   };
   siteSlug: string;
@@ -70,7 +72,12 @@ export interface ServiceAreaPageProps {
 }
 
 export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems, intro, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreaPageProps) {
-  const { site, location, serviceArea, allServiceAreas, services, categories, mainServices, promoted, primaryCategoryName } = data;
+  const { site, location, serviceArea, allServiceAreas, services, categories, mainServices, promoted, branch, primaryCategoryName } = data;
+  // A promoted town with its own branch shows THAT branch's address + phone.
+  const contactLocation = promoted && branch ? { ...location, ...branch, phone: branch.phone || location.phone } : location;
+  const hubLabel = promoted ? 'Locations' : 'Service Areas';
+  const hubHref = promoted ? paths.locationsIndex(locationSlug) : paths.areasIndex(locationSlug);
+  const selfHref = promoted ? paths.locationPage(serviceArea.slug, locationSlug) : paths.townPage(serviceArea.slug, locationSlug);
   const brandColor = site.settings?.brand_color || '#00ef99';
   const ctaColor = site.settings?.cta_color || brandColor;
   const accentColor = site.settings?.secondary_color || brandColor;
@@ -101,8 +108,8 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
   };
 
   // Schema.org structured data
-  const businessInput = toBusinessInput(site, location);
-  const locationInput = toLocationInput(location);
+  const businessInput = toBusinessInput(site, contactLocation);
+  const locationInput = toLocationInput(contactLocation);
   const siteUrl = getSiteUrl(businessInput);
 
   const localBusinessSchema = buildLocalBusinessSchema(businessInput, locationInput, {
@@ -117,8 +124,8 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
 
   const breadcrumbSchema = buildBreadcrumbSchema([
     { name: 'Home', url: siteUrl + paths.locationHome(locationSlug) },
-    { name: 'Service Areas', url: siteUrl + paths.areasIndex(locationSlug) },
-    { name: serviceArea.name, url: siteUrl + paths.townPage(serviceArea.slug, locationSlug) },
+    { name: hubLabel, url: siteUrl + hubHref },
+    { name: serviceArea.name, url: siteUrl + selfHref },
   ]);
 
   return (
@@ -130,7 +137,7 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
       <main>
         <HeroSection
           site={site}
-          primaryLocation={location}
+          primaryLocation={contactLocation}
           pageContent={pageContent}
           services={services}
           formCategories={formCategories}
@@ -213,12 +220,12 @@ export function ServiceAreaPage({ data, siteSlug, googleReviews, recentWorkItems
             locationSlug={locationSlug}
           />
         )}
-        <EmbeddedMapSection primaryLocation={location} mapQuery={`${serviceArea.name}${areaState ? `, ${areaState}` : ''}`} />
+        <EmbeddedMapSection primaryLocation={contactLocation} mapQuery={`${serviceArea.name}${areaState ? `, ${areaState}` : ''}`} />
       </main>
 
       <SiteFooter
         site={site}
-        primaryLocation={location}
+        primaryLocation={contactLocation}
         serviceAreas={allServiceAreas}
         siteSlug={siteSlug}
         locationSlug={locationSlug}

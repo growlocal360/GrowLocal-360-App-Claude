@@ -129,12 +129,12 @@ export function isV6Plan(plan: StoredSitePlan | null | undefined): boolean {
 
 /**
  * The set of normalized public paths the plan says EXIST for towns: every
- * town page and every silo page under a promoted town. The routing gate uses
+ * plain town page, every location page, and every silo page under a location. The routing gate uses
  * this to 404 towns that are text-only (proximity-covered / over the cap) and
  * silo URLs under towns that are not promoted.
  */
 export function plannedCityPathSet(plan: StoredSitePlan): Set<string> {
-  const townPageTypes = new Set(['town_page', 'town_service']);
+  const townPageTypes = new Set(['town_page', 'town_service', 'location_page', 'location_service', 'locations_index']);
   const set = new Set<string>();
   for (const p of plan.pages) {
     if (townPageTypes.has(p.page_type)) set.add(normalizePublicPath(p.url));

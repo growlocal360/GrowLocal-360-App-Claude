@@ -40,7 +40,7 @@ describe('site-plan-store — generator wiring (v6)', () => {
     expect(stored.gbp_website_link_recommendation).toBe('/');
     expect(stored.gbp_website_links).toEqual([
       { city: 'Alexandria', url: '/' },
-      { city: 'Lafayette', url: '/service-areas/lafayette/' },
+      { city: 'Lafayette', url: '/locations/lafayette/' },
     ]);
     expect(stored.cities.every((c) => c.slug && c.reason)).toBe(true);
   });
@@ -50,11 +50,14 @@ describe('site-plan-store — generator wiring (v6)', () => {
     const paths = plannedCityPathSet(stored);
     expect(paths.has(normalizePublicPath('/service-areas/colfax/'))).toBe(true);
     expect(paths.has(normalizePublicPath('/Service-Areas/Lecompte'))).toBe(true);
-    expect(paths.has('service-areas/lafayette')).toBe(true);
-    expect(paths.has('service-areas/lafayette/dishwasher-repair')).toBe(true);
-    expect(paths.has('service-areas/lafayette/refrigerator-repair')).toBe(true);
-    // plain towns have no silo
+    expect(paths.has('locations')).toBe(true);
+    expect(paths.has('locations/lafayette')).toBe(true);
+    expect(paths.has('locations/lafayette/dishwasher-repair')).toBe(true);
+    expect(paths.has('locations/lafayette/refrigerator-repair')).toBe(true);
+    expect(paths.has('service-areas/lafayette')).toBe(false);
+    // plain towns have no silo and never sit under /locations/
     expect(paths.has('service-areas/colfax/refrigerator-repair')).toBe(false);
+    expect(paths.has('locations/colfax')).toBe(false);
     // proximity-covered towns have no page
     expect([...paths].some((p) => p.includes('pineville'))).toBe(false);
     // nothing from the retired v5 shapes

@@ -5,8 +5,9 @@
  * the footer and the sitemap:
  *   1. every service of the PRIMARY GBP category   → /{service}/
  *   2. every SECONDARY GBP category as a hub        → /{category}/
- * Never filtered by category. On a PROMOTED town page the same list links into
- * the town's silo (/service-areas/{city}/{slug}/) instead of the root pages.
+ * Never filtered by category. On a LOCATION page (a town with its own GBP) the
+ * same list links into the location's silo (/locations/{city}/{slug}/) instead
+ * of the root pages.
  *
  * Pure — safe to import from client components. The server loader lives in
  * ./main-service-list.server.ts.
@@ -69,7 +70,7 @@ export function buildMainServiceList(categories: CategoryLike[], services: Servi
   return out;
 }
 
-/** Where a main-service card points on a town page: the root page, or the town's silo when promoted. */
+/** Where a main-service card points on a town page: the root page, or the location's silo when promoted. */
 export function townServiceHref(entry: MainServiceEntry, townSlug: string, promoted: boolean): string {
-  return promoted ? paths.townServicePage(townSlug, entry.slug) : entry.href;
+  return promoted ? paths.locationServicePage(townSlug, entry.slug) : entry.href;
 }

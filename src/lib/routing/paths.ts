@@ -5,9 +5,12 @@
  *   /                                 home = primary category in the Primary Market
  *   /{service}/                       main service pages, flat at root
  *   /{category}/{service}/            secondary-category services under their hub
- *   /service-areas/                   locations hub
- *   /service-areas/{city}/            town page (plain or promoted)
- *   /service-areas/{city}/{service}/  silo page under a PROMOTED town
+ *   /service-areas/                   hub: towns WITHOUT their own GBP
+ *   /service-areas/{city}/            plain town page
+ *   /locations/                       hub: pages WITH their own GBP
+ *   /locations/{city}/                location page (GBP #2+ landing page)
+ *   /locations/{city}/{service}/      silo page under a location
+ *   /locations/{city}/service-areas/  that location's own towns
  *   /neighborhoods/{slug}/            Primary Market neighborhoods
  *
  * `locationSlug` is a legacy multi-location prefix; single-market sites pass
@@ -28,9 +31,29 @@ export function townPage(citySlug: string, locationSlug?: string): string {
   return `${base(locationSlug)}/service-areas/${citySlug}`;
 }
 
-/** v6 silo page under a PROMOTED town: "/service-areas/{city}/{service}". */
+/** @deprecated v6.1 — silos live under locations. Resolves to locationServicePage(). */
 export function townServicePage(citySlug: string, serviceSlug: string, locationSlug?: string): string {
-  return `${base(locationSlug)}/service-areas/${citySlug}/${serviceSlug}`;
+  return locationServicePage(citySlug, serviceSlug, locationSlug);
+}
+
+/** v6.1 hub of every page that has its own GBP: "/locations". */
+export function locationsIndex(locationSlug?: string): string {
+  return `${base(locationSlug)}/locations`;
+}
+
+/** v6.1 location page (a town / branch with its own GBP): "/locations/{city}". */
+export function locationPage(citySlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/locations/${citySlug}`;
+}
+
+/** v6.1 silo page under a location: "/locations/{city}/{service}". */
+export function locationServicePage(citySlug: string, serviceSlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/locations/${citySlug}/${serviceSlug}`;
+}
+
+/** v6.1 a location's own towns: "/locations/{city}/service-areas". */
+export function locationAreasIndex(citySlug: string, locationSlug?: string): string {
+  return `${base(locationSlug)}/locations/${citySlug}/service-areas`;
 }
 
 /** @deprecated v5 city-first hub. v6 has no /{city}/ at root — resolves to the town page. */

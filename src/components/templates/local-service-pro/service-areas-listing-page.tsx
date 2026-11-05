@@ -29,9 +29,12 @@ interface ServiceAreasListingPageProps {
   formCategories?: PublicRenderCategory[];
   schedulingActive?: boolean;
   ctaStyle?: 'booking' | 'estimate';
+  /** 'areas' (default): towns we serve. 'locations': our branches / listings with their own GBP. */
+  mode?: 'areas' | 'locations';
 }
 
-export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking' }: ServiceAreasListingPageProps) {
+export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, neighborhoods, categories, siteSlug, locationSlug, formCategories, schedulingActive = false, ctaStyle = 'booking', mode = 'areas' }: ServiceAreasListingPageProps) {
+  const isLocations = mode === 'locations';
   const brandColor = site.settings?.brand_color || '#00ef99';
   const ctaColor = site.settings?.cta_color || brandColor;
   const accentColor = site.settings?.secondary_color || brandColor;  const city = primaryLocation?.city || '';
@@ -40,10 +43,14 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
   // Schema.org structured data
   const businessInput = toBusinessInput(site, primaryLocation);
   const siteUrl = getSiteUrl(businessInput);
+  const pageTitle = isLocations ? `${site.name} Locations` : `Areas We Serve${city ? ` in ${city}` : ''}`;
+  const pageSubtitle = isLocations
+    ? `Find the ${site.name} location nearest you. Each has its own local team, phone number and reviews.`
+    : `${site.name} proudly serves these communities and surrounding areas${city ? ` throughout the ${city} region` : ''}.`;
   const collectionSchema = buildCollectionPageSchema(
-    `Areas We Serve${city ? ` in ${city}` : ''}`,
-    `${site.name} proudly serves these communities and surrounding areas${city ? ` throughout the ${city} region` : ''}.`,
-    siteUrl + paths.areasIndex(locationSlug),
+    pageTitle,
+    pageSubtitle,
+    siteUrl + (isLocations ? paths.locationsIndex(locationSlug) : paths.areasIndex(locationSlug)),
     businessInput
   );
 
@@ -54,8 +61,8 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
       <main>
         <PageHero
           brandColor={brandColor}
-          title={`Areas We Serve${city ? ` in ${city}` : ''}`}
-          subtitle={`${site.name} proudly serves these communities and surrounding areas${city ? ` throughout the ${city} region` : ''}.`}
+          title={pageTitle}
+          subtitle={pageSubtitle}
           compact
         />
 
@@ -64,12 +71,12 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
           <section className="py-16">
             <div className="mx-auto max-w-7xl px-4">
               <h2 className="text-2xl font-bold text-gray-900 md:text-3xl">
-                Cities We Serve
+                {isLocations ? 'Our Locations' : 'Cities We Serve'}
               </h2>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {serviceAreas.map((area) => {
-                  // v5: link only when the city has a dedicated page (Pattern 1 /
-                  // city hub); otherwise render a static, text-only card.
+                  // Link only when the town has a page (town page / location page);
+                  // otherwise render a static, text-only card.
                   const linked = !!area.pageUrl;
                   const card = (
                     <Card className={`h-full rounded-2xl border-gray-200 transition-all duration-300 ${linked ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-lg' : ''}`}>
@@ -146,7 +153,7 @@ export function ServiceAreasListingPage({ site, primaryLocation, serviceAreas, n
           <section className="py-12" style={{ backgroundColor: `${brandColor}08` }}>
             <div className="mx-auto max-w-7xl px-4 text-center">
               <h2 className="text-2xl font-bold text-gray-900">
-                Not Sure If We Serve Your Area?
+                {isLocations ? 'Not Sure Which Location to Call?' : 'Not Sure If We Serve Your Area?'}
               </h2>
               <p className="mx-auto mt-2 max-w-xl text-gray-600">
                 Give us a call and we&apos;ll let you know if we can help. We&apos;re always expanding our service area.

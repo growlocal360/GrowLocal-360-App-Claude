@@ -12,9 +12,11 @@
  *   /                                   {primary category} in {Primary Market}  ← GBP #1
  *   /{service}/                         main service list, flat at root
  *   /{category}/{service}/              secondary-category services nest under their hub
- *   /service-areas/                     locations hub
+ *   /service-areas/                     hub: towns WITHOUT their own GBP
  *   /service-areas/{city}/              one page per town, ALL main services, cards → root
- *   /service-areas/{city}/{service}/    silo — only when the town has its own GBP
+ *   /locations/                         hub: pages WITH their own GBP
+ *   /locations/{city}/                  location page (GBP #2+ landing page), cards → its silo
+ *   /locations/{city}/{service}/        silo — only under a location
  *   /neighborhoods/{slug}/              Primary Market neighborhoods
  *
  * This module makes NO database / network calls — it's the planning brain. The
@@ -35,10 +37,14 @@ export type PageType =
   /** A secondary-category service nested under its hub: /{category}/{service}/ */
   | 'sub_service'
   | 'service_areas'
-  /** /service-areas/{city}/ — plain or promoted */
+  /** /service-areas/{city}/ — plain town page (no GBP of its own) */
   | 'town_page'
-  /** /service-areas/{city}/{service}/ — silo page under a PROMOTED town */
-  | 'town_service'
+  /** /locations/ — hub of every page with its own GBP (only when at least one exists) */
+  | 'locations_index'
+  /** /locations/{city}/ — location page: a town / branch with its own GBP (PROMOTED) */
+  | 'location_page'
+  /** /locations/{city}/{service}/ — silo page under a location */
+  | 'location_service'
   /** /neighborhoods/{slug}/ — Primary Market neighborhood */
   | 'neighborhood'
   | 'utility';
@@ -46,7 +52,7 @@ export type PageType =
 export type CityTreatment =
   /** The Primary Market: its page is the home page. */
   | 'primary_market'
-  /** Town has its own GBP listing → town page + silo beneath it. */
+  /** Town has its own GBP listing → /locations/{city}/ + silo beneath it. */
   | 'promoted'
   /** Town page with the full main service list, cards → root pages. */
   | 'plain_page'
@@ -152,8 +158,12 @@ function titleCity(city: string, state: string): string {
 }
 
 export const SERVICE_AREAS_URL = '/service-areas/';
+export const LOCATIONS_URL = '/locations/';
 export function townPageUrl(city: string): string {
   return `${SERVICE_AREAS_URL}${citySlug(city)}/`;
+}
+export function locationPageUrl(city: string): string {
+  return `${LOCATIONS_URL}${citySlug(city)}/`;
 }
 
 /**
@@ -232,6 +242,7 @@ export function planSite(input: PlanInputs): SitePlan {
   const cap = TOWN_PAGE_CAP[travelStrategy];
   let plainCount = 0;
   const townPageUrls: string[] = [];
+  const locationPageUrls: string[] = [];
   const gbpWebsiteLinks: SitePlan['gbpWebsiteLinks'] = [{ city: primaryMarket.city, url: homeUrl }];
 
   cities.push({
@@ -255,30 +266,32 @@ export function planSite(input: PlanInputs): SitePlan {
     const url = townPageUrl(c.city);
     const label = titleCity(c.city, c.state);
 
-    // 1) Own GBP → PROMOTED: town page + a silo page per main service.
+    // 1) Own GBP → PROMOTED: a LOCATION page under /locations/ + a silo page per main service.
     if (c.anchored) {
-      const siloUrls = mainList.map((m) => `${url}${m.slug}/`);
+      const locUrl = locationPageUrl(c.city);
+      const siloUrls = mainList.map((m) => `${locUrl}${m.slug}/`);
       pages.push({
-        url,
-        pageType: 'town_page',
+        url: locUrl,
+        pageType: 'location_page',
         title: `${primaryCategory} in ${label}`,
         associatedCity: c.city,
         associatedService: null,
-        links: [SERVICE_AREAS_URL, homeUrl, ...siloUrls],
+        links: [LOCATIONS_URL, homeUrl, ...siloUrls],
       });
       mainList.forEach((m, i) => {
         pages.push({
           url: siloUrls[i],
-          pageType: 'town_service',
+          pageType: 'location_service',
           title: `${m.name} in ${label}`,
           associatedCity: c.city,
           associatedService: m.name,
-          links: [url, m.url, ...siloUrls.filter((u) => u !== siloUrls[i])],
+          links: [locUrl, m.url, ...siloUrls.filter((u) => u !== siloUrls[i])],
         });
       });
-      townPageUrls.push(url);
-      gbpWebsiteLinks.push({ city: c.city, url });
-      cities.push({ city: c.city, state: c.state, slug, treatment: 'promoted', hasPage: true, pageUrl: url, distanceFromPrimaryMarket: dist, reason: 'Has its own Google Business Profile — promoted town page with a service silo beneath it.' });
+      locationPageUrls.push(locUrl);
+      gbpWebsiteLinks.push({ city: c.city, url: locUrl });
+      cities.push({ city: c.city, state: c.state, slug, treatment: 'promoted', hasPage: true, pageUrl: locUrl, distanceFromPrimaryMarket: dist, reason: 'Has its own Google Business Profile — location page under /locations/ with a service silo beneath it.' });
+      doNotBuild.push({ what: url, reason: `${c.city} has its own GBP, so it lives at ${locUrl} instead.` });
       continue;
     }
 
@@ -336,15 +349,30 @@ export function planSite(input: PlanInputs): SitePlan {
     }
   }
 
-  // ── CLICK 1: /service-areas/ hub ──────────────────────────────────────────
+  // ── CLICK 1: /service-areas/ hub (towns without a GBP) ────────────────────
   pages.push({
     url: SERVICE_AREAS_URL,
     pageType: 'service_areas',
     title: 'Service Areas',
     associatedCity: null,
     associatedService: null,
-    links: [homeUrl, ...townPageUrls],
+    links: [homeUrl, ...townPageUrls, ...(locationPageUrls.length ? [LOCATIONS_URL] : [])],
   });
+
+  // ── CLICK 1: /locations/ hub (pages with their own GBP) — only once any exist ──
+  if (locationPageUrls.length > 0) {
+    pages.push({
+      url: LOCATIONS_URL,
+      pageType: 'locations_index',
+      title: 'Locations',
+      associatedCity: null,
+      associatedService: null,
+      links: [homeUrl, ...locationPageUrls],
+    });
+    // Home links DIRECTLY to every location page (click depth is about links).
+    const home = pages.find((p) => p.pageType === 'homepage');
+    if (home) home.links.push(LOCATIONS_URL, ...locationPageUrls);
+  }
 
   // ── Primary Market neighborhoods hang off home ───────────────────────────
   (input.neighborhoods || []).forEach((n, i) => {

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -20,7 +19,6 @@ interface PMConfig {
   travelStrategy: string | null;
   primaryMarketCity: string | null;
   primaryMarketState: string | null;
-  homepageIsPrimaryMarket: boolean;
   websiteType: string;
   candidates: Candidate[];
 }
@@ -40,7 +38,6 @@ export default function PrimaryMarketSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState('');
   const [travelStrategy, setTravelStrategy] = useState('');
-  const [homepageIsPM, setHomepageIsPM] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedNeedsRegen, setSavedNeedsRegen] = useState(false);
@@ -53,7 +50,6 @@ export default function PrimaryMarketSettingsPage() {
         setConfig(data);
         setCity(data.primaryMarketCity || '');
         setTravelStrategy(data.travelStrategy || '');
-        setHomepageIsPM(data.homepageIsPrimaryMarket);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -61,8 +57,7 @@ export default function PrimaryMarketSettingsPage() {
 
   const dirty = !!config && (
     city !== (config.primaryMarketCity || '') ||
-    travelStrategy !== (config.travelStrategy || '') ||
-    homepageIsPM !== config.homepageIsPrimaryMarket
+    travelStrategy !== (config.travelStrategy || '')
   );
 
   async function handleSave() {
@@ -77,14 +72,13 @@ export default function PrimaryMarketSettingsPage() {
           primaryMarketCity: city || undefined,
           primaryMarketState: state ?? undefined,
           travelStrategy: travelStrategy || undefined,
-          homepageIsPrimaryMarket: homepageIsPM,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to save');
       toast.success('Primary Market settings saved');
       setSavedNeedsRegen(true);
-      setConfig((prev) => prev && { ...prev, primaryMarketCity: city, travelStrategy, homepageIsPrimaryMarket: homepageIsPM });
+      setConfig((prev) => prev && { ...prev, primaryMarketCity: city, travelStrategy });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -159,28 +153,6 @@ export default function PrimaryMarketSettingsPage() {
           <p className="text-xs text-gray-500">
             {TRAVEL_OPTIONS.find((o) => o.value === travelStrategy)?.hint || 'Controls how many city pages get built.'}
           </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><h2 className="font-semibold">Homepage structure</h2></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <Label htmlFor="homepage-pm">Use my homepage as my Primary Market page</Label>
-              <p className="text-xs text-gray-500 mt-1">
-                ON: your homepage targets &ldquo;{config?.primaryMarketCity || 'your city'}&rdquo; directly (best for a single, local market).<br />
-                OFF: your homepage is brand-level and a separate market page targets your city (best when you serve a region and want to rank multiple cities).
-              </p>
-            </div>
-            <Switch id="homepage-pm" checked={homepageIsPM} onCheckedChange={setHomepageIsPM} />
-          </div>
-          {homepageIsPM && travelStrategy && travelStrategy !== 'local' && (
-            <div className="flex items-start gap-1.5 text-xs text-amber-600">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>Heads up: using the homepage as your market page is usually best paired with a Local travel strategy.</span>
-            </div>
-          )}
         </CardContent>
       </Card>
 

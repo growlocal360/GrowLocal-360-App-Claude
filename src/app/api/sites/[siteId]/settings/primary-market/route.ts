@@ -45,13 +45,12 @@ export async function GET(
     primaryMarketCity: s.primary_market_city ?? null,
     primaryMarketState: s.primary_market_state ?? null,
     primaryMarketSource: s.primary_market_source ?? null,
-    homepageIsPrimaryMarket: s.homepage_is_primary_market === true,
     websiteType: site.website_type,
     candidates,
   });
 }
 
-// PATCH — update Primary Market / travel strategy / homepage model.
+// PATCH — update Primary Market / travel strategy.
 // Structural change: callers should confirm the GBP-ranking warning first, then
 // regenerate the site for it to take effect.
 export async function PATCH(
@@ -67,11 +66,12 @@ export async function PATCH(
   }
 
   const body = await request.json().catch(() => ({}));
-  const { travelStrategy, primaryMarketCity, primaryMarketState, homepageIsPrimaryMarket } = body as {
+  // v6: the home page is always the Primary Market page; a `homepageIsPrimaryMarket`
+  // field from older dashboards is ignored.
+  const { travelStrategy, primaryMarketCity, primaryMarketState } = body as {
     travelStrategy?: string;
     primaryMarketCity?: string;
     primaryMarketState?: string;
-    homepageIsPrimaryMarket?: boolean;
   };
 
   if (travelStrategy !== undefined && !TRAVEL_STRATEGIES.includes(travelStrategy as TravelStrategy)) {
@@ -82,9 +82,6 @@ export async function PATCH(
   }
   if (primaryMarketCity !== undefined && (typeof primaryMarketCity !== 'string' || !primaryMarketCity.trim())) {
     return NextResponse.json({ error: 'Primary market city cannot be empty' }, { status: 400 });
-  }
-  if (homepageIsPrimaryMarket !== undefined && typeof homepageIsPrimaryMarket !== 'boolean') {
-    return NextResponse.json({ error: 'homepageIsPrimaryMarket must be a boolean' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -103,7 +100,6 @@ export async function PATCH(
     updated.primary_market_source = 'user_input';
   }
   if (primaryMarketState !== undefined) updated.primary_market_state = (primaryMarketState || '').trim() || null;
-  if (homepageIsPrimaryMarket !== undefined) updated.homepage_is_primary_market = homepageIsPrimaryMarket;
 
   const { error: updateError } = await admin.from('sites').update({ settings: updated }).eq('id', siteId);
   if (updateError) {

@@ -90,29 +90,21 @@ export default function Home() {
         {/* Website Types */}
         <div className="mt-24">
           <h2 className="text-center text-3xl font-bold text-gray-900">
-            Three Website Types, One Platform
+            Two Website Types, One Platform
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-gray-600">
             Choose the right structure for your business model
           </p>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-4xl gap-6 lg:grid-cols-2">
             <WebsiteTypeCard
-              title="Single Location"
-              description="For businesses with one GBP, storefront or service area. Your primary market hub is the GBP landing page."
+              title="Local Business Site"
+              description="Your business website, built around your primary market. Works with one Google Business Profile or several."
               features={[
-                'Primary market hub at /{city}/',
+                'Home page targets your primary service in your primary market',
                 'A page for every service, flat at the root',
-                'City pages only where there is real demand',
-              ]}
-            />
-            <WebsiteTypeCard
-              title="Multi-Location"
-              description="For businesses with multiple GBPs. Each listing gets its own city hub as its landing page."
-              features={[
-                'Brand-level homepage',
-                '/{city}/ hub for every listing',
-                '/{city}/{service}/ beneath each hub',
+                'A page for every town you serve, listing all your services',
+                'Extra Google Business Profiles get their own town page and service silo',
               ]}
               highlighted
             />

@@ -328,6 +328,40 @@ export async function createSiteFromWizardData(
     });
   }
 
+  // v6: every ADDITIONAL Google Business Profile promotes its town. Make sure
+  // that town exists as a service area flagged is_anchor so the planner builds
+  // /service-areas/{city}/ with a service silo beneath it (and that GBP's
+  // website link can point there).
+  const primaryCityKey = (primaryLoc?.representativeCity || primaryLoc?.city || '').trim().toLowerCase();
+  const extraLocations = locations.filter((l) => !l.isPrimary && (l.representativeCity || l.city));
+  for (const loc of extraLocations) {
+    const cityName = (loc.representativeCity || loc.city).trim();
+    const cityKey = cityName.toLowerCase();
+    if (!cityKey || cityKey === primaryCityKey) continue;
+    const slug = cityKey.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const { data: existing } = await supabase
+      .from('service_areas')
+      .select('id, is_anchor')
+      .eq('site_id', site.id)
+      .eq('slug', slug)
+      .maybeSingle();
+    if (existing) {
+      if (!existing.is_anchor) await supabase.from('service_areas').update({ is_anchor: true }).eq('id', existing.id);
+    } else {
+      await supabase.from('service_areas').insert({
+        site_id: site.id,
+        name: cityName,
+        slug,
+        state: loc.representativeState || loc.state || null,
+        latitude: loc.latitude ?? null,
+        longitude: loc.longitude ?? null,
+        is_custom: false,
+        is_anchor: true,
+        sort_order: serviceAreas.length + extraLocations.indexOf(loc),
+      });
+    }
+  }
+
   // Create neighborhoods (linked to their parent locations)
   const { data: createdLocations } = await supabase
     .from('locations')

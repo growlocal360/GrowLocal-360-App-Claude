@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, ArrowRight, MapPin, Building2, Target, Check, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Target, Check, Info } from 'lucide-react';
 import type { WebsiteType } from '@/types/database';
 import type { MicrositeConfig } from '@/types/wizard';
 
@@ -24,28 +24,15 @@ const websiteTypeOptions: WebsiteTypeOption[] = [
   {
     type: 'single_location',
     title: 'Single Location',
-    description: 'One Google Business Profile, storefront or service area. One primary market, one site.',
+    description: 'Your business website. One primary market, every town you serve, one or many Google Business Profiles.',
     icon: MapPin,
     features: [
-      'Primary market hub at /{city}/ is your GBP landing page',
-      'Every service gets its own page at the root, with /{city}/{service}/ under the hub',
-      'Supporting city pages only where your travel strategy and demand call for them',
-      'One /service-areas/ page lists every town you cover',
+      'Home page targets your primary service in your primary market and is your GBP landing page',
+      'Every service gets its own page at the root',
+      'One page per town under /service-areas/, each listing all your services',
+      'A second Google Business Profile promotes its town page with a service silo beneath it',
     ],
-    bestFor: 'Businesses with exactly ONE Google Business Profile, including service area businesses',
-  },
-  {
-    type: 'multi_location',
-    title: 'Multi-Location',
-    description: 'Several Google Business Profiles in different cities. Each one gets its own city hub.',
-    icon: Building2,
-    features: [
-      'Brand-level homepage, no city in the headline',
-      'City hub at /{city}/ for every GBP, with /{city}/{service}/ beneath it',
-      'Each hub is that listing\'s GBP landing page',
-      'Shared service pages and one /service-areas/ page across all markets',
-    ],
-    bestFor: 'Businesses with more than one Google Business Profile, physical or service area',
+    bestFor: 'Nearly every local service business, storefront or service area, one location or several',
   },
   {
     type: 'microsite',
@@ -94,8 +81,10 @@ export function StepWebsiteType() {
     canProceed,
   } = useWizardStore();
 
-  // Suggest type based on location count
-  const suggestedType: WebsiteType = locations.length > 1 ? 'multi_location' : 'single_location';
+  // v6: one site type covers one OR many Google Business Profiles — every extra
+  // profile promotes its town page (/service-areas/{city}/) into a silo. Only a
+  // microsite is a different kind of site.
+  const suggestedType: WebsiteType = 'single_location';
 
   // Build city options from service areas + primary location
   const cityOptions = useMemo(() => {
@@ -196,8 +185,8 @@ export function StepWebsiteType() {
         <span className="text-sm text-gray-700">
           You have <strong>{locations.length}</strong> Google Business Profile{locations.length !== 1 ? 's' : ''} connected.
           {locations.length > 1
-            ? ' Multi-location is recommended.'
-            : ' Single location fits one profile, whether you work from a shop or travel to customers.'}
+            ? ' Each extra profile gets its own town page with a full service silo beneath it. Same site, same structure.'
+            : ' Works whether you run a shop or travel to customers.'}
         </span>
       </div>
 

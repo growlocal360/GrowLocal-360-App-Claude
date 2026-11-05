@@ -1,6 +1,6 @@
 # Master Prompt — GrowLocal 360 Onboarding Analysis & Build Spec (v5 — Primary Market Model)
 
-**Status:** CANONICAL. Supersedes v4 (`archive/growlocal360_master_prompt_v4.md`).
+**Status:** DEPRECATED 2026-11-05. Superseded by `../growlocal360_master_prompt_v6.md` (Town Page model). Kept for history only — do not build to this spec.
 
 **Purpose:** v5 of the GrowLocal 360 master prompt. Replaces the "anchor city" /
 9-scenario framing with the **Primary Market model**, adds **Travel Strategy** as a

@@ -1,6 +1,6 @@
 /**
  * Centralized path builder — v5 Primary Market URL structure.
- * See docs/architecture/growlocal360_master_prompt_v5.md.
+ * See docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5).
  *
  * v5 flattens the old "/locations/{loc}/" silo: GBP-anchored cities become
  * city-first hubs at ROOT — "/{city}/". The `locationSlug` argument therefore

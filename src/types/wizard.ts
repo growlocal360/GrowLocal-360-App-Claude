@@ -18,7 +18,7 @@ export type WizardStep =
   | 'site-scope'     // Step 7.5: v4 SITE_SCOPE — collect target geography for GSC filtering
   | 'review';        // Step 8: Review & Generate
 
-// v5 Primary Market model — see docs/architecture/growlocal360_master_prompt_v5.md
+// v5 Primary Market model — see docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5)
 export type TravelStrategy = 'local' | 'regional' | 'metro' | 'multi-market';
 
 export interface PrimaryMarket {

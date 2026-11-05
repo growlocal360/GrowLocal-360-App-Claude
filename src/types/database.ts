@@ -304,7 +304,7 @@ export interface SiteSettings {
   // External website — when the client's real site is hosted elsewhere (not the
   // GL360-generated site). Job Snap / GBP "Learn more" links point here.
   public_website_url?: string;
-  // v5 Primary Market model (see docs/architecture/growlocal360_master_prompt_v5.md)
+  // v5 Primary Market model (see docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5))
   travel_strategy?: 'local' | 'regional' | 'metro' | 'multi-market';
   primary_market_city?: string;
   primary_market_state?: string;

@@ -13,7 +13,7 @@
  * cities. For the Primary Market hub specifically, callers may allow a fallback
  * to the primary category page content when the city has no area copy.
  *
- * Canonical spec: docs/architecture/growlocal360_master_prompt_v5.md
+ * Canonical spec: docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5)
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';

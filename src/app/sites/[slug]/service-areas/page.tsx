@@ -17,7 +17,7 @@ import {
 
 // v5: the single Service Areas page (replaces the old /areas/ folder + per-area
 // detail pages). Lists every city — linked when it has a hub/Pattern-1 page,
-// text-only otherwise. See docs/architecture/growlocal360_master_prompt_v5.md.
+// text-only otherwise. See docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5).
 
 export const revalidate = 60;
 

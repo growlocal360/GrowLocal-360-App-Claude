@@ -70,7 +70,7 @@ export default async function SiteLayout({
         .eq('is_active', true)
         .order('sort_order')
         .limit(12),
-      supabase.from('service_areas').select('name').eq('site_id', site.id).order('sort_order').limit(12),
+      supabase.from('service_areas').select('name, slug').eq('site_id', site.id).order('sort_order').limit(12),
       getStoredSitePlan(site.id),
     ]);
     const treatment = isV6Plan(plan) && plan ? cityTreatmentByName(plan) : null;
@@ -82,11 +82,14 @@ export default async function SiteLayout({
         const catSlug = gbp?.display_name ? normalizeCategorySlug(gbp.display_name) : undefined;
         return { name: s.name as string, href: paths.servicePage(s.slug as string, catSlug, cat?.is_primary ?? true) };
       }),
-      // Cities link only when the Site Plan gave them a page; the rest are plain text
-      // (same rule as /service-areas/). No plan (pre-v5 site) → text only.
+      // Towns link to their page when the v6 Site Plan gave them one; the rest are
+      // plain text. A site without a v6 plan yet (not regenerated since v6) links
+      // every town — the town route renders permissively for those sites too.
       areas: (areas || []).map((a) => {
-        const c = treatment?.get((a.name as string).trim().toLowerCase());
-        return { name: a.name as string, href: c?.has_page && c.page_url ? c.page_url.replace(/\/$/, '') || '/' : null };
+        if (!treatment) return { name: a.name as string, href: paths.townPage(a.slug as string) };
+        const c = treatment.get((a.name as string).trim().toLowerCase());
+        if (!c?.has_page || !c.page_url) return { name: a.name as string, href: null };
+        return { name: a.name as string, href: c.page_url === '/' ? '/' : c.page_url.replace(/\/$/, '') };
       }),
     };
   }

@@ -41,7 +41,7 @@ export function WizardShell({ children }: WizardShellProps) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center">

@@ -387,7 +387,7 @@ export function StepServices() {
                   </Badge>
                 )}
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {categoryServices.map((service) => (
                   <Card
                     key={service.id}
@@ -402,7 +402,7 @@ export function StepServices() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900 truncate">
+                            <p className="font-medium leading-snug text-gray-900">
                               {service.name}
                             </p>
                             {service.isCustom && (

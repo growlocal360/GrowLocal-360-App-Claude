@@ -39,7 +39,7 @@ export function PlanSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-6xl overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">Choose Your Plan</DialogTitle>
           <DialogDescription>
@@ -47,7 +47,7 @@ export function PlanSelectionModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
             <PlanCard
               key={plan.name}

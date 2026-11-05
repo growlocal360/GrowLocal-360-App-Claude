@@ -6,6 +6,7 @@ import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getStoredSitePlan, cityTreatmentByName, isV6Plan } from '@/lib/sites/site-plan-store';
 import { getTemplate } from '@/lib/templates/registry';
+import * as paths from '@/lib/routing/paths';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
   toPublicSite,
@@ -71,15 +72,14 @@ export default async function ServiceAreasPageRoute({ params }: ServiceAreasPage
   }));
 
   // v6: a town links to its town page when the Site Plan gave it one; otherwise
-  // it's a text-only mention. Sites without a v6 plan render every town as text.
+  // it's a text-only mention. A site without a v6 plan yet (not regenerated since
+  // v6) links every town — the town route renders permissively for it too.
   const treatment = isV6Plan(sitePlan) && sitePlan ? cityTreatmentByName(sitePlan) : null;
   const serviceAreas = data.serviceAreas.map((area) => {
     const base = toPublicAreaListing(area);
-    if (treatment) {
-      const c = treatment.get(area.name.trim().toLowerCase());
-      return { ...base, pageUrl: c?.has_page && c.page_url && c.page_url !== '/' ? c.page_url.replace(/\/$/, '') : null };
-    }
-    return base;
+    if (!treatment) return { ...base, pageUrl: paths.townPage(area.slug) };
+    const c = treatment.get(area.name.trim().toLowerCase());
+    return { ...base, pageUrl: c?.has_page && c.page_url && c.page_url !== '/' ? c.page_url.replace(/\/$/, '') : null };
   });
 
   const TemplateComp = getTemplate(data.site.template_id).AreasListing;

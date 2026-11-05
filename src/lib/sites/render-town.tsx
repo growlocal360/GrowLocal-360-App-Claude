@@ -97,7 +97,8 @@ function areasWithPageUrls(base: PublicSiteData, plan: StoredSitePlan | null) {
   const treatment = isV6Plan(plan) && plan ? cityTreatmentByName(plan) : null;
   return base.serviceAreas.map((a) => {
     const listing = toPublicAreaListing(a);
-    if (!treatment) return { ...listing, pageUrl: null };
+    // No v6 plan yet → every town links (the town route renders permissively too).
+    if (!treatment) return { ...listing, pageUrl: paths.townPage(a.slug) };
     const c = treatment.get(a.name.trim().toLowerCase());
     return { ...listing, pageUrl: c?.has_page && c.page_url && c.page_url !== '/' ? c.page_url.replace(/\/$/, '') : null };
   });

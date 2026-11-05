@@ -221,15 +221,21 @@ export interface OnboardingAnalysis {
 }
 
 /**
- * v5 site plan persisted to SiteSettings.site_plan at build time. A pared-down,
+ * Site plan persisted to SiteSettings.site_plan at build time. A pared-down,
  * JSON-stable projection of the planSite() result (the per-page `links` map is
  * intentionally omitted to keep settings lean — it's derivable on demand).
+ * `version` 6 = Town Page model (docs/architecture/growlocal360_master_prompt_v6.md);
+ * plans without a version were produced by the retired v5 planner.
  */
 export interface StoredSitePlan {
+  version?: number;
   generated_at: string;
   travel_strategy: 'local' | 'regional' | 'metro' | 'multi-market';
   primary_market: { city: string; state: string };
+  /** GBP #1 website link ("/" in v6). */
   gbp_website_link_recommendation: string;
+  /** v6: every GBP's recommended link — the first → "/", each promoted town → its town page. */
+  gbp_website_links?: Array<{ city: string; url: string }>;
   pages: Array<{
     url: string;
     page_type: string;
@@ -239,16 +245,23 @@ export interface StoredSitePlan {
   cities: Array<{
     city: string;
     state: string;
+    /** v6: URL slug of the town (missing on v5 plans). */
+    slug?: string;
     treatment:
       | 'primary_market'
+      | 'promoted'
+      | 'plain_page'
       | 'proximity_covered'
-      | 'has_pattern_1_page'
-      | 'has_city_hub'
       | 'text_mention_only'
-      | 'excluded';
+      | 'excluded'
+      // v5 values, still present in plans stored before v6:
+      | 'has_pattern_1_page'
+      | 'has_city_hub';
     has_page: boolean;
     page_url: string | null;
     distance_from_primary_market: number | null;
+    /** v6: why the town got this treatment. */
+    reason?: string;
   }>;
   do_not_build: Array<{ what: string; reason: string }>;
 }
@@ -304,25 +317,24 @@ export interface SiteSettings {
   // External website — when the client's real site is hosted elsewhere (not the
   // GL360-generated site). Job Snap / GBP "Learn more" links point here.
   public_website_url?: string;
-  // v5 Primary Market model (see docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5))
+  // Primary Market model (docs/architecture/growlocal360_master_prompt_v6.md)
   travel_strategy?: 'local' | 'regional' | 'metro' | 'multi-market';
   primary_market_city?: string;
   primary_market_state?: string;
   primary_market_source?: 'user_input' | 'ai_recommendation' | 'gbp_address';
-  // v5 site plan — the page inventory + city treatments produced by planSite()
-  // at build time. The sitemap, routing gate, and /service-areas/ page read this
-  // as the source of truth for which v5 URLs exist (vs thin/text-only cities).
+  // Site plan — the page inventory + town treatments produced by planSite() at
+  // build time. The sitemap, routing gate, nav and /service-areas/ hub read this
+  // as the source of truth for which town / silo URLs exist.
   site_plan?: StoredSitePlan;
-  // GBP "website" link recommendation surfaced after a v5 build (the Primary
-  // Market hub path, e.g. "/surprise/"). A recommendation, not an auto-action.
+  // GBP "website" link recommendation surfaced after a build ("/" in v6; each
+  // promoted town's link is in site_plan.gbp_website_links). Not an auto-action.
   gbp_website_link_recommendation?: string;
-  // v5 rule 11 opt-out: when true, a single-location site's HOME page is the
-  // Primary Market page (city-specific H1) instead of a brand-level home. Default
-  // (unset/false) = brand-level home + separate /{primary-market}/ hub.
+  // v5 leftover. v6 ALWAYS makes the home page the Primary Market page; this key
+  // is ignored by the planner and generator and kept only so old settings parse.
   homepage_is_primary_market?: boolean;
-  // v5 anti-doorway: short, page-specific intros for each category×city page,
-  // keyed canonically by "{categorySlug}/{citySlug}". Rendered as the hero lede
-  // so Pattern 1 / city pages don't reuse the same body with the city swapped.
+  // Anti-doorway: short, page-specific intros for each town / silo page, keyed
+  // "{serviceSlug}/{citySlug}" (the primary category's slug for the town page
+  // itself). Rendered as the hero lede so town pages don't reuse one body.
   city_page_intros?: Record<string, string>;
   // Review Data
   google_average_rating?: number;

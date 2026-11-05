@@ -1,9 +1,8 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getServiceBySlugSingleLocation, getCategoryBySlugSingleLocation, getCategoriesWithServices, getAllServiceOrCategoryParams } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
-import { resolveCity } from '@/lib/routing/resolve-segment';
-import { renderCategoryInCity } from '@/lib/sites/render-city-category';
+import { resolveCity, legacyCityHubTarget } from '@/lib/routing/resolve-segment';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService, matchReviewsToCategory } from '@/lib/sites/match-reviews';
@@ -74,24 +73,7 @@ export async function generateMetadata({ params }: ServiceOrCategoryPageProps) {
     }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
   }
 
-  // v5: a GBP-anchored city hub or the Primary Market hub (/{city}/).
-  const baseForCity = await getSiteBySlug(slug);
-  if (baseForCity) {
-    const city = await resolveCity(baseForCity.site.id, serviceOrCategory);
-    if (city) {
-      const site = baseForCity.site;
-      const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
-      const canonicalUrl = `https://${domain}/${serviceOrCategory}`;
-      const cityLabel = city.state ? `${city.name}, ${city.state}` : city.name;
-      const ogImage = getSiteOgImage(site.settings);
-      return withOpenGraph({
-        title: `${site.name} in ${cityLabel}`,
-        description: `${site.name} serves ${city.name} and nearby communities. See the services we offer and contact us for fast, reliable local service.`,
-        alternates: { canonical: canonicalUrl },
-      }, { url: canonicalUrl, siteName: site.name, logoUrl: ogImage });
-    }
-  }
-
+  // v6: no /{city}/ at root. The page 301s retired v5 city hubs to the town page.
   return { title: 'Page Not Found' };
 }
 
@@ -212,41 +194,16 @@ export default async function ServiceOrCategoryPage({ params }: ServiceOrCategor
     );
   }
 
-  // v5: not a service or category — try a CITY hub ("/{city}/"): the GBP-anchored
-  // city hub, or the Primary Market hub. Render it as the PRIMARY category
-  // localized to that city, so the Primary Market page OWNS "{category} in {city}"
-  // (instead of a thin Location page that would under-serve the geo keyword).
+  // v6: there is no /{city}/ at root any more. A retired v5 city hub (GBP-anchored
+  // city or the Primary Market) 301s to its town page under /service-areas/, or to
+  // the home page when the city is the Primary Market.
   const baseData = await getSiteBySlug(slug);
   if (baseData) {
     const city = await resolveCity(baseData.site.id, serviceOrCategory);
     if (city) {
-      const admin = createAdminClient();
-      const { data: primaryCat } = await admin
-        .from('site_categories')
-        .select('gbp_category:gbp_categories(display_name)')
-        .eq('site_id', baseData.site.id)
-        .eq('is_primary', true)
-        .maybeSingle();
-      const pc = primaryCat?.gbp_category as { display_name?: string } | { display_name?: string }[] | null | undefined;
-      const primaryDisplayName = Array.isArray(pc) ? pc[0]?.display_name : pc?.display_name;
-      if (primaryDisplayName) {
-        const siteSettings = baseData.site.settings as { primary_market_city?: string; homepage_is_primary_market?: boolean } | null;
-        const pmCity = siteSettings?.primary_market_city;
-        const isPrimaryMarket = !!pmCity && pmCity.trim().toLowerCase() === city.name.trim().toLowerCase();
-        // Model B: the home page IS the Primary Market page, so /{primary-market}/
-        // would duplicate it — send it to the canonical home instead.
-        if (isPrimaryMarket && siteSettings?.homepage_is_primary_market === true) {
-          redirect('/');
-        }
-        const rendered = await renderCategoryInCity({
-          siteSlug: slug,
-          categorySlug: normalizeCategorySlug(primaryDisplayName),
-          citySeg: city.slug,
-          city: { name: city.name, state: city.state },
-          allowPrimaryContentFallback: isPrimaryMarket,
-        });
-        if (rendered) return rendered;
-      }
+      const target = await legacyCityHubTarget(baseData.site.id, city.slug);
+      if (target.path === '/') redirect('/');
+      permanentRedirect(target.path);
     }
   }
 

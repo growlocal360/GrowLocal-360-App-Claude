@@ -1,209 +1,190 @@
 import { describe, it, expect } from 'vitest';
 import { planSite, type PlanInputs } from '../site-plan';
 
-// Section 6 fixture from the URL-structure refactor: a regional SAB appliance
-// repair business in Surprise, AZ.
-const SURPRISE: PlanInputs = {
+// A regional appliance-repair SAB in Alexandria, LA (the worked example in the
+// v6 spec). Primary category = Appliance repair (home page); its services sit
+// flat at root; Refrigerator + Washer/dryer are secondary category hubs.
+const ALEXANDRIA: PlanInputs = {
   businessType: 'sab',
   travelStrategy: 'regional',
-  primaryMarket: { city: 'Surprise', state: 'AZ' },
-  gbpCategories: ['Appliance repair', 'Refrigerator repair', 'Washer and dryer repair'],
+  primaryMarket: { city: 'Alexandria', state: 'LA' },
+  gbpCategories: ['Appliance repair service', 'Refrigerator repair service', 'Washer & dryer repair service'],
+  primaryServices: [
+    { name: 'Dishwasher Repair', slug: 'dishwasher-repair' },
+    { name: 'Oven & Range Repair', slug: 'oven-range-repair' },
+  ],
   subServicesByService: {
-    'Refrigerator repair': ['Not cooling', 'Ice maker repair'],
-    'Washer and dryer repair': ['Not spinning'],
+    'Refrigerator repair service': ['Ice maker repair', 'Compressor repair'],
+    'Washer & dryer repair service': ['Dryer heating element'],
   },
-  topServices: ['Appliance repair', 'Refrigerator repair'], // top 2 only
+  neighborhoods: ['Garden District'],
   serviceAreaCities: [
-    { city: 'Peoria', state: 'AZ', distanceMiles: 18 },
-    { city: 'Glendale', state: 'AZ', distanceMiles: 22 },
-    { city: 'Phoenix', state: 'AZ', distanceMiles: 28 },
-    { city: 'Sun City', state: 'AZ', distanceMiles: 6 },
-    { city: 'El Mirage', state: 'AZ', distanceMiles: 8 },
+    { city: 'Pineville', state: 'LA', distanceMiles: 3 },
+    { city: 'Ball', state: 'LA', distanceMiles: 9 },
+    { city: 'Boyce', state: 'LA', distanceMiles: 16 },
+    { city: 'Colfax', state: 'LA', distanceMiles: 25 },
+    { city: 'Lecompte', state: 'LA', distanceMiles: 18 },
+    { city: 'Pollock', state: 'LA', distanceMiles: 20 },
   ],
 };
 
-describe('planSite — v5 Primary Market model (Surprise AZ)', () => {
-  const plan = planSite(SURPRISE);
-  const urls = new Set(plan.pages.map((p) => p.url));
+const urlsOf = (plan: ReturnType<typeof planSite>) => new Set(plan.pages.map((p) => p.url));
 
-  it('always builds homepage, primary market hub, PM service pages, brand hubs, service-areas', () => {
-    for (const u of [
-      '/', '/surprise/',
-      '/surprise/appliance-repair/', '/surprise/refrigerator-repair/', '/surprise/washer-dryer-repair/',
-      '/appliance-repair/', '/refrigerator-repair/', '/washer-dryer-repair/',
-      '/service-areas/',
-    ]) expect(urls.has(u), u).toBe(true);
+describe('planSite — v6 Town Page model (Alexandria LA)', () => {
+  const plan = planSite(ALEXANDRIA);
+  const urls = urlsOf(plan);
+
+  it('home is the Primary Market page: primary category + city, GBP link → /', () => {
+    const home = plan.pages.find((p) => p.pageType === 'homepage')!;
+    expect(home.title).toBe('Appliance repair service in Alexandria, LA');
+    expect(home.associatedCity).toBe('Alexandria');
+    expect(plan.gbpWebsiteLinkRecommendation).toBe('/');
+    expect(plan.cities.find((c) => c.treatment === 'primary_market')?.pageUrl).toBe('/');
   });
 
-  it('nests sub-services under their parent brand hub', () => {
-    expect(urls.has('/refrigerator-repair/not-cooling/')).toBe(true);
+  it('never builds a /{primary-market}/ hub, /{city}/ at root, /locations/, or /{service}/{city}/', () => {
+    expect(urls.has('/alexandria/')).toBe(false);
+    expect([...urls].some((u) => u.includes('/locations/'))).toBe(false);
+    expect([...urls].some((u) => /^\/(dishwasher-repair|refrigerator-repair|washer-dryer-repair)\/(colfax|lecompte|boyce|pollock)\//.test(u))).toBe(false);
+    expect(plan.doNotBuild.some((d) => d.what === '/service-areas/alexandria/')).toBe(true);
+  });
+
+  it('main service list: primary services flat at root, secondary categories as hubs with nested services', () => {
+    for (const u of ['/dishwasher-repair/', '/oven-range-repair/', '/refrigerator-repair/', '/washer-dryer-repair/']) expect(urls.has(u), u).toBe(true);
     expect(urls.has('/refrigerator-repair/ice-maker-repair/')).toBe(true);
+    expect(urls.has('/washer-dryer-repair/dryer-heating-element/')).toBe(true);
+    expect(plan.pages.find((p) => p.url === '/dishwasher-repair/')?.pageType).toBe('main_service');
+    expect(plan.pages.find((p) => p.url === '/refrigerator-repair/')?.pageType).toBe('category_hub');
+    expect(plan.pages.find((p) => p.url === '/refrigerator-repair/ice-maker-repair/')?.pageType).toBe('sub_service');
   });
 
-  it('builds Pattern 1 city pages only for the top 2 services × non-proximity cities', () => {
-    for (const u of [
-      '/appliance-repair/peoria/', '/appliance-repair/glendale/', '/appliance-repair/phoenix/',
-      '/refrigerator-repair/peoria/', '/refrigerator-repair/glendale/', '/refrigerator-repair/phoenix/',
-    ]) expect(urls.has(u), u).toBe(true);
+  it('one PLAIN town page per town outside the proximity zone, under /service-areas/', () => {
+    for (const u of ['/service-areas/boyce/', '/service-areas/colfax/', '/service-areas/lecompte/', '/service-areas/pollock/']) {
+      expect(urls.has(u), u).toBe(true);
+      expect(plan.pages.find((p) => p.url === u)?.pageType).toBe('town_page');
+    }
+    expect(plan.cities.find((c) => c.city === 'Colfax')?.treatment).toBe('plain_page');
   });
 
-  it('does NOT build Pattern 1 city pages for washer-dryer (not a top-2 service)', () => {
-    const wdCityPages = plan.pages.filter(
-      (p) => p.pageType === 'pattern_1_city' && p.url.startsWith('/washer-dryer-repair/'),
-    );
-    expect(wdCityPages).toHaveLength(0);
+  it('plain town pages carry the FULL main service list linking to the ROOT pages, no silo beneath', () => {
+    const colfax = plan.pages.find((p) => p.url === '/service-areas/colfax/')!;
+    for (const u of ['/dishwasher-repair/', '/oven-range-repair/', '/refrigerator-repair/', '/washer-dryer-repair/']) expect(colfax.links).toContain(u);
+    expect([...urls].some((u) => u.startsWith('/service-areas/colfax/') && u !== '/service-areas/colfax/')).toBe(false);
   });
 
-  it('never uses a /locations/ parent', () => {
-    expect([...urls].filter((u) => u.includes('/locations/'))).toHaveLength(0);
+  it('towns within ~10 mi of the Primary Market are proximity-covered (text only)', () => {
+    expect(urls.has('/service-areas/pineville/')).toBe(false);
+    expect(urls.has('/service-areas/ball/')).toBe(false);
+    expect(plan.cities.find((c) => c.city === 'Pineville')?.treatment).toBe('proximity_covered');
   });
 
-  it('proximity-covers Sun City and El Mirage (no dedicated pages)', () => {
-    expect([...urls].some((u) => u.includes('sun-city'))).toBe(false);
-    expect([...urls].some((u) => u.includes('el-mirage'))).toBe(false);
-    expect(plan.cities.find((c) => c.city === 'Sun City')?.treatment).toBe('proximity_covered');
-    expect(plan.cities.find((c) => c.city === 'El Mirage')?.treatment).toBe('proximity_covered');
+  it('/service-areas/ hub links every town page', () => {
+    const hub = plan.pages.find((p) => p.pageType === 'service_areas')!;
+    expect(hub.links).toContain('/service-areas/colfax/');
+    expect(hub.links.some((l) => l.includes('pineville'))).toBe(false);
   });
 
-  it('/service-areas/ links built city pages but not proximity-covered ones', () => {
-    const sa = plan.pages.find((p) => p.pageType === 'service_areas')!;
-    expect(sa.links).toContain('/appliance-repair/peoria/');
-    expect(sa.links.some((l) => l.includes('sun-city'))).toBe(false);
+  it('Primary Market neighborhoods hang off home at /neighborhoods/{slug}/', () => {
+    expect(urls.has('/neighborhoods/garden-district/')).toBe(true);
+    expect(plan.pages.find((p) => p.pageType === 'homepage')!.links).toContain('/neighborhoods/garden-district/');
   });
 
-  it('recommends pointing the GBP website link at the primary market hub', () => {
-    expect(plan.gbpWebsiteLinkRecommendation).toBe('/surprise/');
+  it('sub-services never link to town pages', () => {
+    for (const s of plan.pages.filter((p) => p.pageType === 'sub_service')) {
+      expect(s.links.some((l) => l.startsWith('/service-areas/'))).toBe(false);
+    }
   });
 
-  it('sub-services never link to city pages', () => {
-    const subs = plan.pages.filter((p) => p.pageType === 'sub_service');
-    for (const s of subs) {
-      expect(s.links.some((l) => /\/(peoria|glendale|phoenix)\//.test(l))).toBe(false);
+  it('every town has a slug and a reason', () => {
+    for (const c of plan.cities) {
+      expect(c.slug).toBeTruthy();
+      expect(c.reason).toBeTruthy();
     }
   });
 });
 
-describe('planSite — Local strategy builds no Pattern 1 pages', () => {
-  it('local: proximity + primary market only', () => {
-    const plan = planSite({ ...SURPRISE, travelStrategy: 'local' });
-    expect(plan.pages.filter((p) => p.pageType === 'pattern_1_city')).toHaveLength(0);
-    expect(plan.doNotBuild.some((d) => /Pattern 1/.test(d.what))).toBe(true);
-  });
-});
-
-describe('planSite — GBP-anchored city gets a city-first hub', () => {
-  it('anchored city builds /{city}/ + /{city}/{service}/, not Pattern 1', () => {
-    const plan = planSite({
-      ...SURPRISE,
-      serviceAreaCities: [{ city: 'Peoria', state: 'AZ', anchored: true, distanceMiles: 18 }],
-    });
-    const urls = new Set(plan.pages.map((p) => p.url));
-    expect(urls.has('/peoria/')).toBe(true);
-    expect(urls.has('/peoria/appliance-repair/')).toBe(true);
-    expect([...urls].some((u) => u === '/appliance-repair/peoria/')).toBe(false);
-    expect(plan.cities.find((c) => c.city === 'Peoria')?.treatment).toBe('has_city_hub');
-  });
-});
-
-describe('planSite — Priority city override', () => {
-  it('forces a Pattern 1 page for a proximity-covered city when marked priority', () => {
-    const plan = planSite({
-      ...SURPRISE,
-      serviceAreaCities: [{ city: 'Sun City', state: 'AZ', distanceMiles: 6, priority: true }],
-    });
-    const sunCity = plan.cities.find((c) => c.city === 'Sun City');
-    expect(sunCity?.treatment).toBe('has_pattern_1_page');
-    expect(sunCity?.hasPage).toBe(true);
-    const urls = new Set(plan.pages.map((p) => p.url));
-    expect(urls.has('/appliance-repair/sun-city/')).toBe(true);
+describe('planSite — travel strategy only sets the town-page count', () => {
+  it('local: no town pages at all', () => {
+    const plan = planSite({ ...ALEXANDRIA, travelStrategy: 'local' });
+    expect(plan.pages.filter((p) => p.pageType === 'town_page')).toHaveLength(0);
+    expect(plan.cities.find((c) => c.city === 'Colfax')?.treatment).toBe('text_mention_only');
+    expect(plan.doNotBuild.some((d) => d.what === 'Town pages')).toBe(true);
   });
 
-  it('forces a page even under a Local strategy (cap 0)', () => {
+  it('regional caps plain town pages at 9; metro at 12', () => {
+    const many = Array.from({ length: 15 }, (_, i) => ({ city: `Town ${i + 1}`, state: 'LA', distanceMiles: 20 + i }));
+    const regional = planSite({ ...ALEXANDRIA, serviceAreaCities: many });
+    const metro = planSite({ ...ALEXANDRIA, travelStrategy: 'metro', serviceAreaCities: many });
+    expect(regional.pages.filter((p) => p.pageType === 'town_page')).toHaveLength(9);
+    expect(metro.pages.filter((p) => p.pageType === 'town_page')).toHaveLength(12);
+    expect(regional.cities.filter((c) => c.treatment === 'text_mention_only')).toHaveLength(6);
+  });
+
+  it('priority ("Dedicated page") forces a plain town page past proximity and the cap, even under local', () => {
     const plan = planSite({
-      ...SURPRISE,
+      ...ALEXANDRIA,
       travelStrategy: 'local',
-      serviceAreaCities: [{ city: 'Wittmann', state: 'AZ', distanceMiles: 12, priority: true }],
+      serviceAreaCities: [{ city: 'Pineville', state: 'LA', distanceMiles: 3, priority: true }],
     });
-    expect(plan.pages.some((p) => p.pageType === 'pattern_1_city' && p.url.includes('wittmann'))).toBe(true);
-  });
-
-  it('priority pages bypass the per-strategy cap (extra, not counted against it)', () => {
-    // 9 auto Pattern-1 (3 cities x 3 top services hits regional cap) + a priority city on top.
-    const plan = planSite({
-      ...SURPRISE,
-      topServices: ['Appliance repair', 'Refrigerator repair', 'Washer and dryer repair'],
-      serviceAreaCities: [
-        { city: 'Peoria', state: 'AZ', distanceMiles: 18 },
-        { city: 'Glendale', state: 'AZ', distanceMiles: 22 },
-        { city: 'Phoenix', state: 'AZ', distanceMiles: 28 },
-        { city: 'Buckeye', state: 'AZ', distanceMiles: 40, priority: true },
-      ],
-    });
-    expect(plan.cities.find((c) => c.city === 'Buckeye')?.treatment).toBe('has_pattern_1_page');
-  });
-
-  it('multi-niche priority city gets ONE page per niche (not just the global top-3)', () => {
-    // AM Refrigeration case: the global top-3 are all HVAC, so without niche
-    // awareness appliance would never get a dedicated-city page. With niches,
-    // Moss Bluff gets both an HVAC and an Appliance Pattern-1 page.
-    const plan = planSite({
-      businessType: 'sab',
-      travelStrategy: 'regional',
-      primaryMarket: { city: 'Lake Charles', state: 'LA' },
-      gbpCategories: [
-        'AC repair service',
-        'HVAC contractor',
-        'Heating contractor',
-        'Appliance repair service',
-        'Refrigerator repair service',
-      ],
-      topServices: ['AC repair service', 'HVAC contractor', 'Heating contractor'], // all HVAC
-      niches: [
-        { key: 'hvac', topService: 'AC repair service' },
-        { key: 'appliance', topService: 'Appliance repair service' },
-      ],
-      serviceAreaCities: [{ city: 'Moss Bluff', state: 'LA', distanceMiles: 12, priority: true }],
-    });
-    const urls = new Set(plan.pages.map((p) => p.url));
-    expect(urls.has('/ac-repair/moss-bluff/')).toBe(true);
-    expect(urls.has('/appliance-repair/moss-bluff/')).toBe(true);
-    expect(plan.cities.find((c) => c.city === 'Moss Bluff')?.treatment).toBe('has_pattern_1_page');
-  });
-
-  it('without niche data, priority city falls back to the global top services', () => {
-    const plan = planSite({
-      ...SURPRISE,
-      serviceAreaCities: [{ city: 'Sun City', state: 'AZ', distanceMiles: 6, priority: true }],
-    });
-    const priorityUrls = plan.pages
-      .filter((p) => p.pageType === 'pattern_1_city' && p.url.includes('sun-city'))
-      .map((p) => p.url);
-    // Top-2 services only (SURPRISE.topServices), no appliance/washer bloat.
-    expect(priorityUrls).toContain('/appliance-repair/sun-city/');
-    expect(priorityUrls).toContain('/refrigerator-repair/sun-city/');
-    expect(priorityUrls.some((u) => u.includes('washer'))).toBe(false);
+    expect(urlsOf(plan).has('/service-areas/pineville/')).toBe(true);
+    expect(plan.cities.find((c) => c.city === 'Pineville')?.treatment).toBe('plain_page');
   });
 });
 
-describe('planSite — Model B (home IS the Primary Market page)', () => {
-  const plan = planSite({ ...SURPRISE, travelStrategy: 'local', homepageIsPrimaryMarket: true });
-  const urls = new Set(plan.pages.map((p) => p.url));
+describe('planSite — a second GBP PROMOTES a town page', () => {
+  const plan = planSite({
+    ...ALEXANDRIA,
+    serviceAreaCities: [
+      { city: 'Lafayette', state: 'LA', anchored: true, distanceMiles: 90 },
+      { city: 'Colfax', state: 'LA', distanceMiles: 25 },
+    ],
+  });
+  const urls = urlsOf(plan);
 
-  it('does NOT build a separate /{primary-market}/ hub (no duplicate of home)', () => {
-    expect(urls.has('/surprise/')).toBe(false);
-    expect(plan.pages.some((p) => p.pageType === 'primary_market_hub')).toBe(false);
-    expect(plan.pages.some((p) => p.pageType === 'primary_market_service')).toBe(false);
-    expect(plan.doNotBuild.some((d) => /Primary Market hub/.test(d.what))).toBe(true);
+  it('promoted town page + a silo page per main-service entry beneath it', () => {
+    expect(urls.has('/service-areas/lafayette/')).toBe(true);
+    for (const u of [
+      '/service-areas/lafayette/dishwasher-repair/',
+      '/service-areas/lafayette/oven-range-repair/',
+      '/service-areas/lafayette/refrigerator-repair/',
+      '/service-areas/lafayette/washer-dryer-repair/',
+    ]) {
+      expect(urls.has(u), u).toBe(true);
+      expect(plan.pages.find((p) => p.url === u)?.pageType).toBe('town_service');
+    }
+    expect(plan.cities.find((c) => c.city === 'Lafayette')?.treatment).toBe('promoted');
   });
 
-  it('points the GBP website link at the home page, and the PM city page is "/"', () => {
-    expect(plan.gbpWebsiteLinkRecommendation).toBe('/');
-    expect(plan.cities.find((c) => c.city === 'Surprise')?.pageUrl).toBe('/');
+  it('promoted town cards link into the silo, not the root pages', () => {
+    const town = plan.pages.find((p) => p.url === '/service-areas/lafayette/')!;
+    expect(town.links).toContain('/service-areas/lafayette/refrigerator-repair/');
+    expect(town.links).not.toContain('/refrigerator-repair/');
   });
 
-  it('still builds brand service hubs + /service-areas/ + utility', () => {
-    expect(urls.has('/appliance-repair/')).toBe(true);
-    expect(urls.has('/service-areas/')).toBe(true);
-    expect(urls.has('/about/')).toBe(true);
+  it('silo pages link UP to their town page and SIDEWAYS to the root page', () => {
+    const silo = plan.pages.find((p) => p.url === '/service-areas/lafayette/refrigerator-repair/')!;
+    expect(silo.links).toContain('/service-areas/lafayette/');
+    expect(silo.links).toContain('/refrigerator-repair/');
+  });
+
+  it('each GBP gets its own website-link recommendation; promoted towns do not count against the cap', () => {
+    expect(plan.gbpWebsiteLinks).toEqual([
+      { city: 'Alexandria', url: '/' },
+      { city: 'Lafayette', url: '/service-areas/lafayette/' },
+    ]);
+    expect(plan.cities.find((c) => c.city === 'Colfax')?.treatment).toBe('plain_page');
+  });
+
+  it('never gives a /{city}/ root hub to an anchored town (v5 retired)', () => {
+    expect(urls.has('/lafayette/')).toBe(false);
+    expect(urls.has('/lafayette/refrigerator-repair/')).toBe(false);
+  });
+});
+
+describe('planSite — v5 compatibility inputs are ignored', () => {
+  it('homepageIsPrimaryMarket / topServices / niches change nothing', () => {
+    const a = planSite(ALEXANDRIA);
+    const b = planSite({ ...ALEXANDRIA, homepageIsPrimaryMarket: false, topServices: ['Refrigerator repair service'], niches: [{ key: 'x', topService: 'y' }] });
+    expect(b.pages.map((p) => p.url)).toEqual(a.pages.map((p) => p.url));
   });
 });

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { SiteFormConfigProvider } from '@/components/templates/site-form-config';
 import { SiteNavProvider, type SiteNav } from '@/components/templates/site-nav';
-import { getStoredSitePlan, cityTreatmentByName } from '@/lib/sites/site-plan-store';
+import { getStoredSitePlan, cityTreatmentByName, isV6Plan } from '@/lib/sites/site-plan-store';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import * as paths from '@/lib/routing/paths';
 import type { SiteSettings } from '@/types/database';
@@ -73,7 +73,7 @@ export default async function SiteLayout({
       supabase.from('service_areas').select('name').eq('site_id', site.id).order('sort_order').limit(12),
       getStoredSitePlan(site.id),
     ]);
-    const treatment = plan ? cityTreatmentByName(plan) : null;
+    const treatment = isV6Plan(plan) && plan ? cityTreatmentByName(plan) : null;
     nav = {
       siteUrl,
       services: (services || []).map((s) => {
@@ -86,7 +86,7 @@ export default async function SiteLayout({
       // (same rule as /service-areas/). No plan (pre-v5 site) → text only.
       areas: (areas || []).map((a) => {
         const c = treatment?.get((a.name as string).trim().toLowerCase());
-        return { name: a.name as string, href: c?.has_page ? c.page_url : null };
+        return { name: a.name as string, href: c?.has_page && c.page_url ? c.page_url.replace(/\/$/, '') || '/' : null };
       }),
     };
   }

@@ -1,12 +1,10 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getAllGoogleReviewsForSite } from '@/lib/sites/get-reviews';
 import { matchReviewsToService } from '@/lib/sites/match-reviews';
-import { getCategoriesWithServices, getAllNestedServiceParams, getCategoryBySlugSingleLocation } from '@/lib/sites/get-services';
+import { getCategoriesWithServices, getAllNestedServiceParams } from '@/lib/sites/get-services';
 import { getSiteBySlug } from '@/lib/sites/get-site';
-import { matchCategorySlug, resolveCityLoose } from '@/lib/routing/resolve-segment';
-import { isPlannedCityPath } from '@/lib/sites/site-plan-store';
-import { renderCategoryInCity } from '@/lib/sites/render-city-category';
+import { matchCategorySlug, resolveCityLoose, legacyCategoryCityTarget } from '@/lib/routing/resolve-segment';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
@@ -121,9 +119,8 @@ export async function generateMetadata({ params }: NestedServicePageProps) {
 
   const data = await getNestedServiceData(slug, serviceOrCategory, service);
   if (!data) {
-    // v5 category × city combo (Pattern 1 / city-hub service)
-    const v5 = await v5TwoSegmentMetadata(slug, serviceOrCategory, service);
-    return v5 ?? { title: 'Page Not Found' };
+    // Retired v5 category × city URLs 301 away (see the page component).
+    return { title: 'Page Not Found' };
   }
 
   const { service: svc, location, site } = data;
@@ -147,11 +144,14 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
 
   const data = await getNestedServiceData(slug, serviceOrCategory, service);
   if (!data) {
-    // v5: try the new two-segment patterns before 404ing.
-    //   Pattern 1  → /{service}/{city}/   (seg1=service, seg2=city)
-    //   City hub   → /{city}/{service}/   (seg1=city,    seg2=service)
-    const v5 = await renderV5TwoSegment(slug, serviceOrCategory, service);
-    if (v5) return v5;
+    // v6: the v5 two-segment city URLs are retired. Recognise them and 301:
+    //   Pattern 1  → /{category}/{city}/   (seg1=category, seg2=city)
+    //   City hub   → /{city}/{category}/   (seg1=city,     seg2=category)
+    const target = await legacyTwoSegmentTarget(slug, serviceOrCategory, service);
+    if (target) {
+      if (target === '/') redirect('/');
+      permanentRedirect(target);
+    }
     notFound();
   }
 
@@ -209,81 +209,29 @@ export default async function NestedServicePage({ params }: NestedServicePagePro
 }
 
 /**
- * Metadata for the v5 category × city combos. Resolves the same way as
- * renderV5TwoSegment and gates on the Site Plan, so unplanned combos return null
- * (→ "Page Not Found", matching the 404 the page itself returns).
+ * Resolve a retired v5 two-segment city URL to its v6 301 target, or null when
+ * the segments are not a category × city pair at all (→ 404).
  */
-async function v5TwoSegmentMetadata(slug: string, seg1: string, seg2: string) {
+async function legacyTwoSegmentTarget(slug: string, seg1: string, seg2: string): Promise<string | null> {
   const base = await getSiteBySlug(slug);
   if (!base) return null;
   const siteId = base.site.id;
 
   let categorySlug: string | null = null;
-  let cityResolved: { name: string; state: string | null } | null = null;
-  if (await matchCategorySlug(siteId, seg1)) {
-    categorySlug = seg1;
+  let categoryIsPrimary = false;
+  let cityResolved: { slug: string } | null = null;
+  const c1 = await matchCategorySlug(siteId, seg1);
+  if (c1) {
+    categorySlug = seg1; categoryIsPrimary = c1.isPrimary;
     cityResolved = await resolveCityLoose(siteId, seg2);
-  } else if (await matchCategorySlug(siteId, seg2)) {
-    categorySlug = seg2;
-    cityResolved = await resolveCityLoose(siteId, seg1);
+  } else {
+    const c2 = await matchCategorySlug(siteId, seg2);
+    if (c2) {
+      categorySlug = seg2; categoryIsPrimary = c2.isPrimary;
+      cityResolved = await resolveCityLoose(siteId, seg1);
+    }
   }
   if (!categorySlug || !cityResolved) return null;
-  if (!(await isPlannedCityPath(siteId, `/${seg1}/${seg2}/`))) return null;
-
-  const categoryData = await getCategoryBySlugSingleLocation(slug, categorySlug);
-  if (!categoryData) return null;
-
-  const categoryName = categoryData.category.gbp_category.display_name;
-  const { site } = categoryData;
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com';
-  const domain = (site.custom_domain_verified && site.custom_domain) ? site.custom_domain : `${slug}.${appDomain}`;
-  const cityLabel = cityResolved.state ? `${cityResolved.name}, ${cityResolved.state}` : cityResolved.name;
-
-  return {
-    title: `${categoryName} in ${cityLabel} | ${site.name}`,
-    description: `Professional ${categoryName.toLowerCase()} in ${cityResolved.name}. Contact ${site.name} for fast, reliable service.`,
-    alternates: { canonical: `https://${domain}/${seg1}/${seg2}` },
-  };
-}
-
-/**
- * v5 two-segment resolution for the GBP-category × city combos:
- *   Pattern 1   → "/{category}/{city}/"  (seg1=category, seg2=city)
- *   City hub    → "/{city}/{category}/"  (seg1=city,     seg2=category)
- *
- * NOTE: "service" in the v5 URL rules means a GBP CATEGORY (appliance-repair,
- * refrigerator-repair), NOT an individual service row. So these resolve a
- * category + a city and render the Category template localized to that city.
- * Returns null if it isn't either pattern. Individual category/service-row nested
- * pages are handled earlier by getNestedServiceData().
- */
-async function renderV5TwoSegment(slug: string, seg1: string, seg2: string) {
-  const base = await getSiteBySlug(slug);
-  if (!base) return null;
-  const siteId = base.site.id;
-
-  // Decide which segment is the GBP category and which is the city.
-  // Prefer category-first (Pattern 1) when seg1 is a known category slug.
-  let categorySlug: string | null = null;
-  let citySeg: string | null = null;
-  let cityResolved: { name: string; state: string | null } | null = null;
-  if (await matchCategorySlug(siteId, seg1)) {
-    categorySlug = seg1;
-    citySeg = seg2;
-    cityResolved = await resolveCityLoose(siteId, seg2);
-  } else if (await matchCategorySlug(siteId, seg2)) {
-    categorySlug = seg2;
-    citySeg = seg1;
-    cityResolved = await resolveCityLoose(siteId, seg1);
-  }
-  if (!categorySlug || !citySeg || !cityResolved) return null;
-
-  // v5 gate: only render this category/city combo if the Site Plan says it
-  // exists. Keeps proximity-covered cities and non-top services from rendering
-  // thin pages. (Pre-v5 sites have no plan → isPlannedCityPath is permissive.)
-  if (!(await isPlannedCityPath(siteId, `/${seg1}/${seg2}/`))) {
-    return null;
-  }
-
-  return renderCategoryInCity({ siteSlug: slug, categorySlug, citySeg, city: cityResolved });
+  const target = await legacyCategoryCityTarget(siteId, categorySlug, cityResolved.slug, categoryIsPrimary);
+  return target.path;
 }

@@ -1,15 +1,24 @@
 /**
- * Site Plan — v5 Primary Market model page-inventory planner.
+ * Site Plan — v6 Town Page model page-inventory planner.
  * ----------------------------------------------------------------------------
  * Pure, deterministic function that turns onboarding inputs into the page
- * inventory, internal-linking map, service-area treatment table, and the GBP
- * website-link recommendation, applying the v5 URL structure rules.
+ * inventory, internal-linking map, town treatment table, and the GBP
+ * website-link recommendations, applying the v6 URL rules.
  *
- * Canonical spec: docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5)
+ * Canonical spec: docs/architecture/growlocal360_master_prompt_v6.md
+ *
+ * The tree (four clicks, everything links up):
+ *
+ *   /                                   {primary category} in {Primary Market}  ← GBP #1
+ *   /{service}/                         main service list, flat at root
+ *   /{category}/{service}/              secondary-category services nest under their hub
+ *   /service-areas/                     locations hub
+ *   /service-areas/{city}/              one page per town, ALL main services, cards → root
+ *   /service-areas/{city}/{service}/    silo — only when the town has its own GBP
+ *   /neighborhoods/{slug}/              Primary Market neighborhoods
  *
  * This module makes NO database / network calls — it's the planning brain. The
- * generation pipeline (and the test harness) call planSite() and act on the
- * result. Keeping it pure makes the rules testable in isolation.
+ * generation pipeline (and the tests) call planSite() and act on the result.
  */
 
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
@@ -19,21 +28,31 @@ export type BusinessType = 'physical' | 'sab' | 'hybrid';
 
 export type PageType =
   | 'homepage'
-  | 'primary_market_hub'
-  | 'primary_market_service'
-  | 'brand_service_hub'
+  /** A primary-category service at the root: /{service}/ */
+  | 'main_service'
+  /** A secondary GBP category hub at the root: /{category}/ */
+  | 'category_hub'
+  /** A secondary-category service nested under its hub: /{category}/{service}/ */
   | 'sub_service'
-  | 'pattern_1_city'
-  | 'city_hub'
-  | 'city_hub_service'
   | 'service_areas'
+  /** /service-areas/{city}/ — plain or promoted */
+  | 'town_page'
+  /** /service-areas/{city}/{service}/ — silo page under a PROMOTED town */
+  | 'town_service'
+  /** /neighborhoods/{slug}/ — Primary Market neighborhood */
+  | 'neighborhood'
   | 'utility';
 
 export type CityTreatment =
+  /** The Primary Market: its page is the home page. */
   | 'primary_market'
+  /** Town has its own GBP listing → town page + silo beneath it. */
+  | 'promoted'
+  /** Town page with the full main service list, cards → root pages. */
+  | 'plain_page'
+  /** Within ~10 mi of the Primary Market → text on /service-areas/ only. */
   | 'proximity_covered'
-  | 'has_pattern_1_page'
-  | 'has_city_hub'
+  /** Over the travel-strategy cap → text on /service-areas/ only. */
   | 'text_mention_only'
   | 'excluded';
 
@@ -50,67 +69,79 @@ export interface PlannedPage {
 export interface CityPlan {
   city: string;
   state: string;
+  slug: string;
   treatment: CityTreatment;
   hasPage: boolean;
   pageUrl: string | null;
   distanceFromPrimaryMarket: number | null;
+  /** Why the town got this treatment (surfaced in the dashboard + DO_NOT_BUILD). */
+  reason: string;
+}
+
+/** One entry of the main service list (home-page order). */
+export interface MainServiceInput {
+  name: string;
+  /** The public slug exactly as routed (service.slug for services; normalized display name for categories). */
+  slug: string;
 }
 
 export interface PlanInputs {
   businessType: BusinessType;
   travelStrategy: TravelStrategy;
   primaryMarket: { city: string; state: string };
-  /** GBP category service names (primary first). The first is the "core" service. */
+  /** GBP category display names, PRIMARY FIRST. The primary category is the home page. */
   gbpCategories: string[];
-  /** Sub-services keyed by their parent GBP category service name. */
+  /**
+   * Services that belong to the PRIMARY category. They live flat at root
+   * (/{slug}/) and lead the main service list. Optional for callers that only
+   * know categories (the plan then has secondary hubs only).
+   */
+  primaryServices?: MainServiceInput[];
+  /** Secondary-category services keyed by the category display name; nested under the hub. */
   subServicesByService?: Record<string, string[]>;
-  /** Cities served. anchored=true means the city has its own GBP listing. */
+  /** Towns served. anchored=true means the town has its own GBP listing (→ promoted). */
   serviceAreaCities: Array<{
     city: string;
     state: string;
     anchored?: boolean;
     distanceMiles?: number | null;
-    /** Owner-forced priority city: guaranteed a dedicated page regardless of
-     *  proximity coverage or the Pattern 1 cap. */
+    /** Owner-forced "Dedicated page": a plain town page regardless of proximity or cap. */
     priority?: boolean;
   }>;
-  /** Explicit top revenue services (names). If omitted, first 2-3 GBP categories are used. */
-  topServices?: string[];
+  /** Primary Market neighborhoods (names). */
+  neighborhoods?: string[];
   /**
-   * Distinct niches this site spans (e.g. HVAC + Appliance), each with a
-   * representative top service. When present, an owner-forced PRIORITY city gets
-   * ONE Pattern-1 page per niche (so a dual-niche business isn't limited to the
-   * global top-3, which could all belong to one niche). Absent → priority cities
-   * use the global topServices. Only affects the priority branch.
-   */
-  niches?: Array<{ key: string; topService: string }>;
-  /**
-   * v5 rule 11 (Model B): the home page IS the Primary Market page. When true, the
-   * planner does NOT build a separate /{primary-market}/ hub (it would duplicate
-   * the home), and the GBP website link points to "/". Default false (Model A:
-   * brand home + separate PM hub).
+   * v5 compatibility. v6 ALWAYS treats the home page as the Primary Market page;
+   * this flag is accepted and ignored so old callers compile.
    */
   homepageIsPrimaryMarket?: boolean;
+  /** @deprecated v5 — ignored. */
+  topServices?: string[];
+  /** @deprecated v5 — ignored. */
+  niches?: Array<{ key: string; topService: string }>;
 }
 
 export interface SitePlan {
   pages: PlannedPage[];
   cities: CityPlan[];
-  /** GBP website-link recommendation target (the Primary Market hub path). */
+  /** GBP #1 website link. Always "/" in v6. */
   gbpWebsiteLinkRecommendation: string;
+  /** Every GBP's recommended website link: the first → "/", each promoted town → its town page. */
+  gbpWebsiteLinks: Array<{ city: string; url: string }>;
   /** Pages intentionally NOT built, with reasons (for the DO_NOT_BUILD output). */
   doNotBuild: Array<{ what: string; reason: string }>;
 }
 
-const PROXIMITY_MILES = 10;
-const PATTERN1_CAP: Record<TravelStrategy, number> = {
-  local: 0,        // Local builds NO Pattern 1 pages
+export const PROXIMITY_MILES = 10;
+/** How many PLAIN town pages a travel strategy allows. Promoted + priority towns are not counted. */
+export const TOWN_PAGE_CAP: Record<TravelStrategy, number> = {
+  local: 0,
   regional: 9,
   metro: 12,
   'multi-market': 12,
 };
 
-function citySlug(city: string): string {
+export function citySlug(city: string): string {
   return city.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 function svcSlug(service: string): string {
@@ -120,248 +151,223 @@ function titleCity(city: string, state: string): string {
   return state ? `${city}, ${state}` : city;
 }
 
+export const SERVICE_AREAS_URL = '/service-areas/';
+export function townPageUrl(city: string): string {
+  return `${SERVICE_AREAS_URL}${citySlug(city)}/`;
+}
+
 /**
- * Build the full site plan from onboarding inputs, applying the v5 rules.
+ * Build the full site plan from onboarding inputs, applying the v6 rules.
  */
 export function planSite(input: PlanInputs): SitePlan {
-  const { travelStrategy, primaryMarket, gbpCategories } = input;
+  const { travelStrategy, primaryMarket } = input;
+  const categories = input.gbpCategories.filter(Boolean);
+  const primaryCategory = categories[0] || 'Services';
+  const secondaryCategories = categories.slice(1);
   const pmSlug = citySlug(primaryMarket.city);
-  const services = gbpCategories.filter(Boolean);
-  const coreService = services[0];
-  const topServices = (input.topServices && input.topServices.length > 0
-    ? input.topServices
-    : services.slice(0, 3)
-  ).map(svcSlug);
+  const pmLabel = titleCity(primaryMarket.city, primaryMarket.state);
 
   const pages: PlannedPage[] = [];
   const doNotBuild: SitePlan['doNotBuild'] = [];
-
-  // Model B (v5 rule 11): the home page IS the Primary Market page. No separate
-  // /{primary-market}/ hub (it would duplicate the home / cannibalize the keyword).
-  const modelB = !!input.homepageIsPrimaryMarket;
-
-  // ── URLs we know up-front (for linking) ──────────────────────────────────
   const homeUrl = '/';
-  const pmHubUrl = `/${pmSlug}/`;
-  // The URL that "the primary market" resolves to: the dedicated hub (Model A) or
-  // the home page itself (Model B). Used for linking + the GBP recommendation.
-  const pmTarget = modelB ? homeUrl : pmHubUrl;
-  const serviceAreasUrl = '/service-areas/';
-  const brandHubUrls = services.map((s) => `/${svcSlug(s)}/`);
-  const pmServiceUrls = services.map((s) => `/${pmSlug}/${svcSlug(s)}/`);
 
-  // ── ALWAYS: homepage ─────────────────────────────────────────────────────
+  // ── The main service list (home-page order): primary services, then secondary hubs ──
+  const mainList: Array<{ name: string; slug: string; url: string; kind: 'service' | 'category' }> = [
+    ...(input.primaryServices || []).map((s) => ({ name: s.name, slug: s.slug, url: `/${s.slug}/`, kind: 'service' as const })),
+    ...secondaryCategories.map((c) => ({ name: c, slug: svcSlug(c), url: `/${svcSlug(c)}/`, kind: 'category' as const })),
+  ];
+  const mainUrls = mainList.map((m) => m.url);
+  const neighborhoodUrls = (input.neighborhoods || []).map((n) => `/neighborhoods/${citySlug(n)}/`);
+  const utilityUrls = ['/about/', '/contact/', '/reviews/', '/work/'];
+
+  // ── CLICK 0: home = primary category in the Primary Market ───────────────
   pages.push({
     url: homeUrl,
     pageType: 'homepage',
-    title: 'Home',
-    associatedCity: modelB ? primaryMarket.city : null,
-    associatedService: null,
-    // Model A links to the separate PM hub; Model B is the PM page itself.
-    links: [...brandHubUrls, ...(modelB ? [] : [pmHubUrl]), serviceAreasUrl, '/about/', '/contact/', '/reviews/', '/work/'],
+    title: `${primaryCategory} in ${pmLabel}`,
+    associatedCity: primaryMarket.city,
+    associatedService: primaryCategory,
+    links: [...mainUrls, SERVICE_AREAS_URL, ...neighborhoodUrls, ...utilityUrls],
   });
 
-  // ── Primary Market hub + its per-service pages (Model A only) ─────────────
-  if (!modelB) {
-    pages.push({
-      url: pmHubUrl,
-      pageType: 'primary_market_hub',
-      title: `${primaryMarket.city} ${coreService || 'Services'}`,
-      associatedCity: primaryMarket.city,
-      associatedService: null,
-      links: [homeUrl, ...pmServiceUrls, ...brandHubUrls, serviceAreasUrl],
-    });
-    services.forEach((s) => {
+  // ── CLICK 1: main service pages (flat at root) ────────────────────────────
+  for (const m of mainList) {
+    if (m.kind === 'service') {
       pages.push({
-        url: `/${pmSlug}/${svcSlug(s)}/`,
-        pageType: 'primary_market_service',
-        title: `${s} in ${primaryMarket.city}`,
-        associatedCity: primaryMarket.city,
-        associatedService: s,
-        links: [pmHubUrl, `/${svcSlug(s)}/`, serviceAreasUrl],
+        url: m.url,
+        pageType: 'main_service',
+        title: m.name,
+        associatedCity: null,
+        associatedService: m.name,
+        links: [homeUrl, ...mainUrls.filter((u) => u !== m.url), SERVICE_AREAS_URL],
       });
-    });
-  } else {
-    doNotBuild.push({ what: `/${pmSlug}/ Primary Market hub`, reason: 'Home page is the Primary Market page (Model B) — a separate hub would duplicate it.' });
+    } else {
+      const subs = input.subServicesByService?.[m.name] ?? [];
+      const subUrls = subs.map((sub) => `${m.url}${svcSlug(sub)}/`);
+      pages.push({
+        url: m.url,
+        pageType: 'category_hub',
+        title: m.name,
+        associatedCity: null,
+        associatedService: m.name,
+        links: [homeUrl, ...subUrls, ...mainUrls.filter((u) => u !== m.url), SERVICE_AREAS_URL],
+      });
+      subs.forEach((sub) => {
+        const url = `${m.url}${svcSlug(sub)}/`;
+        pages.push({
+          url,
+          pageType: 'sub_service',
+          title: sub,
+          associatedCity: null,
+          associatedService: m.name,
+          // sub-services link UP to their hub + SIDEWAYS to siblings; NEVER to town pages
+          links: [m.url, ...subUrls.filter((u) => u !== url)],
+        });
+      });
+    }
   }
 
-  // ── ALWAYS: brand service hubs + their sub-services ──────────────────────
-  services.forEach((s) => {
-    const hub = `/${svcSlug(s)}/`;
-    const subs = input.subServicesByService?.[s] ?? [];
-    const subUrls = subs.map((sub) => `${hub}${svcSlug(sub)}/`);
-    pages.push({
-      url: hub,
-      pageType: 'brand_service_hub',
-      title: s,
-      associatedCity: null,
-      associatedService: s,
-      // brand hub links DOWN to sub-services (+ PM service page in Model A);
-      // SIDEWAYS to other hubs + service-areas
-      links: [...subUrls, ...(modelB ? [] : [`/${pmSlug}/${svcSlug(s)}/`]), ...brandHubUrls.filter((u) => u !== hub), serviceAreasUrl],
-    });
-    subs.forEach((sub) => {
-      pages.push({
-        url: `${hub}${svcSlug(sub)}/`,
-        pageType: 'sub_service',
-        title: sub,
-        associatedCity: null,
-        associatedService: s,
-        // sub-services link UP to parent + SIDEWAYS to siblings; NEVER to city pages
-        links: [hub, ...subUrls.filter((u) => u !== `${hub}${svcSlug(sub)}/`)],
-      });
-    });
-  });
-
-  // ── City treatment + city/Pattern-1 pages ────────────────────────────────
+  // ── CLICK 2/3: town treatment ────────────────────────────────────────────
   const cities: CityPlan[] = [];
-  const pattern1Cap = PATTERN1_CAP[travelStrategy];
-  let pattern1Count = 0;
-  const builtCityPageUrls: string[] = [];
+  const cap = TOWN_PAGE_CAP[travelStrategy];
+  let plainCount = 0;
+  const townPageUrls: string[] = [];
+  const gbpWebsiteLinks: SitePlan['gbpWebsiteLinks'] = [{ city: primaryMarket.city, url: homeUrl }];
 
-  // Services a PRIORITY (owner-forced Dedicated Page) city gets a Pattern-1 page
-  // for. Multi-niche → each niche's top service (so both HVAC + Appliance land a
-  // page); otherwise the global top services.
-  const priorityServiceNames = input.niches && input.niches.length > 0
-    ? input.niches.map((n) => n.topService).filter(Boolean)
-    : services.filter((s) => topServices.includes(svcSlug(s)));
-
-  // Primary market itself is its own treatment. Its page is the dedicated hub
-  // (Model A) or the home page (Model B).
   cities.push({
     city: primaryMarket.city,
     state: primaryMarket.state,
+    slug: pmSlug,
     treatment: 'primary_market',
     hasPage: true,
-    pageUrl: pmTarget,
+    pageUrl: homeUrl,
     distanceFromPrimaryMarket: 0,
+    reason: 'Primary Market — the home page is its page.',
   });
+  doNotBuild.push({ what: townPageUrl(primaryMarket.city), reason: 'The Primary Market never gets a town page; it redirects to the home page.' });
 
+  const seen = new Set<string>([pmSlug]);
   for (const c of input.serviceAreaCities) {
-    if (c.city.toLowerCase() === primaryMarket.city.toLowerCase()) continue; // already handled
-
+    const slug = citySlug(c.city);
+    if (!slug || seen.has(slug)) continue; // PM or duplicate
+    seen.add(slug);
     const dist = c.distanceMiles ?? null;
+    const url = townPageUrl(c.city);
+    const label = titleCity(c.city, c.state);
 
-    // 1) GBP-anchored city → city-first hub + per-service pages
+    // 1) Own GBP → PROMOTED: town page + a silo page per main service.
     if (c.anchored) {
-      const cSlug = citySlug(c.city);
-      const hubUrl = `/${cSlug}/`;
+      const siloUrls = mainList.map((m) => `${url}${m.slug}/`);
       pages.push({
-        url: hubUrl,
-        pageType: 'city_hub',
-        title: `${coreService || 'Services'} in ${c.city}`,
+        url,
+        pageType: 'town_page',
+        title: `${primaryCategory} in ${label}`,
         associatedCity: c.city,
         associatedService: null,
-        links: [homeUrl, serviceAreasUrl, ...services.map((s) => `/${cSlug}/${svcSlug(s)}/`)],
+        links: [SERVICE_AREAS_URL, homeUrl, ...siloUrls],
       });
-      services.forEach((s) => {
+      mainList.forEach((m, i) => {
         pages.push({
-          url: `/${cSlug}/${svcSlug(s)}/`,
-          pageType: 'city_hub_service',
-          title: `${s} in ${c.city}`,
+          url: siloUrls[i],
+          pageType: 'town_service',
+          title: `${m.name} in ${label}`,
           associatedCity: c.city,
-          associatedService: s,
-          links: [hubUrl, `/${svcSlug(s)}/`, serviceAreasUrl],
+          associatedService: m.name,
+          links: [url, m.url, ...siloUrls.filter((u) => u !== siloUrls[i])],
         });
       });
-      builtCityPageUrls.push(hubUrl);
-      cities.push({ city: c.city, state: c.state, treatment: 'has_city_hub', hasPage: true, pageUrl: hubUrl, distanceFromPrimaryMarket: dist });
+      townPageUrls.push(url);
+      gbpWebsiteLinks.push({ city: c.city, url });
+      cities.push({ city: c.city, state: c.state, slug, treatment: 'promoted', hasPage: true, pageUrl: url, distanceFromPrimaryMarket: dist, reason: 'Has its own Google Business Profile — promoted town page with a service silo beneath it.' });
       continue;
     }
 
-    // 2) Owner-forced PRIORITY city → guaranteed Pattern 1, bypassing proximity
-    //    coverage AND the per-strategy cap. The manual escape hatch for markets
-    //    the automation wouldn't pick (e.g. a new business already winning work in
-    //    a smaller, low-competition city with no data yet).
-    //    Multi-niche sites get ONE page per niche (each niche's top service) so a
-    //    dual-niche business isn't limited to the global top-3; single-niche (or
-    //    no niche data) falls back to the global top services.
+    // 2) Owner-forced priority → plain town page, bypassing proximity + cap.
     if (c.priority) {
-      const built: string[] = [];
-      const seen = new Set<string>();
-      for (const s of priorityServiceNames) {
-        const slug = svcSlug(s);
-        if (seen.has(slug)) continue; // de-dupe niches that share a top service
-        seen.add(slug);
-        const url = `/${slug}/${citySlug(c.city)}/`;
-        pages.push({
-          url,
-          pageType: 'pattern_1_city',
-          title: `${s} in ${titleCity(c.city, c.state)}`,
-          associatedCity: c.city,
-          associatedService: s,
-          links: [`/${slug}/`, serviceAreasUrl],
-        });
-        built.push(url);
-      }
-      if (built.length > 0) {
-        builtCityPageUrls.push(...built);
-        cities.push({ city: c.city, state: c.state, treatment: 'has_pattern_1_page', hasPage: true, pageUrl: built[0], distanceFromPrimaryMarket: dist });
-        continue;
-      }
-    }
-
-    // 3) Within proximity of Primary Market → covered, text-only on service-areas
-    if (dist !== null && dist <= PROXIMITY_MILES) {
-      cities.push({ city: c.city, state: c.state, treatment: 'proximity_covered', hasPage: false, pageUrl: null, distanceFromPrimaryMarket: dist });
+      pages.push({
+        url,
+        pageType: 'town_page',
+        title: `${primaryCategory} in ${label}`,
+        associatedCity: c.city,
+        associatedService: null,
+        links: [SERVICE_AREAS_URL, homeUrl, ...mainUrls],
+      });
+      townPageUrls.push(url);
+      cities.push({ city: c.city, state: c.state, slug, treatment: 'plain_page', hasPage: true, pageUrl: url, distanceFromPrimaryMarket: dist, reason: 'Owner marked this town "Dedicated page".' });
       continue;
     }
 
-    // 3) Pattern 1 for the top 2-3 services (respecting the per-strategy cap)
-    if (pattern1Cap > 0) {
-      const built: string[] = [];
-      for (const s of services) {
-        if (!topServices.includes(svcSlug(s))) continue; // top services only
-        if (pattern1Count >= pattern1Cap) break;
-        // No duplicate-intent: PM service page already covers the primary market.
-        const url = `/${svcSlug(s)}/${citySlug(c.city)}/`;
-        pages.push({
-          url,
-          pageType: 'pattern_1_city',
-          title: `${s} in ${titleCity(c.city, c.state)}`,
-          associatedCity: c.city,
-          associatedService: s,
-          // Pattern 1 links UP to brand hub + service-areas; SIDEWAYS lightly to siblings
-          links: [`/${svcSlug(s)}/`, serviceAreasUrl],
-        });
-        built.push(url);
-        pattern1Count++;
-      }
-      if (built.length > 0) {
-        builtCityPageUrls.push(...built);
-        cities.push({ city: c.city, state: c.state, treatment: 'has_pattern_1_page', hasPage: true, pageUrl: built[0], distanceFromPrimaryMarket: dist });
-        continue;
-      }
+    // 3) Within proximity of the Primary Market → covered by the home page.
+    if (dist !== null && dist <= PROXIMITY_MILES) {
+      cities.push({ city: c.city, state: c.state, slug, treatment: 'proximity_covered', hasPage: false, pageUrl: null, distanceFromPrimaryMarket: dist, reason: `Within ${PROXIMITY_MILES} miles of ${primaryMarket.city} — named on the home page and the service-areas index.` });
+      doNotBuild.push({ what: url, reason: `Proximity-covered (${dist} mi from ${primaryMarket.city}).` });
+      continue;
     }
 
-    // 4) Everything else → text mention only on /service-areas/
-    cities.push({ city: c.city, state: c.state, treatment: 'text_mention_only', hasPage: false, pageUrl: null, distanceFromPrimaryMarket: dist });
+    // 4) Plain town page while the travel-strategy cap allows.
+    if (plainCount < cap) {
+      pages.push({
+        url,
+        pageType: 'town_page',
+        title: `${primaryCategory} in ${label}`,
+        associatedCity: c.city,
+        associatedService: null,
+        links: [SERVICE_AREAS_URL, homeUrl, ...mainUrls],
+      });
+      plainCount++;
+      townPageUrls.push(url);
+      cities.push({ city: c.city, state: c.state, slug, treatment: 'plain_page', hasPage: true, pageUrl: url, distanceFromPrimaryMarket: dist, reason: `Within the ${travelStrategy} travel strategy (${cap} town pages).` });
+      continue;
+    }
+
+    // 5) Over the cap → text only.
+    cities.push({ city: c.city, state: c.state, slug, treatment: 'text_mention_only', hasPage: false, pageUrl: null, distanceFromPrimaryMarket: dist, reason: cap === 0 ? 'Local travel strategy builds no town pages.' : `Over the ${travelStrategy} cap of ${cap} town pages.` });
+    doNotBuild.push({ what: url, reason: cap === 0 ? 'Local travel strategy — no town pages.' : `Over the ${travelStrategy} cap (${cap}). Mark it "Dedicated page" to force one.` });
   }
 
   if (travelStrategy === 'local') {
-    doNotBuild.push({ what: 'Pattern 1 city pages', reason: 'Local travel strategy — primary market + proximity coverage only.' });
+    doNotBuild.push({ what: 'Town pages', reason: 'Local travel strategy — every town is text on /service-areas/ unless marked "Dedicated page" or promoted by its own GBP.' });
   }
 
-  // ── ALWAYS: /service-areas/ (single page; links built city pages, text for rest) ──
+  // Town pages link sideways (lightly) to the other towns that have pages.
+  for (const p of pages) {
+    if (p.pageType === 'town_page') {
+      p.links.push(...townPageUrls.filter((u) => u !== p.url));
+    }
+  }
+
+  // ── CLICK 1: /service-areas/ hub ──────────────────────────────────────────
   pages.push({
-    url: serviceAreasUrl,
+    url: SERVICE_AREAS_URL,
     pageType: 'service_areas',
     title: 'Service Areas',
     associatedCity: null,
     associatedService: null,
-    links: [pmTarget, ...builtCityPageUrls, ...brandHubUrls, homeUrl],
+    links: [homeUrl, ...townPageUrls],
   });
 
-  // ── ALWAYS: utility pages ────────────────────────────────────────────────
-  for (const u of ['/about/', '/contact/', '/reviews/', '/work/']) {
+  // ── Primary Market neighborhoods hang off home ───────────────────────────
+  (input.neighborhoods || []).forEach((n, i) => {
+    pages.push({
+      url: neighborhoodUrls[i],
+      pageType: 'neighborhood',
+      title: `${primaryCategory} in ${n}, ${primaryMarket.city}`,
+      associatedCity: primaryMarket.city,
+      associatedService: null,
+      links: [homeUrl, ...neighborhoodUrls.filter((u) => u !== neighborhoodUrls[i])],
+    });
+  });
+
+  // ── Utility ──────────────────────────────────────────────────────────────
+  for (const u of utilityUrls) {
     pages.push({ url: u, pageType: 'utility', title: u.replace(/\//g, '') || 'Home', associatedCity: null, associatedService: null, links: [homeUrl] });
   }
 
   return {
     pages,
     cities,
-    // Model A → the dedicated PM hub; Model B → the home page (it IS the PM page).
-    gbpWebsiteLinkRecommendation: pmTarget,
+    gbpWebsiteLinkRecommendation: homeUrl,
+    gbpWebsiteLinks,
     doNotBuild,
   };
 }

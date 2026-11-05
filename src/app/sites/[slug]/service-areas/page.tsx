@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getSiteBySlug, getAllSiteSlugs } from '@/lib/sites/get-site';
 import { getCategoriesWithServices } from '@/lib/sites/get-services';
 import { normalizeCategorySlug } from '@/lib/utils/slugify';
-import { getStoredSitePlan, cityTreatmentByName } from '@/lib/sites/site-plan-store';
+import { getStoredSitePlan, cityTreatmentByName, isV6Plan } from '@/lib/sites/site-plan-store';
 import { getTemplate } from '@/lib/templates/registry';
 import type { NavCategory } from '@/components/templates/local-service-pro/site-header';
 import {
@@ -15,9 +15,9 @@ import {
   toPublicCategory,
 } from '@/lib/sites/public-render-model';
 
-// v5: the single Service Areas page (replaces the old /areas/ folder + per-area
-// detail pages). Lists every city — linked when it has a hub/Pattern-1 page,
-// text-only otherwise. See docs/architecture/archive/growlocal360_master_prompt_v5.md (v5, superseded by growlocal360_master_prompt_v6.md — this code still implements v5).
+// v6: the locations hub. Lists every served town — linked to its town page
+// (/service-areas/{city}/) when the Site Plan gave it one, plain text otherwise.
+// See docs/architecture/growlocal360_master_prompt_v6.md.
 
 export const revalidate = 60;
 
@@ -70,15 +70,14 @@ export default async function ServiceAreasPageRoute({ params }: ServiceAreasPage
     isPrimary: c.is_primary,
   }));
 
-  // v5: a city links to its dedicated page (Pattern 1 / city hub) when the Site
-  // Plan says it has one; otherwise it's a text-only mention. Pre-v5 sites (no
-  // plan) leave pageUrl undefined → templates render them as before.
-  const treatment = sitePlan ? cityTreatmentByName(sitePlan) : null;
+  // v6: a town links to its town page when the Site Plan gave it one; otherwise
+  // it's a text-only mention. Sites without a v6 plan render every town as text.
+  const treatment = isV6Plan(sitePlan) && sitePlan ? cityTreatmentByName(sitePlan) : null;
   const serviceAreas = data.serviceAreas.map((area) => {
     const base = toPublicAreaListing(area);
     if (treatment) {
       const c = treatment.get(area.name.trim().toLowerCase());
-      return { ...base, pageUrl: c?.has_page ? c.page_url : null };
+      return { ...base, pageUrl: c?.has_page && c.page_url && c.page_url !== '/' ? c.page_url.replace(/\/$/, '') : null };
     }
     return base;
   });

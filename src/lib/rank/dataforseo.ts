@@ -80,7 +80,8 @@ export async function mapsSearch(keyword: string, lat: number, lng: number, opts
   return { items: task.result?.[0]?.items || [], cost: task.cost ?? json.cost ?? 0 };
 }
 
-export interface PackItem { type?: string; rank_group?: number; rank_absolute?: number; title?: string | null; domain?: string | null; is_paid?: boolean; cid?: string | null; rating?: { value?: number; votes_count?: number } | null }
+/** An item on the web results page: 'local_pack' entries (the pack) and 'organic' entries (the blue links) share one list. */
+export interface PackItem { type?: string; rank_group?: number; rank_absolute?: number; title?: string | null; domain?: string | null; url?: string | null; is_paid?: boolean; cid?: string | null; rating?: { value?: number; votes_count?: number } | null }
 export interface LocalPackResult { items: PackItem[]; cost: number }
 
 /**

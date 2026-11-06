@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, findPackRank, rankTone, sortSources, fitZoom, mapPercent } from './grid';
+import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, findPackRank, findOrganicRank, normalizeHost, rankTone, sortSources, fitZoom, mapPercent } from './grid';
 import { analyzeAnswer, visibilityPrompts } from './ai-visibility';
 
 describe('rank grid', () => {
@@ -64,6 +64,27 @@ describe('local pack', () => {
     expect(rankTone(null, true)).toBe('nopack');
     expect(rankTone(null)).toBe('none');
     expect(sortSources(['maps', 'local_pack'])).toEqual(['local_pack', 'maps']);
+  });
+});
+
+describe('organic (website) reading from the same page', () => {
+  it('finds the site among the blue links by host, ignoring the pack and ads, on any of its domains', () => {
+    const items = [
+      { type: 'paid', rank_group: 1, domain: 'graphicworksdesign.com' },
+      { type: 'local_pack', rank_group: 1, title: 'Graphic Works' },
+      { type: 'organic', rank_group: 1, domain: 'www.ziprecruiter.com', url: 'https://www.ziprecruiter.com/x' },
+      { type: 'organic', rank_group: 2, domain: 'indeed.com' },
+      { type: 'organic', rank_group: 3, domain: 'www.graphicworksdesign.com', url: 'https://www.graphicworksdesign.com/' },
+    ];
+    expect(findOrganicRank(items, ['https://graphicworksdesign.com/', 'graphic-works.growlocal360.com'])).toBe(3);
+    expect(findOrganicRank(items, ['graphic-works.growlocal360.com'])).toBeNull();
+    expect(findOrganicRank(items, [])).toBeNull();
+    expect(normalizeHost('HTTPS://WWW.Example.com/a/b')).toBe('example.com');
+  });
+
+  it('scores organic visibility on a 10-deep page', () => {
+    const pts = [1, 10, null].map((rank, i) => ({ row: 0, col: i, lat: 0, lng: 0, rank }));
+    expect(summarize(pts, 'organic').visibility).toBe(37); // (1 + 0.1 + 0) / 3
   });
 });
 

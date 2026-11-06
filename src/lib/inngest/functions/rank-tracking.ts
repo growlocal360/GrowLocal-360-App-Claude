@@ -22,7 +22,7 @@ async function scanSiteInSteps(step: StepRunner, siteId: string, only?: string[]
   } else {
     for (const keyword of prep.keywords) {
       for (const source of prep.settings.sources) {
-        const r = await step.run(`scan-${siteId}-${source}-${keyword}`, () => scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName, source));
+        const r = await step.run(`scan-${siteId}-${source}-${keyword}`, () => scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName, source, prep.siteHosts));
         run.results.push(r);
         run.totalCost += r.cost || 0;
       }

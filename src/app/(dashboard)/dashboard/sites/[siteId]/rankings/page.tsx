@@ -38,10 +38,12 @@ const TONE_CLASS: Record<ReturnType<typeof rankTone>, string> = {
 /** What a dot means, in the words of its source. */
 function pointLabel(p: ScannedPoint, source: RankSource): string {
   if (source === 'local_pack') return p.noPack ? 'No Local Pack shown here' : p.rank === null ? 'Not in the Local Pack' : `Pack spot #${p.rank}`;
+  if (source === 'organic') return p.rank === null ? 'Website not on page 1' : `Website at #${p.rank} on page 1`;
   return p.rank === null ? 'Not in top 20' : `#${p.rank}`;
 }
 function pointText(p: ScannedPoint, source: RankSource): string {
   if (source === 'local_pack') return p.noPack ? '–' : p.rank === null ? '✕' : String(p.rank);
+  if (source === 'organic') return p.rank === null ? '10+' : String(p.rank);
   return p.rank === null ? '20+' : String(p.rank);
 }
 
@@ -95,12 +97,13 @@ function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
 
 /** Small label naming the surface a heatmap came from. The pack is the one customers see first, so it reads darker. */
 function SourceBadge({ source }: { source: RankSource }) {
-  return <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${source === 'local_pack' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{sourceLabel(source)}</span>;
+  return <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${source === 'local_pack' ? 'bg-gray-900 text-white' : source === 'organic' ? 'border border-gray-300 bg-white text-gray-600' : 'bg-gray-100 text-gray-600'}`}>{sourceLabel(source)}</span>;
 }
 
 /** One heatmap card: a keyword × source's latest scan on the overview, or one dated scan in the per-keyword history. */
-function ScanCard({ title, latest, previous, siteId, onPick }: { title: string; latest: ScanRow; previous: ScanRow | null; siteId: string; onPick?: () => void }) {
+function ScanCard({ title, latest, previous, siteId, onPick, note }: { title: string; latest: ScanRow; previous: ScanRow | null; siteId: string; onPick?: () => void; note?: string }) {
   const isPack = latest.source === 'local_pack';
+  const isWeb = latest.source === 'organic';
   const sum = latest.summary;
   const shown = isPack ? (sum.packShownPoints ?? sum.totalPoints) : sum.totalPoints;
   return (
@@ -133,6 +136,12 @@ function ScanCard({ title, latest, previous, siteId, onPick }: { title: string; 
             <div><div className="font-semibold text-gray-900">{sum.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. pack spot</div><Change now={sum.averageRank} before={previous?.summary.averageRank} invert /></div>
             <div><div className="font-semibold text-gray-900">{sum.totalPoints - shown}</div><div className="text-xs text-gray-500">spots with no pack</div></div>
           </div>
+        ) : isWeb ? (
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div><div className="font-semibold text-gray-900">{sum.foundPoints}/{sum.totalPoints}</div><div className="text-xs text-gray-500">spots on page 1</div><Change now={sum.foundPoints} before={previous?.summary.foundPoints} /></div>
+            <div><div className="font-semibold text-gray-900">{sum.top3Points}/{sum.totalPoints}</div><div className="text-xs text-gray-500">in the top 3 links</div><Change now={sum.top3Points} before={previous?.summary.top3Points} /></div>
+            <div><div className="font-semibold text-gray-900">{sum.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. position when found</div><Change now={sum.averageRank} before={previous?.summary.averageRank} invert /></div>
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 text-sm">
             <div><div className="font-semibold text-gray-900">{sum.top3Points}/{sum.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={sum.top3Points} before={previous?.summary.top3Points} /></div>
@@ -140,6 +149,7 @@ function ScanCard({ title, latest, previous, siteId, onPick }: { title: string; 
             <div><div className="font-semibold text-gray-900">{sum.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. rank when found</div><Change now={sum.averageRank} before={previous?.summary.averageRank} invert /></div>
           </div>
         )}
+        {note && <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">{note}</p>}
       </CardContent>
     </Card>
   );
@@ -276,19 +286,34 @@ export default function RankingsPage() {
   const nSources = data?.settings.sources.length || 1;
   const unscannedCredits = unscanned.length * nSources;
 
-  // Overview rows: one per keyword, its latest pack scan and latest Maps scan side by side (pack first).
+  // Overview rows: one per keyword; latest pack, Maps and website scans side by side (pack first).
   const keywordRows = data
     ? Array.from(new Set(data.scans.map((sc) => sc.keyword))).map((keyword) => ({
         keyword,
         pack: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'local_pack') || null,
         maps: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'maps') || null,
+        web: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'organic') || null,
       }))
     : [];
+  /**
+   * A strong pack with a missing website usually means Google reads the phrase as
+   * research or a job search on the web ("graphic designer" → job boards) while
+   * still treating it as a local-business search in the pack. Say so, with a phrase
+   * that reads as a service search.
+   */
+  const intentNote = (row: (typeof keywordRows)[number]): string | undefined => {
+    if (!row.web || !row.pack) return undefined;
+    if (row.pack.latest.summary.visibility >= 50 && row.web.latest.summary.foundPoints === 0) {
+      return `The pack shows the business here but the website is not on page 1. Google likely reads "${row.keyword}" on the web as a job or research search, not a hire-someone search. For the website, a phrase like "${row.keyword} near me"${data?.center?.city ? ` or "${row.keyword} ${data.center.city.toLowerCase()}"` : ''} is the realistic one to track.`;
+    }
+    return undefined;
+  };
   // Headline numbers across every keyword's latest scan.
   const headline = (() => {
     if (!data) return null;
     const packs = data.scans.filter((sc) => sc.source === 'local_pack');
     const maps = data.scans.filter((sc) => sc.source === 'maps');
+    const web = data.scans.filter((sc) => sc.source === 'organic');
     const avg = (list: typeof packs, f: (sum: ScanSummary) => number) => (list.length ? Math.round(list.reduce((t, sc) => t + f(sc.latest.summary), 0) / list.length) : null);
     const avgPrev = (list: typeof packs, f: (sum: ScanSummary) => number) => { const withPrev = list.filter((sc) => sc.previous); return withPrev.length ? Math.round(withPrev.reduce((t, sc) => t + f(sc.previous!.summary), 0) / withPrev.length) : null; };
     const top3Share = (sum: ScanSummary) => (sum.totalPoints ? Math.round((sum.top3Points / sum.totalPoints) * 100) : 0);
@@ -299,6 +324,8 @@ export default function RankingsPage() {
       mapsTop3Prev: avgPrev(maps, top3Share),
       mapsVisibility: avg(maps, (x) => x.visibility),
       mapsVisibilityPrev: avgPrev(maps, (x) => x.visibility),
+      web: avg(web, (x) => (x.totalPoints ? Math.round((x.foundPoints / x.totalPoints) * 100) : 0)),
+      webPrev: avgPrev(web, (x) => (x.totalPoints ? Math.round((x.foundPoints / x.totalPoints) * 100) : 0)),
     };
   })();
 
@@ -414,7 +441,7 @@ export default function RankingsPage() {
           </div>
         )}
         {scanning && run && data && (() => {
-          const done = data.scans.filter((sc) => new Date(sc.latest.scanned_at).getTime() >= run.startedAt).length;
+          const done = data.scans.filter((sc) => sc.source !== 'organic' && new Date(sc.latest.scanned_at).getTime() >= run.startedAt).length;
           const mins = Math.round((Date.now() - run.startedAt) / 60000);
           return (
             <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -500,7 +527,7 @@ export default function RankingsPage() {
                       );
                     })}
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">The Local Pack is the three businesses shown first in a Google search; Google Maps is the full list. They share an index but can differ at the same spot. Each source is its own heatmap and its own credit on manual scans.</p>
+                  <p className="mt-1 text-xs text-gray-400">The Local Pack is the three businesses shown first in a Google search; Google Maps is the full list. They share an index but can differ at the same spot. Each is its own heatmap and its own credit on manual scans. A Local Pack scan also reads where the website sits among the regular links on the same page, free, as a third heatmap.</p>
                 </div>
               </CardContent>
             </Card>
@@ -543,6 +570,13 @@ export default function RankingsPage() {
                         <Change now={headline.mapsVisibility} before={headline.mapsVisibilityPrev} />
                       </div>
                     )}
+                    {headline.web !== null && (
+                      <div>
+                        <div className="text-xl font-bold text-gray-900">{headline.web}%</div>
+                        <div className="text-xs text-gray-500">of spots with the website on page 1</div>
+                        <Change now={headline.web} before={headline.webPrev} suffix=" pts" />
+                      </div>
+                    )}
                     <div className="text-xs text-gray-400">averaged over every keyword&apos;s latest scan</div>
                   </CardContent>
                 </Card>
@@ -555,7 +589,7 @@ export default function RankingsPage() {
                 ) : (
                   <>
                     <p className="text-xs text-gray-500">{history?.length || 0} scan{history?.length === 1 ? '' : 's'} of &ldquo;{filterKeyword}&rdquo;, newest first. Each card compares with the scan before it on the same source.</p>
-                    {(['local_pack', 'maps'] as RankSource[]).map((src) => {
+                    {(['local_pack', 'maps', 'organic'] as RankSource[]).map((src) => {
                       const list = (history || []).filter((h) => h.source === src);
                       if (list.length === 0) return null;
                       return (
@@ -574,9 +608,10 @@ export default function RankingsPage() {
               ) : (
                 <div className="space-y-4">
                   {keywordRows.map((row) => (
-                    <div key={row.keyword} className="grid gap-4 md:grid-cols-2">
+                    <div key={row.keyword} className={`grid gap-4 md:grid-cols-2 ${[row.pack, row.maps, row.web].filter(Boolean).length > 2 ? 'xl:grid-cols-3' : ''}`}>
                       {row.pack && <ScanCard title={row.keyword} latest={row.pack.latest} previous={row.pack.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
                       {row.maps && <ScanCard title={row.keyword} latest={row.maps.latest} previous={row.maps.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
+                      {row.web && <ScanCard title={row.keyword} latest={row.web.latest} previous={row.web.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} note={intentNote(row)} />}
                     </div>
                   ))}
                 </div>
@@ -585,7 +620,7 @@ export default function RankingsPage() {
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500" /> Top 3</span>
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-400" /> 4 to 10</span>
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-orange-500" /> 11 to 20</span>
-                <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500/80" /> Not in top 20 / not in the pack</span>
+                <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500/80" /> Not in top 20 / not in the pack / website not on page 1</span>
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-gray-300" /> No pack shown</span>
               </div>
             </section>

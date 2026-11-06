@@ -14,13 +14,18 @@ export interface ScannedPoint extends GridPoint { rank: number | null; noPack?: 
  * list in the Maps app. They share an index but the pack is scored inside a web
  * search, so the two can differ at the same spot. Tracked in this order.
  */
-export type RankSource = 'local_pack' | 'maps';
-export const RANK_SOURCES: readonly RankSource[] = ['local_pack', 'maps'] as const;
-export const DEFAULT_RANK_SOURCES: readonly RankSource[] = RANK_SOURCES;
-export function isRankSource(v: unknown): v is RankSource { return v === 'local_pack' || v === 'maps'; }
-export function sourceLabel(source: string): string { return source === 'local_pack' ? 'Local Pack' : source === 'maps' ? 'Google Maps' : source; }
-/** Order the sources the way the page shows them: pack first. */
+export type RankSource = 'local_pack' | 'maps' | 'organic';
+export const RANK_SOURCES: readonly RankSource[] = ['local_pack', 'maps', 'organic'] as const;
+/** Sources an owner can choose to track. 'organic' (the website's spot in the web results) is never chosen: it is read for free from the same page the Local Pack scan fetches. */
+export const SCANNABLE_SOURCES: readonly RankSource[] = ['local_pack', 'maps'] as const;
+export const DEFAULT_RANK_SOURCES: readonly RankSource[] = SCANNABLE_SOURCES;
+export function isRankSource(v: unknown): v is RankSource { return v === 'local_pack' || v === 'maps' || v === 'organic'; }
+export function isScannableSource(v: unknown): v is RankSource { return v === 'local_pack' || v === 'maps'; }
+export function sourceLabel(source: string): string { return source === 'local_pack' ? 'Local Pack' : source === 'maps' ? 'Google Maps' : source === 'organic' ? 'Website' : source; }
+/** Order the sources the way the page shows them: pack first, then Maps, then the website. */
 export function sortSources(sources: readonly RankSource[]): RankSource[] { return RANK_SOURCES.filter((s) => sources.includes(s)); }
+/** Organic results only go 10 deep (the first page, the one the pack sits on); Maps goes to 20. */
+export function maxRankFor(source: RankSource): number { return source === 'local_pack' ? 3 : source === 'organic' ? 10 : 20; }
 
 export const GRID_SIZES = [5, 7, 9] as const;
 export const SPACINGS_MILES = [0.5, 1, 2, 3] as const;
@@ -73,7 +78,7 @@ export interface ScanSummary {
   /** Average rank over found points only; null when never found. */
   averageRank: number | null;
   /**
-   * 0-100. Maps: average "visibility" where rank 1 = 100 and not found = 0 (rank r scores max(0, 21 - r) / 20).
+   * 0-100. Maps / Website: average "visibility" where rank 1 = 100 and not found = 0 (rank r scores max(0, max+1 - r) / max; max = 20 on Maps, 10 on the web page).
    * Local Pack: share of points where the business is in the pack (being in the box is what counts, not the slot).
    */
   visibility: number;
@@ -94,7 +99,8 @@ export function summarize(points: ScannedPoint[], source: RankSource = 'maps'): 
     const shown = points.filter((p) => !p.noPack).length;
     return { ...base, packShownPoints: shown, visibility: Math.round((found.length / Math.max(1, shown)) * 100) };
   }
-  const score = points.reduce((s, p) => s + (p.rank === null ? 0 : Math.max(0, 21 - p.rank) / 20), 0);
+  const max = maxRankFor(source);
+  const score = points.reduce((s, p) => s + (p.rank === null ? 0 : Math.max(0, max + 1 - p.rank) / max), 0);
   return { ...base, visibility: Math.round((score / Math.max(1, points.length)) * 100) };
 }
 
@@ -151,6 +157,37 @@ export function findPackRank(
     return t === target || t.startsWith(target) || (target.startsWith(t) && t.length >= 8);
   });
   return { rank: idx === -1 ? null : idx + 1, packShown: true };
+}
+
+/** "https://www.Example.com/x" / "example.com" -> "example.com" */
+export function normalizeHost(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  try {
+    const host = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.toLowerCase();
+    return host.replace(/^www\./, '') || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The website's position among the organic (non-ad) results of a web search:
+ * the first entry whose domain is one of the site's hosts. Null when not on
+ * the page fetched.
+ */
+export function findOrganicRank(
+  items: { type?: string; rank_group?: number; domain?: string | null; url?: string | null }[],
+  hosts: readonly string[]
+): number | null {
+  const wanted = new Set(hosts.map((h) => normalizeHost(h)).filter((h): h is string => !!h));
+  if (wanted.size === 0) return null;
+  const organic = items.filter((i) => i.type === 'organic');
+  const idx = organic.findIndex((i) => {
+    const host = normalizeHost(i.domain || i.url || '');
+    return !!host && (wanted.has(host) || [...wanted].some((w) => host.endsWith(`.${w}`)));
+  });
+  return idx === -1 ? null : idx + 1;
 }
 
 /**

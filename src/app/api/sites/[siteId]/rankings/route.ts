@@ -6,7 +6,7 @@ import { inngest } from '@/lib/inngest/client';
 import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, pendingRunOf, recordPendingRun, scanHistory } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility, AI_RECHECK_CREDITS, AI_RECHECK_MIN_HOURS } from '@/lib/rank/ai-visibility';
-import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword, isRankSource, sortSources, type RankSource } from '@/lib/rank/grid';
+import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword, isRankSource, isScannableSource, sortSources, type RankSource } from '@/lib/rank/grid';
 import { getBalance, orgIdForSite, spendCredits, CREDIT_PACKS } from '@/lib/rank/credits';
 
 /**
@@ -77,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   if (typeof body.gridSize === 'number' && (GRID_SIZES as readonly number[]).includes(body.gridSize)) rt.grid_size = body.gridSize;
   if (typeof body.spacingMiles === 'number' && (SPACINGS_MILES as readonly number[]).includes(body.spacingMiles)) rt.spacing_miles = body.spacingMiles;
   if (Array.isArray(body.sources)) {
-    const picked: RankSource[] = sortSources(body.sources.filter(isRankSource));
+    const picked: RankSource[] = sortSources(body.sources.filter(isScannableSource));
     if (picked.length === 0) return NextResponse.json({ error: 'Pick at least one source to track' }, { status: 400 });
     rt.sources = picked;
   }

@@ -52,11 +52,16 @@ export function buildGrid(lat: number, lng: number, size: number, spacingMiles: 
   return points;
 }
 
-/** "Appliance repair service" -> "appliance repair"; "Oven & Range Repair" -> "oven & range repair" */
+/**
+ * "Appliance repair service" -> "appliance repair"; "Oven & Range Repair" -> "oven & range repair".
+ * "near me" is kept: it changes what Google thinks the searcher wants on the web
+ * ("graphic designer" = jobs, "graphic designer near me" = hire one), so an owner
+ * who types it means it.
+ */
 export function cleanKeyword(name: string): string {
   return name
     .toLowerCase()
-    .replace(/\b(services?|company|companies|contractors?|near me)\b/g, ' ')
+    .replace(/\b(services?|company|companies|contractors?)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

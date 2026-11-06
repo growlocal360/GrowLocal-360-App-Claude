@@ -15,6 +15,7 @@ describe('rank grid', () => {
 
   it('turns category and service names into search phrases', () => {
     expect(cleanKeyword('Appliance repair service')).toBe('appliance repair');
+    expect(cleanKeyword('Graphic Designer Near Me')).toBe('graphic designer near me');
     expect(defaultKeywords('Appliance repair service', ['Refrigerator Repair Service', 'Washing Machine Repair', 'Dryer Repair Service', 'Dishwasher Repair Service', 'Oven & Range Repair', 'Microwave Repair Service']))
       .toEqual(['appliance repair', 'refrigerator repair', 'washing machine repair', 'dryer repair', 'dishwasher repair']);
   });

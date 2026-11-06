@@ -23,7 +23,7 @@ interface RankingsResponse {
   scans: { keyword: string; latest: ScanRow; previous: ScanRow | null }[];
   ai: { batchAt: string; mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number; checks: AiCheckRow[] }[]; topCompetitors: { name: string; count: number }[] } | null;
   estimatedCostPerScan: number;
-  credits: { balance: number; perManualScan: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[]; orgName: string | null };
+  credits: { balance: number; perManualScan: number; perAiCheck: number; aiMinHours: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[]; orgName: string | null };
   pendingRun: { at: string; keywords: string[] } | null;
 }
 
@@ -261,6 +261,41 @@ export default function RankingsPage() {
     }
   };
 
+  // "Re-check AI": only the AI visibility check, paid with credits. Polls until a newer batch lands.
+  const [aiChecking, setAiChecking] = useState(false);
+  const aiPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => { if (aiPollRef.current) clearInterval(aiPollRef.current); }, []);
+  const recheckAi = async () => {
+    setAiChecking(true);
+    try {
+      const r = await fetch(`/api/sites/${siteId}/rankings/ai`, { method: 'POST' });
+      const d = await r.json();
+      if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
+      if (!r.ok) throw new Error(d.error || 'Could not start');
+      const startedAt = new Date(d.startedAt).getTime();
+      toast.success(`Asking the assistants now (${d.charged} credits, ${d.balance} left). Answers land in a minute or two.`);
+      if (aiPollRef.current) clearInterval(aiPollRef.current);
+      let tries = 0;
+      aiPollRef.current = setInterval(async () => {
+        tries += 1;
+        const fresh = await load();
+        const done = fresh?.ai && new Date(fresh.ai.batchAt).getTime() >= startedAt;
+        if (done || tries > 60) {
+          if (aiPollRef.current) clearInterval(aiPollRef.current);
+          setAiChecking(false);
+          if (done) toast.success(`AI check finished: ${fresh!.ai!.mentionedShare}% of questions named the business.`);
+          else toast.error('The AI check has not reported back after 5 minutes. If no assistant answered, the credits were returned. Reload this page later.');
+        }
+      }, 5000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not start');
+      setAiChecking(false);
+    }
+  };
+  // Inside the no-repeat window the server refuses the re-check without charging; say so on the button instead.
+  const aiAgeHours = data?.ai ? (Date.now() - new Date(data.ai.batchAt).getTime()) / 3_600_000 : Infinity;
+  const aiTooRecent = !!data && aiAgeHours < data.credits.aiMinHours;
+
   const s = data?.settings;
 
   return (
@@ -289,7 +324,7 @@ export default function RankingsPage() {
             </div>
             {data && (
               <span className="text-xs text-gray-500">
-                {data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left{data.credits.orgName ? ` for ${data.credits.orgName}` : ''} · one balance for every site in this account · weekly scans are included, manual scans use 1 credit per keyword
+                {data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left{data.credits.orgName ? ` for ${data.credits.orgName}` : ''} · one balance for every site in this account · weekly scans are included, manual scans use 1 credit per keyword, an AI re-check uses {data.credits.perAiCheck}
               </span>
             )}
           </div>
@@ -439,12 +474,25 @@ export default function RankingsPage() {
 
             {/* AI visibility */}
             <section className="space-y-3">
-              <div>
-                <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Bot className="h-4 w-4 text-gray-500" /> Do AI assistants recommend you?</h2>
-                <p className="mt-1 text-xs text-gray-500">Each assistant is asked with web search on and the searcher placed in your city, the way the apps answer real customers. Checked every other week.</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2"><Bot className="h-4 w-4 text-gray-500" /> Do AI assistants recommend you?</h2>
+                  <p className="mt-1 text-xs text-gray-500">Each assistant is asked with web search on and the searcher placed in your city, the way the apps answer real customers. Checked every other week; re-check any time with credits.</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={recheckAi}
+                  disabled={aiChecking || aiTooRecent || data.aiModels.length === 0}
+                  title={data.aiModels.length === 0 ? 'No AI assistant is configured' : aiTooRecent ? `Checked ${Math.max(1, Math.round(aiAgeHours))} hour${Math.round(aiAgeHours) === 1 ? '' : 's'} ago. Answers rarely change within a day, so a re-check opens after ${data.credits.aiMinHours} hours.` : `Ask ${data.aiModels.map(aiModelLabel).join(', ')} again now`}
+                  className="shrink-0"
+                >
+                  {aiChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {aiChecking ? 'Asking…' : `Re-check AI · ${data.credits.perAiCheck} credits`}
+                </Button>
               </div>
               {!data.ai ? (
-                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run every other week with the Monday scan{data.aiModels.length ? ` (${data.aiModels.map(aiModelLabel).join(', ')})` : ''}, or with Scan now.</CardContent></Card>
+                <Card><CardContent className="py-8 text-center text-gray-500 text-sm">No checks yet. They run every other week with the Monday scan{data.aiModels.length ? ` (${data.aiModels.map(aiModelLabel).join(', ')})` : ''}, or now with Re-check AI.</CardContent></Card>
               ) : (
                 <Card>
                   <CardContent className="pt-6 space-y-4">

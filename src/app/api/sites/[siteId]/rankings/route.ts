@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
   const keyword = req.nextUrl.searchParams.get('keyword');
   if (keyword) {
     const src = req.nextUrl.searchParams.get('source');
-    return NextResponse.json({ history: await scanHistory(admin, siteId, keyword, isRankSource(src) ? src : undefined) });
+    return NextResponse.json({ history: await scanHistory(admin, siteId, keyword, isRankSource(src) ? src : undefined, 90) });
   }
 
   const { data: site } = await admin.from('sites').select('settings, name').eq('id', siteId).single();

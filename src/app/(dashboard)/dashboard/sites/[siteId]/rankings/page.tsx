@@ -155,6 +155,68 @@ function ScanCard({ title, latest, previous, siteId, onPick, note }: { title: st
   );
 }
 
+/** A dated thumbnail of one scan: coloured cells only, no street map (so a long history costs no map requests). */
+function MiniGrid({ scan, selected, onClick }: { scan: ScanRow; selected: boolean; onClick: () => void }) {
+  const size = scan.grid_size;
+  const isPack = scan.source === 'local_pack';
+  return (
+    <button type="button" onClick={onClick} className={`shrink-0 rounded-lg border p-1.5 text-left transition ${selected ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-400'}`} title={`${fmt(scan.scanned_at)} · ${isPack ? `${scan.summary.visibility}% in the pack` : `visibility ${scan.summary.visibility}`}`}>
+      <div className="grid gap-px" style={{ gridTemplateColumns: `repeat(${size}, 7px)` }}>
+        {scan.points.map((p) => <span key={`${p.row}-${p.col}`} className={`h-[7px] w-[7px] rounded-[1px] ${TONE_CLASS[rankTone(p.rank, p.noPack)].split(' ')[0]}`} />)}
+      </div>
+      <div className="mt-1 text-[10px] leading-tight text-gray-500">{fmt(scan.scanned_at).replace(/, \d{4}$/, '')}</div>
+      <div className="text-[11px] font-semibold leading-tight text-gray-900">{scan.summary.visibility}{isPack ? '%' : ''}</div>
+    </button>
+  );
+}
+
+/** Visibility over time, oldest → newest. */
+function Sparkline({ values, pct }: { values: number[]; pct: boolean }) {
+  if (values.length < 2) return null;
+  const w = 240, h = 36, pad = 3;
+  const max = pct ? 100 : 100;
+  const pts = values.map((v, i) => `${pad + (i / (values.length - 1)) * (w - pad * 2)},${h - pad - (Math.max(0, Math.min(max, v)) / max) * (h - pad * 2)}`);
+  const last = values[values.length - 1], first = values[0];
+  const tone = last > first ? '#047857' : last < first ? '#dc2626' : '#6b7280';
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-9 w-full max-w-[240px]" aria-label="Trend">
+      <polyline points={pts.join(' ')} fill="none" stroke={tone} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={pts[pts.length - 1].split(',')[0]} cy={pts[pts.length - 1].split(',')[1]} r="3" fill={tone} />
+    </svg>
+  );
+}
+
+/**
+ * One surface for one keyword: the chosen (default latest) scan large, a trend
+ * line, and every earlier scan as a clickable thumbnail, oldest → newest.
+ */
+function SourceColumn({ source, scans, siteId, pickedId, onPick, note }: { source: RankSource; scans: ScanRow[]; siteId: string; pickedId: string | null | undefined; onPick: (id: string | null) => void; note?: string }) {
+  if (scans.length === 0) return null;
+  const newestFirst = scans; // API order
+  const idx = pickedId ? Math.max(0, newestFirst.findIndex((x) => x.id === pickedId)) : 0;
+  const shown = newestFirst[idx];
+  const before = newestFirst[idx + 1] || null;
+  const chronological = [...newestFirst].reverse();
+  const title = idx === 0 ? 'Latest' : fmt(shown.scanned_at);
+  return (
+    <div className="space-y-3">
+      <ScanCard title={title} latest={shown} previous={before} siteId={siteId} note={note} />
+      {chronological.length > 1 && (
+        <div className="space-y-2 rounded-xl border bg-white p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium text-gray-700">History · {chronological.length} scans</div>
+            <Sparkline values={chronological.map((x) => x.summary.visibility)} pct={source === 'local_pack'} />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {chronological.map((x) => <MiniGrid key={x.id} scan={x} selected={x.id === shown.id} onClick={() => onPick(x.id === newestFirst[0].id ? null : x.id)} />)}
+          </div>
+          <p className="text-[11px] text-gray-400">Oldest on the left. Click a date to see it large, compared with the scan before it.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Change({ now, before, invert = false, suffix = '' }: { now: number | null; before: number | null | undefined; invert?: boolean; suffix?: string }) {
   if (now === null || before === null || before === undefined) return null;
   const diff = now - before;
@@ -193,10 +255,12 @@ export default function RankingsPage() {
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [newKw, setNewKw] = useState('');
-  // Heatmap filter: 'all' shows the latest scan per keyword; a keyword shows its whole history for comparison.
-  const [filterKeyword, setFilterKeyword] = useState<string>('all');
+  // The keyword open in the detail view (its three surfaces + their history). Defaults to the first keyword once scans load.
+  const [selectedKeyword, setSelectedKeyword] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanRow[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // Which dated scan is shown large in each surface column (null = the latest).
+  const [pickedScan, setPickedScan] = useState<Partial<Record<RankSource, string | null>>>({});
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -242,15 +306,15 @@ export default function RankingsPage() {
   }, [load, watchRun]);
 
   useEffect(() => {
-    if (filterKeyword === 'all') { setHistory(null); return; }
+    if (!selectedKeyword) { setHistory(null); return; }
     let cancelled = false;
     setHistoryLoading(true);
-    fetch(`/api/sites/${siteId}/rankings?keyword=${encodeURIComponent(filterKeyword)}`)
+    fetch(`/api/sites/${siteId}/rankings?keyword=${encodeURIComponent(selectedKeyword)}`)
       .then((r) => (r.ok ? r.json() : { history: [] }))
-      .then((d: { history: ScanRow[] }) => { if (!cancelled) setHistory(d.history || []); })
+      .then((d: { history: ScanRow[] }) => { if (!cancelled) { setHistory(d.history || []); setPickedScan({}); } })
       .finally(() => { if (!cancelled) setHistoryLoading(false); });
     return () => { cancelled = true; };
-  }, [filterKeyword, siteId, data?.scans]);
+  }, [selectedKeyword, siteId, data?.scans]);
 
   const patch = async (body: Record<string, unknown>) => {
     setSaving(true);
@@ -295,6 +359,12 @@ export default function RankingsPage() {
         web: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'organic') || null,
       }))
     : [];
+  useEffect(() => {
+    if (!keywordRows.length) return;
+    if (!selectedKeyword || !keywordRows.some((r) => r.keyword === selectedKeyword)) setSelectedKeyword(keywordRows[0].keyword);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keywordRows.map((r) => r.keyword).join('|')]);
+
   /**
    * A strong pack with a missing website usually means Google reads the phrase as
    * research or a job search on the web ("graphic designer" → job boards) while
@@ -532,21 +602,10 @@ export default function RankingsPage() {
               </CardContent>
             </Card>
 
-            {/* Heatmaps */}
+            {/* Heatmaps: scoreboard across keywords, then one keyword at a time across its surfaces with history */}
             <section className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-semibold text-gray-900">Heatmaps</h2>
-                {data.scans.length > 0 && (
-                  <label className="flex items-center gap-2 text-sm text-gray-600">
-                    Show
-                    <select className="rounded border border-gray-300 bg-white px-2 py-1 text-sm" value={filterKeyword} onChange={(e) => setFilterKeyword(e.target.value)}>
-                      <option value="all">All keywords · latest scan</option>
-                      {keywordRows.map((row) => <option key={row.keyword} value={row.keyword}>{row.keyword} · every scan</option>)}
-                    </select>
-                  </label>
-                )}
-              </div>
-              {headline && data.scans.length > 0 && filterKeyword === 'all' && (
+              <h2 className="font-semibold text-gray-900">Heatmaps</h2>
+              {headline && data.scans.length > 0 && (
                 <Card>
                   <CardContent className="flex flex-wrap items-end gap-x-10 gap-y-4 pt-6">
                     {headline.pack !== null && (
@@ -583,38 +642,67 @@ export default function RankingsPage() {
               )}
               {data.scans.length === 0 ? (
                 <Card><CardContent className="py-10 text-center text-gray-500">{scanning ? 'Scanning now. The first heatmap appears here as soon as its keyword finishes.' : `No scans yet. ${data.providerConfigured ? 'Click Scan all, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}`}</CardContent></Card>
-              ) : filterKeyword !== 'all' ? (
-                historyLoading && !history ? (
-                  <Card><CardContent className="py-10 text-center text-gray-500"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></CardContent></Card>
-                ) : (
-                  <>
-                    <p className="text-xs text-gray-500">{history?.length || 0} scan{history?.length === 1 ? '' : 's'} of &ldquo;{filterKeyword}&rdquo;, newest first. Each card compares with the scan before it on the same source.</p>
-                    {(['local_pack', 'maps', 'organic'] as RankSource[]).map((src) => {
-                      const list = (history || []).filter((h) => h.source === src);
-                      if (list.length === 0) return null;
-                      return (
-                        <div key={src} className="space-y-2">
-                          <h3 className="text-sm font-semibold text-gray-700">{sourceLabel(src)}</h3>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            {list.map((scan, i) => (
-                              <ScanCard key={scan.id} title={fmt(scan.scanned_at)} latest={scan} previous={list[i + 1] || null} siteId={siteId} />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )
               ) : (
-                <div className="space-y-4">
-                  {keywordRows.map((row) => (
-                    <div key={row.keyword} className={`grid gap-4 md:grid-cols-2 ${[row.pack, row.maps, row.web].filter(Boolean).length > 2 ? 'xl:grid-cols-3' : ''}`}>
-                      {row.pack && <ScanCard title={row.keyword} latest={row.pack.latest} previous={row.pack.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
-                      {row.maps && <ScanCard title={row.keyword} latest={row.maps.latest} previous={row.maps.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
-                      {row.web && <ScanCard title={row.keyword} latest={row.web.latest} previous={row.web.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} note={intentNote(row)} />}
-                    </div>
-                  ))}
-                </div>
+                <>
+                  {/* Scoreboard: every keyword on every surface, latest scan and change */}
+                  <Card>
+                    <CardContent className="pt-4">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-gray-500">
+                            <th className="pb-2 font-medium">Keyword</th>
+                            <th className="pb-2 text-right font-medium">Local Pack<div className="font-normal text-gray-400">spots in the pack</div></th>
+                            <th className="pb-2 text-right font-medium">Google Maps<div className="font-normal text-gray-400">visibility · top 3</div></th>
+                            <th className="pb-2 text-right font-medium">Website<div className="font-normal text-gray-400">spots on page 1</div></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {keywordRows.map((row) => {
+                            const active = row.keyword === selectedKeyword;
+                            const cell = (v: number | null, prev: number | null | undefined, suffix: string, extra?: string) => v === null ? <span className="text-gray-300">–</span> : <span><span className="font-semibold text-gray-900">{v}{suffix}</span>{extra ? <span className="text-gray-400"> · {extra}</span> : null}<div><Change now={v} before={prev ?? null} suffix={suffix === '%' ? ' pts' : ''} /></div></span>;
+                            return (
+                              <tr key={row.keyword} onClick={() => setSelectedKeyword(row.keyword)} className={`cursor-pointer border-t align-top ${active ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                                <td className="py-2 pr-2"><span className={`font-medium ${active ? 'text-gray-900 underline underline-offset-2' : 'text-gray-800'}`}>{row.keyword}</span><div className="text-[11px] text-gray-400">{fmt((row.pack || row.maps || row.web)!.latest.scanned_at)}</div></td>
+                                <td className="py-2 text-right">{cell(row.pack ? row.pack.latest.summary.visibility : null, row.pack?.previous?.summary.visibility, '%')}</td>
+                                <td className="py-2 text-right">{cell(row.maps ? row.maps.latest.summary.visibility : null, row.maps?.previous?.summary.visibility, '', row.maps ? `${row.maps.latest.summary.top3Points}/${row.maps.latest.summary.totalPoints} top 3` : undefined)}</td>
+                                <td className="py-2 text-right">{cell(row.web ? Math.round((row.web.latest.summary.foundPoints / Math.max(1, row.web.latest.summary.totalPoints)) * 100) : null, row.web?.previous ? Math.round((row.web.previous.summary.foundPoints / Math.max(1, row.web.previous.summary.totalPoints)) * 100) : null, '%')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <p className="mt-2 text-[11px] text-gray-400">Click a keyword to open it below. Changes are against the scan before the latest one on the same surface.</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Keyword detail: its surfaces side by side, each with history */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {keywordRows.map((row) => (
+                      <button key={row.keyword} type="button" onClick={() => setSelectedKeyword(row.keyword)} className={`rounded-full border px-3 py-1 text-sm ${row.keyword === selectedKeyword ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-700 hover:border-gray-400'}`}>{row.keyword}</button>
+                    ))}
+                  </div>
+                  {selectedKeyword && (() => {
+                    const row = keywordRows.find((r) => r.keyword === selectedKeyword);
+                    if (!row) return null;
+                    const sources = (['local_pack', 'maps', 'organic'] as RankSource[]).filter((src) => (src === 'local_pack' ? row.pack : src === 'maps' ? row.maps : row.web));
+                    const forSource = (src: RankSource): ScanRow[] => {
+                      const fromHistory = (history || []).filter((h) => h.source === src);
+                      if (fromHistory.length) return fromHistory;
+                      const latest = src === 'local_pack' ? row.pack : src === 'maps' ? row.maps : row.web;
+                      return latest ? [latest.latest, ...(latest.previous ? [latest.previous] : [])] : [];
+                    };
+                    return (
+                      <div className="space-y-2">
+                        {historyLoading && !history && <div className="text-xs text-gray-400"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Loading history…</div>}
+                        <div className={`grid gap-4 ${sources.length >= 3 ? 'md:grid-cols-2 xl:grid-cols-3' : sources.length === 2 ? 'md:grid-cols-2' : 'md:max-w-xl'}`}>
+                          {sources.map((src) => (
+                            <SourceColumn key={src} source={src} scans={forSource(src)} siteId={siteId} pickedId={pickedScan[src]} onPick={(id) => setPickedScan((p) => ({ ...p, [src]: id }))} note={src === 'organic' ? intentNote(row) : undefined} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500" /> Top 3</span>

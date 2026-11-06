@@ -188,6 +188,16 @@ export function aiModelsAvailable(): AiModel[] {
   return out;
 }
 
+/** A manual "Re-check AI" costs this many credits (about 3x our API spend, the same margin as a grid keyword). The scheduled every-other-week check is free. */
+export const AI_RECHECK_CREDITS = 2;
+/** The same answers rarely change within a day; a re-check inside this window is refused before any credit is spent. */
+export const AI_RECHECK_MIN_HOURS = 24;
+
+export async function lastAiBatchAt(supabase: SupabaseClient, siteId: string): Promise<string | null> {
+  const { data } = await supabase.from('ai_visibility_checks').select('batch_at').eq('site_id', siteId).order('batch_at', { ascending: false }).limit(1).maybeSingle();
+  return (data?.batch_at as string | undefined) || null;
+}
+
 export interface AiRunOptions {
   /** Skip when the latest batch is younger than this (days). Scheduled runs use 13 for an every-other-week cadence; manual scans use 1. */
   minIntervalDays?: number;

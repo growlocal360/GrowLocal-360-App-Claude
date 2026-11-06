@@ -5,7 +5,7 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import { inngest } from '@/lib/inngest/client';
 import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, pendingRunOf, recordPendingRun, scanHistory } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
-import { aiModelsAvailable, latestAiVisibility } from '@/lib/rank/ai-visibility';
+import { aiModelsAvailable, latestAiVisibility, AI_RECHECK_CREDITS, AI_RECHECK_MIN_HOURS } from '@/lib/rank/ai-visibility';
 import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
 import { getBalance, orgIdForSite, spendCredits, CREDIT_PACKS } from '@/lib/rank/credits';
 
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
   ]);
   return NextResponse.json({
     // Credits belong to the organization: every site in the account draws from the same balance.
-    credits: { balance, perManualScan: keywords.length, packs: CREDIT_PACKS, orgName: org?.name || null },
+    credits: { balance, perManualScan: keywords.length, perAiCheck: AI_RECHECK_CREDITS, aiMinHours: AI_RECHECK_MIN_HOURS, packs: CREDIT_PACKS, orgName: org?.name || null },
     pendingRun: pendingRunOf(site.settings),
     settings: { ...settings, keywords, keywordsAreDefaults: settings.keywords.length === 0 },
     providerConfigured: dataForSeoConfigured(),

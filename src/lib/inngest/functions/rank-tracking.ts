@@ -2,7 +2,7 @@ import type { GetStepTools } from 'inngest';
 import { inngest } from '@/lib/inngest/client';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { prepareRankScan, scanKeyword, recordLastRun, type SiteScanRun } from '@/lib/rank/scan';
-import { runAiVisibility } from '@/lib/rank/ai-visibility';
+import { runAiVisibility, AI_RECHECK_CREDITS } from '@/lib/rank/ai-visibility';
 import { grantCredits, orgIdForSite } from '@/lib/rank/credits';
 
 type StepRunner = GetStepTools<typeof inngest>;
@@ -76,5 +76,30 @@ export const rankTrackingRequested = inngest.createFunction(
     }
     const aiRes = ai === false ? null : await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId, { minIntervalDays: 1 }));
     return { scans, ai: aiRes };
+  }
+);
+
+/**
+ * "Re-check AI" from the dashboard: only the AI visibility check, no grid scan.
+ * Paid for up front (AI_RECHECK_CREDITS); refunded when the check is skipped or
+ * no assistant answered, so a provider outage does not cost the customer.
+ */
+export const rankAiRequested = inngest.createFunction(
+  { id: 'rank-ai-requested', name: 'AI visibility check on demand' },
+  { event: 'rank/ai.requested' },
+  async ({ event, step }) => {
+    const { siteId, charged } = event.data as { siteId: string; charged?: number };
+    const supabase = createAdminClient();
+    const ai = await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId, { minIntervalDays: 1 }));
+    const answered = ai.checks.filter((c) => !c.error).length;
+    if (charged && (ai.skipped || answered === 0)) {
+      await step.run(`refund-${siteId}`, async () => {
+        const orgId = await orgIdForSite(supabase, siteId);
+        if (!orgId) return { refunded: 0 };
+        await grantCredits(supabase, orgId, charged, `refund:${ai.skipped || 'no AI assistant answered'}`, { siteId });
+        return { refunded: charged };
+      });
+    }
+    return { siteId, skipped: ai.skipped, checks: ai.checks.length, answered, credits: AI_RECHECK_CREDITS };
   }
 );

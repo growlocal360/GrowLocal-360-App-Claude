@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildGrid, defaultKeywords, findRank, summarize, GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, type ScannedPoint, type ScanSummary } from './grid';
-import { mapsSearch, mapLimit, dataForSeoConfigured, checkDataForSeoAccount } from './dataforseo';
+import { buildGrid, defaultKeywords, findRank, findPackRank, summarize, sortSources, isRankSource, GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, DEFAULT_RANK_SOURCES, type RankSource, type ScannedPoint, type ScanSummary } from './grid';
+import { mapsSearch, localPackSearch, mapLimit, dataForSeoConfigured, checkDataForSeoAccount } from './dataforseo';
 import type { SiteSettings } from '@/types/database';
 
 /**
@@ -14,6 +14,8 @@ export interface RankSettings {
   keywords: string[];
   gridSize: number;
   spacingMiles: number;
+  /** Which Google surfaces to scan, pack first. Default both. */
+  sources: RankSource[];
 }
 
 export function rankSettings(settings: SiteSettings | null | undefined): RankSettings {
@@ -25,6 +27,10 @@ export function rankSettings(settings: SiteSettings | null | undefined): RankSet
     keywords: Array.isArray(raw.keywords) ? (raw.keywords as unknown[]).filter((k): k is string => typeof k === 'string' && k.trim().length > 0).map((k) => k.trim().toLowerCase()).slice(0, MAX_KEYWORDS) : [],
     gridSize: (GRID_SIZES as readonly number[]).includes(size) ? size : 7,
     spacingMiles: (SPACINGS_MILES as readonly number[]).includes(spacing) ? spacing : 1,
+    sources: (() => {
+      const picked = Array.isArray(raw.sources) ? sortSources((raw.sources as unknown[]).filter(isRankSource)) : [];
+      return picked.length ? picked : [...DEFAULT_RANK_SOURCES];
+    })(),
   };
 }
 
@@ -71,21 +77,29 @@ export async function resolveCenter(supabase: SupabaseClient, siteId: string): P
   }
 }
 
-export interface ScanResult { keyword: string; scanId?: string; summary?: ScanSummary; cost?: number; error?: string }
+export interface ScanResult { keyword: string; source: RankSource; scanId?: string; summary?: ScanSummary; cost?: number; error?: string }
 
+/** One keyword × one grid × one source. */
 export async function scanKeyword(
   supabase: SupabaseClient,
   siteId: string,
   keyword: string,
   settings: RankSettings,
   center: Center,
-  businessName: string
+  businessName: string,
+  source: RankSource = 'maps'
 ): Promise<ScanResult> {
   const grid = buildGrid(center.lat, center.lng, settings.gridSize, settings.spacingMiles);
   let cost = 0;
   let failures = 0;
   const points: ScannedPoint[] = await mapLimit(grid, 5, async (p) => {
     try {
+      if (source === 'local_pack') {
+        const r = await localPackSearch(keyword, p.lat, p.lng);
+        cost += r.cost;
+        const hit = findPackRank(r.items, businessName);
+        return hit.packShown ? { ...p, rank: hit.rank } : { ...p, rank: null, noPack: true };
+      }
       const r = await mapsSearch(keyword, p.lat, p.lng);
       cost += r.cost;
       return { ...p, rank: findRank(r.items, center.placeId, businessName) };
@@ -94,14 +108,15 @@ export async function scanKeyword(
       return { ...p, rank: null };
     }
   });
-  if (failures === grid.length) return { keyword, error: 'Every grid point failed. Check the DataForSEO account and balance.' };
+  if (failures === grid.length) return { keyword, source, error: 'Every grid point failed. Check the DataForSEO account and balance.' };
 
-  const summary = summarize(points);
+  const summary = summarize(points, source);
   const { data, error } = await supabase
     .from('rank_scans')
     .insert({
       site_id: siteId,
       keyword,
+      source,
       grid_size: settings.gridSize,
       spacing_miles: settings.spacingMiles,
       center_lat: center.lat,
@@ -114,16 +129,16 @@ export async function scanKeyword(
     })
     .select('id')
     .single();
-  if (error || !data) return { keyword, error: error?.message || 'Could not save scan' };
-  return { keyword, scanId: data.id, summary, cost };
+  if (error || !data) return { keyword, source, error: error?.message || 'Could not save scan' };
+  return { keyword, source, scanId: data.id, summary, cost };
 }
 
 export interface SiteScanRun { siteId: string; skipped?: string; results: ScanResult[]; totalCost: number }
 
 export interface RankLastRun { at: string; ok: boolean; message: string; scanned: number; failed: number }
 
-/** A run that was started (and paid for) but has not reported back yet. */
-export interface RankPendingRun { at: string; keywords: string[] }
+/** A run that was started (and paid for) but has not reported back yet. `sources` is missing on runs recorded before Local Pack tracking (Maps only). */
+export interface RankPendingRun { at: string; keywords: string[]; sources?: RankSource[] }
 
 /** Everything a run needs, resolved once so each keyword can be its own step. */
 export interface ScanPrep { settings: RankSettings; center: Center; keywords: string[]; businessName: string }
@@ -152,8 +167,8 @@ async function updateRankTracking(supabase: SupabaseClient, siteId: string, patc
 }
 
 /** Mark a run as started so the page can keep showing progress after a reload. Cleared by recordLastRun. */
-export async function recordPendingRun(supabase: SupabaseClient, siteId: string, keywords: string[]): Promise<RankPendingRun> {
-  const pending: RankPendingRun = { at: new Date().toISOString(), keywords };
+export async function recordPendingRun(supabase: SupabaseClient, siteId: string, keywords: string[], sources: RankSource[]): Promise<RankPendingRun> {
+  const pending: RankPendingRun = { at: new Date().toISOString(), keywords, sources };
   await updateRankTracking(supabase, siteId, { pending_run: pending });
   return pending;
 }
@@ -173,12 +188,14 @@ export function pendingRunOf(settings: SiteSettings | null | undefined): RankPen
 export async function recordLastRun(supabase: SupabaseClient, siteId: string, run: SiteScanRun): Promise<RankLastRun> {
   const scanned = run.results.filter((r) => !r.error).length;
   const failed = run.results.filter((r) => r.error).length;
+  const sources = new Set(run.results.map((r) => r.source));
+  const unit = sources.size > 1 ? 'heatmap' : 'keyword';
   const message = run.skipped
     ? run.skipped
     : failed === 0
-      ? `Scanned ${scanned} keyword${scanned === 1 ? '' : 's'}`
+      ? `Scanned ${scanned} ${unit}${scanned === 1 ? '' : 's'}`
       : scanned === 0
-        ? run.results[0]?.error || 'Every keyword failed'
+        ? run.results[0]?.error || `Every ${unit} failed`
         : `${scanned} scanned, ${failed} failed: ${run.results.find((r) => r.error)?.error}`;
   const last: RankLastRun = { at: new Date().toISOString(), ok: !run.skipped && failed === 0 && scanned > 0, message, scanned, failed };
   await updateRankTracking(supabase, siteId, { last_run: last, pending_run: null });
@@ -202,38 +219,43 @@ async function runRankScansInner(supabase: SupabaseClient, siteId: string, only?
   const prep = await prepareRankScan(supabase, siteId, only);
   if ('skipped' in prep) return { ...out, skipped: prep.skipped };
   for (const keyword of prep.keywords) {
-    const r = await scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName);
-    out.results.push(r);
-    out.totalCost += r.cost || 0;
+    for (const source of prep.settings.sources) {
+      const r = await scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName, source);
+      out.results.push(r);
+      out.totalCost += r.cost || 0;
+    }
   }
   return out;
 }
 
-/** Latest scan per keyword plus the one before it, for deltas. */
+const SCAN_COLUMNS = 'id, keyword, source, grid_size, spacing_miles, center_lat, center_lng, points, summary, scanned_at, cost_usd, failed_points';
+
+/** Latest scan per keyword × source plus the one before it, for deltas. Pack rows come first within a keyword. */
 export async function latestScans(supabase: SupabaseClient, siteId: string) {
   const { data } = await supabase
     .from('rank_scans')
-    .select('id, keyword, grid_size, spacing_miles, center_lat, center_lng, points, summary, scanned_at, cost_usd, failed_points')
+    .select(SCAN_COLUMNS)
     .eq('site_id', siteId)
     .order('scanned_at', { ascending: false })
-    .limit(200);
-  const byKeyword = new Map<string, typeof data>();
+    .limit(400);
+  const byKey = new Map<string, typeof data>();
   for (const row of data || []) {
-    const list = byKeyword.get(row.keyword) || [];
+    const key = `${row.keyword}\u0000${row.source}`;
+    const list = byKey.get(key) || [];
     if (list.length < 2) list.push(row);
-    byKeyword.set(row.keyword, list);
+    byKey.set(key, list);
   }
-  return [...byKeyword.entries()].map(([keyword, rows]) => ({ keyword, latest: rows![0], previous: rows![1] || null }));
+  return [...byKey.values()].map((rows) => ({ keyword: rows![0].keyword as string, source: rows![0].source as RankSource, latest: rows![0], previous: rows![1] || null }));
 }
 
-/** Every scan for one keyword, newest first, for side-by-side comparison on the Rankings page. */
-export async function scanHistory(supabase: SupabaseClient, siteId: string, keyword: string, limit = 12) {
-  const { data } = await supabase
+/** Every scan for one keyword (optionally one source), newest first, for side-by-side comparison on the Rankings page. */
+export async function scanHistory(supabase: SupabaseClient, siteId: string, keyword: string, source?: RankSource, limit = 24) {
+  let q = supabase
     .from('rank_scans')
-    .select('id, keyword, grid_size, spacing_miles, center_lat, center_lng, points, summary, scanned_at, cost_usd, failed_points')
+    .select(SCAN_COLUMNS)
     .eq('site_id', siteId)
-    .eq('keyword', keyword)
-    .order('scanned_at', { ascending: false })
-    .limit(limit);
+    .eq('keyword', keyword);
+  if (source) q = q.eq('source', source);
+  const { data } = await q.order('scanned_at', { ascending: false }).limit(limit);
   return data || [];
 }

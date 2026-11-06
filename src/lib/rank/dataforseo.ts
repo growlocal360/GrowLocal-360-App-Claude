@@ -80,6 +80,34 @@ export async function mapsSearch(keyword: string, lat: number, lng: number, opts
   return { items: task.result?.[0]?.items || [], cost: task.cost ?? json.cost ?? 0 };
 }
 
+export interface PackItem { type?: string; rank_group?: number; rank_absolute?: number; title?: string | null; domain?: string | null; is_paid?: boolean; cid?: string | null; rating?: { value?: number; votes_count?: number } | null }
+export interface LocalPackResult { items: PackItem[]; cost: number }
+
+/**
+ * A normal Google web search as seen from one coordinate, so the Local Pack
+ * (type 'local_pack' items) can be read. Depth 10 = the first page, which is
+ * the only place the pack appears. Same price as a Maps call.
+ * https://docs.dataforseo.com/v3/serp/google/organic/live/advanced/
+ */
+export async function localPackSearch(keyword: string, lat: number, lng: number): Promise<LocalPackResult> {
+  if (!dataForSeoConfigured()) throw new Error('DataForSEO is not configured (DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD).');
+  // location_coordinate is "lat,lng,radius" with the radius in metres (min 199). 500 m keeps the searcher at the grid point.
+  const body = [{ keyword, location_coordinate: `${lat.toFixed(6)},${lng.toFixed(6)},500`, language_code: 'en', device: 'mobile', os: 'ios', depth: 10 }];
+  const res = await fetch('https://api.dataforseo.com/v3/serp/google/organic/live/advanced', {
+    method: 'POST',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    status_code?: number; status_message?: string; cost?: number;
+    tasks?: { status_code?: number; status_message?: string; cost?: number; result?: { items?: PackItem[] }[] }[];
+  };
+  if (!res.ok || (json.status_code && json.status_code >= 40000)) throw new Error(json.status_message || `DataForSEO HTTP ${res.status}`);
+  const task = json.tasks?.[0];
+  if (!task || (task.status_code && task.status_code >= 40000)) throw new Error(task?.status_message || 'DataForSEO task failed');
+  return { items: task.result?.[0]?.items || [], cost: task.cost ?? json.cost ?? 0 };
+}
+
 /** Run `fn` over items with at most `limit` in flight. */
 export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);

@@ -9,22 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Grid3x3, MapPin, Loader2, RefreshCw, AlertCircle, Plus, X, Bot, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { rankTone, type ScannedPoint, type ScanSummary, fitZoom, mapPercent, aiModelLabel } from '@/lib/rank/grid';
+import { rankTone, sourceLabel, type RankSource, type ScannedPoint, type ScanSummary, fitZoom, mapPercent, aiModelLabel } from '@/lib/rank/grid';
 
-interface ScanRow { id: string; keyword: string; grid_size: number; spacing_miles: number; center_lat: number; center_lng: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
+interface ScanRow { id: string; keyword: string; source: RankSource; grid_size: number; spacing_miles: number; center_lat: number; center_lng: number; points: ScannedPoint[]; summary: ScanSummary; scanned_at: string; cost_usd: number | null; failed_points: number }
 interface AiCheckRow { model: string; model_id: string; prompt: string; mentioned: boolean; position: number | null; competitors: string[]; answered?: boolean; error: string | null }
 interface RankingsResponse {
-  settings: { enabled: boolean; keywords: string[]; gridSize: number; spacingMiles: number; keywordsAreDefaults: boolean };
+  settings: { enabled: boolean; keywords: string[]; gridSize: number; spacingMiles: number; sources: RankSource[]; keywordsAreDefaults: boolean };
   providerConfigured: boolean;
   aiModels: string[];
   hasCenter: boolean;
   lastRun: { at: string; ok: boolean; message: string; scanned: number; failed: number } | null;
   center: { lat: number; lng: number; city: string | null } | null;
-  scans: { keyword: string; latest: ScanRow; previous: ScanRow | null }[];
+  scans: { keyword: string; source: RankSource; latest: ScanRow; previous: ScanRow | null }[];
   ai: { batchAt: string; mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number; checks: AiCheckRow[] }[]; topCompetitors: { name: string; count: number }[] } | null;
   estimatedCostPerScan: number;
   credits: { balance: number; perManualScan: number; perAiCheck: number; aiMinHours: number; packs: { id: string; credits: number; priceCents: number; label: string; note: string }[]; orgName: string | null };
-  pendingRun: { at: string; keywords: string[] } | null;
+  pendingRun: { at: string; keywords: string[]; sources?: RankSource[] } | null;
 }
 
 const TONE_CLASS: Record<ReturnType<typeof rankTone>, string> = {
@@ -32,7 +32,18 @@ const TONE_CLASS: Record<ReturnType<typeof rankTone>, string> = {
   top10: 'bg-amber-400 text-gray-900',
   top20: 'bg-orange-500 text-white',
   none: 'bg-red-500/80 text-white',
+  nopack: 'bg-gray-300 text-gray-600',
 };
+
+/** What a dot means, in the words of its source. */
+function pointLabel(p: ScannedPoint, source: RankSource): string {
+  if (source === 'local_pack') return p.noPack ? 'No Local Pack shown here' : p.rank === null ? 'Not in the Local Pack' : `Pack spot #${p.rank}`;
+  return p.rank === null ? 'Not in top 20' : `#${p.rank}`;
+}
+function pointText(p: ScannedPoint, source: RankSource): string {
+  if (source === 'local_pack') return p.noPack ? '–' : p.rank === null ? '✕' : String(p.rank);
+  return p.rank === null ? '20+' : String(p.rank);
+}
 
 function fmt(d: string | null | undefined) {
   if (!d) return '';
@@ -50,8 +61,8 @@ function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
     return (
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`, maxWidth: size * 44 }}>
         {scan.points.map((p) => (
-          <div key={`${p.row}-${p.col}`} title={`${p.rank === null ? 'Not in top 20' : `#${p.rank}`} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`} className={`flex aspect-square items-center justify-center rounded text-[11px] font-semibold ${TONE_CLASS[rankTone(p.rank)]}`}>
-            {p.rank === null ? '20+' : p.rank}
+          <div key={`${p.row}-${p.col}`} title={`${pointLabel(p, scan.source)} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`} className={`flex aspect-square items-center justify-center rounded text-[11px] font-semibold ${TONE_CLASS[rankTone(p.rank, p.noPack)]}`}>
+            {pointText(p, scan.source)}
           </div>
         ))}
       </div>
@@ -69,11 +80,11 @@ function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
         return (
           <div
             key={`${p.row}-${p.col}`}
-            title={`${p.rank === null ? 'Not in top 20' : `#${p.rank}`} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}
-            className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.35)] ring-2 ring-white/90 ${TONE_CLASS[rankTone(p.rank)]}`}
+            title={`${pointLabel(p, scan.source)} at ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`}
+            className={`absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold shadow-[0_1px_2px_rgba(0,0,0,0.35)] ring-2 ring-white/90 ${TONE_CLASS[rankTone(p.rank, p.noPack)]}`}
             style={{ left: `${pos.left}%`, top: `${pos.top}%`, width: `${dotPct}%`, aspectRatio: '1 / 1' }}
           >
-            {p.rank === null ? '20+' : p.rank}
+            {pointText(p, scan.source)}
           </div>
         );
       })}
@@ -82,34 +93,53 @@ function Heatmap({ scan, siteId }: { scan: ScanRow; siteId: string }) {
   );
 }
 
-/** One heatmap card: a keyword's latest scan on the overview, or one dated scan in the per-keyword history. */
+/** Small label naming the surface a heatmap came from. The pack is the one customers see first, so it reads darker. */
+function SourceBadge({ source }: { source: RankSource }) {
+  return <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${source === 'local_pack' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{sourceLabel(source)}</span>;
+}
+
+/** One heatmap card: a keyword × source's latest scan on the overview, or one dated scan in the per-keyword history. */
 function ScanCard({ title, latest, previous, siteId, onPick }: { title: string; latest: ScanRow; previous: ScanRow | null; siteId: string; onPick?: () => void }) {
+  const isPack = latest.source === 'local_pack';
+  const sum = latest.summary;
+  const shown = isPack ? (sum.packShownPoints ?? sum.totalPoints) : sum.totalPoints;
   return (
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div>
-            {onPick ? (
-              <button type="button" onClick={onPick} className="text-left font-semibold text-gray-900 underline-offset-2 hover:underline" title="Show every scan of this keyword">{title}</button>
-            ) : (
-              <h3 className="font-semibold text-gray-900">{title}</h3>
-            )}
-            <p className="text-xs text-gray-400">{onPick ? `${fmt(latest.scanned_at)} · ` : ''}{latest.grid_size}×{latest.grid_size} grid, {latest.spacing_miles} mi{latest.failed_points ? ` · ${latest.failed_points} points failed` : ''}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <SourceBadge source={latest.source} />
+              {onPick ? (
+                <button type="button" onClick={onPick} className="text-left font-semibold text-gray-900 underline-offset-2 hover:underline" title="Show every scan of this keyword">{title}</button>
+              ) : (
+                <h3 className="font-semibold text-gray-900">{title}</h3>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-400">{onPick ? `${fmt(latest.scanned_at)} · ` : ''}{latest.grid_size}×{latest.grid_size} grid, {latest.spacing_miles} mi{latest.failed_points ? ` · ${latest.failed_points} points failed` : ''}</p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-extrabold text-gray-900">{latest.summary.visibility}<span className="text-sm font-medium text-gray-400">/100</span></div>
-            <div className="text-[11px] text-gray-500">visibility</div>
-            <Change now={latest.summary.visibility} before={previous?.summary.visibility} />
+            <div className="text-2xl font-extrabold text-gray-900">{sum.visibility}<span className="text-sm font-medium text-gray-400">{isPack ? '%' : '/100'}</span></div>
+            <div className="text-[11px] text-gray-500">{isPack ? 'of spots in the pack' : 'visibility'}</div>
+            <Change now={sum.visibility} before={previous?.summary.visibility} />
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <Heatmap scan={latest} siteId={siteId} />
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div><div className="font-semibold text-gray-900">{latest.summary.top3Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={latest.summary.top3Points} before={previous?.summary.top3Points} /></div>
-          <div><div className="font-semibold text-gray-900">{latest.summary.top10Points}/{latest.summary.totalPoints}</div><div className="text-xs text-gray-500">in top 10</div><Change now={latest.summary.top10Points} before={previous?.summary.top10Points} /></div>
-          <div><div className="font-semibold text-gray-900">{latest.summary.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. rank when found</div><Change now={latest.summary.averageRank} before={previous?.summary.averageRank} invert /></div>
-        </div>
+        {isPack ? (
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div><div className="font-semibold text-gray-900">{sum.foundPoints}/{shown}</div><div className="text-xs text-gray-500">spots in the pack</div><Change now={sum.foundPoints} before={previous?.summary.foundPoints} /></div>
+            <div><div className="font-semibold text-gray-900">{sum.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. pack spot</div><Change now={sum.averageRank} before={previous?.summary.averageRank} invert /></div>
+            <div><div className="font-semibold text-gray-900">{sum.totalPoints - shown}</div><div className="text-xs text-gray-500">spots with no pack</div></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div><div className="font-semibold text-gray-900">{sum.top3Points}/{sum.totalPoints}</div><div className="text-xs text-gray-500">spots in top 3</div><Change now={sum.top3Points} before={previous?.summary.top3Points} /></div>
+            <div><div className="font-semibold text-gray-900">{sum.top10Points}/{sum.totalPoints}</div><div className="text-xs text-gray-500">in top 10</div><Change now={sum.top10Points} before={previous?.summary.top10Points} /></div>
+            <div><div className="font-semibold text-gray-900">{sum.averageRank ?? '–'}</div><div className="text-xs text-gray-500">avg. rank when found</div><Change now={sum.averageRank} before={previous?.summary.averageRank} invert /></div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -165,14 +195,14 @@ export default function RankingsPage() {
     return null;
   }, [siteId]);
 
-  // The run being watched: when it started and how many keywords it covers, so progress can be shown.
-  const [run, setRun] = useState<{ startedAt: number; keywords: number } | null>(null);
+  // The run being watched: when it started and how many heatmaps (keywords × sources) it makes, so progress can be shown.
+  const [run, setRun] = useState<{ startedAt: number; heatmaps: number } | null>(null);
 
-  /** Poll until the run records its outcome (up to 30 minutes); heatmaps land one keyword at a time meanwhile. */
-  const watchRun = useCallback((startedAt: number, keywords: number) => {
+  /** Poll until the run records its outcome (up to 30 minutes); heatmaps land one at a time meanwhile. */
+  const watchRun = useCallback((startedAt: number, heatmaps: number) => {
     if (pollRef.current) clearInterval(pollRef.current);
     setScanning(true);
-    setRun({ startedAt, keywords });
+    setRun({ startedAt, heatmaps });
     let tries = 0;
     pollRef.current = setInterval(async () => {
       tries += 1;
@@ -184,7 +214,7 @@ export default function RankingsPage() {
         setRun(null);
         if (finished && d?.lastRun) {
           if (d.lastRun.ok) toast.success(d.lastRun.message);
-          else toast.error(`Scan did not complete: ${d.lastRun.message}${d.lastRun.failed ? ' Credits for failed keywords were returned.' : ''}`);
+          else toast.error(`Scan did not complete: ${d.lastRun.message}${d.lastRun.failed ? ' Credits for failed heatmaps were returned.' : ''}`);
         } else if (!finished) {
           toast.error('The scan has not reported back after 30 minutes. Reload this page later; results appear when it finishes.');
         }
@@ -196,7 +226,7 @@ export default function RankingsPage() {
     load().then((d) => {
       setLoading(false);
       // A scan started earlier (maybe from another tab) is still running: keep showing it.
-      if (d?.pendingRun) watchRun(new Date(d.pendingRun.at).getTime(), d.pendingRun.keywords.length);
+      if (d?.pendingRun) watchRun(new Date(d.pendingRun.at).getTime(), d.pendingRun.keywords.length * (d.pendingRun.sources?.length || 1));
     });
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [load, watchRun]);
@@ -243,6 +273,34 @@ export default function RankingsPage() {
 
   // Keywords the site tracks that have never been scanned (added since the last run).
   const unscanned = data ? data.settings.keywords.filter((k) => !data.scans.some((sc) => sc.keyword === k)) : [];
+  const nSources = data?.settings.sources.length || 1;
+  const unscannedCredits = unscanned.length * nSources;
+
+  // Overview rows: one per keyword, its latest pack scan and latest Maps scan side by side (pack first).
+  const keywordRows = data
+    ? Array.from(new Set(data.scans.map((sc) => sc.keyword))).map((keyword) => ({
+        keyword,
+        pack: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'local_pack') || null,
+        maps: data.scans.find((sc) => sc.keyword === keyword && sc.source === 'maps') || null,
+      }))
+    : [];
+  // Headline numbers across every keyword's latest scan.
+  const headline = (() => {
+    if (!data) return null;
+    const packs = data.scans.filter((sc) => sc.source === 'local_pack');
+    const maps = data.scans.filter((sc) => sc.source === 'maps');
+    const avg = (list: typeof packs, f: (sum: ScanSummary) => number) => (list.length ? Math.round(list.reduce((t, sc) => t + f(sc.latest.summary), 0) / list.length) : null);
+    const avgPrev = (list: typeof packs, f: (sum: ScanSummary) => number) => { const withPrev = list.filter((sc) => sc.previous); return withPrev.length ? Math.round(withPrev.reduce((t, sc) => t + f(sc.previous!.summary), 0) / withPrev.length) : null; };
+    const top3Share = (sum: ScanSummary) => (sum.totalPoints ? Math.round((sum.top3Points / sum.totalPoints) * 100) : 0);
+    return {
+      pack: avg(packs, (x) => x.visibility),
+      packPrev: avgPrev(packs, (x) => x.visibility),
+      mapsTop3: avg(maps, top3Share),
+      mapsTop3Prev: avgPrev(maps, top3Share),
+      mapsVisibility: avg(maps, (x) => x.visibility),
+      mapsVisibilityPrev: avgPrev(maps, (x) => x.visibility),
+    };
+  })();
 
   /** Scan every keyword, or only `only` (e.g. the ones added since the last scan). */
   const scanNow = async (only?: string[]) => {
@@ -253,7 +311,8 @@ export default function RankingsPage() {
       const d = await r.json();
       if (r.status === 402) { setShowPacks(true); throw new Error(d.error || 'Not enough credits'); }
       if (!r.ok) throw new Error(d.error || 'Could not start');
-      toast.success(`Scanning ${d.charged} keyword${d.charged === 1 ? '' : 's'} across the grid (${d.charged} credit${d.charged === 1 ? '' : 's'}, ${d.balance} left). Each heatmap appears as its keyword finishes; a full scan takes a few minutes.`);
+      const srcs = (d.sources as RankSource[] | undefined) || [];
+      toast.success(`Scanning ${d.keywords} keyword${d.keywords === 1 ? '' : 's'} on ${srcs.length > 1 ? 'the Local Pack and Google Maps' : sourceLabel(srcs[0] || 'maps')} (${d.charged} credit${d.charged === 1 ? '' : 's'}, ${d.balance} left). Each heatmap appears as it finishes; a full scan takes a few minutes.`);
       watchRun(startedAt, d.charged || 1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not start');
@@ -313,7 +372,7 @@ export default function RankingsPage() {
               {unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) && (
                 <Button size="sm" onClick={() => scanNow(unscanned)} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className="bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]" title={`Only: ${unscanned.join(', ')}`}>
                   {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  Scan {unscanned.length} new keyword{unscanned.length === 1 ? '' : 's'} · {unscanned.length} credit{unscanned.length === 1 ? '' : 's'}
+                  Scan {unscanned.length} new keyword{unscanned.length === 1 ? '' : 's'} · {unscannedCredits} credit{unscannedCredits === 1 ? '' : 's'}
                 </Button>
               )}
               <Button size="sm" variant={unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) ? 'outline' : 'default'} onClick={() => scanNow()} disabled={scanning || !data?.providerConfigured || !data?.hasCenter || !s?.enabled} className={unscanned.length > 0 && unscanned.length < (data?.settings.keywords.length || 0) ? '' : 'bg-[#00ef99] text-gray-900 hover:bg-[#00d98a]'}>
@@ -324,7 +383,7 @@ export default function RankingsPage() {
             </div>
             {data && (
               <span className="text-xs text-gray-500">
-                {data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left{data.credits.orgName ? ` for ${data.credits.orgName}` : ''} · one balance for every site in this account · weekly scans are included, manual scans use 1 credit per keyword, an AI re-check uses {data.credits.perAiCheck}
+                {data.credits.balance} credit{data.credits.balance === 1 ? '' : 's'} left{data.credits.orgName ? ` for ${data.credits.orgName}` : ''} · one balance for every site in this account · weekly scans are included, manual scans use 1 credit per keyword per source, an AI re-check uses {data.credits.perAiCheck}
               </span>
             )}
           </div>
@@ -332,7 +391,7 @@ export default function RankingsPage() {
 
         {showPacks && data && (
           <Card>
-            <CardHeader><h2 className="font-semibold">Scan credits</h2><p className="text-sm text-gray-500">One credit scans one keyword across your whole grid, right now. The Monday scan never uses credits.</p></CardHeader>
+            <CardHeader><h2 className="font-semibold">Scan credits</h2><p className="text-sm text-gray-500">One credit scans one keyword across your whole grid on one source (Local Pack or Maps), right now. The Monday scan never uses credits.</p></CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-3">
                 {data.credits.packs.map((p) => (
@@ -361,8 +420,8 @@ export default function RankingsPage() {
             <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
               <span>
-                Scanning: {done} of {run.keywords} keyword{run.keywords === 1 ? '' : 's'} done{mins >= 1 ? ` · started ${mins} min ago` : ''}.
-                {done === 0 ? ' The first heatmap usually appears within a minute or two; right after an app update it can take 10 to 15 minutes to get going.' : ' Each heatmap appears below as its keyword finishes.'} You can leave this page and come back.
+                Scanning: {done} of {run.heatmaps} heatmap{run.heatmaps === 1 ? '' : 's'} done{mins >= 1 ? ` · started ${mins} min ago` : ''}.
+                {done === 0 ? ' The first heatmap usually appears within a minute or two; right after an app update it can take 10 to 15 minutes to get going.' : ' Each heatmap appears below as it finishes.'} You can leave this page and come back.
               </span>
             </div>
           );
@@ -370,7 +429,7 @@ export default function RankingsPage() {
         {data?.lastRun && !data.lastRun.ok && !scanning && (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Last scan ({new Date(data.lastRun.at).toLocaleString()}) did not complete: {data.lastRun.message}{data.lastRun.failed ? ' Credits for the failed keywords were returned.' : ''}</span>
+            <span>Last scan ({new Date(data.lastRun.at).toLocaleString()}) did not complete: {data.lastRun.message}{data.lastRun.failed ? ' Credits for the failed heatmaps were returned.' : ''}</span>
           </div>
         )}
         {data && !data.hasCenter && (
@@ -425,23 +484,69 @@ export default function RankingsPage() {
                   </label>
                   {data.center && <span className="text-xs text-gray-400">Centred on the business{data.center.city ? ` in ${data.center.city}` : ''} · covers about {(s.gridSize - 1) * s.spacingMiles} × {(s.gridSize - 1) * s.spacingMiles} miles</span>}
                 </div>
+                <div>
+                  <div className="mb-2 text-sm font-medium text-gray-700">Where to look</div>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { id: 'both', label: 'Both', sources: ['local_pack', 'maps'] as RankSource[], hint: 'The pack customers see, plus the full Maps ladder behind it' },
+                      { id: 'local_pack', label: 'Local Pack only', sources: ['local_pack'] as RankSource[], hint: 'The 3-business box in a Google search' },
+                      { id: 'maps', label: 'Google Maps only', sources: ['maps'] as RankSource[], hint: 'The full ranked list in the Maps app' },
+                    ]).map((opt) => {
+                      const active = opt.sources.length === s.sources.length && opt.sources.every((x) => s.sources.includes(x));
+                      return (
+                        <button key={opt.id} type="button" disabled={saving} onClick={() => patch({ sources: opt.sources })} title={opt.hint} className={`rounded-full border px-3 py-1 text-sm ${active ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-700 hover:border-gray-400'}`}>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">The Local Pack is the three businesses shown first in a Google search; Google Maps is the full list. They share an index but can differ at the same spot. Each source is its own heatmap and its own credit on manual scans.</p>
+                </div>
               </CardContent>
             </Card>
 
             {/* Heatmaps */}
             <section className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-semibold text-gray-900">Google Maps heatmaps</h2>
+                <h2 className="font-semibold text-gray-900">Heatmaps</h2>
                 {data.scans.length > 0 && (
                   <label className="flex items-center gap-2 text-sm text-gray-600">
                     Show
                     <select className="rounded border border-gray-300 bg-white px-2 py-1 text-sm" value={filterKeyword} onChange={(e) => setFilterKeyword(e.target.value)}>
                       <option value="all">All keywords · latest scan</option>
-                      {data.scans.map((sc) => <option key={sc.keyword} value={sc.keyword}>{sc.keyword} · every scan</option>)}
+                      {keywordRows.map((row) => <option key={row.keyword} value={row.keyword}>{row.keyword} · every scan</option>)}
                     </select>
                   </label>
                 )}
               </div>
+              {headline && data.scans.length > 0 && filterKeyword === 'all' && (
+                <Card>
+                  <CardContent className="flex flex-wrap items-end gap-x-10 gap-y-4 pt-6">
+                    {headline.pack !== null && (
+                      <div>
+                        <div className="text-3xl font-extrabold text-gray-900">{headline.pack}%</div>
+                        <div className="text-sm text-gray-600">of spots show the business in the <span className="font-medium text-gray-900">Local Pack</span></div>
+                        <Change now={headline.pack} before={headline.packPrev} suffix=" pts" />
+                      </div>
+                    )}
+                    {headline.mapsTop3 !== null && (
+                      <div>
+                        <div className="text-xl font-bold text-gray-900">{headline.mapsTop3}%</div>
+                        <div className="text-xs text-gray-500">of spots in the Google Maps top 3</div>
+                        <Change now={headline.mapsTop3} before={headline.mapsTop3Prev} suffix=" pts" />
+                      </div>
+                    )}
+                    {headline.mapsVisibility !== null && (
+                      <div>
+                        <div className="text-xl font-bold text-gray-900">{headline.mapsVisibility}<span className="text-sm font-medium text-gray-400">/100</span></div>
+                        <div className="text-xs text-gray-500">Maps visibility</div>
+                        <Change now={headline.mapsVisibility} before={headline.mapsVisibilityPrev} />
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-400">averaged over every keyword&apos;s latest scan</div>
+                  </CardContent>
+                </Card>
+              )}
               {data.scans.length === 0 ? (
                 <Card><CardContent className="py-10 text-center text-gray-500">{scanning ? 'Scanning now. The first heatmap appears here as soon as its keyword finishes.' : `No scans yet. ${data.providerConfigured ? 'Click Scan all, or wait for the included Monday scan.' : 'Connect DataForSEO to start scanning.'}`}</CardContent></Card>
               ) : filterKeyword !== 'all' ? (
@@ -449,18 +554,30 @@ export default function RankingsPage() {
                   <Card><CardContent className="py-10 text-center text-gray-500"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></CardContent></Card>
                 ) : (
                   <>
-                    <p className="text-xs text-gray-500">{history?.length || 0} scan{history?.length === 1 ? '' : 's'} of &ldquo;{filterKeyword}&rdquo;, newest first. Each card compares with the scan before it.</p>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {(history || []).map((scan, i) => (
-                        <ScanCard key={scan.id} title={fmt(scan.scanned_at)} latest={scan} previous={history?.[i + 1] || null} siteId={siteId} />
-                      ))}
-                    </div>
+                    <p className="text-xs text-gray-500">{history?.length || 0} scan{history?.length === 1 ? '' : 's'} of &ldquo;{filterKeyword}&rdquo;, newest first. Each card compares with the scan before it on the same source.</p>
+                    {(['local_pack', 'maps'] as RankSource[]).map((src) => {
+                      const list = (history || []).filter((h) => h.source === src);
+                      if (list.length === 0) return null;
+                      return (
+                        <div key={src} className="space-y-2">
+                          <h3 className="text-sm font-semibold text-gray-700">{sourceLabel(src)}</h3>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            {list.map((scan, i) => (
+                              <ScanCard key={scan.id} title={fmt(scan.scanned_at)} latest={scan} previous={list[i + 1] || null} siteId={siteId} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </>
                 )
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {data.scans.map(({ keyword, latest, previous }) => (
-                    <ScanCard key={keyword} title={keyword} latest={latest} previous={previous} siteId={siteId} onPick={() => setFilterKeyword(keyword)} />
+                <div className="space-y-4">
+                  {keywordRows.map((row) => (
+                    <div key={row.keyword} className="grid gap-4 md:grid-cols-2">
+                      {row.pack && <ScanCard title={row.keyword} latest={row.pack.latest} previous={row.pack.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
+                      {row.maps && <ScanCard title={row.keyword} latest={row.maps.latest} previous={row.maps.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
+                    </div>
                   ))}
                 </div>
               )}
@@ -468,7 +585,8 @@ export default function RankingsPage() {
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500" /> Top 3</span>
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-400" /> 4 to 10</span>
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-orange-500" /> 11 to 20</span>
-                <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500/80" /> Not in top 20</span>
+                <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-500/80" /> Not in top 20 / not in the pack</span>
+                <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-gray-300" /> No pack shown</span>
               </div>
             </section>
 

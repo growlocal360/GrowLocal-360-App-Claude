@@ -263,27 +263,30 @@ export default function ReportsPage() {
               <section className="space-y-3">
                 <h2 className="font-semibold text-gray-900">Rankings</h2>
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {d.rankings?.length > 0 && (
+                  {d.rankings?.length > 0 && (() => {
+                    const pack = d.rankings[0].source === 'local_pack';
+                    return (
                     <Card>
-                      <CardHeader><h3 className="text-sm font-semibold">Google Maps, across town</h3></CardHeader>
+                      <CardHeader><h3 className="text-sm font-semibold">{pack ? 'Google Local Pack, across town' : 'Google Maps, across town'}</h3></CardHeader>
                       <CardContent>
                         <table className="w-full text-sm">
-                          <thead><tr className="text-left text-xs text-gray-500"><th className="pb-2 font-medium">Keyword</th><th className="pb-2 text-right font-medium">Top 3</th><th className="pb-2 text-right font-medium">Top 10</th><th className="pb-2 text-right font-medium">Visibility</th></tr></thead>
+                          <thead><tr className="text-left text-xs text-gray-500"><th className="pb-2 font-medium">Keyword</th><th className="pb-2 text-right font-medium">{pack ? 'In the pack' : 'Top 3'}</th>{!pack && <th className="pb-2 text-right font-medium">Top 10</th>}<th className="pb-2 text-right font-medium">{pack ? 'Share' : 'Visibility'}</th></tr></thead>
                           <tbody>
                             {d.rankings.map((r) => (
                               <tr key={r.keyword} className="border-t">
                                 <td className="py-1.5 pr-2 text-gray-800">{r.keyword}</td>
                                 <td className="py-1.5 text-right">{r.top3Points}/{r.totalPoints}</td>
-                                <td className="py-1.5 text-right text-gray-500">{r.top10Points}/{r.totalPoints}</td>
-                                <td className="py-1.5 text-right"><span className="font-semibold">{r.visibility}</span>{r.previousVisibility !== null && <span className={`ml-1 text-xs ${r.visibility >= r.previousVisibility ? 'text-emerald-700' : 'text-red-600'}`}>{r.visibility >= r.previousVisibility ? '+' : ''}{r.visibility - r.previousVisibility}</span>}</td>
+                                {!pack && <td className="py-1.5 text-right text-gray-500">{r.top10Points}/{r.totalPoints}</td>}
+                                <td className="py-1.5 text-right"><span className="font-semibold">{r.visibility}{pack ? '%' : ''}</span>{r.previousVisibility !== null && <span className={`ml-1 text-xs ${r.visibility >= r.previousVisibility ? 'text-emerald-700' : 'text-red-600'}`}>{r.visibility >= r.previousVisibility ? '+' : ''}{r.visibility - r.previousVisibility}</span>}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
-                        <p className="mt-2 text-xs text-gray-400">Visibility 0 to 100: 100 means #1 from every point on the grid. <Link href={`/dashboard/sites/${siteId}/rankings`} className="underline">See the heatmaps</Link>.</p>
+                        <p className="mt-2 text-xs text-gray-400">{pack ? 'Share of spots around town where the business is one of the three in the Local Pack, the box customers see first.' : 'Visibility 0 to 100: 100 means #1 from every point on the grid.'} <Link href={`/dashboard/sites/${siteId}/rankings`} className="underline">See the heatmaps</Link>.</p>
                       </CardContent>
                     </Card>
-                  )}
+                    );
+                  })()}
                   {d.aiVisibility && (
                     <Card>
                       <CardHeader><h3 className="text-sm font-semibold">AI assistants</h3></CardHeader>

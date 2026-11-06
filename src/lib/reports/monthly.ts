@@ -47,7 +47,8 @@ export interface MonthlyReportData {
   };
   activity: { repliesPosted: number; requestsSent: number; postsPublished: number; photosAdded: number; jobsPublished: number; socialPosts: number };
   /** Latest Maps grid scan per keyword inside the period, with the previous scan for deltas. */
-  rankings: { keyword: string; visibility: number; top3Points: number; top10Points: number; totalPoints: number; averageRank: number | null; previousVisibility: number | null; scannedAt: string }[];
+  /** Latest scan per keyword on the lead source: the Local Pack when it is tracked, else Google Maps. */
+  rankings: { keyword: string; source: 'local_pack' | 'maps'; visibility: number; top3Points: number; top10Points: number; totalPoints: number; averageRank: number | null; previousVisibility: number | null; scannedAt: string }[];
   /** Share of customer-style AI prompts that named the business in the period's latest batch. */
   aiVisibility: { mentionedShare: number; previousShare: number | null; byModel: { model: string; mentionedShare: number }[]; topCompetitors: { name: string; count: number }[] } | null;
   previous: {
@@ -199,15 +200,19 @@ export async function countsFor(supabase: SupabaseClient, siteId: string, p: Pic
 }
 
 async function rankingsFor(supabase: SupabaseClient, siteId: string, p: MonthPeriod): Promise<MonthlyReportData['rankings']> {
-  const { data } = await supabase
+  const { data: all } = await supabase
     .from('rank_scans')
-    .select('keyword, summary, scanned_at')
+    .select('keyword, source, summary, scanned_at')
     .eq('site_id', siteId)
     .lt('scanned_at', `${dayAfter(p.end)}T00:00:00Z`)
     .order('scanned_at', { ascending: false })
-    .limit(200);
+    .limit(400);
+  // Lead with the Local Pack (what customers see first) when this month has pack scans; otherwise Maps.
+  const inMonth = (all || []).filter((r) => r.scanned_at >= `${p.start}T00:00:00Z`);
+  const source: 'local_pack' | 'maps' = inMonth.some((r) => r.source === 'local_pack') ? 'local_pack' : 'maps';
+  const data = (all || []).filter((r) => (r.source || 'maps') === source);
   const seen = new Map<string, { latest?: { summary: ScanSummaryLite; scanned_at: string }; previous?: { summary: ScanSummaryLite } }>();
-  for (const row of data || []) {
+  for (const row of data) {
     const e = seen.get(row.keyword) || {};
     if (!e.latest) {
       // Only count as "this month" when the latest scan falls inside the period.
@@ -220,6 +225,7 @@ async function rankingsFor(supabase: SupabaseClient, siteId: string, p: MonthPer
     .filter(([, e]) => e.latest)
     .map(([keyword, e]) => ({
       keyword,
+      source,
       visibility: e.latest!.summary.visibility,
       top3Points: e.latest!.summary.top3Points,
       top10Points: e.latest!.summary.top10Points,
@@ -339,7 +345,9 @@ export function reportHighlights(d: MonthlyReportData): string[] {
   if (d.reviews.newCount) out.push(`${d.reviews.newCount} new Google review${d.reviews.newCount === 1 ? '' : 's'}${d.reviews.newAverage ? `, averaging ${d.reviews.newAverage} stars` : ''}.`);
   if (d.rankings.length) {
     const best = d.rankings[0];
-    out.push(`On Google Maps, "${best.keyword}" shows in the top 3 from ${best.top3Points} of ${best.totalPoints} spots around town${best.previousVisibility !== null ? up(best.visibility, best.previousVisibility).replace('up', 'visibility up').replace('down', 'visibility down') : ''}.`);
+    out.push(best.source === 'local_pack'
+      ? `In Google's Local Pack, "${best.keyword}" shows the business from ${best.top3Points} of ${best.totalPoints} spots around town${best.previousVisibility !== null ? up(best.visibility, best.previousVisibility).replace('up', 'visibility up').replace('down', 'visibility down') : ''}.`
+      : `On Google Maps, "${best.keyword}" shows in the top 3 from ${best.top3Points} of ${best.totalPoints} spots around town${best.previousVisibility !== null ? up(best.visibility, best.previousVisibility).replace('up', 'visibility up').replace('down', 'visibility down') : ''}.`);
   }
   if (d.aiVisibility) out.push(`AI assistants named the business in ${d.aiVisibility.mentionedShare}% of customer-style questions${d.aiVisibility.previousShare !== null ? ` (${d.aiVisibility.previousShare}% last time)` : ''}.`);
   const a = d.activity;

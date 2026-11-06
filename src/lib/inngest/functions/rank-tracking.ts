@@ -21,9 +21,11 @@ async function scanSiteInSteps(step: StepRunner, siteId: string, only?: string[]
     run.skipped = prep.skipped;
   } else {
     for (const keyword of prep.keywords) {
-      const r = await step.run(`scan-${siteId}-${keyword}`, () => scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName));
-      run.results.push(r);
-      run.totalCost += r.cost || 0;
+      for (const source of prep.settings.sources) {
+        const r = await step.run(`scan-${siteId}-${source}-${keyword}`, () => scanKeyword(supabase, siteId, keyword, prep.settings, prep.center, prep.businessName, source));
+        run.results.push(r);
+        run.totalCost += r.cost || 0;
+      }
     }
   }
   await step.run(`record-${siteId}`, () => recordLastRun(supabase, siteId, run));
@@ -47,7 +49,7 @@ export const rankTrackingWeekly = inngest.createFunction(
       const ai = await step.run(`ai-${siteId}`, () => runAiVisibility(supabase, siteId, { minIntervalDays: 13 }));
       results.push({
         siteId,
-        scans: scans.skipped || `${scans.results.filter((r) => !r.error).length}/${scans.results.length} keywords, $${scans.totalCost.toFixed(2)}`,
+        scans: scans.skipped || `${scans.results.filter((r) => !r.error).length}/${scans.results.length} heatmaps, $${scans.totalCost.toFixed(2)}`,
         ai: ai.skipped || `${ai.checks.filter((c) => c.mentioned).length}/${ai.checks.length} prompts mention the business`,
       });
     }
@@ -60,17 +62,17 @@ export const rankTrackingRequested = inngest.createFunction(
   { id: 'rank-tracking-requested', name: 'Rank scan on demand' },
   { event: 'rank/scan.requested' },
   async ({ event, step }) => {
-    const { siteId, keywords, ai, charged } = event.data as { siteId: string; keywords?: string[]; ai?: boolean; charged?: boolean };
+    const { siteId, keywords, ai, charged, credits } = event.data as { siteId: string; keywords?: string[]; ai?: boolean; charged?: boolean; credits?: number };
     const supabase = createAdminClient();
     const scans = await scanSiteInSteps(step, siteId, keywords);
-    // A manual scan was paid for up front: give back the credit for any keyword that did not produce a scan.
+    // A manual scan was paid for up front (1 credit per keyword per source): give back the credit for any heatmap that did not get made.
     if (charged) {
       await step.run(`refund-${siteId}`, async () => {
-        const failed = scans.skipped ? (keywords?.length || 0) : scans.results.filter((r) => r.error).length;
+        const failed = scans.skipped ? (credits ?? keywords?.length ?? 0) : scans.results.filter((r) => r.error).length;
         if (!failed) return { refunded: 0 };
         const orgId = await orgIdForSite(supabase, siteId);
         if (!orgId) return { refunded: 0 };
-        await grantCredits(supabase, orgId, failed, scans.skipped ? `refund:${scans.skipped}` : 'refund:failed keywords', { siteId });
+        await grantCredits(supabase, orgId, failed, scans.skipped ? `refund:${scans.skipped}` : 'refund:failed heatmaps', { siteId });
         return { refunded: failed };
       });
     }

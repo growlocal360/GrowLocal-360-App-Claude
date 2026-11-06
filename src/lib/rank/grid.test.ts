@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, rankTone, fitZoom, mapPercent } from './grid';
+import { buildGrid, cleanKeyword, defaultKeywords, summarize, findRank, findPackRank, findOrganicRank, normalizeHost, rankTone, sortSources, fitZoom, mapPercent } from './grid';
 import { analyzeAnswer, visibilityPrompts } from './ai-visibility';
 
 describe('rank grid', () => {
@@ -15,6 +15,7 @@ describe('rank grid', () => {
 
   it('turns category and service names into search phrases', () => {
     expect(cleanKeyword('Appliance repair service')).toBe('appliance repair');
+    expect(cleanKeyword('Graphic Designer Near Me')).toBe('graphic designer near me');
     expect(defaultKeywords('Appliance repair service', ['Refrigerator Repair Service', 'Washing Machine Repair', 'Dryer Repair Service', 'Dishwasher Repair Service', 'Oven & Range Repair', 'Microwave Repair Service']))
       .toEqual(['appliance repair', 'refrigerator repair', 'washing machine repair', 'dryer repair', 'dishwasher repair']);
   });
@@ -36,6 +37,55 @@ describe('rank grid', () => {
     expect(findRank(items, 'B', 'Fix It or Free Appliance Repair')).toBe(2);
     expect(findRank(items, null, 'Fix It or Free Appliance Repair')).toBe(2);
     expect(findRank(items, 'Z', 'Nope Plumbing')).toBeNull();
+  });
+});
+
+describe('local pack', () => {
+  it('finds the business in the pack, skipping ads, and knows when no pack was shown', () => {
+    const items = [
+      { type: 'organic', rank_group: 1, title: 'Yelp: best appliance repair' },
+      { type: 'local_pack', rank_group: 1, title: 'Sponsored Appliance Co', is_paid: true },
+      { type: 'local_pack', rank_group: 2, title: 'Other Appliance Repair' },
+      { type: 'local_pack', rank_group: 3, title: 'Fix It or Free Appliance Repair LLC' },
+    ];
+    expect(findPackRank(items, 'Fix It or Free Appliance Repair')).toEqual({ rank: 2, packShown: true });
+    expect(findPackRank(items, 'Nope Plumbing')).toEqual({ rank: null, packShown: true });
+    expect(findPackRank([{ type: 'organic', rank_group: 1, title: 'x' }], 'Fix It or Free')).toEqual({ rank: null, packShown: false });
+  });
+
+  it('summarizes a pack scan as the share of spots in the pack, ignoring spots with no pack', () => {
+    const pts = [
+      { row: 0, col: 0, lat: 0, lng: 0, rank: 1 },
+      { row: 0, col: 1, lat: 0, lng: 0, rank: 3 },
+      { row: 0, col: 2, lat: 0, lng: 0, rank: null },
+      { row: 0, col: 3, lat: 0, lng: 0, rank: null, noPack: true },
+    ];
+    const s = summarize(pts, 'local_pack');
+    expect(s).toMatchObject({ totalPoints: 4, foundPoints: 2, top3Points: 2, packShownPoints: 3, averageRank: 2, visibility: 67 });
+    expect(rankTone(null, true)).toBe('nopack');
+    expect(rankTone(null)).toBe('none');
+    expect(sortSources(['maps', 'local_pack'])).toEqual(['local_pack', 'maps']);
+  });
+});
+
+describe('organic (website) reading from the same page', () => {
+  it('finds the site among the blue links by host, ignoring the pack and ads, on any of its domains', () => {
+    const items = [
+      { type: 'paid', rank_group: 1, domain: 'graphicworksdesign.com' },
+      { type: 'local_pack', rank_group: 1, title: 'Graphic Works' },
+      { type: 'organic', rank_group: 1, domain: 'www.ziprecruiter.com', url: 'https://www.ziprecruiter.com/x' },
+      { type: 'organic', rank_group: 2, domain: 'indeed.com' },
+      { type: 'organic', rank_group: 3, domain: 'www.graphicworksdesign.com', url: 'https://www.graphicworksdesign.com/' },
+    ];
+    expect(findOrganicRank(items, ['https://graphicworksdesign.com/', 'graphic-works.growlocal360.com'])).toBe(3);
+    expect(findOrganicRank(items, ['graphic-works.growlocal360.com'])).toBeNull();
+    expect(findOrganicRank(items, [])).toBeNull();
+    expect(normalizeHost('HTTPS://WWW.Example.com/a/b')).toBe('example.com');
+  });
+
+  it('scores organic visibility on a 10-deep page', () => {
+    const pts = [1, 10, null].map((rank, i) => ({ row: 0, col: i, lat: 0, lng: 0, rank }));
+    expect(summarize(pts, 'organic').visibility).toBe(37); // (1 + 0.1 + 0) / 3
   });
 });
 

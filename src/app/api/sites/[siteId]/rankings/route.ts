@@ -6,13 +6,13 @@ import { inngest } from '@/lib/inngest/client';
 import { rankSettings, resolveKeywords, latestScans, resolveCenter, lastRunOf, pendingRunOf, recordPendingRun, scanHistory } from '@/lib/rank/scan';
 import { dataForSeoConfigured } from '@/lib/rank/dataforseo';
 import { aiModelsAvailable, latestAiVisibility, AI_RECHECK_CREDITS, AI_RECHECK_MIN_HOURS } from '@/lib/rank/ai-visibility';
-import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword } from '@/lib/rank/grid';
+import { GRID_SIZES, SPACINGS_MILES, MAX_KEYWORDS, cleanKeyword, isRankSource, isScannableSource, sortSources, type RankSource } from '@/lib/rank/grid';
 import { getBalance, orgIdForSite, spendCredits, CREDIT_PACKS } from '@/lib/rank/credits';
 
 /**
  * GET   -> settings (with resolved keywords), readiness, latest scan per keyword (+previous), AI visibility roll-up
- * PATCH -> { enabled?, keywords?, gridSize?, spacingMiles? }
- * POST  -> { keywords?: string[] } start a scan now (background; page polls GET)
+ * PATCH -> { enabled?, keywords?, gridSize?, spacingMiles?, sources? }
+ * POST  -> { keywords?: string[] } start a scan now (background; page polls GET). 1 credit per keyword per source.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
@@ -23,7 +23,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
   const admin = createAdminClient();
   // ?keyword=... -> every scan for that keyword, newest first (the compare view).
   const keyword = req.nextUrl.searchParams.get('keyword');
-  if (keyword) return NextResponse.json({ history: await scanHistory(admin, siteId, keyword) });
+  if (keyword) {
+    const src = req.nextUrl.searchParams.get('source');
+    return NextResponse.json({ history: await scanHistory(admin, siteId, keyword, isRankSource(src) ? src : undefined) });
+  }
 
   const { data: site } = await admin.from('sites').select('settings, name').eq('id', siteId).single();
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
   ]);
   return NextResponse.json({
     // Credits belong to the organization: every site in the account draws from the same balance.
-    credits: { balance, perManualScan: keywords.length, perAiCheck: AI_RECHECK_CREDITS, aiMinHours: AI_RECHECK_MIN_HOURS, packs: CREDIT_PACKS, orgName: org?.name || null },
+    credits: { balance, perManualScan: keywords.length * settings.sources.length, perAiCheck: AI_RECHECK_CREDITS, aiMinHours: AI_RECHECK_MIN_HOURS, packs: CREDIT_PACKS, orgName: org?.name || null },
     pendingRun: pendingRunOf(site.settings),
     settings: { ...settings, keywords, keywordsAreDefaults: settings.keywords.length === 0 },
     providerConfigured: dataForSeoConfigured(),
@@ -49,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ site
     center: center ? { lat: center.lat, lng: center.lng, city: center.city } : null,
     scans,
     ai,
-    estimatedCostPerScan: Math.round(settings.gridSize * settings.gridSize * keywords.length * 0.002 * 100) / 100,
+    estimatedCostPerScan: Math.round(settings.gridSize * settings.gridSize * keywords.length * settings.sources.length * 0.002 * 100) / 100,
   });
 }
 
@@ -59,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   const access = await verifySiteAccess(supabase, siteId);
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  const body = (await req.json().catch(() => ({}))) as { enabled?: boolean; keywords?: string[]; gridSize?: number; spacingMiles?: number };
+  const body = (await req.json().catch(() => ({}))) as { enabled?: boolean; keywords?: string[]; gridSize?: number; spacingMiles?: number; sources?: string[] };
   const admin = createAdminClient();
   const { data: site } = await admin.from('sites').select('settings').eq('id', siteId).single();
   if (!site) return NextResponse.json({ error: 'Site not found' }, { status: 404 });
@@ -73,6 +76,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ si
   }
   if (typeof body.gridSize === 'number' && (GRID_SIZES as readonly number[]).includes(body.gridSize)) rt.grid_size = body.gridSize;
   if (typeof body.spacingMiles === 'number' && (SPACINGS_MILES as readonly number[]).includes(body.spacingMiles)) rt.spacing_miles = body.spacingMiles;
+  if (Array.isArray(body.sources)) {
+    const picked: RankSource[] = sortSources(body.sources.filter(isScannableSource));
+    if (picked.length === 0) return NextResponse.json({ error: 'Pick at least one source to track' }, { status: 400 });
+    rt.sources = picked;
+  }
   automation.rank_tracking = rt;
   const { error } = await admin.from('sites').update({ settings: { ...settings, automation } }).eq('id', siteId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -99,14 +107,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sit
   const keywords = (requested.length ? tracked.filter((k) => requested.includes(k)) : tracked).slice(0, MAX_KEYWORDS);
   if (requested.length && keywords.length === 0) return NextResponse.json({ error: 'None of those keywords are on this site' }, { status: 400 });
   if (keywords.length === 0) return NextResponse.json({ error: 'Add at least one keyword first' }, { status: 400 });
-  const spend = await spendCredits(admin, site.organization_id, keywords.length, 'manual_scan', siteId);
+  // 1 credit per heatmap: each keyword on each tracked source (Local Pack, Maps).
+  const credits = keywords.length * settings.sources.length;
+  const spend = await spendCredits(admin, site.organization_id, credits, 'manual_scan', siteId);
   if (!spend.ok) {
-    return NextResponse.json({ error: `This scan needs ${keywords.length} credit${keywords.length === 1 ? '' : 's'} and you have ${spend.balance}. Buy credits or wait for the weekly scan.`, needCredits: keywords.length, balance: spend.balance }, { status: 402 });
+    return NextResponse.json({ error: `This scan needs ${credits} credit${credits === 1 ? '' : 's'} and you have ${spend.balance}. Buy credits or wait for the weekly scan.`, needCredits: credits, balance: spend.balance }, { status: 402 });
   }
 
   // Remember the run before it starts so the page can show progress even after a reload,
   // and so a run that never reports back is visible instead of silently losing credits.
-  const pending = await recordPendingRun(admin, siteId, keywords);
-  await inngest.send({ name: 'rank/scan.requested', data: { siteId, keywords, ai: body.ai, charged: true } });
-  return NextResponse.json({ ok: true, balance: spend.balance, charged: keywords.length, pendingRun: pending });
+  const pending = await recordPendingRun(admin, siteId, keywords, settings.sources);
+  await inngest.send({ name: 'rank/scan.requested', data: { siteId, keywords, ai: body.ai, charged: true, credits } });
+  return NextResponse.json({ ok: true, balance: spend.balance, charged: credits, keywords: keywords.length, sources: settings.sources, pendingRun: pending });
 }

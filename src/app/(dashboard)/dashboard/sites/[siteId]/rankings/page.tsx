@@ -606,15 +606,26 @@ export default function RankingsPage() {
                   </>
                 )
               ) : (
-                <div className="space-y-4">
-                  {keywordRows.map((row) => (
-                    <div key={row.keyword} className={`grid gap-4 md:grid-cols-2 ${[row.pack, row.maps, row.web].filter(Boolean).length > 2 ? 'xl:grid-cols-3' : ''}`}>
-                      {row.pack && <ScanCard title={row.keyword} latest={row.pack.latest} previous={row.pack.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
-                      {row.maps && <ScanCard title={row.keyword} latest={row.maps.latest} previous={row.maps.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
-                      {row.web && <ScanCard title={row.keyword} latest={row.web.latest} previous={row.web.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} note={intentNote(row)} />}
-                    </div>
-                  ))}
-                </div>
+                keywordRows.every((row) => [row.pack, row.maps, row.web].filter(Boolean).length <= 1) ? (
+                  // One source per keyword (e.g. Maps only, or scans from before Local Pack tracking): a plain grid of keywords.
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {keywordRows.map((row) => {
+                      const only = row.pack || row.maps || row.web;
+                      return only ? <ScanCard key={row.keyword} title={row.keyword} latest={only.latest} previous={only.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} /> : null;
+                    })}
+                  </div>
+                ) : (
+                  // Several sources per keyword: one row per keyword, pack → Maps → Website side by side.
+                  <div className="space-y-4">
+                    {keywordRows.map((row) => (
+                      <div key={row.keyword} className={`grid gap-4 md:grid-cols-2 ${[row.pack, row.maps, row.web].filter(Boolean).length > 2 ? 'xl:grid-cols-3' : ''}`}>
+                        {row.pack && <ScanCard title={row.keyword} latest={row.pack.latest} previous={row.pack.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
+                        {row.maps && <ScanCard title={row.keyword} latest={row.maps.latest} previous={row.maps.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} />}
+                        {row.web && <ScanCard title={row.keyword} latest={row.web.latest} previous={row.web.previous} siteId={siteId} onPick={() => setFilterKeyword(row.keyword)} note={intentNote(row)} />}
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
               <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-500" /> Top 3</span>

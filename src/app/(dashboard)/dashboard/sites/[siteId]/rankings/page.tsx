@@ -676,10 +676,18 @@ export default function RankingsPage() {
                   </Card>
 
                   {/* Keyword detail: its surfaces side by side, each with history */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {keywordRows.map((row) => (
-                      <button key={row.keyword} type="button" onClick={() => setSelectedKeyword(row.keyword)} className={`rounded-full border px-3 py-1 text-sm ${row.keyword === selectedKeyword ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-700 hover:border-gray-400'}`}>{row.keyword}</button>
-                    ))}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {keywordRows.map((row) => (
+                        <button key={row.keyword} type="button" onClick={() => setSelectedKeyword(row.keyword)} className={`rounded-full border px-3 py-1 text-sm ${row.keyword === selectedKeyword ? 'border-gray-900 bg-gray-900 text-white' : 'bg-white text-gray-700 hover:border-gray-400'}`}>{row.keyword}</button>
+                      ))}
+                    </div>
+                    {selectedKeyword && s.keywords.includes(selectedKeyword) && (
+                      <Button size="sm" variant="outline" onClick={() => scanNow([selectedKeyword])} disabled={scanning || !data.providerConfigured || !data.hasCenter || !s.enabled} title={`Scan only "${selectedKeyword}" on ${nSources > 1 ? 'the Local Pack and Google Maps' : sourceLabel(s.sources[0])} now`}>
+                        {scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Scan &ldquo;{selectedKeyword}&rdquo; · {nSources} credit{nSources === 1 ? '' : 's'}
+                      </Button>
+                    )}
                   </div>
                   {selectedKeyword && (() => {
                     const row = keywordRows.find((r) => r.keyword === selectedKeyword);

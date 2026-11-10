@@ -57,8 +57,12 @@ export default function JobSnapDetailPage() {
 
   const [jobSnap, setJobSnap] = useState<JobSnapWithRelations | null>(null);
   const [siteName, setSiteName] = useState<string>('');
-  const [siteSlug, setSiteSlug] = useState<string>('');
-  const [siteCustomDomain, setSiteCustomDomain] = useState<string | null>(null);
+  // Public origin for "View on website", resolved the same way publish-gbp
+  // and publish-website do so all three links agree:
+  //   1) settings.public_website_url (external-site clients)
+  //   2) verified custom_domain
+  //   3) {slug}.NEXT_PUBLIC_APP_DOMAIN
+  const [sitePublicOrigin, setSitePublicOrigin] = useState<string>('');
   const [workItemSlug, setWorkItemSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -112,7 +116,7 @@ export default function JobSnapDetailPage() {
         // Verify org access
         const { data: site } = await supabase
           .from('sites')
-          .select('name, slug, custom_domain, organization_id')
+          .select('name, slug, custom_domain, custom_domain_verified, settings, organization_id')
           .eq('id', snap.site_id)
           .single();
 
@@ -124,8 +128,15 @@ export default function JobSnapDetailPage() {
         }
 
         setSiteName(site.name);
-        setSiteSlug(site.slug || '');
-        setSiteCustomDomain(site.custom_domain || null);
+        const publicWebsiteUrl = ((site.settings || {}) as { public_website_url?: string | null }).public_website_url;
+        const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'growlocal360.com';
+        setSitePublicOrigin(
+          publicWebsiteUrl
+            ? publicWebsiteUrl.replace(/\/+$/, '')
+            : site.custom_domain_verified && site.custom_domain
+              ? `https://${site.custom_domain}`
+              : `https://${site.slug}.${appDomain}`
+        );
 
         // Fetch work item slug for the "View on website" link
         if (snap.work_item_id) {
@@ -651,7 +662,7 @@ export default function JobSnapDetailPage() {
               {jobSnap.is_published_to_website && workItemSlug && (
                 <div className="pt-1">
                   <a
-                    href={`https://${siteCustomDomain || `${siteSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'goleadflow.com'}`}/work/${workItemSlug}`}
+                    href={`${sitePublicOrigin}/work/${workItemSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-[#00ef99] hover:underline"

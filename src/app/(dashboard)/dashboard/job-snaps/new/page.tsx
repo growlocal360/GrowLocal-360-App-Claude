@@ -431,7 +431,7 @@ export default function NewJobSnapPage() {
         // AI-emitted); the review panel attaches them onto the analysis
         // object so they flow through here.
         clientName: (editedAnalysis as JobSnapAnalysisResult & { clientName?: string | null }).clientName ?? undefined,
-        technicianId: (editedAnalysis as JobSnapAnalysisResult & { technicianId?: string | null }).technicianId ?? undefined,
+        technicianId: (editedAnalysis as JobSnapAnalysisResult & { technicianId?: string | null }).technicianId ?? null,
         attachments: (editedAnalysis as JobSnapAnalysisResult & {
           attachments?: { service_ids: string[]; category_ids: string[]; brand_ids: string[]; area_ids: string[] };
         }).attachments,

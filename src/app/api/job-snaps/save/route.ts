@@ -273,11 +273,11 @@ export async function POST(request: Request) {
         equipment_type: body.equipmentType ?? null,
         client_name: body.clientName ?? null,
         neighborhood: body.neighborhood ?? null,
-        // Technician credited for the work. Default to the uploader when the
-        // field is absent from the request; respect an explicit null (the
-        // user picked "No specific technician") as a real choice.
-        technician_id:
-          body.technicianId === undefined ? profile.id : body.technicianId,
+        // Technician credited for the work. Only what the user picked: an
+        // office login uploading a snap for someone else's job must not be
+        // shown as the technician, so no fallback to the uploader. Null =
+        // no attribution card on the public page.
+        technician_id: body.technicianId ?? null,
         // Generated SEO fields (GL360 = source of truth)
         state_abbr: naming.state_abbr,
         street_name_public: naming.street_name_public,

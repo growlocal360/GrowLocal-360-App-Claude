@@ -170,3 +170,46 @@ export async function verifySiteAccess(
 
   return { caller, siteOrgId: site.organization_id };
 }
+
+/**
+ * Which profiles in an org a caller may see on the Team page.
+ *
+ * `scope` is the caller's `getAccessibleSiteIds` result. When it is null the
+ * caller sees everyone (owner, or admin with no site assignments) and this
+ * returns null. Otherwise the visible set is: every owner, the caller, and
+ * every profile assigned to at least one site in scope. An admin set up on
+ * one client's site must not see the rest of the agency's team.
+ */
+export async function getVisibleTeamProfileIds(
+  supabase: SupabaseClient,
+  organizationId: string,
+  callerProfileId: string,
+  scope: string[] | null
+): Promise<Set<string> | null> {
+  if (scope === null) return null;
+
+  const visible = new Set<string>([callerProfileId]);
+
+  const { data: owners } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('role', 'owner');
+  for (const o of owners || []) visible.add(o.id);
+
+  if (scope.length > 0) {
+    const { data: shared } = await supabase
+      .from('profile_site_assignments')
+      .select('profile_id')
+      .in('site_id', scope);
+    for (const a of shared || []) visible.add(a.profile_id);
+  }
+
+  return visible;
+}
+
+/** True when every id in `siteIds` is inside `scope` (null scope = unrestricted). */
+export function siteIdsWithinScope(siteIds: string[] | undefined | null, scope: string[] | null): boolean {
+  if (scope === null) return true;
+  return (siteIds || []).every((id) => scope.includes(id));
+}

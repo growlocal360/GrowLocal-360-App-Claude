@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
+import { getCallerProfile, hasRole, getAccessibleSiteIds, siteIdsWithinScope } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// A site-scoped caller may only touch staff who take jobs at one of their sites.
+async function staffSharesScope(admin: SupabaseClient, staffId: string, scope: string[] | null): Promise<boolean> {
+  if (scope === null) return true;
+  if (scope.length === 0) return false;
+  const { data } = await admin
+    .from('staff_site_assignments')
+    .select('site_id')
+    .eq('staff_member_id', staffId)
+    .in('site_id', scope)
+    .limit(1);
+  return !!data && data.length > 0;
+}
 
 // GET — List staff members for the org (with site assignments)
 export async function GET() {
@@ -15,6 +29,7 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
+  const scope = await getAccessibleSiteIds(admin, caller.id, caller.role);
 
   const { data: staff, error } = await admin
     .from('staff_members')
@@ -43,7 +58,7 @@ export async function GET() {
     if (!assignmentMap.has(a.staff_member_id)) {
       assignmentMap.set(a.staff_member_id, []);
     }
-    if (site) {
+    if (site && (scope === null || scope.includes(site.id))) {
       assignmentMap.get(a.staff_member_id)!.push({
         site_id: site.id,
         site_name: site.name,
@@ -52,10 +67,13 @@ export async function GET() {
     }
   }
 
-  const staffWithAssignments = (staff || []).map(s => ({
-    ...s,
-    site_assignments: assignmentMap.get(s.id) || [],
-  }));
+  // Scoped callers only see staff who take jobs at one of their sites.
+  const staffWithAssignments = (staff || [])
+    .map(s => ({
+      ...s,
+      site_assignments: assignmentMap.get(s.id) || [],
+    }))
+    .filter(s => scope === null || s.site_assignments.length > 0);
 
   return NextResponse.json({ staff: staffWithAssignments });
 }
@@ -80,6 +98,12 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // A site-scoped admin can only add staff to their own sites.
+  const scope = await getAccessibleSiteIds(admin, caller.id, caller.role);
+  if (scope !== null && (!siteIds?.length || !siteIdsWithinScope(siteIds, scope))) {
+    return NextResponse.json({ error: 'You can only add staff to sites you manage' }, { status: 403 });
+  }
 
   const { data: staffMember, error } = await admin
     .from('staff_members')
@@ -143,6 +167,16 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
   }
 
+  // A site-scoped admin can only edit staff on their sites, and only move
+  // them between their sites — assignments to other sites are left alone.
+  const scope = await getAccessibleSiteIds(admin, caller.id, caller.role);
+  if (!(await staffSharesScope(admin, staffId, scope))) {
+    return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+  }
+  if (siteIds !== undefined && !siteIdsWithinScope(siteIds, scope)) {
+    return NextResponse.json({ error: 'You can only assign staff to sites you manage' }, { status: 403 });
+  }
+
   // Build update object (only include provided fields)
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (fullName !== undefined) updates.full_name = fullName.trim();
@@ -164,7 +198,9 @@ export async function PATCH(request: NextRequest) {
 
   // Update site assignments if provided
   if (siteIds !== undefined) {
-    await admin.from('staff_site_assignments').delete().eq('staff_member_id', staffId);
+    let clear = admin.from('staff_site_assignments').delete().eq('staff_member_id', staffId);
+    if (scope !== null) clear = clear.in('site_id', scope);
+    await clear;
     if (siteIds.length > 0) {
       const assignments = siteIds.map((siteId: string) => ({
         staff_member_id: staffId,
@@ -208,6 +244,11 @@ export async function DELETE(request: NextRequest) {
     .single();
 
   if (!existing) {
+    return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+  }
+
+  const scope = await getAccessibleSiteIds(admin, caller.id, caller.role);
+  if (!(await staffSharesScope(admin, staffId, scope))) {
     return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
   }
 

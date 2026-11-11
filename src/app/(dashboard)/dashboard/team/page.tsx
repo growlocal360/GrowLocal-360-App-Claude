@@ -48,6 +48,7 @@ import { EditStaffDialog } from '@/components/team/edit-staff-dialog';
 import { EditMemberDialog } from '@/components/team/edit-member-dialog';
 import type { UserRole } from '@/types/database';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { getAccessibleSiteIdsClient } from '@/lib/auth/accessible-sites-client';
 
 interface TeamMember {
   id: string;
@@ -164,7 +165,7 @@ export default function TeamPage() {
       const activeOrgId = getActiveOrgIdClient();
       const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url, role, organization_id')
+        .select('id, full_name, avatar_url, role, organization_id')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
       const profile = (activeOrgId
@@ -178,12 +179,15 @@ export default function TeamPage() {
       });
 
       if (profile?.organization_id) {
-        const { data: sitesData } = await supabase
+        // Site-scoped admins only get their own sites to pick from.
+        const scope = await getAccessibleSiteIdsClient(supabase, profile.id, profile.role);
+        let sitesQuery = supabase
           .from('sites')
           .select('id, name')
           .eq('organization_id', profile.organization_id)
-          .eq('is_active', true)
-          .order('name');
+          .eq('is_active', true);
+        if (scope) sitesQuery = sitesQuery.in('id', scope);
+        const { data: sitesData } = await sitesQuery.order('name');
         setOrgSites(sitesData || []);
       }
     }

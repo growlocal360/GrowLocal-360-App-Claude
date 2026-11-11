@@ -19,12 +19,13 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  // Prefilled by the team-invite page so the login matches the invited address.
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect');
   const setupPending = searchParams.get('setup') === 'pending';
   const supabase = useMemo(() => createClient(), []);

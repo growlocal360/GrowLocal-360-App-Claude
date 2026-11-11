@@ -13,6 +13,7 @@ import type { NavCategory } from '@/components/templates/local-service-pro/site-
 import * as paths from '@/lib/routing/paths';
 import { PremiumHeader } from './header';
 import { PremiumFooter } from './footer';
+import { PremiumMobileBar } from './mobile-bar';
 import { PmIconPhone, PmIconArrow } from './icons';
 import { useCtaLabel } from '@/components/templates/site-form-config';
 
@@ -108,6 +109,7 @@ export function PremiumShell({ site, primaryLocation, serviceAreas = [], siteSlu
         <PremiumHeader site={site} primaryLocation={primaryLocation} siteSlug={siteSlug} locationSlug={locationSlug} ctaLabel={ctaLabel} ctaHref={ctaHref} />
         <main>{children}</main>
         <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={siteSlug} locationSlug={locationSlug} />
+        <PremiumMobileBar site={site} primaryLocation={primaryLocation} ctaLabel={ctaLabel} ctaHref={ctaHref} />
       </div>
     </CtaHrefContext.Provider>
   );

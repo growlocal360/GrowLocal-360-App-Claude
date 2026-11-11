@@ -15,6 +15,7 @@ import { UnifiedLeadForm } from '@/components/templates/local-service-pro/unifie
 import { AvailabilityBadge } from '@/components/templates/local-service-pro/availability-badge';
 import { PremiumHeader } from './header';
 import { PremiumFooter } from './footer';
+import { PremiumMobileBar } from './mobile-bar';
 import { premiumThemeStyle } from './shell';
 import {
   PmIconPhone, PmIconCheck, PmIconStar, PmIconShield, PmIconClock,
@@ -350,6 +351,7 @@ export function PremiumTemplate({
       </main>
 
       <PremiumFooter site={site} primaryLocation={primaryLocation} serviceAreas={serviceAreas} siteSlug={slug} locationSlug={locationSlug} />
+      <PremiumMobileBar site={site} primaryLocation={primaryLocation} ctaLabel={ctaLabel} ctaHref="#pm-form" />
     </div>
   );
 }

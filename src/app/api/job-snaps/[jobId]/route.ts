@@ -280,6 +280,23 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       };
       if (typeof update.slug === 'string') workItemSync.slug = update.slug;
+      // The public page renders a technician card from work_items, so a
+      // changed "Technician on Job" has to reach it too (previously only a
+      // re-publish did). Null clears the card.
+      if (body.technician_id !== undefined) {
+        let tech: { full_name: string | null; title: string | null; avatar_url: string | null } | null = null;
+        if (body.technician_id) {
+          const { data } = await adminClient
+            .from('profiles')
+            .select('full_name, title, avatar_url')
+            .eq('id', body.technician_id)
+            .maybeSingle();
+          tech = data;
+        }
+        workItemSync.technician_name = tech?.full_name ?? null;
+        workItemSync.technician_title = tech?.title ?? null;
+        workItemSync.technician_avatar_url = tech?.avatar_url ?? null;
+      }
       const { error: workItemUpdateError } = await adminClient
         .from('work_items')
         .update(workItemSync)

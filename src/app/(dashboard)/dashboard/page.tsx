@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Header } from '@/components/layout/header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, Briefcase, Users, Plus, Camera, ArrowRight, Check } from 'lucide-react';
 import { SiteStatusBadge, BuildProgressBar } from '@/components/sites/site-status-badge';
 import type { SiteStatus, SiteBuildProgress, UserRole } from '@/types/database';
-import { getAccessibleSiteIds } from '@/lib/auth/permissions';
+import { getAccessibleSiteIds, getVisibleTeamProfileIds } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 
 export default async function DashboardPage() {
@@ -67,10 +68,24 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .in('site_id', jobSiteIds);
 
-  const { count: teamCount } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .eq('organization_id', profile?.organization_id);
+  // Team count follows the same visibility rule as the Team page: a
+  // site-scoped admin only counts the owner, themselves and people who
+  // share one of their sites.
+  // Other people's site assignments are not readable under RLS, so this
+  // lookup runs as admin; it only ever returns ids inside the caller's org.
+  const visibleTeam = profile
+    ? await getVisibleTeamProfileIds(createAdminClient(), profile.organization_id, profile.id, accessibleSiteIds)
+    : null;
+  let teamCount: number | null;
+  if (visibleTeam) {
+    teamCount = visibleTeam.size;
+  } else {
+    const { count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', profile?.organization_id);
+    teamCount = count;
+  }
 
   // Get sites with status and build progress — scoped, workspace-only excluded
   let sitesQuery = supabase

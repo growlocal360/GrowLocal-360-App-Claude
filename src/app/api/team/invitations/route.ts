@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
+import { getCallerProfile, hasRole, getAccessibleSiteIds, siteIdsWithinScope } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 import { sendInviteEmail } from '@/lib/email/resend';
 
@@ -28,7 +28,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch invitations' }, { status: 500 });
   }
 
-  return NextResponse.json({ invitations });
+  // A site-scoped admin only sees invitations to one of their sites. An
+  // invitation with no sites grants the whole org, so it stays hidden.
+  const scope = await getAccessibleSiteIds(adminSupabase, caller.id, caller.role);
+  const visible = scope === null
+    ? invitations
+    : (invitations || []).filter((i) => (i.site_ids || []).some((id: string) => scope.includes(id)));
+
+  return NextResponse.json({ invitations: visible });
 }
 
 // POST - Create and send an invitation
@@ -57,6 +64,13 @@ export async function POST(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
+
+  // A site-scoped admin can only invite people onto their own sites. An
+  // invitation with no sites would grant the whole org, so it is required.
+  const scope = await getAccessibleSiteIds(adminSupabase, caller.id, caller.role);
+  if (scope !== null && (!siteIds?.length || !siteIdsWithinScope(siteIds, scope))) {
+    return NextResponse.json({ error: 'You can only invite people to sites you manage' }, { status: 403 });
+  }
 
   // Check if email is already in the org
   const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
@@ -158,6 +172,20 @@ export async function DELETE(request: NextRequest) {
   }
 
   const adminSupabase = createAdminClient();
+
+  // A site-scoped admin can only cancel invitations to one of their sites.
+  const scope = await getAccessibleSiteIds(adminSupabase, caller.id, caller.role);
+  if (scope !== null) {
+    const { data: invite } = await adminSupabase
+      .from('invitations')
+      .select('site_ids')
+      .eq('id', invitationId)
+      .eq('organization_id', caller.organization_id)
+      .maybeSingle();
+    if (!invite || !(invite.site_ids || []).some((id: string) => scope.includes(id))) {
+      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 });
+    }
+  }
 
   const { error } = await adminSupabase
     .from('invitations')

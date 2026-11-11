@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { getAccessibleSiteIdsClient } from '@/lib/auth/accessible-sites-client';
 import {
   Dialog,
   DialogContent,
@@ -55,7 +56,7 @@ export function AddStaffDialog({ open, onOpenChange, onStaffAdded }: AddStaffDia
       const activeOrgId = getActiveOrgIdClient();
       const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('organization_id')
+        .select('id, role, organization_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       const profile =
@@ -65,12 +66,15 @@ export function AddStaffDialog({ open, onOpenChange, onStaffAdded }: AddStaffDia
 
       if (!profile) return;
 
-      const { data: sitesData } = await supabase
+      // Site-scoped admins only get their own sites to pick from.
+      const scope = await getAccessibleSiteIdsClient(supabase, profile.id, profile.role);
+      let sitesQuery = supabase
         .from('sites')
         .select('id, name')
         .eq('organization_id', profile.organization_id)
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+      if (scope) sitesQuery = sitesQuery.in('id', scope);
+      const { data: sitesData } = await sitesQuery.order('name');
 
       setSites(sitesData || []);
     }

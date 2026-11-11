@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
+import { getAccessibleSiteIdsClient } from '@/lib/auth/accessible-sites-client';
 import {
   Dialog,
   DialogContent,
@@ -63,7 +64,7 @@ export function InviteMemberDialog({ open, onOpenChange, callerRole, onInviteSen
       const activeOrgId = getActiveOrgIdClient();
       const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('organization_id')
+        .select('id, role, organization_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       const profile =
@@ -73,14 +74,22 @@ export function InviteMemberDialog({ open, onOpenChange, callerRole, onInviteSen
 
       if (!profile) return;
 
-      const { data: sitesData } = await supabase
+      // Site-scoped admins only get their own sites to pick from.
+      const scope = await getAccessibleSiteIdsClient(supabase, profile.id, profile.role);
+      let sitesQuery = supabase
         .from('sites')
         .select('id, name')
         .eq('organization_id', profile.organization_id)
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+      if (scope) sitesQuery = sitesQuery.in('id', scope);
+      const { data: sitesData } = await sitesQuery.order('name');
 
       setSites(sitesData || []);
+      // A scoped admin with a single site has nothing to choose — pick it.
+      if (scope && sitesData?.length === 1) {
+        setAllSites(false);
+        setSelectedSiteIds([sitesData[0].id]);
+      }
     }
 
     fetchSites();
@@ -107,7 +116,9 @@ export function InviteMemberDialog({ open, onOpenChange, callerRole, onInviteSen
     setSending(true);
     setError('');
 
-    const siteIds = allSites ? [] : selectedSiteIds;
+    // "All sites" is only offered for Admins; a User invite always carries
+    // the picked sites (an empty list would give a User no access at all).
+    const siteIds = role === 'admin' && allSites ? [] : selectedSiteIds;
 
     const res = await fetch('/api/team/invitations', {
       method: 'POST',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
+import { getCallerProfile, hasRole, getAccessibleSiteIds, getVisibleTeamProfileIds } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 
 // GET - List team members with their site assignments
@@ -16,8 +16,15 @@ export async function GET() {
 
   const adminSupabase = createAdminClient();
 
+  // Site-scoped callers (an admin assigned to specific sites) only see the
+  // owner, themselves, and people who share one of their sites — and only
+  // the shared sites on each row. Owners and unscoped admins see everyone.
+  const scope = await getAccessibleSiteIds(adminSupabase, caller.id, caller.role);
+  const visible = await getVisibleTeamProfileIds(adminSupabase, caller.organization_id, caller.id, scope);
+  const inScope = (siteId: string) => scope === null || scope.includes(siteId);
+
   // Fetch all profiles in the org with their auth user emails
-  const { data: profiles, error } = await adminSupabase
+  const { data: allProfiles, error } = await adminSupabase
     .from('profiles')
     .select('id, user_id, organization_id, role, full_name, avatar_url, bio, title, created_at')
     .eq('organization_id', caller.organization_id)
@@ -26,6 +33,7 @@ export async function GET() {
   if (error) {
     return NextResponse.json({ error: 'Failed to fetch team' }, { status: 500 });
   }
+  const profiles = visible ? allProfiles.filter((p) => visible.has(p.id)) : allProfiles;
 
   // Fetch emails from auth.users for each profile
   const userIds = profiles.map((p) => p.user_id);
@@ -51,7 +59,7 @@ export async function GET() {
     if (!assignmentMap.has(a.profile_id)) {
       assignmentMap.set(a.profile_id, []);
     }
-    if (site) {
+    if (site && inScope(site.id)) {
       assignmentMap.get(a.profile_id)!.push({
         site_id: site.id,
         site_name: site.name,
@@ -69,7 +77,8 @@ export async function GET() {
   const staffMap = new Map<string, { id: string; site_ids: string[]; site_names: string[] }>();
   for (const s of linkedStaff || []) {
     if (!s.profile_id) continue;
-    const rows = (s.assignments || []) as unknown as { site_id: string; site: { name: string } | { name: string }[] | null }[];
+    const rows = ((s.assignments || []) as unknown as { site_id: string; site: { name: string } | { name: string }[] | null }[])
+      .filter((r) => inScope(r.site_id));
     const names = rows
       .map((r) => (Array.isArray(r.site) ? r.site[0]?.name : r.site?.name))
       .filter((n): n is string => !!n);
@@ -83,7 +92,7 @@ export async function GET() {
     staff_link: staffMap.get(p.id) || null,
   }));
 
-  return NextResponse.json({ members, callerRole: caller.role, callerProfileId: caller.id });
+  return NextResponse.json({ members, callerRole: caller.role, callerProfileId: caller.id, accessibleSiteIds: scope });
 }
 
 // PATCH - Update a member's role or profile fields

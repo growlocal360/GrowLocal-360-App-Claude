@@ -459,3 +459,15 @@
 .tpl-premium .pm-footprofiles { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
 .tpl-premium .pm-footprofiles a { display:inline-block; padding:5px 11px; border:1px solid color-mix(in srgb, var(--dark-ink) 22%, transparent); border-radius:999px; font-size:12.5px; font-weight:600; color:color-mix(in srgb, var(--dark-ink) 78%, transparent) !important; text-decoration:none; margin:0 !important; }
 .tpl-premium .pm-footprofiles a:hover { border-color:var(--brand); color:var(--brand) !important; }
+
+/* ===== Premium: sticky mobile action bar (CTA + Call Now) ===== */
+.tpl-premium .pm-mbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0,0,0,.08); }
+.tpl-premium .pm-mbar--single { grid-template-columns: 1fr; }
+.tpl-premium .pm-mbar-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 14px; border-radius: 12px; font-weight: 700; font-size: 15px; line-height: 1.1; text-align: center; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tpl-premium .pm-mbar-btn svg { flex-shrink: 0; width: 16px; height: 16px; }
+.tpl-premium .pm-mbar-cta { background: var(--brand); color: var(--brand-ink); }
+.tpl-premium .pm-mbar-call { background: var(--dark, #0a0a0b); color: var(--dark-ink, #fff); }
+.tpl-premium .pm-mbar-btn:active { transform: translateY(1px); }
+/* Keep the footer's last row clear of the bar on mobile. */
+@media (max-width: 939px) { .tpl-premium .pm-footer { padding-bottom: calc(32px + 70px + env(safe-area-inset-bottom)); } }
+@media (min-width: 940px) { .tpl-premium .pm-mbar { display: none; } }

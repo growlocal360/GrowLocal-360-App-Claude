@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getActiveOrgIdClient } from '@/lib/auth/active-org-client';
 import {
   Dialog,
   DialogContent,
@@ -68,11 +69,20 @@ export function EditMemberDialog({ open, onOpenChange, member, onMemberUpdated }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
+      // A login can hold a profile in more than one org (e.g. owner here,
+      // admin elsewhere). .single() throws on 2+ rows and left the site list
+      // empty ("No sites available"), so resolve the ACTIVE org's profile the
+      // way the Team page does.
+      const activeOrgId = getActiveOrgIdClient();
+      const { data: userProfiles } = await supabase
         .from('profiles')
         .select('organization_id')
         .eq('user_id', user.id)
-        .single();
+        .order('created_at', { ascending: false });
+      const profile =
+        (activeOrgId
+          ? userProfiles?.find((p: { organization_id: string }) => p.organization_id === activeOrgId)
+          : userProfiles?.[0]) || userProfiles?.[0] || null;
 
       if (!profile) return;
 

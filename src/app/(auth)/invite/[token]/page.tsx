@@ -15,6 +15,16 @@ interface InvitationData {
   expires_at: string;
   organization: { name: string } | null;
   inviter: { full_name: string } | null;
+  /** Businesses the invite covers; empty = every site in the org. */
+  site_names?: string[];
+  /** Whether the invited email already has a GrowLocal 360 login. */
+  has_account?: boolean;
+}
+
+/** "Acme Plumbing", "Acme Plumbing and Acme Roofing", "Acme, Beta and Gamma". */
+function listNames(names: string[]): string {
+  if (names.length <= 1) return names[0] || '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
 export default function InviteAcceptPage() {
@@ -24,6 +34,7 @@ export default function InviteAcceptPage() {
 
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +47,7 @@ export default function InviteAcceptPage() {
       // Check auth status
       const { data: { user } } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
+      setCurrentEmail(user?.email?.toLowerCase() || null);
 
       // Fetch invitation details (public lookup by token)
       const res = await fetch(`/api/team/invitations/lookup?token=${token}`);
@@ -120,6 +132,13 @@ export default function InviteAcceptPage() {
     );
   }
 
+  const invitedEmail = (invitation?.email || '').toLowerCase();
+  const hasAccount = invitation?.has_account === true;
+  const emailMismatch = !!currentEmail && !!invitedEmail && currentEmail !== invitedEmail;
+  const siteLabel = invitation?.site_names?.length
+    ? listNames(invitation.site_names)
+    : invitation?.organization?.name || 'their team';
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
@@ -132,14 +151,17 @@ export default function InviteAcceptPage() {
         <CardContent className="space-y-4">
           <div className="rounded-lg bg-gray-50 p-4 text-center">
             <p className="text-sm text-gray-600">
-              {invitation?.inviter?.full_name || 'A team member'} has invited you to join
+              {invitation?.inviter?.full_name || 'Someone'} invited you to help run
             </p>
             <p className="mt-1 text-lg font-semibold text-gray-900">
-              {invitation?.organization?.name || 'their team'}
+              {siteLabel}
             </p>
             <p className="mt-1 text-sm text-gray-500">
               as {invitation?.role === 'admin' ? 'an' : 'a'}{' '}
               <span className="font-medium capitalize">{invitation?.role}</span>
+              {invitation?.role === 'admin'
+                ? ' — you can manage the website, reviews, rankings and Job Snaps'
+                : ' — you can add Job Snaps and see your schedule'}
             </p>
           </div>
 
@@ -148,32 +170,61 @@ export default function InviteAcceptPage() {
           )}
 
           {isAuthenticated ? (
-            <Button
-              onClick={handleAccept}
-              disabled={accepting}
-              className="w-full hover:opacity-90"
-              style={{ backgroundColor: '#00ef99' }}
-            >
-              {accepting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Accept Invitation
-            </Button>
-          ) : (
             <div className="space-y-3">
-              <p className="text-sm text-gray-500 text-center">
-                Sign in or create an account to accept this invitation.
+              {emailMismatch && (
+                <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+                  You&apos;re signed in as <strong>{currentEmail}</strong>, but this invitation was sent to{' '}
+                  <strong>{invitedEmail}</strong>. You can still accept it with this login, or sign out and
+                  use the invited address.
+                </p>
+              )}
+              <Button
+                onClick={handleAccept}
+                disabled={accepting}
+                className="w-full hover:opacity-90"
+                style={{ backgroundColor: '#00ef99' }}
+              >
+                {accepting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Accept Invitation
+              </Button>
+            </div>
+          ) : hasAccount ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 text-center">
+                This invitation is for <strong>{invitedEmail}</strong>, which already has a GrowLocal 360
+                login. Sign in with it and the invitation is accepted automatically.
               </p>
               <Button asChild className="w-full" style={{ backgroundColor: '#00ef99' }}>
-                <Link href={`/login?redirect=/invite/${token}`}>
-                  Sign In
+                <Link href={`/login?redirect=/invite/${token}&email=${encodeURIComponent(invitedEmail)}`}>
+                  Sign In to Accept
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href={`/signup?redirect=/invite/${token}`}>
-                  Create Account
+              <p className="text-center text-xs text-gray-500">
+                Forgot your password?{' '}
+                <Link href="/forgot-password" className="font-medium text-gray-700 underline">
+                  Reset it here
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 text-center">
+                This invitation is for <strong>{invitedEmail}</strong>. You don&apos;t have a login yet, so
+                create one with that email. It&apos;s free, takes a minute, and brings you straight back here.
+              </p>
+              <Button asChild className="w-full" style={{ backgroundColor: '#00ef99' }}>
+                <Link href={`/signup?redirect=/invite/${token}&email=${encodeURIComponent(invitedEmail)}`}>
+                  Create Your Account
                 </Link>
               </Button>
+              <p className="text-center text-xs text-gray-500">
+                Already have a GrowLocal 360 login?{' '}
+                <Link href={`/login?redirect=/invite/${token}&email=${encodeURIComponent(invitedEmail)}`} className="font-medium text-gray-700 underline">
+                  Sign in instead
+                </Link>
+              </p>
             </div>
           )}
         </CardContent>

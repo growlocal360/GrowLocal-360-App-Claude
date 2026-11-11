@@ -20,13 +20,14 @@ export default function SignupPage() {
 
 function SignupForm() {
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  // Prefilled by the team-invite page so the login matches the invited address.
+  const [email, setEmail] = useState(() => searchParams.get('email') || '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect');
   const supabase = useMemo(() => createClient(), []);
 
@@ -87,7 +88,7 @@ function SignupForm() {
           </CardHeader>
           <CardFooter className="justify-center">
             <Button variant="outline" asChild>
-              <Link href="/login">Back to Login</Link>
+              <Link href={`/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}&email=${encodeURIComponent(email)}` : ''}`}>Back to Login</Link>
             </Button>
           </CardFooter>
         </Card>

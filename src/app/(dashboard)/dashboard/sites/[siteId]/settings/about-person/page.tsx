@@ -76,6 +76,8 @@ export default function AboutPersonSettingsPage() {
   const uploadPhoto = async (file: File): Promise<string> => {
     const fd = new FormData();
     fd.append('photo', file);
+    fd.append('name', name);
+    fd.append('title', title);
     const res = await fetch(`/api/sites/${siteId}/settings/about-person/upload`, { method: 'POST', body: fd });
     if (!res.ok) {
       const d = await res.json();

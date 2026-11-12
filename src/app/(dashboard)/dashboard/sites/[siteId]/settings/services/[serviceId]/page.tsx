@@ -122,7 +122,7 @@ export default function ServiceEditorPage() {
     if (file.size > 10 * 1024 * 1024) { setError('Image must be smaller than 10MB'); return; }
     try {
       setImageBusy(true); setError(null);
-      const fd = new FormData(); fd.append('photo', file);
+      const fd = new FormData(); fd.append('photo', file); fd.append('serviceId', serviceId);
       const up = await fetch(`/api/sites/${siteId}/settings/services/hero-image`, { method: 'POST', body: fd });
       if (!up.ok) throw new Error((await up.json().catch(() => ({}))).error || 'Failed to upload image');
       await saveHeroImage((await up.json()).url);

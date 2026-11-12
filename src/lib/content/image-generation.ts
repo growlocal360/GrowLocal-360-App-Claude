@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ASSET_BUCKET } from '@/lib/assets/types';
 import type { ImagePrompt, GeneratedImage } from '@/types/database';
+import { optimizeImage } from '@/lib/images/optimize';
 
 // ---------------------------------------------------------------------------
 // Generate a single image via Google Nano Banana 2 (Gemini REST API)
@@ -142,14 +143,19 @@ async function uploadImageFromUrl(
   return uploadToStorage(buffer, contentType, siteId, filename);
 }
 
-function uploadImageFromBase64(
+/**
+ * Nano Banana hands back a 1024×1024 PNG of ~1.5 MB. It never reaches storage
+ * in that form: it is re-encoded as WebP (≈60–90 KB) first.
+ */
+async function uploadImageFromBase64(
   base64Data: string,
   mimeType: string,
   siteId: string,
   filename: string
-): Promise<{ storagePath: string; publicUrl: string }> {
-  const buffer = Buffer.from(base64Data, 'base64');
-  return uploadToStorage(buffer, mimeType, siteId, filename);
+): Promise<{ storagePath: string; publicUrl: string; width: number | null; height: number | null }> {
+  const optimized = await optimizeImage(Buffer.from(base64Data, 'base64'), { preset: 'content', contentType: mimeType });
+  const uploaded = await uploadToStorage(optimized.buffer, optimized.contentType, siteId, filename);
+  return { ...uploaded, width: optimized.width, height: optimized.height };
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +170,7 @@ function toSeoFilename(text: string, suffix?: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
   if (suffix) slug = `${slug}-${suffix}`;
-  return `${slug}.png`;
+  return `${slug}.webp`;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,9 +209,6 @@ export async function generateImagesFromPrompts(
       const suffix = i > 0 ? String(i + 1) : undefined;
       const filename = toSeoFilename(baseText, suffix);
 
-      const width = 1024;
-      const height = 1024;
-
       // Use Nano Banana 2 (Gemini) for all images — pass logo for brand context
       const { base64, mimeType } = await generateWithNanoBanana(
         prompt.prompt,
@@ -214,6 +217,8 @@ export async function generateImagesFromPrompts(
       );
       const uploaded = await uploadImageFromBase64(base64, mimeType, siteId, filename);
       const storagePath = uploaded.storagePath;
+      const width = uploaded.width ?? 1024;
+      const height = uploaded.height ?? 1024;
 
       // Store clean relative URL (served via /public/images/ proxy)
       // Middleware rewrites to /sites/{slug}/public/images/ for routing

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Star, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -70,10 +71,14 @@ export function HeroSection({ site, primaryLocation, pageContent, services, form
       {/* Hero background image */}
       {heroImage && (
         <>
-          <img
+          <Image
             src={heroImage.url}
-            alt={h1}
-            className="absolute inset-0 h-full w-full object-cover"
+            alt=""
+            fill
+            priority
+            unoptimized
+            sizes="100vw"
+            className="object-cover"
           />
           <div className="absolute inset-0" style={{ backgroundColor: `${brandColor}A8` }} />
         </>

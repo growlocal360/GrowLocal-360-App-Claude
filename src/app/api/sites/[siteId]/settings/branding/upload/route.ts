@@ -4,6 +4,7 @@ import { verifySiteAccess } from '@/lib/auth/permissions';
 import { uploadAsset } from '@/lib/assets/upload';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/assets/types';
 import { revalidateSite } from '@/lib/sites/revalidate';
+import { getSiteImageContext } from '@/lib/images/site-context';
 
 export async function POST(
   request: NextRequest,
@@ -43,11 +44,18 @@ export async function POST(
 
   try {
     // Upload via the asset system — preserves original filename for brand assets
+    // anthonys-plumbing-logo.webp / anthonys-plumbing-logo-dark.webp (an SVG
+    // logo stays SVG). A favicon keeps its format — browsers and Google want
+    // PNG/ICO there — and is just named.
+    const kind = String(formData.get('kind') || 'logo');
+    const ctx = await getSiteImageContext(siteId);
     const result = await uploadAsset({
       siteId,
       assetType: 'brand_asset',
       file,
-      preserveFilename: true,
+      ...(kind === 'favicon'
+        ? { subpath: `${ctx.siteName}-favicon` }
+        : { optimize: { preset: 'logo' as const, name: [ctx.siteName, kind === 'logo-dark' ? 'logo-dark' : 'logo'] } }),
     });
 
     // Return the clean public path for storage in site settings

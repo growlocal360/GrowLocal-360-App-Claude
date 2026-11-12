@@ -4,7 +4,8 @@ import { getCallerProfile } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE, ASSET_BUCKET } from '@/lib/assets/types';
-import { slugifyFilename } from '@/lib/assets/types';
+import { optimizeImage, imageSlug } from '@/lib/images/optimize';
+import { avatarCompanyName } from '@/lib/images/site-context';
 
 // POST - Upload avatar image
 export async function POST(request: NextRequest) {
@@ -39,12 +40,17 @@ export async function POST(request: NextRequest) {
 
   const adminSupabase = createAdminClient();
 
-  // Build filename from user's name or ID
-  const nameSlug = caller.full_name
-    ? slugifyFilename(caller.full_name)
-    : caller.id.substring(0, 8);
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const filename = `avatar-${nameSlug}.${ext}`;
+  // Resize to the avatar slot, WebP, EXIF stripped. Named from the person's
+  // name, title and company: anthony-minor-owner-anthonys-plumbing.webp
+  const [{ data: profileRow }, company] = await Promise.all([
+    adminSupabase.from('profiles').select('title').eq('id', caller.id).maybeSingle(),
+    avatarCompanyName(adminSupabase, caller.organization_id, 'profile_site_assignments', 'profile_id', caller.id),
+  ]);
+  const optimized = await optimizeImage(Buffer.from(await file.arrayBuffer()), { preset: 'avatar', contentType: file.type });
+  const stem = caller.full_name
+    ? imageSlug([caller.full_name, profileRow?.title, company])
+    : `avatar-${caller.id.substring(0, 8)}`;
+  const filename = `${stem}.${optimized.ext}`;
 
   // Store avatars in a global avatars folder (not site-specific)
   const storagePath = `avatars/${caller.id}/${filename}`;
@@ -62,13 +68,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Upload
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const { error: uploadError } = await adminSupabase.storage
     .from(ASSET_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: file.type,
+    .upload(storagePath, optimized.buffer, {
+      contentType: optimized.contentType,
       upsert: true,
     });
 

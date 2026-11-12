@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE, ASSET_BUCKET } from '@/lib/assets/types';
-import { slugifyFilename } from '@/lib/assets/types';
+import { optimizeImage, imageSlug } from '@/lib/images/optimize';
+import { avatarCompanyName } from '@/lib/images/site-context';
 
 export async function POST(
   request: NextRequest,
@@ -52,11 +53,16 @@ export async function POST(
     return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
   }
 
-  const nameSlug = profile.full_name
-    ? slugifyFilename(profile.full_name)
-    : profileId.substring(0, 8);
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const filename = `avatar-${nameSlug}.${ext}`;
+  // Resize to the avatar slot, WebP, EXIF stripped; named person-title-company.
+  const [{ data: profileRow }, company] = await Promise.all([
+    admin.from('profiles').select('title').eq('id', profileId).maybeSingle(),
+    avatarCompanyName(admin, caller.organization_id, 'profile_site_assignments', 'profile_id', profileId),
+  ]);
+  const optimized = await optimizeImage(Buffer.from(await file.arrayBuffer()), { preset: 'avatar', contentType: file.type });
+  const stem = profile.full_name
+    ? imageSlug([profile.full_name, profileRow?.title, company])
+    : `avatar-${profileId.substring(0, 8)}`;
+  const filename = `${stem}.${optimized.ext}`;
   const storagePath = `avatars/${profileId}/${filename}`;
 
   // Delete existing avatar files
@@ -70,13 +76,10 @@ export async function POST(
   }
 
   // Upload
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const { error: uploadError } = await admin.storage
     .from(ASSET_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: file.type,
+    .upload(storagePath, optimized.buffer, {
+      contentType: optimized.contentType,
       upsert: true,
     });
 

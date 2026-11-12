@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { uploadAsset } from '@/lib/assets/upload';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/assets/types';
+import { getSiteImageContext } from '@/lib/images/site-context';
 
 // Upload the featured-person headshot. Returns a clean /public/assets/... path
 // the caller then saves via PATCH /settings/about-person.
@@ -34,8 +35,19 @@ export async function POST(
     return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
   }
 
+  // Named from the person, the trade and the business:
+  // anthony-minor-plumber-anthonys-plumbing.webp
+  const personName = String(formData.get('name') || '').trim();
+  const personTitle = String(formData.get('title') || '').trim();
+
   try {
-    const result = await uploadAsset({ siteId, assetType: 'site_asset', file });
+    const ctx = await getSiteImageContext(siteId);
+    const result = await uploadAsset({
+      siteId,
+      assetType: 'site_asset',
+      file,
+      optimize: { preset: 'person', name: [personName || personTitle || 'team', ctx.trade, ctx.siteName] },
+    });
     return NextResponse.json({ success: true, url: `/public/${result.publicPath}` });
   } catch (err) {
     console.error('Failed to upload featured-person photo:', err);

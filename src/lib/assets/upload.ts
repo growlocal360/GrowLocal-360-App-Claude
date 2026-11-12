@@ -8,6 +8,7 @@ import {
   getStorageSubfolder,
   slugifyFilename,
 } from './types';
+import { optimizeImage, imageSlug, type ImagePreset } from '@/lib/images/optimize';
 
 interface UploadAssetParams {
   siteId: string;
@@ -17,6 +18,14 @@ interface UploadAssetParams {
   subpath?: string;
   /** If true, preserve original filename (for brand assets). Default: false */
   preserveFilename?: boolean;
+  /**
+   * Run the file through the image pipeline (resize for the slot, WebP, EXIF
+   * stripped; SVG passes through) and name it from `name`
+   * (e.g. ['Anthony Minor', 'Plumber', "Anthony's Plumbing"]). The stem
+   * replaces any existing file with the same name instead of suffixing it, so
+   * re-uploading a person photo keeps one file.
+   */
+  optimize?: { preset: ImagePreset; name: Array<string | null | undefined> };
 }
 
 interface UploadAssetResult {
@@ -35,6 +44,7 @@ export async function uploadAsset({
   file,
   subpath,
   preserveFilename = false,
+  optimize,
 }: UploadAssetParams): Promise<UploadAssetResult> {
   // Validate file type
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -48,9 +58,17 @@ export async function uploadAsset({
 
   const adminSupabase = createAdminClient();
 
+  // Every raster image is resized + re-encoded before it is stored.
+  const original = Buffer.from(await file.arrayBuffer());
+  const optimized = optimize ? await optimizeImage(original, { preset: optimize.preset, contentType: file.type }) : null;
+  const buffer = optimized ? optimized.buffer : original;
+  const contentType = optimized ? optimized.contentType : file.type;
+
   // Determine filename
   let filename: string;
-  if (subpath) {
+  if (optimized) {
+    filename = `${imageSlug(optimize!.name)}.${optimized.ext}`;
+  } else if (subpath) {
     // Use subpath as the filename base (e.g., 'team-john-david')
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     filename = `${slugifyFilename(subpath)}.${ext}`;
@@ -80,8 +98,8 @@ export async function uploadAsset({
     .eq('public_path', finalPublicPath)
     .limit(1);
 
-  if (existing && existing.length > 0) {
-    // Append suffix to avoid conflict
+  if (existing && existing.length > 0 && !optimized) {
+    // Append suffix to avoid conflict (named optimized uploads replace instead)
     const lastDot = filename.lastIndexOf('.');
     const baseName = lastDot > 0 ? filename.substring(0, lastDot) : filename;
     const ext = lastDot > 0 ? filename.substring(lastDot) : '';
@@ -108,14 +126,10 @@ export async function uploadAsset({
     }
   }
 
-  // Convert File to Buffer and upload
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const { error: uploadError } = await adminSupabase.storage
     .from(ASSET_BUCKET)
     .upload(finalStoragePath, buffer, {
-      contentType: file.type,
+      contentType,
       upsert: true,
     });
 
@@ -133,8 +147,8 @@ export async function uploadAsset({
         original_filename: file.name,
         storage_path: finalStoragePath,
         public_path: finalPublicPath,
-        content_type: file.type,
-        file_size: file.size,
+        content_type: contentType,
+        file_size: buffer.length,
       },
       { onConflict: 'site_id,public_path' }
     )

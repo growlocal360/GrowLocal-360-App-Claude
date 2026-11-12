@@ -419,8 +419,8 @@ export function UnifiedLeadForm({
         if (options.length === 0) return null;
         return (
           <div key={f.name}>
-            <label className="mb-1 block text-sm font-medium text-gray-700">{f.label}</label>
-            <select className={inputClass} style={ringStyle} value={value} onChange={e => setField(f.name, e.target.value)}>
+            <label htmlFor={`lead-${f.name}`} className="mb-1 block text-sm font-medium text-gray-700">{f.label}</label>
+            <select id={`lead-${f.name}`} name={f.name} className={inputClass} style={ringStyle} value={value} onChange={e => setField(f.name, e.target.value)}>
               <option value="">Select a service...</option>
               {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>

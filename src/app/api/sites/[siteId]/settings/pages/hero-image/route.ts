@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { uploadAsset } from '@/lib/assets/upload';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/assets/types';
+import { getSiteImageContext } from '@/lib/images/site-context';
 
 // Upload a core-page hero image (home/about/contact). Returns a clean
 // /public/assets/... path the caller then saves via PATCH /settings/pages/{type}.
@@ -20,8 +21,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
 
+  // plumber-lake-charles-la-home-hero.webp
+  const pageType = String(formData.get('page') || 'home').replace(/[^a-z-]/gi, '') || 'home';
+
   try {
-    const result = await uploadAsset({ siteId, assetType: 'site_asset', file });
+    const ctx = await getSiteImageContext(siteId);
+    const result = await uploadAsset({
+      siteId,
+      assetType: 'site_asset',
+      file,
+      optimize: { preset: 'hero', name: [ctx.trade, ctx.city, ctx.state, pageType, 'hero'] },
+    });
     return NextResponse.json({ success: true, url: `/public/${result.publicPath}` });
   } catch (err) {
     console.error('Failed to upload page hero image:', err);

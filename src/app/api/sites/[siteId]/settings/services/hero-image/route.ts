@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { verifySiteAccess } from '@/lib/auth/permissions';
 import { uploadAsset } from '@/lib/assets/upload';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from '@/lib/assets/types';
+import { getSiteImageContext } from '@/lib/images/site-context';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 // Upload a service hero image. Returns a clean /public/assets/... path the
 // caller then saves via PATCH /settings/services { id, heroImageUrl }.
@@ -31,8 +33,22 @@ export async function POST(
     return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
   }
 
+  // drain-cleaning-lake-charles-la-hero.webp
+  const serviceId = String(formData.get('serviceId') || '');
+  let serviceName: string | null = null;
+  if (serviceId) {
+    const { data: svc } = await createAdminClient().from('services').select('name').eq('id', serviceId).eq('site_id', siteId).maybeSingle();
+    serviceName = svc?.name || null;
+  }
+
   try {
-    const result = await uploadAsset({ siteId, assetType: 'site_asset', file });
+    const ctx = await getSiteImageContext(siteId);
+    const result = await uploadAsset({
+      siteId,
+      assetType: 'site_asset',
+      file,
+      optimize: { preset: 'hero', name: [serviceName || ctx.trade, ctx.city, ctx.state, serviceName ? 'hero' : `hero-${Date.now().toString(36)}`] },
+    });
     return NextResponse.json({ success: true, url: `/public/${result.publicPath}` });
   } catch (err) {
     console.error('Failed to upload service hero image:', err);

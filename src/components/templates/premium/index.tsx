@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { PublicRenderData, PublicRenderServiceListing, PublicRenderWorkItem, PublicRenderCategory } from '@/lib/sites/public-render-model';
 import * as paths from '@/lib/routing/paths';
 import {
@@ -154,7 +155,19 @@ export function PremiumTemplate({
           <div className="pm-hero-grid" />
           {heroImage && (
             <>
-              <div className="pm-hero-photo" style={{ backgroundImage: `url(${heroImage.url})` }} />
+              {/* The LCP element: a real <img> with priority so the browser fetches it
+                  first. unoptimized because /public/... paths resolve through the
+                  site's own domain, not the optimizer; the file is already sized + WebP. */}
+              <Image
+                src={heroImage.url}
+                alt=""
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="pm-hero-photo"
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
+              />
               <div className="pm-hero-photo-veil" />
             </>
           )}
@@ -264,7 +277,18 @@ export function PremiumTemplate({
               </ul>
             </div>
             <div className="pm-whyvisual">
-              {featuredPhoto && <div className="pm-whyphoto" style={{ backgroundImage: `url(${featuredPhoto})` }} aria-label={site.settings?.about_featured_person?.name} role="img" />}
+              {featuredPhoto && (
+                <div className="pm-whyphoto">
+                  <Image
+                    src={featuredPhoto}
+                    alt={site.settings?.about_featured_person?.name || ''}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 980px) 45vw, 100vw"
+                    style={{ objectFit: 'cover', objectPosition: 'center top' }}
+                  />
+                </div>
+              )}
               <div className="pm-badge">
                 <div className="pm-q">&ldquo;{testimonials[0].text}&rdquo;</div>
                 <div className="pm-a">— {testimonials[0].name}{cityState ? `, ${primaryLocation?.city}` : ''}</div>
@@ -286,7 +310,15 @@ export function PremiumTemplate({
                   const img = w.images?.[0]?.url;
                   return (
                     <Link key={w.id} className="pm-workcard" href={paths.workDetail(w.slug, locationSlug)}>
-                      {img ? <img src={img} alt={w.images?.[0]?.alt || w.title} /> : <span className="pm-imgph" />}
+                      {img ? (
+                        <Image
+                          src={img}
+                          alt={w.images?.[0]?.alt || w.title}
+                          fill
+                          sizes="(min-width: 900px) 33vw, (min-width: 600px) 50vw, 100vw"
+                          style={{ objectFit: 'cover' }}
+                        />
+                      ) : <span className="pm-imgph" />}
                       {w.service?.name && <span className="pm-tag">{w.service.name}</span>}
                       <span className="pm-ov"><span className="pm-ovt">{w.title}</span></span>
                     </Link>

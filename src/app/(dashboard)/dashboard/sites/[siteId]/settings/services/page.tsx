@@ -207,6 +207,7 @@ export default function ServicesPage() {
       setError(null);
       const fd = new FormData();
       fd.append('photo', file);
+      fd.append('serviceId', serviceId);
       const res = await fetch(`/api/sites/${siteId}/settings/services/hero-image`, { method: 'POST', body: fd });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to upload image');
       const { url } = await res.json();

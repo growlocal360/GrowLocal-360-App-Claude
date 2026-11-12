@@ -4,7 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getCallerProfile, hasRole } from '@/lib/auth/permissions';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 import { ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE, ASSET_BUCKET } from '@/lib/assets/types';
-import { slugifyFilename } from '@/lib/assets/types';
+import { optimizeImage, imageSlug } from '@/lib/images/optimize';
+import { avatarCompanyName } from '@/lib/images/site-context';
 
 export async function POST(
   request: NextRequest,
@@ -28,7 +29,7 @@ export async function POST(
   // Verify staff belongs to same org
   const { data: staff } = await admin
     .from('staff_members')
-    .select('id, full_name')
+    .select('id, full_name, title')
     .eq('id', staffId)
     .eq('organization_id', caller.organization_id)
     .single();
@@ -52,9 +53,10 @@ export async function POST(
     return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 });
   }
 
-  const nameSlug = slugifyFilename(staff.full_name);
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const filename = `avatar-${nameSlug}.${ext}`;
+  // Resize to the avatar slot, WebP, EXIF stripped; named person-title-company.
+  const company = await avatarCompanyName(admin, caller.organization_id, 'staff_site_assignments', 'staff_member_id', staffId);
+  const optimized = await optimizeImage(Buffer.from(await file.arrayBuffer()), { preset: 'avatar', contentType: file.type });
+  const filename = `${imageSlug([staff.full_name, (staff as { title?: string | null }).title, company])}.${optimized.ext}`;
   const storagePath = `avatars/staff/${staffId}/${filename}`;
 
   // Delete existing avatar files
@@ -68,13 +70,10 @@ export async function POST(
   }
 
   // Upload
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const { error: uploadError } = await admin.storage
     .from(ASSET_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType: file.type,
+    .upload(storagePath, optimized.buffer, {
+      contentType: optimized.contentType,
       upsert: true,
     });
 

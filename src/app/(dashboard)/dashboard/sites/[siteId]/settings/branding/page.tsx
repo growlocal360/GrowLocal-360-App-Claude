@@ -192,9 +192,10 @@ export default function BrandingSettingsPage() {
     }
   };
 
-  const uploadFile = async (file: File): Promise<string> => {
+  const uploadFile = async (file: File, kind: 'logo' | 'logo-dark' | 'favicon' = 'logo'): Promise<string> => {
     const formData = new FormData();
     formData.append('logo', file);
+    formData.append('kind', kind);
     const res = await fetch(`/api/sites/${siteId}/settings/branding/upload`, {
       method: 'POST',
       body: formData,
@@ -240,10 +241,10 @@ export default function BrandingSettingsPage() {
         newLogoUrl = await uploadFile(logoFile);
       }
       if (logoDarkFile) {
-        newLogoDarkUrl = await uploadFile(logoDarkFile);
+        newLogoDarkUrl = await uploadFile(logoDarkFile, 'logo-dark');
       }
       if (faviconFile) {
-        newFaviconUrl = await uploadFile(faviconFile);
+        newFaviconUrl = await uploadFile(faviconFile, 'favicon');
       }
 
       // Handle removals (preview cleared but config had a value)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -41,6 +41,7 @@ export default function InviteAcceptPage() {
   const [accepted, setAccepted] = useState(false);
 
   const supabase = createClient();
+  const autoTried = useRef(false);
 
   useEffect(() => {
     async function loadInvitation() {
@@ -82,6 +83,11 @@ export default function InviteAcceptPage() {
       if (!res.ok) {
         setError(data.error || 'Failed to accept invitation');
         setAccepting(false);
+        // The dashboard sends people with a pending invite here; remember this
+        // one failed so it does not send them straight back.
+        const prev = document.cookie.match(/(?:^|; )invite_skip=([^;]*)/)?.[1] || '';
+        const list = Array.from(new Set([...decodeURIComponent(prev).split(',').filter(Boolean), token]));
+        document.cookie = `invite_skip=${encodeURIComponent(list.join(','))}; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
         return;
       }
 
@@ -93,7 +99,24 @@ export default function InviteAcceptPage() {
     }
   };
 
-  if (loading) {
+  const signedInAsInvitee =
+    isAuthenticated &&
+    !!currentEmail &&
+    !!invitation?.email &&
+    currentEmail === invitation.email.toLowerCase();
+
+  // Signed in with the invited email: accept without a click. The page tells
+  // people "sign in and the invitation is accepted automatically", and anyone
+  // who signed in and assumed they were done was left in an empty org.
+  useEffect(() => {
+    if (!signedInAsInvitee || autoTried.current) return;
+    autoTried.current = true;
+    void handleAccept();
+    // handleAccept is stable enough for a one-shot call
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedInAsInvitee]);
+
+  if (loading || (signedInAsInvitee && !error && !accepted)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -166,7 +189,17 @@ export default function InviteAcceptPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 text-center">{error}</p>
+            <p className="text-sm text-red-600 text-center">
+              {error}
+              {isAuthenticated && (
+                <>
+                  {' '}
+                  <Link href="/dashboard" className="font-medium underline">
+                    Go to dashboard
+                  </Link>
+                </>
+              )}
+            </p>
           )}
 
           {isAuthenticated ? (

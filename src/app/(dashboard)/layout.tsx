@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Sidebar } from '@/components/layout/sidebar';
 import { getActiveOrgId } from '@/lib/auth/active-org';
 import type { UserRole } from '@/types/database';
@@ -18,6 +20,30 @@ export default async function DashboardLayout({
 
   if (!user) {
     redirect('/login');
+  }
+
+  // A pending invitation for this exact email that was never accepted: the
+  // signup trigger only joins people who sign up AFTER the invite exists, and
+  // the invite page used to wait for a click. Anyone who already had a login,
+  // or who came in through the normal login page, landed in their own empty
+  // org with the invite still pending. Send them to the invite, which now
+  // accepts on its own. A token the invite page could not accept is skipped
+  // (cookie set there) so a failure never traps someone away from the dashboard.
+  if (user.email) {
+    const skipped = new Set(
+      ((await cookies()).get('invite_skip')?.value || '').split(',').filter(Boolean)
+    );
+    const { data: pending } = await createAdminClient()
+      .from('invitations')
+      .select('token, email')
+      .ilike('email', user.email)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+    const invite = (pending || []).find(
+      (i) => i.email?.toLowerCase() === user.email!.toLowerCase() && !skipped.has(i.token)
+    );
+    if (invite) redirect(`/invite/${invite.token}`);
   }
 
   // Get all profiles + org names for this user
